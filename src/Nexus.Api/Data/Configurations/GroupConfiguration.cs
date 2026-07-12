@@ -195,7 +195,13 @@ public class GroupConfiguration : TenantScopedConfiguration
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Role).HasMaxLength(20).IsRequired();
             entity.Property(e => e.Hours).HasPrecision(10, 2);
-            entity.Property(e => e.Weight).HasPrecision(5, 2).HasDefaultValue(1m);
+            entity.Property(e => e.Weight)
+                .HasPrecision(5, 2)
+                .HasDefaultValue(1m)
+                // Zero is meaningful to Laravel's weighted-split algorithm. EF's
+                // decimal sentinel is normally zero, which caused an explicit 0
+                // to be omitted from INSERTs and replaced by the database default.
+                .HasSentinel(decimal.MinValue);
             entity.Property(e => e.Notes).HasColumnType("text");
             // A user may participate once per role (provider and receiver are
             // intentionally allowed for the same user).

@@ -10,6 +10,27 @@ using Microsoft.AspNetCore.RateLimiting;
 namespace Nexus.Api.Middleware;
 
 /// <summary>
+/// Single source of truth for a named safeguarding-vetting fixed-window
+/// policy. Registration and focused contract tests resolve the same keys and
+/// defaults so a configuration rename cannot silently change the API limit.
+/// </summary>
+public sealed record SafeguardingVettingRateLimitContract(
+    string PolicyName,
+    string PermitLimitConfigurationKey,
+    int DefaultPermitLimit,
+    string WindowSecondsConfigurationKey,
+    int DefaultWindowSeconds)
+{
+    public int ResolvePermitLimit(IConfiguration configuration)
+        => configuration.GetValue(PermitLimitConfigurationKey, DefaultPermitLimit);
+
+    public TimeSpan ResolveWindow(IConfiguration configuration)
+        => TimeSpan.FromSeconds(configuration.GetValue(
+            WindowSecondsConfigurationKey,
+            DefaultWindowSeconds));
+}
+
+/// <summary>
 /// Configuration for rate limiting policies.
 /// Protects against brute-force attacks on auth endpoints.
 /// </summary>
@@ -53,6 +74,53 @@ public static class RateLimitingExtensions
     public const string VolunteerSwapAdminDecidePolicy = "volunteering-swap-admin-decide";
     public const string PersonalWalletTransferPolicy = "personal-wallet-transfer";
     public const string PersonalWalletUserSearchPolicy = "personal-wallet-user-search";
+    public const string SafeguardingVettingPolicyUpdatePolicy = "safeguarding-vetting-policy-update";
+    public const string SafeguardingVettingPolicyRotationPolicy = "safeguarding-vetting-policy-rotation";
+    public const string SafeguardingVettingDecisionPolicy = "safeguarding-vetting-decision";
+    public const string SafeguardingVettingMemberMutationPolicy = "safeguarding-vetting-member-mutation";
+    public const string SafeguardingOnboardingMutationPolicy = "safeguarding-onboarding-mutation";
+    public const string SafeguardingOptionMutationPolicy = "safeguarding-option-mutation";
+    public const string MessagesRestrictionStatusPolicy = "messages-restriction-status";
+
+    public static IReadOnlyList<SafeguardingVettingRateLimitContract> SafeguardingVettingRateLimitContracts { get; } =
+    [
+        new(
+            SafeguardingVettingPolicyUpdatePolicy,
+            "RateLimiting:SafeguardingVetting:PolicyUpdatePermitLimit",
+            20,
+            "RateLimiting:SafeguardingVetting:PolicyUpdateWindowSeconds",
+            60),
+        new(
+            SafeguardingVettingPolicyRotationPolicy,
+            "RateLimiting:SafeguardingVetting:PolicyRotationPermitLimit",
+            5,
+            "RateLimiting:SafeguardingVetting:PolicyRotationWindowSeconds",
+            60),
+        new(
+            SafeguardingVettingDecisionPolicy,
+            "RateLimiting:SafeguardingVetting:DecisionPermitLimit",
+            60,
+            "RateLimiting:SafeguardingVetting:DecisionWindowSeconds",
+            60),
+        new(
+            SafeguardingVettingMemberMutationPolicy,
+            "RateLimiting:SafeguardingVetting:MemberMutationPermitLimit",
+            10,
+            "RateLimiting:SafeguardingVetting:MemberMutationWindowSeconds",
+            60),
+        new(
+            SafeguardingOnboardingMutationPolicy,
+            "RateLimiting:SafeguardingVetting:OnboardingPermitLimit",
+            5,
+            "RateLimiting:SafeguardingVetting:OnboardingWindowSeconds",
+            60),
+        new(
+            SafeguardingOptionMutationPolicy,
+            "RateLimiting:SafeguardingVetting:OptionMutationPermitLimit",
+            60,
+            "RateLimiting:SafeguardingVetting:OptionMutationWindowSeconds",
+            60)
+    ];
 
     // Known trusted proxy IPs/networks (configure via appsettings in production)
     // These are common Docker/Kubernetes internal network ranges
@@ -107,6 +175,17 @@ public static class RateLimitingExtensions
                         PermitLimit = config.GetValue("RateLimiting:General:PermitLimit", 100),
                         Window = TimeSpan.FromSeconds(config.GetValue("RateLimiting:General:WindowSeconds", 60))
                     }));
+
+            // Laravel uses an independent authenticated 30/minute bucket for
+            // the live messaging restriction-status read.
+            options.AddPolicy(MessagesRestrictionStatusPolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:Messages:RestrictionStatusPermitLimit", 30),
+                        TimeSpan.FromSeconds(config.GetValue(
+                            "RateLimiting:Messages:RestrictionStatusWindowSeconds",
+                            60)))));
 
             // AI endpoints policy (more restrictive due to resource cost)
             options.AddPolicy(AiPolicy, context =>
@@ -188,6 +267,19 @@ public static class RateLimitingExtensions
                     factory: _ => FixedWindow(
                         config.GetValue("RateLimiting:GuardianConsent:WithdrawPermitLimit", 10),
                         TimeSpan.FromSeconds(config.GetValue("RateLimiting:GuardianConsent:WithdrawWindowSeconds", 60)))));
+
+            // Laravel throttles these authenticated workflows per user. Keep
+            // separate named buckets because policy configuration, rotation,
+            // broker decisions, and member requests have different ceilings.
+            foreach (var contract in SafeguardingVettingRateLimitContracts)
+            {
+                options.AddPolicy(contract.PolicyName, context =>
+                    RateLimitPartition.GetFixedWindowLimiter(
+                        partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                        factory: _ => FixedWindow(
+                            contract.ResolvePermitLimit(config),
+                            contract.ResolveWindow(config))));
+            }
 
             options.AddPolicy(RecurringPatternListPolicy, context =>
                 RateLimitPartition.GetFixedWindowLimiter(
@@ -482,6 +574,116 @@ public static class RateLimitingExtensions
                         StringComparison.OrdinalIgnoreCase) == true;
                 var isVolunteerSwapPath =
                     isVolunteerSwapAdminPath || isVolunteerSwapMemberPath;
+                var isSafeguardingVettingPolicyUpdatePath =
+                    HttpMethods.IsPut(context.HttpContext.Request.Method)
+                    && string.Equals(
+                        normalizedPath,
+                        "/api/v2/admin/vetting/policy",
+                        StringComparison.OrdinalIgnoreCase);
+                var isSafeguardingVettingPolicyRotationPath =
+                    HttpMethods.IsPost(context.HttpContext.Request.Method)
+                    && string.Equals(
+                        normalizedPath,
+                        "/api/v2/admin/vetting/policy/rotate",
+                        StringComparison.OrdinalIgnoreCase);
+                var isSafeguardingVettingDecisionPath =
+                    HttpMethods.IsPost(context.HttpContext.Request.Method)
+                    && ((normalizedPath?.StartsWith(
+                            "/api/v2/admin/vetting/user/",
+                            StringComparison.OrdinalIgnoreCase) == true
+                        && (normalizedPath.EndsWith("/confirm", StringComparison.OrdinalIgnoreCase)
+                            || normalizedPath.EndsWith("/revoke", StringComparison.OrdinalIgnoreCase)))
+                        || (normalizedPath?.StartsWith(
+                                "/api/v2/admin/vetting/reviews/",
+                                StringComparison.OrdinalIgnoreCase) == true
+                            && normalizedPath.EndsWith("/resolve", StringComparison.OrdinalIgnoreCase)));
+                var isSafeguardingVettingMemberMutationPath =
+                    HttpMethods.IsPost(context.HttpContext.Request.Method)
+                    && (string.Equals(
+                            normalizedPath,
+                            "/api/v2/safeguarding/confirm-policy-review",
+                            StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(
+                            normalizedPath,
+                            "/api/v2/safeguarding/vetting-review-request",
+                            StringComparison.OrdinalIgnoreCase));
+                var isSafeguardingOnboardingMutationPath =
+                    HttpMethods.IsPost(context.HttpContext.Request.Method)
+                    && string.Equals(
+                        normalizedPath,
+                        "/api/v2/onboarding/safeguarding",
+                        StringComparison.OrdinalIgnoreCase);
+                var isSafeguardingOptionMutationPath =
+                    (HttpMethods.IsPost(context.HttpContext.Request.Method)
+                        || HttpMethods.IsPut(context.HttpContext.Request.Method)
+                        || HttpMethods.IsDelete(context.HttpContext.Request.Method))
+                    && (normalizedPath?.StartsWith(
+                            "/api/v2/admin/safeguarding/options",
+                            StringComparison.OrdinalIgnoreCase) == true
+                        || normalizedPath?.StartsWith(
+                            "/api/admin/safeguarding/options",
+                            StringComparison.OrdinalIgnoreCase) == true);
+                var isMessageRestrictionStatusPath =
+                    HttpMethods.IsGet(context.HttpContext.Request.Method)
+                    && (string.Equals(
+                            normalizedPath,
+                            "/api/messages/restriction-status",
+                            StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(
+                            normalizedPath,
+                            "/api/v2/messages/restriction-status",
+                            StringComparison.OrdinalIgnoreCase));
+                var isSafeguardingVettingMutationPath =
+                    isSafeguardingVettingPolicyUpdatePath
+                    || isSafeguardingVettingPolicyRotationPath
+                    || isSafeguardingVettingDecisionPath
+                    || isSafeguardingVettingMemberMutationPath
+                    || isSafeguardingOptionMutationPath;
+
+                if (isSafeguardingOnboardingMutationPath)
+                {
+                    await context.HttpContext.Response.WriteAsJsonAsync(new
+                    {
+                        errors = new[]
+                        {
+                            new
+                            {
+                                code = "RATE_LIMIT_EXCEEDED",
+                                message = "Rate limit exceeded. Please try again later."
+                            }
+                        }
+                    }, cancellationToken);
+                    return;
+                }
+
+                if (isSafeguardingVettingMutationPath)
+                {
+                    var retryAfterSeconds = Math.Max(1, (int)Math.Ceiling(retryAfter));
+                    context.HttpContext.Response.Headers.RetryAfter = retryAfterSeconds.ToString();
+                    context.HttpContext.Response.Headers["API-Version"] = "2.0";
+
+                    var tenantId = context.HttpContext.User.FindFirst("tenant_id")?.Value;
+                    if (!string.IsNullOrWhiteSpace(tenantId))
+                    {
+                        context.HttpContext.Response.Headers["X-Tenant-ID"] = tenantId;
+                    }
+
+                    await context.HttpContext.Response.WriteAsJsonAsync(new
+                    {
+                        errors = new[]
+                        {
+                            new
+                            {
+                                code = "rate_limited",
+                                message = "Rate limit exceeded. Please try again later."
+                            }
+                        },
+                        success = false,
+                        retry_after = retryAfterSeconds
+                    }, cancellationToken);
+                    return;
+                }
+
                 var canonicalLimit = isVolunteerOrganisationCreatePath
                     ? config.GetValue("RateLimiting:VolunteerOrganisation:CreatePermitLimit", 5)
                     : isVolunteerOrganisationListPath
@@ -494,6 +696,8 @@ public static class RateLimitingExtensions
                     ? config.GetValue("RateLimiting:VolunteerOrganisationWallet:ReadPermitLimit", 60)
                     : isPersonalWalletTransferPath
                     ? config.GetValue("RateLimiting:PersonalWallet:TransferPermitLimit", 10)
+                    : isMessageRestrictionStatusPath
+                    ? config.GetValue("RateLimiting:Messages:RestrictionStatusPermitLimit", 30)
                     : isVolunteerHoursPath
                     ? HttpMethods.IsPost(context.HttpContext.Request.Method)
                         ? config.GetValue("RateLimiting:VolunteerHours:LogPermitLimit", 20)
@@ -596,7 +800,11 @@ public static class RateLimitingExtensions
         QueueLimit = 0
     };
 
-    private static string GetAuthenticatedUserOrClientIdentifier(HttpContext context, string[] trustedProxies)
+    /// <summary>
+    /// Returns the stable tenant/user partition used by authenticated policies,
+    /// or null when the request has no usable authenticated identity.
+    /// </summary>
+    public static string? GetAuthenticatedUserPartitionKey(HttpContext context)
     {
         if (context.User.Identity?.IsAuthenticated == true)
         {
@@ -609,7 +817,13 @@ public static class RateLimitingExtensions
             }
         }
 
-        return $"client:{GetClientIdentifier(context, trustedProxies)}";
+        return null;
+    }
+
+    private static string GetAuthenticatedUserOrClientIdentifier(HttpContext context, string[] trustedProxies)
+    {
+        return GetAuthenticatedUserPartitionKey(context)
+            ?? $"client:{GetClientIdentifier(context, trustedProxies)}";
     }
 
     /// <summary>

@@ -537,19 +537,53 @@ public class ReactFrontendCompatibilityController : ControllerBase
 
     [HttpGet("api/messages/restriction-status")]
     [Authorize]
-    public IActionResult MessageRestrictionStatus()
+    [EnableRateLimiting(RateLimitingExtensions.MessagesRestrictionStatusPolicy)]
+    public async Task<IActionResult> MessageRestrictionStatus(CancellationToken cancellationToken)
     {
+        var userId = User.GetUserId();
+        if (!userId.HasValue)
+        {
+            return Unauthorized(new
+            {
+                errors = new[] { new { code = "AUTH_REQUIRED", message = "Authentication required" } }
+            });
+        }
+
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var restriction = await _db.UserMonitoringRestrictions
+            .SingleOrDefaultAsync(row =>
+                row.TenantId == tenantId
+                && row.UserId == userId.Value,
+                cancellationToken);
+
+        var underMonitoring = restriction?.UnderMonitoring == true;
+        var messagingDisabled = restriction?.MessagingDisabled == true;
+        if (restriction is not null
+            && underMonitoring
+            && restriction.MonitoringExpiresAt.HasValue
+            && restriction.MonitoringExpiresAt.Value <= DateTime.UtcNow)
+        {
+            // Laravel clears both controls when an active monitoring period
+            // expires. Persist the transition so send-time and status reads
+            // cannot disagree after this response.
+            restriction.UnderMonitoring = false;
+            restriction.MessagingDisabled = false;
+            restriction.MonitoringExpiresAt = null;
+            restriction.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync(cancellationToken);
+            underMonitoring = false;
+            messagingDisabled = false;
+        }
+
         return Ok(new
         {
-            success = true,
             data = new
             {
-                messaging_disabled = false,
-                under_monitoring = false,
-                restriction_reason = (string?)null,
-                restricted = false,
-                reason = (string?)null
-            }
+                messaging_disabled = messagingDisabled,
+                under_monitoring = underMonitoring,
+                restriction_reason = restriction?.Reason
+            },
+            meta = new { base_url = $"{Request.Scheme}://{Request.Host}" }
         });
     }
 

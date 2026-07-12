@@ -11,9 +11,9 @@ Canonical source: `C:\platforms\htdocs\staging` (read-only).
 | Controllers | 309 | 225 |
 | Services | 483 | 188 |
 | Models/entities | 200 Laravel models | 191 EF entity files |
-| Migrations | 333 | 113 main EF migration source files; 111 EF-discovered/applicable runtime IDs |
-| OpenAPI operations | 891 | 4,323 static controller operations from parity script |
-| Schema tables | 368 Laravel source tables | 331 .NET static table names |
+| Migrations | 333 | 116 main EF migration source files; 114 EF-discovered/applicable runtime IDs |
+| OpenAPI operations | 891 | 4,316 static controller operations from parity script |
+| Schema tables | 368 Laravel source tables | 336 .NET static table names after the five exact safeguarding tables |
 | Frontend routes | 589 React / 607 accessible in the historical comparator; current Web UK matrix separately reports 608 Laravel accessible declarations | 462 legacy React routes; current `apps/web-uk` matrix reports 612 local declarations, 608 matched Laravel accessible routes, 0 missing, 2 extra exchange workflow routes, and 3 ignored infrastructure routes |
 | Localization | 11 locales / 605 locale namespaces | 7 locales / 280 locale namespaces |
 | Module guides | 24 curated Laravel module guides | maintained .NET parity docs recreated in this pass |
@@ -23,18 +23,12 @@ These counts are directional. They are not a parity score.
 
 `scripts/compare-laravel-api-parity.ps1` generated
 `artifacts/parity/api/api-parity.json` on 2026-07-12 after its fixture passed,
-with 2,449 Laravel source
-operations after supplemental API route parsing and de-duplication, 2,436 static
-matches, and 13 missing operations. The exact delta is
-`GET /api/admin/vetting/policy`, `PUT /api/admin/vetting/policy`,
-`POST /api/admin/vetting/policy/rotate`,
-`POST /api/admin/vetting/reviews/{reviewid}/resolve`,
-`POST /api/admin/vetting/user/{userid}/confirm`,
-`POST /api/admin/vetting/user/{userid}/revoke`, `GET /api/pwa/manifest`,
-`POST /api/admin/prerender/reset-all`, `POST /api/prerender/invalidate`,
-`GET /api/safeguarding/my-vetting-status`,
-`POST /api/safeguarding/confirm-policy-review`,
-`POST /api/safeguarding/vetting-review-request`, and
+with 2,449 Laravel source operations after supplemental API route parsing and
+de-duplication, 2,438 static matches, and 11 missing operations. The exact
+delta is the seven document-era admin vetting writes (`POST` root, `PUT|DELETE`
+record, `POST` upload/verify/reject, and `POST` bulk), plus
+`GET /api/pwa/manifest`, `POST /api/admin/prerender/reset-all`,
+`POST /api/prerender/invalidate`, and
 `POST /api/volunteering/guardian-consents/verify/{token}`.
 Laravel `govuk-alpha*` accessible page
 routes are excluded from the API comparator and tracked in the frontend
@@ -46,7 +40,10 @@ planning.
 passed, with 333 Laravel migrations, 113 ASP.NET migration source files, 368
 Laravel source tables, 331 .NET table names, 137 exact matches, 231 missing
 Laravel-side names, and 194 .NET-only names. The artifact is ignored by git; regenerate it
-before using the numbers for schema implementation planning.
+before using the numbers for schema implementation planning. Its 113/331/137/
+231 migration/table counts predate the safeguarding slice; the maintained
+current inventory is 116 source migrations, 114 runtime IDs, 336 .NET table
+names, 142 exact table-name matches, and 226 missing Laravel names.
 
 `scripts/compare-laravel-frontend-parity.ps1` generated
 `artifacts/parity/frontend/frontend-parity.json` on 2026-07-04 with 589 Laravel
@@ -114,15 +111,41 @@ The artifact is ignored by git; `docs/PARITY_BACKLOG.md` is the curated rollup.
 > Release build took 4m36s. One disposable Linux run discovered 3,007 tests
 > and passed 53/53: all 51 `VolunteerHoursParityTests` plus both
 > `V15FeedActivityCompatibilityTests`. Final migration certification is also
-> green: blank 111/latest replay with exact feed/privacy/FK assertions, valid
+> green: blank ID-111 replay with exact feed/privacy/FK assertions, valid
 > populated 110-to-111 behavior, invalid `P0001` atomic abort with no partial
 > DDL, and `has-pending-model-changes`. Disposable Docker cleanup left zero
 > matching resources. The clean affected rerun discovered 3,007 tests, selected
 > 243, and passed 243/243 with zero failed/skipped in 418.639s. The full 3,007-
 > test suite, CI, and unchanged-frontend proof remain open.
 
+> **2026-07-12 safeguarding/messaging checkpoint:** The runtime chain now ends
+> at ID 114, `20260712023810_SafeguardingPreferenceDependencyParity`.
+> Migration 112 creates the five exact metadata-only Laravel safeguarding
+> tables; migration 113 adds the `messaging_disabled` monitoring adapter; and
+> migration 114 installs required consent time, a unique tenant/user/option
+> selection, wider selected values, and tenant/option cascades. Blank 114,
+> valid populated 113-to-114, invalid duplicate `P0001`/no-partial-schema,
+> catalog-containment, and model-drift gates are green. Legacy vetting evidence
+> does not authorize contact, and no frontend source was changed.
+>
+> Onboarding, member, admin/broker vetting, policy rotation, and protected
+> option CRUD/reorder now use the locked metadata-only policy domain with exact
+> risk-specific rate limits. Live message restrictions, hardened direct send,
+> transactional detected-audio voice send, and the Laravel group-exchange
+> caller/role/lifecycle/ledger cutover are implemented with focused contracts.
+> Provider transcription, notification depth, and unchanged-frontend smoke
+> remain open. Direct messaging is still incomplete: P0 edit/scoped-delete/
+> partner-ID archive-restore behavior and P1 durable reactions, full typing
+> preflight/Pusher delivery, and coordinator-help delivery/dedupe/audit remain.
+> The consolidated affected suite selected and passed 323/323 with zero failed
+> or skipped in 20m47s; this is not a full-suite, CI, runtime-frontend, or
+> 1000/1000 claim.
+
 | Area | Laravel evidence | .NET evidence | Current gap |
 | --- | --- | --- | --- |
+| Safeguarding metadata and policy | Laravel metadata-only attestation/jurisdiction/policy services, onboarding/member/admin controllers, safeguarding option workflows, and canonical React onboarding/messages consumers | `AdminSafeguardingVettingController`, `SafeguardingVettingMemberController`, `OnboardingSafeguardingController`, `AdminSafeguardingController`, the locked safeguarding services, five exact tables in migration 112, messaging adapter migration 113, preference dependency migration 114, and focused schema/domain/access/controller/rate/replay tests | Dedicated custom permission roles beyond current broker/admin authorization, queued email/provider fidelity, controlled legacy evidence disposition, non-v2 alias reconciliation, frontend runtime smoke, full suite, and CI remain open. |
+| Direct messaging safety | Laravel `MessagesController`, `MessageService`, audio uploader, safeguarding interaction policy, canonical React `MessagesPage`/`ConversationPage` | Live restriction lifecycle; hardened text send/thread/attachments/side effects; POST-only staff blocked-attempt alerting; corrected partner/attachment projection; and transactional detected-audio voice send with cleanup and regression coverage | P0 sender-only 24-hour edit, participant-safe scoped delete, and partner-ID archive/restore/archived-inbox/unread semantics remain. P1 real reaction storage/batch/policy, typing preflight plus Pusher event, and coordinator-help restricted-only delivery/dedupe/audit remain. Provider transcription and exact Laravel message-column storage remain. |
+| Group exchange policy/ledger | Laravel group exchange controller/service and canonical React group-exchange pages | `GroupExchangeController`, `GroupExchangeService`, and focused lifecycle/policy/conservation/race tests now enforce caller/role identity, create/add authorization order, deterministic locking, caller-order policy evaluation, lifecycle state, canonical provider transaction rows, and hidden ledger adapters | Notification fidelity and frontend runtime smoke remain; legacy one-to-one `Exchange` is a separate fail-closed workflow. |
 | Volunteer hours ledger | Laravel volunteering hours member, organisation, and administrator controllers/services; Caring support relationship hour logging; canonical React hours consumers | `VolunteerHoursController`, `VolunteerHoursService`, `VolunteerHoursLedgerParity`, and focused hours/badge/email/regional-points tests; the eight Laravel method/path pairs share strict request/action parsing, tenant/feature/policy gates, separate rate buckets, locked approval/decline transitions, exact-once whole-hour personal and organisation settlement, volunteer-hour XP/badge evidence, normal non-Caring reviewed-decision bell/push, forced-immediate approved-decision email, immediate declined-decision email only for an explicit global `instant` frequency, represented-family post-approval badge sweep, explicit no-decision-notification behavior for reviewed Caring, sub-hour no-ledger behavior, raw fractional Caring semantics, and regional-points convergence | Current focused proof is one 53/53 disposable-Linux run: all 51 `VolunteerHoursParityTests` and both `V15FeedActivityCompatibilityTests`, with 3,007 tests discovered. Debug API/test builds and the solution-wide Release build have zero errors and only the same four pre-existing `xUnit1031` warnings; the Release build took 4m36s. Final blank/populated/invalid migration-111 replay and `has-pending-model-changes` gates are green, with zero disposable Docker resources left. The clean affected rerun selected and passed 243/243 with zero failed/skipped in 418.639s. The full 3,007-test suite, CI, exact permission-table fidelity, tenant-default notification-frequency fallback, daily/monthly notification-queue delivery, recipient locale/provider breadth, Laravel-only badge families, realtime badge broadcast, and unchanged-frontend runtime certification remain open; this is not a 1000/1000 claim. |
 | Admin users | `AdminUsersController.php`, `AdminSuperController.php`, Laravel React `admin/api/adminApi.ts`, `admin/modules/users/UserList.tsx`, super-admin user pages/tests | `AdminController.cs`, `AdminCompatibilityController.cs`, `AdminCompatibility3Controller.cs`, `AdminExplicitParityController.cs`, `NexusUserAccessAuthorization.cs`, `CanonicalRoleSemantics`, and focused role/writer/hidden-route tests | V2 list/detail/create/update/import, single/bulk actions, badges, consents, password helpers, impersonation, and tenant/global privilege toggles expose Laravel React envelopes with tenant scoping. Dedicated `is_admin`, `is_super_admin`, `is_tenant_super_admin`, and `is_god` columns now back DB-rehydrated policies; role-only `god` cannot cross `GodOnly`, explicit-God targets are protected, and stale role/tenant tokens fail. Manual cron execution now runs `ListingExpiry`, `JobVacancyExpiry`, `VolunteerGuardianConsentExpiry`, or `VolunteerRecurringShiftGeneration`, while the other 38 definitions are disabled/501 rather than fabricated successes. Remaining gaps include resource-level SuperPanel/hub rules, related-table user movement, notifications/audits, provider-backed email side effects, distributed scheduler locking, and the wider catch-all/scheduled workflow backlog. |
 | Admin matching configuration | `AdminMatchingController::getConfig/updateConfig/clearCache`, `SmartMatchingEngine::getConfig`, Laravel React `react-frontend/src/admin/api/adminApi.ts`, `react-frontend/src/admin/modules/matching/MatchingConfig.tsx` | `AdminCompatibilityController.GetMatchingConfig/UpdateMatchingConfig`, `LaravelReactFrontendContractTests.AdminMatchingConfigV2_*`; `/api/v2/admin/matching/config` now returns Laravel's `data` envelope with React `SmartMatchingConfig` fields, five proximity bands, gates, engine version, pillars, adjustments, and AI flags; `PUT /api/v2/admin/matching/config` persists Laravel React partial updates into tenant-scoped matching config and reads them back in the Laravel response shape while preserving legacy `/api/admin/matching/config` behavior | SmartMatchingEngine score parity, `match_cache` table deletion semantics for clear-cache, analytics fidelity, broker approval workflow parity, provider/AI availability fidelity, and runtime frontend smoke coverage remain gaps |

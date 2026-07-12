@@ -4,7 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 using System.Text.Json.Serialization;
-using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 using Nexus.Api.Extensions;
 using Nexus.Api.Services;
@@ -18,7 +18,6 @@ namespace Nexus.Api.Controllers;
 [ApiController]
 [Route("api/group-exchanges")]
 [Route("api/v2/group-exchanges")]
-[Authorize]
 public class GroupExchangeController : ControllerBase
 {
     private readonly GroupExchangeService _service;
@@ -75,10 +74,9 @@ public class GroupExchangeController : ControllerBase
         }
 
         var participants = (request.Participants ?? Array.Empty<GroupExchangeParticipantRequest>())
-            .Where(item => item.UserId > 0 && HasPhpNonEmptyString(item.Role))
             .Select(item => new GroupExchangeParticipantInput(
                 item.UserId,
-                item.Role!,
+                item.Role ?? string.Empty,
                 item.Hours ?? 0m,
                 item.Weight ?? 1m))
             .ToArray();
@@ -99,13 +97,9 @@ public class GroupExchangeController : ControllerBase
 
         if (!result.Success || !result.ExchangeId.HasValue)
         {
-            return result.Error == "Failed to create exchange"
-                ? Error("INTERNAL_ERROR", "Failed to create exchange", null, StatusCodes.Status500InternalServerError)
-                : Error(
-                    "VALIDATION_ERROR",
-                    result.Error ?? "Failed to add participant (may already exist)",
-                    null,
-                    StatusCodes.Status400BadRequest);
+            return OperationError(
+                result.ErrorCode,
+                result.Error ?? "Failed to add participant (may already exist)");
         }
 
         var exchange = await _service.GetAsync(result.ExchangeId.Value, cancellationToken: cancellationToken);
@@ -168,17 +162,29 @@ public class GroupExchangeController : ControllerBase
         }
 
         request ??= new UpdateGroupExchangeRequest();
-        var updatedSuccessfully = await _service.UpdateAsync(
-            id,
-            new UpdateGroupExchangeInput(
-                request.Title,
-                request.Description,
-                request.SplitType,
-                request.TotalHours,
-                request.BrokerId,
-                request.BrokerNotes,
-                request.ListingId),
-            cancellationToken);
+        bool updatedSuccessfully;
+        try
+        {
+            updatedSuccessfully = await _service.UpdateAsync(
+                id,
+                new UpdateGroupExchangeInput(
+                    request.Title,
+                    request.Description,
+                    request.SplitType,
+                    request.TotalHours,
+                    request.BrokerId,
+                    request.BrokerNotes,
+                    request.ListingId),
+                cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            return Error(
+                "SERVER_ERROR",
+                "An unexpected error occurred.",
+                null,
+                StatusCodes.Status500InternalServerError);
+        }
 
         if (!updatedSuccessfully)
         {
@@ -210,14 +216,7 @@ public class GroupExchangeController : ControllerBase
             return Error("FORBIDDEN", "Only the organizer can cancel", null, StatusCodes.Status403Forbidden);
         }
 
-        if (!await _service.CancelAsync(id, cancellationToken))
-        {
-            return Error(
-                "VALIDATION_ERROR",
-                "A completed or cancelled exchange cannot be cancelled.",
-                null,
-                StatusCodes.Status400BadRequest);
-        }
+        await _service.CancelAsync(id, cancellationToken);
         return Ok(Data(new { message = "Exchange cancelled" }));
     }
 
@@ -250,7 +249,7 @@ public class GroupExchangeController : ControllerBase
                 StatusCodes.Status400BadRequest);
         }
 
-        var added = await _service.AddParticipantAsync(
+        var result = await _service.AddParticipantAsync(
             id,
             userId.Value,
             new GroupExchangeParticipantInput(
@@ -260,13 +259,11 @@ public class GroupExchangeController : ControllerBase
                 request.Weight ?? 1m),
             cancellationToken);
 
-        if (!added)
+        if (!result.Success)
         {
-            return Error(
-                "VALIDATION_ERROR",
-                "Failed to add participant (may already exist)",
-                null,
-                StatusCodes.Status400BadRequest);
+            return OperationError(
+                result.ErrorCode,
+                result.Error ?? "Failed to add participant (may already exist)");
         }
 
         var updated = await _service.GetAsync(id, cancellationToken: cancellationToken);
@@ -293,14 +290,7 @@ public class GroupExchangeController : ControllerBase
             return Error("FORBIDDEN", "Only the organizer can update", null, StatusCodes.Status403Forbidden);
         }
 
-        if (!await _service.RemoveParticipantAsync(id, userId.Value, participantUserId, cancellationToken))
-        {
-            return Error(
-                "VALIDATION_ERROR",
-                "This participant can no longer be removed.",
-                null,
-                StatusCodes.Status400BadRequest);
-        }
+        await _service.RemoveParticipantAsync(id, userId.Value, participantUserId, cancellationToken);
         var updated = await _service.GetAsync(id, cancellationToken: cancellationToken);
         return Ok(Data(updated!));
     }
@@ -325,11 +315,9 @@ public class GroupExchangeController : ControllerBase
         var result = await _service.StartAsync(id, cancellationToken);
         if (!result.Success)
         {
-            return Error(
-                "VALIDATION_ERROR",
-                result.Error ?? "This exchange cannot be started from its current status.",
-                null,
-                StatusCodes.Status400BadRequest);
+            return OperationError(
+                result.ErrorCode,
+                result.Error ?? "This exchange cannot be started from its current status.");
         }
 
         var updated = await _service.GetAsync(id, cancellationToken: cancellationToken);
@@ -357,13 +345,12 @@ public class GroupExchangeController : ControllerBase
                 StatusCodes.Status403Forbidden);
         }
 
-        if (!await _service.ConfirmParticipationAsync(id, userId.Value, cancellationToken))
+        var result = await _service.ConfirmParticipationAsync(id, userId.Value, cancellationToken);
+        if (!result.Success)
         {
-            return Error(
-                "VALIDATION_ERROR",
-                "Failed to confirm participation",
-                null,
-                StatusCodes.Status400BadRequest);
+            return OperationError(
+                result.ErrorCode,
+                result.Error ?? "Failed to confirm participation");
         }
 
         var updated = await _service.GetAsync(id, cancellationToken: cancellationToken);
@@ -390,11 +377,9 @@ public class GroupExchangeController : ControllerBase
         var result = await _service.CompleteAsync(id, cancellationToken);
         if (!result.Success)
         {
-            return Error(
-                "VALIDATION_ERROR",
-                result.Error ?? "Exchange is already completed",
-                null,
-                StatusCodes.Status400BadRequest);
+            return OperationError(
+                result.ErrorCode,
+                result.Error ?? "Exchange is already completed");
         }
 
         return Ok(Data(new
@@ -418,11 +403,27 @@ public class GroupExchangeController : ControllerBase
         });
     }
 
-    private IActionResult UnauthorizedError() => Error(
-        "AUTH_REQUIRED",
-        "Authentication required",
-        null,
-        StatusCodes.Status401Unauthorized);
+    private IActionResult OperationError(string? code, string message)
+    {
+        code ??= "VALIDATION_ERROR";
+        var status = code switch
+        {
+            "SAFEGUARDING_POLICY_UNAVAILABLE" => StatusCodes.Status503ServiceUnavailable,
+            "VETTING_REQUIRED" or "SAFEGUARDING_CONTACT_RESTRICTED" => StatusCodes.Status403Forbidden,
+            "INTERNAL_ERROR" or "SERVER_ERROR" => StatusCodes.Status500InternalServerError,
+            _ => StatusCodes.Status400BadRequest
+        };
+        return Error(code, message, null, status);
+    }
+
+    private IActionResult UnauthorizedError() => StatusCode(
+        StatusCodes.Status401Unauthorized,
+        new
+        {
+            success = false,
+            error = "Authentication required",
+            code = "AUTH_REQUIRED"
+        });
 
     private string BaseUrl() => $"{Request.Scheme}://{Request.Host}";
 

@@ -6,9 +6,11 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
@@ -25,24 +27,34 @@ namespace Nexus.Api.Controllers;
 [Authorize]
 public class MessagesController : ControllerBase
 {
+    private static readonly Regex HtmlTagPattern = new(
+        "<[^>]*>",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
     private readonly NexusDbContext _db;
     private readonly TenantContext _tenantContext;
     private readonly ILogger<MessagesController> _logger;
     private readonly IRealTimeMessagingService _realTimeMessaging;
     private readonly FileUploadService _fileUploadService;
+    private readonly SafeguardingInteractionPolicy _safeguardingInteractionPolicy;
+    private readonly IServiceScopeFactory _scopeFactory;
 
     public MessagesController(
         NexusDbContext db,
         TenantContext tenantContext,
         ILogger<MessagesController> logger,
         IRealTimeMessagingService realTimeMessaging,
-        FileUploadService fileUploadService)
+        FileUploadService fileUploadService,
+        SafeguardingInteractionPolicy safeguardingInteractionPolicy,
+        IServiceScopeFactory scopeFactory)
     {
         _db = db;
         _tenantContext = tenantContext;
         _logger = logger;
         _realTimeMessaging = realTimeMessaging;
         _fileUploadService = fileUploadService;
+        _safeguardingInteractionPolicy = safeguardingInteractionPolicy;
+        _scopeFactory = scopeFactory;
     }
 
     /// <summary>
@@ -117,7 +129,11 @@ public class MessagesController : ControllerBase
 
             return new
             {
-                id = c.Id,
+                // Laravel addresses a direct conversation by the partner user,
+                // not by its internal normalized conversation row.
+                id = IsLaravelV2Request() ? otherParticipant?.Id : c.Id,
+                conversation_id = c.Id,
+                partner_id = otherParticipant?.Id,
                 participant = new
                 {
                     id = otherParticipant?.Id,
@@ -330,6 +346,19 @@ public class MessagesController : ControllerBase
             messages.RemoveAt(messages.Count - 1);
         }
 
+        var messageIds = messages.Select(message => message.Id).ToArray();
+        var attachmentsByMessage = messageIds.Length == 0
+            ? new Dictionary<int, MessageAttachment[]>()
+            : (await _db.MessageAttachments
+                .AsNoTracking()
+                .Include(attachment => attachment.FileUpload)
+                .Where(attachment => messageIds.Contains(attachment.MessageId))
+                .OrderBy(attachment => attachment.Id)
+                .ToListAsync())
+                .Where(attachment => attachment.FileUpload != null)
+                .GroupBy(attachment => attachment.MessageId)
+                .ToDictionary(group => group.Key, group => group.ToArray());
+
         if (conversation != null && (normalizedDirection != "newer" || cursorId == null))
         {
             var now = DateTime.UtcNow;
@@ -351,10 +380,24 @@ public class MessagesController : ControllerBase
                 && m.SenderId == otherUserId
                 && !m.IsRead);
 
+        // This is intentionally a pure projection. Opening a conversation may
+        // explain why the composer is unavailable, but must never record a
+        // contact attempt or otherwise mutate safeguarding state.
+        var safeguardingDecision = await _safeguardingInteractionPolicy.EvaluateLocalContactAsync(
+            currentUserId,
+            otherUserId,
+            _tenantContext.GetTenantIdOrThrow(),
+            "direct_message");
+        var safeguarding = BuildSafeguardingProjection(safeguardingDecision);
+
         return Ok(new
         {
             success = true,
-            data = messages.Select(m => MapLaravelReactMessage(m, currentUserId, otherUserId)),
+            data = messages.Select(message => MapLaravelReactMessage(
+                message,
+                currentUserId,
+                otherUserId,
+                attachmentsByMessage.GetValueOrDefault(message.Id) ?? [])),
             meta = new
             {
                 conversation = new
@@ -372,7 +415,7 @@ public class MessagesController : ControllerBase
                     },
                     unread_count = unreadCount,
                     message_count = messageCount,
-                    safeguarding = (object?)null
+                    safeguarding
                 },
                 cursor = hasMore && messages.Count > 0 ? EncodeCursor(messages[^1].Id) : null,
                 per_page = limit,
@@ -381,7 +424,11 @@ public class MessagesController : ControllerBase
         });
     }
 
-    private static object MapLaravelReactMessage(Message message, int currentUserId, int otherUserId)
+    private object MapLaravelReactMessage(
+        Message message,
+        int currentUserId,
+        int otherUserId,
+        IReadOnlyCollection<MessageAttachment> attachments)
     {
         var recipientId = message.SenderId == currentUserId ? otherUserId : currentUserId;
         return new
@@ -400,6 +447,9 @@ public class MessagesController : ControllerBase
                 last_name = message.Sender?.LastName,
                 avatar_url = message.Sender?.AvatarUrl
             },
+            attachments = attachments
+                .Select(attachment => MapLaravelReactAttachment(attachment, attachment.FileUpload!))
+                .ToArray(),
             is_read = message.IsRead,
             created_at = message.CreatedAt,
             read_at = message.ReadAt
@@ -474,6 +524,8 @@ public class MessagesController : ControllerBase
     /// Creates a new conversation if one doesn't exist.
     /// </summary>
     [HttpPost]
+    [RequestSizeLimit(55L * 1024 * 1024)]
+    [RequestFormLimits(MultipartBodyLengthLimit = 55L * 1024 * 1024)]
     public async Task<IActionResult> SendMessage(CancellationToken ct)
     {
         var (request, attachmentFiles) = await ReadSendMessageRequestAsync(ct);
@@ -483,115 +535,453 @@ public class MessagesController : ControllerBase
             return Unauthorized(new { error = "Invalid token" });
         }
 
-        var messageContent = request.ResolvedContent;
+        // Laravel trims before its mb_strlen validation, then strips all HTML
+        // immediately before persistence. Count Unicode scalar values rather
+        // than UTF-16 code units so astral characters have the same length.
+        var trimmedMessageContent = request.ResolvedContent.Trim();
         var hasAttachments = attachmentFiles.Count > 0;
 
-        // Validate content
-        if (string.IsNullOrWhiteSpace(messageContent) && !hasAttachments)
+        if (request.RecipientId <= 0)
         {
-            return BadRequest(new { error = "Message content is required" });
+            return MessageWriteError(
+                "VALIDATION_ERROR",
+                "recipient_id is required",
+                StatusCodes.Status422UnprocessableEntity,
+                "recipient_id");
         }
 
-        if (messageContent.Length > 5000)
-        {
-            return BadRequest(new { error = "Message content must be 5000 characters or less" });
-        }
-
-        // Validate recipient exists in same tenant
-        var recipient = await _db.Users.FirstOrDefaultAsync(u => u.Id == request.RecipientId);
-        if (recipient == null)
-        {
-            return BadRequest(new { error = "Recipient not found" });
-        }
-
-        // Cannot message yourself
         if (request.RecipientId == userId.Value)
         {
-            return BadRequest(new { error = "Cannot send message to yourself" });
+            return MessageWriteError(
+                "VALIDATION_ERROR",
+                "You cannot send a message to yourself",
+                IsLaravelV2Request()
+                    ? StatusCodes.Status422UnprocessableEntity
+                    : StatusCodes.Status400BadRequest);
         }
 
-        // Find or create conversation
-        // Normalize participant order: smaller ID first
-        var participant1Id = Math.Min(userId.Value, request.RecipientId);
-        var participant2Id = Math.Max(userId.Value, request.RecipientId);
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
 
-        var conversation = await _db.Conversations
-            .FirstOrDefaultAsync(c => c.Participant1Id == participant1Id && c.Participant2Id == participant2Id);
-
-        if (conversation == null)
-        {
-            conversation = new Conversation
-            {
-                Participant1Id = participant1Id,
-                Participant2Id = participant2Id,
-                CreatedAt = DateTime.UtcNow
-            };
-            _db.Conversations.Add(conversation);
-            await _db.SaveChangesAsync();
-
-            _logger.LogInformation("Created new conversation {ConversationId} between users {User1Id} and {User2Id}",
-                conversation.Id, participant1Id, participant2Id);
-        }
-
-        // Create the message
-        var message = new Message
-        {
-            ConversationId = conversation.Id,
-            SenderId = userId.Value,
-            Content = messageContent.Trim(),
-            IsRead = false,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        _db.Messages.Add(message);
-
-        // Update conversation timestamp
-        conversation.UpdatedAt = DateTime.UtcNow;
-
-        await _db.SaveChangesAsync();
-
-        var attachments = new List<object>();
-        foreach (var attachmentFile in attachmentFiles)
-        {
-            await using var stream = attachmentFile.OpenReadStream();
-            var (upload, uploadError) = await _fileUploadService.UploadAsync(
-                stream,
-                attachmentFile.FileName,
-                string.IsNullOrWhiteSpace(attachmentFile.ContentType) ? "application/octet-stream" : attachmentFile.ContentType,
-                attachmentFile.Length,
-                userId.Value,
-                _tenantContext.GetTenantIdOrThrow(),
-                FileCategory.Message,
-                message.Id,
-                "message");
-
-            if (uploadError != null)
-            {
-                return UnprocessableEntity(new
-                {
-                    errors = new[] { new { code = "VALIDATION_ERROR", message = uploadError, field = "attachments" } }
-                });
-            }
-
-            var savedUpload = upload!;
-            var attachment = new MessageAttachment
-            {
-                MessageId = message.Id,
-                FileUploadId = savedUpload.Id,
-                UploadedById = userId.Value,
-                CreatedAt = DateTime.UtcNow
-            };
-            _db.MessageAttachments.Add(attachment);
-            await _db.SaveChangesAsync();
-
-            attachments.Add(MapLaravelReactAttachment(attachment, savedUpload));
-        }
-
-        // Load sender for response
-        var sender = await _db.Users.FirstOrDefaultAsync(x => x.Id == userId.Value);
+        // Ordinary account and block checks deliberately run before the
+        // safeguarding policy. A blocked or cross-tenant caller must not be
+        // able to infer the recipient's confidential safeguarding choices.
+        var sender = await LoadActiveMessageUserAsync(userId.Value, tenantId, ct);
         if (sender == null)
         {
-            return StatusCode(500, new { error = "Sender data unavailable" });
+            return MessageWriteError(
+                "FORBIDDEN",
+                "Your account is not allowed to send messages",
+                StatusCodes.Status403Forbidden);
+        }
+
+        var recipient = await LoadMessageRecipientAsync(request.RecipientId, tenantId, ct);
+        if (recipient == null)
+        {
+            return MessageWriteError(
+                "NOT_FOUND",
+                "Recipient not found",
+                IsLaravelV2Request() ? StatusCodes.Status404NotFound : StatusCodes.Status400BadRequest);
+        }
+
+        if (await IsSenderMessagingDisabledAsync(userId.Value, tenantId, ct))
+        {
+            return MessageWriteError(
+                "MESSAGING_DISABLED",
+                "Your messaging has been restricted by an administrator",
+                StatusCodes.Status403Forbidden);
+        }
+
+        if (await IsMessagePairBlockedAsync(userId.Value, request.RecipientId, tenantId, ct))
+        {
+            return MessageWriteError(
+                "BLOCKED",
+                "You cannot send messages to this user",
+                StatusCodes.Status403Forbidden);
+        }
+
+        var preflightDecision = await _safeguardingInteractionPolicy.EvaluateLocalContactAsync(
+            userId.Value,
+            request.RecipientId,
+            tenantId,
+            "direct_message",
+            ct);
+        if (!preflightDecision.IsAllowed)
+        {
+            await NotifySafeguardingBlockedAttemptAsync(
+                tenantId,
+                userId.Value,
+                request.RecipientId,
+                preflightDecision);
+            return SafeguardingWriteError(preflightDecision);
+        }
+
+        var maximumLength = IsLaravelV2Request() ? 10_000 : 5_000;
+        if (trimmedMessageContent.EnumerateRunes().Count() > maximumLength)
+        {
+            return MessageWriteError(
+                "VALIDATION_ERROR",
+                IsLaravelV2Request()
+                    ? "Message is too long (max 10000 characters)"
+                    : "Message content must be 5000 characters or less",
+                StatusCodes.Status400BadRequest,
+                "body");
+        }
+
+        if (attachmentFiles.Count > 5)
+        {
+            return MessageWriteError(
+                "VALIDATION_ERROR",
+                "You can attach up to 5 files",
+                StatusCodes.Status422UnprocessableEntity,
+                "attachments");
+        }
+
+        if ((string.IsNullOrWhiteSpace(trimmedMessageContent) || trimmedMessageContent == "0")
+            && !hasAttachments)
+        {
+            return MessageWriteError(
+                "VALIDATION_ERROR",
+                IsLaravelV2Request()
+                    ? "Message body or voice message is required"
+                    : "Message content is required",
+                IsLaravelV2Request()
+                    ? StatusCodes.Status422UnprocessableEntity
+                    : StatusCodes.Status400BadRequest,
+                "body");
+        }
+
+        // Laravel stages validated bytes before the definitive write. These
+        // rows remain unattached until the locked decision succeeds and are
+        // removed, with their stored files, on every subsequent failure.
+        var stagedUploads = new List<FileUpload>();
+        try
+        {
+            foreach (var attachmentFile in attachmentFiles)
+            {
+                await using var stream = attachmentFile.OpenReadStream();
+                var (upload, uploadError) = await _fileUploadService.UploadAsync(
+                    stream,
+                    attachmentFile.FileName,
+                    string.IsNullOrWhiteSpace(attachmentFile.ContentType)
+                        ? "application/octet-stream"
+                        : attachmentFile.ContentType,
+                    attachmentFile.Length,
+                    userId.Value,
+                    tenantId,
+                    FileCategory.Message,
+                    entityId: null,
+                    entityType: "message",
+                    cancellationToken: ct);
+
+                if (uploadError != null)
+                {
+                    await CleanupStagedMessageUploadsAsync(stagedUploads);
+                    return MessageWriteError(
+                        "VALIDATION_ERROR",
+                        uploadError,
+                        StatusCodes.Status422UnprocessableEntity,
+                        "attachments");
+                }
+
+                stagedUploads.Add(upload!);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            stagedUploads.AddRange(NewTrackedMessageUploads(stagedUploads, userId.Value, tenantId));
+            await CleanupStagedMessageUploadsAsync(stagedUploads);
+            throw;
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            stagedUploads.AddRange(NewTrackedMessageUploads(stagedUploads, userId.Value, tenantId));
+            await CleanupStagedMessageUploadsAsync(stagedUploads);
+            _logger.LogError(exception, "Failed to stage message attachments for user {UserId}", userId.Value);
+            return MessageWriteError(
+                "UPLOAD_FAILED",
+                "Failed to upload attachment",
+                StatusCodes.Status400BadRequest,
+                "attachments");
+        }
+
+        var messageContent = StripAllHtml(trimmedMessageContent);
+        if (IsLaravelEmptyString(messageContent) && !hasAttachments)
+        {
+            await CleanupStagedMessageUploadsAsync(stagedUploads);
+            return MessageWriteError(
+                "VALIDATION_ERROR",
+                "Message body is required",
+                IsLaravelV2Request()
+                    ? StatusCodes.Status422UnprocessableEntity
+                    : StatusCodes.Status400BadRequest,
+                "body");
+        }
+
+        // UploadAsync uses this scoped context to persist each staged file.
+        // Detach those committed rows before beginning the all-or-nothing
+        // message transaction, then reload and bind them tenant-safely below.
+        _db.ChangeTracker.Clear();
+
+        var participant1Id = Math.Min(userId.Value, request.RecipientId);
+        var participant2Id = Math.Max(userId.Value, request.RecipientId);
+        Conversation? conversation = null;
+        Message? message = null;
+        var persistedAttachments = new List<(MessageAttachment Attachment, FileUpload Upload)>();
+        IDbContextTransaction? transaction = null;
+
+        async Task<IActionResult> AbortWriteAsync(
+            IActionResult result,
+            SafeguardingInteractionDecision? blockedDecision = null)
+        {
+            if (transaction != null)
+            {
+                try
+                {
+                    await transaction.RollbackAsync(CancellationToken.None);
+                }
+                catch (Exception rollbackException)
+                {
+                    _logger.LogCritical(
+                        rollbackException,
+                        "Failed to roll back a denied message write; staged cleanup will continue");
+                }
+
+                try
+                {
+                    await transaction.DisposeAsync();
+                }
+                catch (Exception disposeException)
+                {
+                    _logger.LogCritical(
+                        disposeException,
+                        "Failed to dispose a denied message transaction; staged cleanup will continue");
+                }
+                transaction = null;
+            }
+
+            await CleanupStagedMessageUploadsAsync(stagedUploads);
+            if (blockedDecision != null)
+            {
+                await NotifySafeguardingBlockedAttemptAsync(
+                    tenantId,
+                    userId.Value,
+                    request.RecipientId,
+                    blockedDecision);
+            }
+
+            return result;
+        }
+
+        try
+        {
+            transaction = await _db.Database.BeginTransactionAsync(ct);
+            sender = await LoadActiveMessageUserAsync(userId.Value, tenantId, ct);
+            if (sender == null)
+            {
+                return await AbortWriteAsync(MessageWriteError(
+                    "FORBIDDEN",
+                    "Your account is not allowed to send messages",
+                    StatusCodes.Status403Forbidden));
+            }
+
+            recipient = await LoadMessageRecipientAsync(request.RecipientId, tenantId, ct);
+            if (recipient == null)
+            {
+                return await AbortWriteAsync(MessageWriteError(
+                    "NOT_FOUND",
+                    "Recipient not found",
+                    IsLaravelV2Request() ? StatusCodes.Status404NotFound : StatusCodes.Status400BadRequest));
+            }
+
+            if (await IsSenderMessagingDisabledAsync(userId.Value, tenantId, ct))
+            {
+                return await AbortWriteAsync(MessageWriteError(
+                    "MESSAGING_DISABLED",
+                    "Your messaging has been restricted by an administrator",
+                    StatusCodes.Status403Forbidden));
+            }
+
+            if (await IsMessagePairBlockedAsync(userId.Value, request.RecipientId, tenantId, ct))
+            {
+                return await AbortWriteAsync(MessageWriteError(
+                    "BLOCKED",
+                    "You cannot send messages to this user",
+                    StatusCodes.Status403Forbidden));
+            }
+
+            var stagedUploadIds = stagedUploads.Select(upload => upload.Id).Distinct().ToArray();
+            var uploads = stagedUploadIds.Length == 0
+                ? []
+                : await _db.FileUploads
+                    .IgnoreQueryFilters()
+                    .Where(upload => upload.TenantId == tenantId
+                        && upload.UserId == userId.Value
+                        && upload.Category == FileCategory.Message
+                        && stagedUploadIds.Contains(upload.Id))
+                    .OrderBy(upload => upload.Id)
+                    .ToListAsync(ct);
+            if (uploads.Count != stagedUploadIds.Length)
+            {
+                throw new InvalidOperationException("A staged message attachment is no longer available.");
+            }
+
+            // This is the definitive race-safe boundary. Nothing in the
+            // conversation graph is persisted before the current policy,
+            // recipient preferences, and sender attestations are locked and
+            // evaluated together.
+            var lockedDecision = await _safeguardingInteractionPolicy.EvaluateLockedLocalContactAsync(
+                userId.Value,
+                request.RecipientId,
+                tenantId,
+                "direct_message",
+                ct);
+            if (!lockedDecision.IsAllowed)
+            {
+                return await AbortWriteAsync(
+                    SafeguardingWriteError(lockedDecision),
+                    lockedDecision);
+            }
+
+            // The safeguarding lock serializes direct-message writers for the
+            // tenant. Read the normalized pair only after acquiring it so a
+            // waiter observes the first writer's committed conversation rather
+            // than attempting a duplicate insert against the unique index.
+            conversation = await _db.Conversations
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(row => row.TenantId == tenantId
+                    && row.Participant1Id == participant1Id
+                    && row.Participant2Id == participant2Id, ct);
+
+            var now = DateTime.UtcNow;
+            if (conversation == null)
+            {
+                conversation = new Conversation
+                {
+                    TenantId = tenantId,
+                    Participant1Id = participant1Id,
+                    Participant2Id = participant2Id,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                };
+                _db.Conversations.Add(conversation);
+            }
+            else
+            {
+                conversation.UpdatedAt = now;
+            }
+
+            message = new Message
+            {
+                TenantId = tenantId,
+                Conversation = conversation,
+                SenderId = userId.Value,
+                Content = messageContent,
+                IsRead = false,
+                CreatedAt = now
+            };
+            _db.Messages.Add(message);
+            await _db.SaveChangesAsync(ct);
+
+            foreach (var upload in uploads)
+            {
+                upload.EntityId = message.Id;
+                upload.EntityType = "message";
+                var attachment = new MessageAttachment
+                {
+                    MessageId = message.Id,
+                    FileUploadId = upload.Id,
+                    UploadedById = userId.Value,
+                    CreatedAt = now
+                };
+                _db.MessageAttachments.Add(attachment);
+                persistedAttachments.Add((attachment, upload));
+            }
+
+            if (persistedAttachments.Count > 0)
+            {
+                await _db.SaveChangesAsync(ct);
+            }
+
+            await transaction.CommitAsync(ct);
+            var committedTransaction = transaction;
+            transaction = null;
+            try
+            {
+                await committedTransaction.DisposeAsync();
+            }
+            catch (Exception disposeException)
+            {
+                // Commit has succeeded. Never route a disposal-only failure
+                // through rollback cleanup, which would delete attachments
+                // belonging to the now-durable message.
+                _logger.LogError(
+                    disposeException,
+                    "Message {MessageId} committed but transaction disposal failed",
+                    message!.Id);
+            }
+        }
+        catch (Exception exception)
+        {
+            if (transaction != null)
+            {
+                try
+                {
+                    await transaction.RollbackAsync(CancellationToken.None);
+                }
+                catch (Exception rollbackException)
+                {
+                    _logger.LogCritical(
+                        rollbackException,
+                        "Failed to roll back message transaction after {FailureType}",
+                        exception.GetType().Name);
+                }
+                finally
+                {
+                    try
+                    {
+                        await transaction.DisposeAsync();
+                    }
+                    catch (Exception disposeException)
+                    {
+                        _logger.LogCritical(
+                            disposeException,
+                            "Failed to dispose message transaction after {FailureType}; staged cleanup will continue",
+                            exception.GetType().Name);
+                    }
+                    transaction = null;
+                }
+            }
+
+            await CleanupStagedMessageUploadsAsync(stagedUploads);
+            throw;
+        }
+        finally
+        {
+            if (transaction != null)
+            {
+                try
+                {
+                    await transaction.DisposeAsync();
+                }
+                catch (Exception disposeException)
+                {
+                    _logger.LogCritical(disposeException, "Failed to dispose residual message transaction");
+                }
+            }
+        }
+
+        if (conversation == null || message == null || sender == null || recipient == null)
+        {
+            throw new InvalidOperationException("The committed message graph was not available for its response.");
+        }
+
+        if (conversation.CreatedAt == conversation.UpdatedAt)
+        {
+            _logger.LogInformation(
+                "Created new conversation {ConversationId} between users {User1Id} and {User2Id}",
+                conversation.Id,
+                participant1Id,
+                participant2Id);
         }
 
         _logger.LogInformation("User {SenderId} sent message {MessageId} to user {RecipientId}",
@@ -612,28 +1002,21 @@ public class MessagesController : ControllerBase
             CreatedAt = message.CreatedAt
         };
 
-        // Fire-and-forget: don't block the HTTP response on SignalR delivery
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                await _realTimeMessaging.NotifyNewMessageAsync(_tenantContext.GetTenantIdOrThrow(), request.RecipientId, notification);
-            }
-            catch (InvalidOperationException ex)
-            {
-                _logger.LogError(ex, "Failed to send real-time notification for message {MessageId}", message.Id);
-            }
-            catch (TimeoutException ex)
-            {
-                _logger.LogError(ex, "Failed to send real-time notification for message {MessageId}", message.Id);
-            }
-        });
+        await DispatchSuccessfulMessageSideEffectsAsync(
+            tenantId,
+            sender,
+            recipient,
+            conversation.Id,
+            message.Id,
+            notification,
+            awardXp: IsLaravelV2Request());
 
         var responseMessage = new
         {
             id = message.Id,
             conversation_id = conversation.Id,
             sender_id = sender.Id,
+            receiver_id = recipient.Id,
             recipient_id = recipient.Id,
             content = message.Content,
             body = message.Content,
@@ -649,16 +1032,17 @@ public class MessagesController : ControllerBase
                 first_name = recipient.FirstName,
                 last_name = recipient.LastName
             },
-            attachments,
+            attachments = persistedAttachments
+                .Select(row => MapLaravelReactAttachment(row.Attachment, row.Upload))
+                .ToArray(),
             is_read = message.IsRead,
             created_at = message.CreatedAt
         };
 
         if (IsLaravelV2Request())
         {
-            return Created($"/api/v2/messages/{request.RecipientId}", new
+            return StatusCode(StatusCodes.Status201Created, new
             {
-                success = true,
                 data = responseMessage,
                 meta = new
                 {
@@ -828,6 +1212,481 @@ public class MessagesController : ControllerBase
         return Ok(new { data = result, messageCount = idList.Count });
     }
 
+    private async Task<User?> LoadActiveMessageUserAsync(
+        int userId,
+        int tenantId,
+        CancellationToken cancellationToken)
+        => await _db.Users
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .SingleOrDefaultAsync(user => user.Id == userId
+                && user.TenantId == tenantId
+                && user.IsActive
+                && user.SuspendedAt == null, cancellationToken);
+
+    private async Task<User?> LoadMessageRecipientAsync(
+        int userId,
+        int tenantId,
+        CancellationToken cancellationToken)
+        => await _db.Users
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .SingleOrDefaultAsync(user => user.Id == userId
+                && user.TenantId == tenantId, cancellationToken);
+
+    private Task<bool> IsMessagePairBlockedAsync(
+        int senderId,
+        int recipientId,
+        int tenantId,
+        CancellationToken cancellationToken)
+        => _db.UserBlocks
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .AnyAsync(block => block.TenantId == tenantId
+                && ((block.UserId == senderId && block.BlockedUserId == recipientId)
+                    || (block.UserId == recipientId && block.BlockedUserId == senderId)), cancellationToken);
+
+    private async Task<bool> IsSenderMessagingDisabledAsync(
+        int senderId,
+        int tenantId,
+        CancellationToken cancellationToken)
+    {
+        var now = DateTime.UtcNow;
+        await _db.UserMonitoringRestrictions
+            .IgnoreQueryFilters()
+            .Where(restriction => restriction.TenantId == tenantId
+                && restriction.UserId == senderId
+                && restriction.UnderMonitoring
+                && restriction.MonitoringExpiresAt != null
+                && restriction.MonitoringExpiresAt <= now)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(restriction => restriction.UnderMonitoring, false)
+                .SetProperty(restriction => restriction.MessagingDisabled, false)
+                .SetProperty(restriction => restriction.MonitoringExpiresAt, (DateTime?)null),
+                cancellationToken);
+
+        return await _db.UserMonitoringRestrictions
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .AnyAsync(restriction => restriction.TenantId == tenantId
+                && restriction.UserId == senderId
+                && restriction.MessagingDisabled, cancellationToken);
+    }
+
+    private async Task NotifySafeguardingBlockedAttemptAsync(
+        int tenantId,
+        int senderId,
+        int recipientId,
+        SafeguardingInteractionDecision decision)
+    {
+        if (decision.IsAllowed || decision.IsUnavailable)
+            return;
+
+        try
+        {
+            await using var scope = _scopeFactory.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            await using var transaction = await db.Database.BeginTransactionAsync(CancellationToken.None);
+
+            if (db.Database.ProviderName?.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                var lockKey = SafeguardingAlertLockKey(tenantId, senderId, recipientId);
+                await db.Database.ExecuteSqlInterpolatedAsync(
+                    $"SELECT pg_advisory_xact_lock({lockKey})",
+                    CancellationToken.None);
+            }
+
+            var sender = await db.Users
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .SingleOrDefaultAsync(user => user.TenantId == tenantId && user.Id == senderId);
+            var recipient = await db.Users
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .SingleOrDefaultAsync(user => user.TenantId == tenantId && user.Id == recipientId);
+            var staff = await db.Users
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .Where(user => user.TenantId == tenantId
+                    && user.IsActive
+                    && user.SuspendedAt == null
+                    && (user.Role == "admin"
+                        || user.Role == "tenant_admin"
+                        || user.Role == "broker"
+                        || user.Role == "super_admin"
+                        || user.IsAdmin
+                        || user.IsSuperAdmin
+                        || user.IsTenantSuperAdmin
+                        || user.IsGod))
+                .ToListAsync();
+
+            var requiredTypes = decision.RequiredAttestationCodes?
+                .OrderBy(code => code, StringComparer.Ordinal)
+                .ToArray() ?? [];
+            var payload = JsonSerializer.Serialize(new
+            {
+                sender_id = senderId,
+                recipient_id = recipientId,
+                reason_code = decision.Code,
+                required_vetting_types = requiredTypes
+            });
+            var recentCutoff = DateTime.UtcNow.AddMinutes(-10);
+            var existingRecipients = await db.Notifications
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .Where(notification => notification.TenantId == tenantId
+                    && notification.Type == "safeguarding_contact_blocked"
+                    && notification.Data == payload
+                    && notification.CreatedAt >= recentCutoff)
+                .Select(notification => notification.UserId)
+                .ToListAsync();
+            var existingRecipientIds = existingRecipients.ToHashSet();
+            var senderName = DisplayName(sender, "A member");
+            var recipientName = DisplayName(recipient, "a protected member");
+            var reason = decision.Code == "VETTING_REQUIRED"
+                ? "required safeguarding confirmation is not current"
+                : "coordinator-mediated contact is required";
+
+            foreach (var staffUser in staff.Where(user => !existingRecipientIds.Contains(user.Id)))
+            {
+                db.Notifications.Add(new Notification
+                {
+                    TenantId = tenantId,
+                    UserId = staffUser.Id,
+                    Type = "safeguarding_contact_blocked",
+                    Title = "Safeguarding contact attempt blocked",
+                    Body = $"{senderName} was prevented from messaging {recipientName}: {reason}.",
+                    Data = payload,
+                    Link = $"/broker/safeguarding?user={recipientId}",
+                    IsRead = false,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+
+            await db.SaveChangesAsync(CancellationToken.None);
+            await transaction.CommitAsync(CancellationToken.None);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogCritical(
+                exception,
+                "Failed to persist safeguarding blocked-contact alert for tenant {TenantId}, sender {SenderId}, recipient {RecipientId}",
+                tenantId,
+                senderId,
+                recipientId);
+        }
+    }
+
+    private async Task DispatchSuccessfulMessageSideEffectsAsync(
+        int tenantId,
+        User sender,
+        User recipient,
+        int conversationId,
+        int messageId,
+        MessageNotification notification,
+        bool awardXp)
+    {
+        try
+        {
+            await using var scope = _scopeFactory.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            await using var transaction = await db.Database.BeginTransactionAsync(CancellationToken.None);
+            if (db.Database.ProviderName?.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                var lockKey = MessageSideEffectLockKey(tenantId, sender.Id);
+                await db.Database.ExecuteSqlInterpolatedAsync(
+                    $"SELECT pg_advisory_xact_lock({lockKey})",
+                    CancellationToken.None);
+            }
+
+            var notificationData = JsonSerializer.Serialize(new
+            {
+                message_id = messageId,
+                conversation_id = conversationId,
+                sender_id = sender.Id
+            });
+
+            var notificationExists = await db.Notifications
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .AnyAsync(row => row.TenantId == tenantId
+                    && row.UserId == recipient.Id
+                    && row.Type == "new_message"
+                    && row.Data == notificationData);
+            if (!notificationExists)
+            {
+                db.Notifications.Add(new Notification
+                {
+                    TenantId = tenantId,
+                    UserId = recipient.Id,
+                    Type = "new_message",
+                    Title = "New message",
+                    Body = $"New message from {DisplayName(sender, "a member")}",
+                    Data = notificationData,
+                    Link = $"/messages/{sender.Id}",
+                    IsRead = false,
+                    CreatedAt = DateTime.UtcNow
+                });
+                await db.SaveChangesAsync(CancellationToken.None);
+            }
+
+            if (awardXp)
+            {
+                var xpAlreadyAwarded = await db.XpLogs
+                    .IgnoreQueryFilters()
+                    .AsNoTracking()
+                    .AnyAsync(row => row.TenantId == tenantId
+                        && row.UserId == sender.Id
+                        && row.Source == "send_message"
+                        && row.ReferenceId == messageId);
+                if (!xpAlreadyAwarded)
+                {
+                    var gamification = scope.ServiceProvider.GetRequiredService<GamificationService>();
+                    var award = await gamification.AwardXpAsync(
+                        sender.Id,
+                        XpLog.Amounts.MessageSent,
+                        "send_message",
+                        messageId,
+                        "Sent a message");
+                    if (!award.Success)
+                    {
+                        _logger.LogWarning(
+                            "Message {MessageId} committed but its XP award failed: {Error}",
+                            messageId,
+                            award.Error);
+                    }
+                }
+            }
+
+            await transaction.CommitAsync(CancellationToken.None);
+        }
+        catch (Exception exception)
+        {
+            // The message is already committed. Preserve the canonical write
+            // response and surface the side-effect failure operationally rather
+            // than encouraging a client retry that would duplicate the message.
+            _logger.LogError(exception, "Post-commit durable effects failed for message {MessageId}", messageId);
+        }
+
+        try
+        {
+            await _realTimeMessaging.NotifyNewMessageAsync(tenantId, recipient.Id, notification);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Real-time delivery failed for committed message {MessageId}", messageId);
+        }
+    }
+
+    private static string StripAllHtml(string content) => HtmlTagPattern.Replace(content, string.Empty);
+
+    private static bool IsLaravelEmptyString(string content)
+        => string.IsNullOrEmpty(content) || content == "0";
+
+    private static string DisplayName(User? user, string fallback)
+    {
+        if (user == null)
+            return fallback;
+
+        var name = $"{user.FirstName} {user.LastName}".Trim();
+        return string.IsNullOrWhiteSpace(name) ? fallback : name;
+    }
+
+    private static long SafeguardingAlertLockKey(int tenantId, int senderId, int recipientId)
+    {
+        unchecked
+        {
+            const long lockNamespace = 0x4e58534d00000000;
+            return lockNamespace
+                ^ ((long)(uint)tenantId << 32)
+                ^ ((long)(uint)senderId << 1)
+                ^ (uint)recipientId;
+        }
+    }
+
+    private static long MessageSideEffectLockKey(int tenantId, int senderId)
+    {
+        unchecked
+        {
+            const long lockNamespace = 0x4e58535800000000;
+            return lockNamespace
+                ^ ((long)(uint)tenantId << 32)
+                ^ (uint)senderId;
+        }
+    }
+
+    private IActionResult MessageWriteError(string code, string message, int status, string? field = null)
+    {
+        if (IsLaravelV2Request())
+        {
+            var error = new Dictionary<string, object?>
+            {
+                ["code"] = code,
+                ["message"] = message
+            };
+            if (field != null)
+            {
+                error["field"] = field;
+            }
+            return StatusCode(status, new { errors = new[] { error } });
+        }
+
+        return StatusCode(status, new { error = message });
+    }
+
+    private IActionResult SafeguardingWriteError(SafeguardingInteractionDecision decision)
+        => StatusCode(
+            decision.IsUnavailable
+                ? StatusCodes.Status503ServiceUnavailable
+                : StatusCodes.Status403Forbidden,
+            new { errors = new[] { BuildSafeguardingError(decision) } });
+
+    private static Dictionary<string, object?>? BuildSafeguardingProjection(
+        SafeguardingInteractionDecision decision)
+    {
+        if (decision.IsAllowed)
+        {
+            return null;
+        }
+
+        var error = BuildSafeguardingError(decision);
+        return new Dictionary<string, object?>
+        {
+            ["restricted"] = true,
+            ["code"] = error["code"],
+            ["title"] = error.GetValueOrDefault("title"),
+            ["message"] = error.GetValueOrDefault("message"),
+            ["detail"] = error.GetValueOrDefault("detail"),
+            ["action_label"] = error.GetValueOrDefault("action_label"),
+            ["required_vetting_types"] = error.GetValueOrDefault("required_vetting_types") ?? Array.Empty<string>(),
+            ["required_vetting_labels"] = error.GetValueOrDefault("required_vetting_labels") ?? Array.Empty<string>(),
+            ["can_request_coordinator"] = true
+        };
+    }
+
+    private static Dictionary<string, object?> BuildSafeguardingError(
+        SafeguardingInteractionDecision decision)
+    {
+        var requiredCodes = decision.RequiredAttestationCodes?.ToArray() ?? Array.Empty<string>();
+        var requiredLabels = decision.RequiredAttestationLabels?.ToArray() ?? Array.Empty<string>();
+
+        if (decision.Code == "SAFEGUARDING_POLICY_UNAVAILABLE")
+        {
+            return new Dictionary<string, object?>
+            {
+                ["code"] = "SAFEGUARDING_POLICY_UNAVAILABLE",
+                ["message"] = "We cannot confirm the community safeguarding policy right now. No message has been sent. Please try again shortly.",
+                ["title"] = "Safeguarding check temporarily unavailable",
+                ["detail"] = "Project NEXUS could not safely evaluate the contact policy, so this interaction has been paused.",
+                ["action_label"] = "Check again",
+                ["required_vetting_types"] = requiredCodes,
+                ["required_vetting_labels"] = requiredLabels,
+                ["retryable"] = true
+            };
+        }
+
+        if (decision.Code == "VETTING_REQUIRED")
+        {
+            var types = string.Join(", ", requiredLabels);
+            return new Dictionary<string, object?>
+            {
+                ["code"] = "VETTING_REQUIRED",
+                ["message"] = $"This conversation is paused by a community safeguarding rule. Your community must have recorded a current {types} confirmation for you before you can message this member. Ask your broker or community administrator to record this metadata-only status. Do not send or upload any vetting document.",
+                ["title"] = "Safeguarding check needed",
+                ["detail"] = $"This member can only be contacted for this type of interaction by members whose community has recorded a current {types} status. The record is metadata only; no document should be sent or uploaded.",
+                ["action_label"] = "Open help",
+                ["required_vetting_types"] = requiredCodes,
+                ["required_vetting_labels"] = requiredLabels
+            };
+        }
+
+        return new Dictionary<string, object?>
+        {
+            ["code"] = "SAFEGUARDING_CONTACT_RESTRICTED",
+            ["message"] = "This member has asked for a coordinator to arrange contact on their behalf. Your message has not been sent. Please contact your broker or community administrator so they can help arrange the next safe step.",
+            ["title"] = "Coordinator arrangement needed",
+            ["detail"] = "This member is not available for direct messages because their safeguarding preferences require coordinator-mediated contact. You can ask a coordinator to help arrange contact.",
+            ["action_label"] = "Open help"
+        };
+    }
+
+    private IReadOnlyList<FileUpload> NewTrackedMessageUploads(
+        IReadOnlyCollection<FileUpload> known,
+        int userId,
+        int tenantId)
+    {
+        var knownIds = known.Select(upload => upload.Id).ToHashSet();
+        return _db.ChangeTracker.Entries<FileUpload>()
+            .Select(entry => entry.Entity)
+            .Where(upload => upload.TenantId == tenantId
+                && upload.UserId == userId
+                && upload.Category == FileCategory.Message
+                && !knownIds.Contains(upload.Id))
+            .ToArray();
+    }
+
+    private async Task CleanupStagedMessageUploadsAsync(IEnumerable<FileUpload> uploads)
+    {
+        var staged = uploads
+            .GroupBy(
+                upload => upload.Id > 0
+                    ? $"id:{upload.Id}"
+                    : $"path:{upload.FilePath}",
+                StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .ToArray();
+        if (staged.Length == 0)
+        {
+            return;
+        }
+
+        var removableIds = new List<int>();
+        foreach (var upload in staged)
+        {
+            try
+            {
+                var fullPath = _fileUploadService.GetFullPath(upload);
+                if (System.IO.File.Exists(fullPath))
+                    System.IO.File.Delete(fullPath);
+
+                if (upload.Id > 0)
+                    removableIds.Add(upload.Id);
+            }
+            catch (Exception exception)
+            {
+                // Keep the database row when bytes cannot be removed. That
+                // preserves a discoverable cleanup record instead of creating
+                // an untracked filesystem leak.
+                _logger.LogCritical(
+                    exception,
+                    "Failed to remove staged message file {FileUploadId} at {Path}; retaining its database row and continuing cleanup",
+                    upload.Id,
+                    upload.FilePath);
+            }
+        }
+
+        var ids = removableIds.Distinct().ToArray();
+        if (ids.Length > 0)
+        {
+            try
+            {
+                await using var scope = _scopeFactory.CreateAsyncScope();
+                var cleanupDb = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+                await cleanupDb.FileUploads
+                    .IgnoreQueryFilters()
+                    .Where(upload => ids.Contains(upload.Id))
+                    .ExecuteDeleteAsync(CancellationToken.None);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogCritical(
+                    exception,
+                    "Failed to remove staged message upload rows {FileUploadIds}",
+                    string.Join(',', ids));
+            }
+        }
+    }
+
     private bool IsLaravelV2Request() => Request.Path.StartsWithSegments("/api/v2", StringComparison.OrdinalIgnoreCase);
 
     private int? GetCurrentUserId() => User.GetUserId();
@@ -840,8 +1699,8 @@ public class MessagesController : ControllerBase
             return (new SendMessageRequest
             {
                 RecipientId = ParseInt(FormValue(form, "recipient_id")),
-                Body = FormValue(form, "body"),
-                Content = FormValue(form, "content") ?? string.Empty,
+                Body = FormRawValue(form, "body"),
+                Content = FormRawValue(form, "content") ?? string.Empty,
                 ListingId = ParseIntNullable(FormValue(form, "listing_id")),
                 ContextType = FormValue(form, "context_type"),
                 ContextId = ParseIntNullable(FormValue(form, "context_id"))
@@ -863,7 +1722,6 @@ public class MessagesController : ControllerBase
         var files = form.Files.GetFiles("attachments[]")
             .Concat(form.Files.GetFiles("attachments"))
             .Where(file => file.Length > 0)
-            .Take(5)
             .ToArray();
         return files;
     }
@@ -873,6 +1731,9 @@ public class MessagesController : ControllerBase
         var value = form[key].ToString();
         return string.IsNullOrWhiteSpace(value) ? null : value;
     }
+
+    private static string? FormRawValue(IFormCollection form, string key)
+        => form.ContainsKey(key) ? form[key].ToString() : null;
 
     private static int ParseInt(string? value) =>
         int.TryParse(value, out var parsed) ? parsed : 0;
@@ -887,10 +1748,15 @@ public class MessagesController : ControllerBase
         file_upload_id = upload.Id,
         original_filename = upload.OriginalFilename,
         file_name = upload.OriginalFilename,
+        name = upload.OriginalFilename,
         content_type = upload.ContentType,
         mime_type = upload.ContentType,
+        type = upload.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase)
+            ? "image"
+            : "file",
         file_size_bytes = upload.FileSizeBytes,
         file_size = upload.FileSizeBytes,
+        size = upload.FileSizeBytes,
         url = _fileUploadService.GetDownloadUrl(upload),
         created_at = attachment.CreatedAt
     };
@@ -919,5 +1785,5 @@ public class SendMessageRequest
     [JsonPropertyName("context_id")]
     public int? ContextId { get; set; }
 
-    public string ResolvedContent => string.IsNullOrWhiteSpace(Content) ? Body ?? string.Empty : Content;
+    public string ResolvedContent => Body ?? Content;
 }

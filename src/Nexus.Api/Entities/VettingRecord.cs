@@ -17,6 +17,7 @@ public class VettingRecord : ITenantEntity
     public DateTime? ExpiresAt { get; set; }
     public string? DocumentUrl { get; set; }
     public string? Notes { get; set; }
+    public bool LegacySensitiveMetadataRedacted { get; set; }
     public int? VerifiedById { get; set; }
     public DateTime? VerifiedAt { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

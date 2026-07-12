@@ -140,6 +140,13 @@ public static class ServiceExtensions
         services.AddScoped<ResourceService>();
         services.AddScoped<ThreadedCommentService>();
         services.AddScoped<VettingService>();
+        services.AddScoped<SafeguardingVettingAccessService>();
+        services.AddScoped<SafeguardingVettingNotificationService>();
+        services.AddScoped<SafeguardingPreferencePolicyService>();
+        services.AddScoped<OnboardingSafeguardingService>();
+        services.AddScoped<SafeguardingJurisdictionService>();
+        services.AddScoped<MemberVettingAttestationService>();
+        services.AddScoped<SafeguardingInteractionPolicy>();
         services.AddScoped<BrokerService>();
         services.AddScoped<EnterpriseService>();
         services.AddScoped<EventReminderService>();

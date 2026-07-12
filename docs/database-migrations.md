@@ -10,8 +10,8 @@ All database schema changes go through a single canonical workflow. This prevent
 
 ## Current Runtime Chain And Replay Evidence
 
-EF currently discovers 111 migration IDs. The latest is
-`20260711192124_VolunteerHoursLedgerParity`. The runtime inventory was
+EF currently discovers 114 migration IDs. The latest is
+`20260712023810_SafeguardingPreferenceDependencyParity`. The runtime inventory was
 repaired by restoring explicit `[Migration]` and `[DbContext]` metadata to 27
 essential designer-less migrations, including
 `20260303120000_AddAiMessageTenantId`. A `.Designer.cs` file is not itself the
@@ -27,26 +27,48 @@ would attempt to add the same column again.
 
 Current non-production evidence is:
 
-- the recorded runtime inventory contains 111 discovered IDs from
+- the recorded runtime inventory contains 114 discovered IDs from
   `20260202085043_InitialCreate` through
-  `20260711192124_VolunteerHoursLedgerParity`;
-- source-level migration contract tests prove the latest migration contains no
-  legacy-value `INSERT`, downgrades evidence-free approved whole-hour
-  organisation rows to `pending`, and applies the non-Caring minimum-hours check
-  conditionally;
-- the final blank replay applied all 111 migrations through
-  `20260711192124_VolunteerHoursLedgerParity` and directly verified the exact
-  13-column/eight-index `feed_activity` schema, nullable-boolean
-  `users.show_on_leaderboard` with default `true`, all 11 column-specific
-  `ON DELETE SET NULL` relationships, and the volunteer-user `CASCADE`
-  relationship;
-- the valid populated 110-to-111 replay preserved and linked existing evidence
-  without minting transaction, payment, or XP value;
-- the deliberately invalid fixture raised PostgreSQL `P0001` atomically,
-  leaving migration history at 110 and no partial migration-111 DDL;
+  `20260712023810_SafeguardingPreferenceDependencyParity`;
+- the final blank replay applied all 114 migrations and directly verified the
+  five safeguarding metadata tables, the `messaging_disabled` adapter column,
+  the exact safeguarding catalog containment, and the required preference
+  uniqueness/dependency shape;
+- a valid populated 113-to-114 replay preserved all preference rows, widened
+  `SelectedValue`, and losslessly filled null `ConsentGivenAt` from `CreatedAt`;
+- a duplicate tenant/user/option fixture raised PostgreSQL `P0001` before DDL
+  or data mutation, leaving history at 113 and no partial migration-114 schema;
+- retained 110-to-111 evidence proves the volunteer-hours migration preserved
+  and linked existing evidence without minting transaction, payment, or XP
+  value, while its invalid fixture left history at 110 and no partial
+  migration-111 DDL;
 - `has-pending-model-changes` is green, and disposable Docker container,
   network, and anonymous-volume cleanup left zero matching resources; and
 - no production database or container was touched.
+
+`20260712023810_SafeguardingPreferenceDependencyParity` makes
+`user_safeguarding_preferences.SelectedValue` 255 characters, requires
+`ConsentGivenAt`, installs one unique `(TenantId, UserId, OptionId)` selection,
+and changes tenant/option deletion to cascade like Laravel. It fails before any
+change when duplicate preference history exists rather than selecting a winner
+and discarding consent evidence. Null consent timestamps are the only lossless
+backfill and use the row's original `CreatedAt`.
+
+`20260712022243_MessagingDisabledRestrictionParity` adds the persisted
+`messaging_disabled` flag to `user_monitoring_restrictions`. This is the
+documented .NET storage adapter for Laravel's `user_messaging_restrictions`;
+the workflow contract is equivalent even though the physical table name is not.
+
+`20260712020049_SafeguardingVettingAttestationParity` creates the exact Laravel
+metadata tables `tenant_safeguarding_settings`,
+`member_vetting_attestations`, `member_vetting_attestation_events`,
+`safeguarding_vetting_review_requests`, and
+`safeguarding_policy_rotation_events`; adds preference policy-review state; and
+marks legacy vetting metadata for controlled redaction. These tables store
+attestation decisions and lifecycle metadata, not certificates, reference
+numbers, arbitrary notes, or other sensitive evidence. Attestation events and
+policy rotations are append-only, and legacy `vetting_records` do not authorize
+new contact policy.
 
 `20260711192124_VolunteerHoursLedgerParity` hardens canonical `vol_logs` hours,
 status, and tenant-scoped provenance; adds feedback plus the personal
@@ -175,14 +197,15 @@ Migration discovery must continue to fail closed if a new source migration is
 invisible to EF, a deliberately excluded overlapping migration becomes
 discoverable, or an intended migration ID no longer matches its type. Once
 run against the final migration source, the green blank replay certifies all
-111 IDs that EF discovers. Discovery does not
+114 IDs that EF discovers. Discovery does not
 authorize replaying either intentionally excluded duplicate.
 
 ## Read-Only Legacy Financial Audit
 
 The following PostgreSQL report is deliberately read-only and is intended for
-an operator working on a database already upgraded through
-`20260711192124_VolunteerHoursLedgerParity`. It identifies candidates;
+an operator working on a database upgraded at least through
+`20260711192124_VolunteerHoursLedgerParity`; the current recorded chain ends at
+`20260712023810_SafeguardingPreferenceDependencyParity`. It identifies candidates;
 it does not decide their meaning. Do not auto-fix, relink, delete, cancel, or
 recreate any returned row. Each row needs a documented manual disposition that
 states the intended business event, the existing sender/receiver balance
@@ -506,7 +529,7 @@ The discovery gate must cover every compiled migration subclass and keep any
 reviewed overlapping source explicitly outside the runtime chain. It prevents a
 new class from becoming silently invisible, but it does not make duplicate DDL
 safe. A successful blank `database update` against the final source certifies
-all 111 discovered IDs, not every migration-shaped source file or either
+all 114 discovered IDs, not every migration-shaped source file or either
 intentionally excluded duplicate. The final blank replay and
 `has-pending-model-changes` gate are green.
 
@@ -617,6 +640,15 @@ Its `Down()` throws before changing schema because rollback would remove
 immutable feedback and personal, organisation, and XP ledger provenance.
 Restore a verified pre-migration backup or apply a reviewed forward remediation;
 do not force the disabled destructive path.
+
+The three safeguarding/messaging migrations
+`20260712020049_SafeguardingVettingAttestationParity`,
+`20260712022243_MessagingDisabledRestrictionParity`, and
+`20260712023810_SafeguardingPreferenceDependencyParity` are also forward-only.
+Their `Down()` methods throw before mutation because rollback would discard
+append-only policy/attestation evidence, silently re-enable restricted
+messaging, or reintroduce ambiguous consent dependencies. Use a verified backup
+or reviewed forward remediation; never force a destructive downgrade.
 
 `20260710211122_RecurringShiftGenerationParity` has a data-preserving `Down()`:
 it removes the filtered occurrence and active-pattern indexes and restores the

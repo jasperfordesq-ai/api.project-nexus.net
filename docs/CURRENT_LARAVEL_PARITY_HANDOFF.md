@@ -54,7 +54,83 @@ containers from this repo.
 
 ## Latest Verified Backend Slice — 2026-07-12
 
-The current backend slice implements Laravel's canonical volunteer-hours ledger
+The current backend-only slice implements Laravel's metadata-only safeguarding
+attestation model, onboarding/admin/member workflows, message restriction
+lifecycle, direct-send and voice hardening, and the group-exchange policy
+cutover. Laravel at `C:\platforms\htdocs\staging` and the canonical React
+frontend remain read-only sources of truth. No frontend file was intentionally
+changed by this slice; preserve the unrelated dirty `apps/web-uk` workstream.
+
+Five exact Laravel tables now store only safeguarding metadata:
+`tenant_safeguarding_settings`, `member_vetting_attestations`,
+`member_vetting_attestation_events`, `safeguarding_vetting_review_requests`,
+and `safeguarding_policy_rotation_events`. New contact policy never trusts a
+legacy `VettingRecord`. Attestation and rotation events are append-only, direct
+attestation deletion is blocked outside an explicit principal cascade, and the
+new controllers reject certificate files, reference numbers, arbitrary status,
+free text, expiry dates, and other sensitive evidence fields.
+
+Focused route owners cover onboarding option read/save, member preference and
+vetting status/policy-review/review-request/revoke, administrator or broker
+vetting list/stats/policy/rotation/review/confirm/revoke, and safeguarding
+option CRUD/reorder. Option mutations validate the Laravel trigger/type
+catalog, serialize writes, protect options used by live selections, re-evaluate
+affected members, and audit. The rate buckets are onboarding 5/minute, option
+mutation and vetting decision 60/minute, policy update 20/minute, policy
+rotation 5/minute, member mutation 10/minute, and message restriction status
+30/minute, with canonical vetting 429 headers and `errors[]`.
+
+Message restriction status and admin monitoring now use live persisted state.
+Expired monitoring is cleared, `messaging_disabled` is exposed and mutated,
+the reason and tenant/user boundary are validated, and removal clears the
+safeguarding-created approval state. The physical
+`user_monitoring_restrictions.messaging_disabled` column is an explicit adapter
+for Laravel's `user_messaging_restrictions`, not an identical-schema claim.
+
+Direct sends now use detected attachment content, full staged/partial cleanup,
+plain-text sanitization and Unicode length, deterministic first-conversation
+locking, Laravel's same-tenant inactive-recipient behavior, corrected inbox
+partner identity/attachment aliases, and awaited notification/XP/realtime
+effects. Blocked POST attempts create the staff safeguarding alert once;
+read-only loads do not. Voice messages use a separate detected-audio policy,
+preflight plus locked policy recheck, one transaction for every persisted row,
+independent rollback/file cleanup, minimum-one-second duration, and normal
+message effects. Spoofed audio and restricted senders leave no ghost data or
+files. Provider transcription remains open.
+
+Group exchange now follows Laravel's create/add role order, participant identity
+and dual-role semantics, caller-visible status, lifecycle guards, deterministic
+locks with caller-order policy evaluation, canonical provider transaction rows,
+hidden ledger adapters, and exact failure contracts. Conservation,
+idempotency, and first-writer race behavior have focused coverage; frontend
+runtime and notification depth remain open.
+
+The current latest migration is
+`20260712023810_SafeguardingPreferenceDependencyParity`, runtime ID 114.
+Migration 112 creates the five safeguarding tables and legacy-redaction/policy-
+review fields; migration 113 adds `messaging_disabled`; migration 114 widens
+preference values, makes consent time required, installs unique
+tenant/user/option selection, and cascades tenant/option dependencies. A blank
+PostgreSQL replay applied all 114 migrations. A valid populated 113-to-114
+upgrade preserved rows and filled null consent time from `CreatedAt`; a
+duplicate tenant/user/option fixture raised `P0001` before DDL or data mutation,
+left history at 113, and left no partial migration-114 schema. Exact catalog
+containment and `has-pending-model-changes` are green. No production resource
+was touched.
+
+This is not complete direct-message parity. P0 remains on sender-only 24-hour
+edit, participant-safe scoped message delete, and partner-ID per-user archive/
+archived-inbox/restore/unread behavior. P1 remains on durable allow-listed
+reactions plus batch aggregation, full typing preflight and canonical Pusher
+event delivery, and server-authoritative coordinator help with unrestricted
+422, staff delivery/dedupe, and audit. The current handlers for those operations
+remain false, destructive, or incomplete despite route coverage.
+
+The final consolidated affected regression selected and passed 323/323 with
+zero failed or skipped in 20m47s. The full ASP.NET suite, CI,
+unchanged-frontend runtime smoke, and backend 1000/1000 remain open.
+
+The preceding backend slice implements Laravel's canonical volunteer-hours ledger
 without modifying the read-only Laravel source, canonical React frontend,
 frozen legacy React copy, or concurrent `apps/web-uk` workstream. One
 `VolunteerHoursService` now owns member list/create/summary/pending-review/
@@ -126,14 +202,15 @@ without valid debit evidence cannot be reversed, preventing an unproven refund.
 Legacy null links remain for manual reconciliation; they are not guessed from
 amount or timestamp similarity.
 
-The latest migration is `20260711192124_VolunteerHoursLedgerParity`, runtime ID
-111. Its source creates `feed_activity` and the nullable public-hours preference
+At the volunteer-hours checkpoint, the then-latest migration was
+`20260711192124_VolunteerHoursLedgerParity`, runtime ID 111. Its source creates
+`feed_activity` and the nullable public-hours preference
 alongside the hours-ledger provenance. It never inserts legacy transaction,
 payment, or XP value. Uniquely provable existing evidence may be linked;
 evidence-free approved whole-hour
 organisation rows are downgraded to `pending`, and approved Caring sub-hour rows
-remain valid without fabricated evidence. Final non-production certification
-applied all 111 migrations to a blank PostgreSQL database with latest ID
+remain valid without fabricated evidence. That checkpoint's non-production
+certification applied all 111 migrations to a blank PostgreSQL database through
 `20260711192124_VolunteerHoursLedgerParity` and directly verified the exact
 13-column/eight-index `feed_activity` schema, nullable-boolean
 `users.show_on_leaderboard` defaulting to `true`, all 11 column-specific
@@ -163,14 +240,16 @@ failures still require independent triage.
 
 | Area | Verified completed behavior | Explicit remaining gap |
 | --- | --- | --- |
+| Safeguarding metadata and workflows | Five exact metadata-only Laravel tables, append-only event/rotation history, jurisdiction/policy services, onboarding save, member status/review/revoke, admin/broker vetting decisions, and protected option CRUD/reorder use one locked policy domain. Legacy vetting records do not authorize contact and sensitive certificate evidence is prohibited. | Dedicated permission-only roles beyond current broker/admin policy, queued email/provider depth, legacy evidence privacy disposition, non-v2 route-alias reconciliation, and frontend runtime smoke remain. |
+| Messaging safety | Live `messaging_disabled` lifecycle, direct-send policy/attachment/race/side-effect hardening, staff blocked-attempt alerting, and transactional detected-audio voice writes are implemented. | P0 edit/delete/archive/restore semantics and P1 durable reactions, typing Pusher delivery, and coordinator-help delivery/audit remain; provider transcription and exact Laravel message-column storage also remain. |
 | Roles | `CanonicalRoleSemantics` adds `is_admin`, `is_super_admin`, `is_tenant_super_admin`, and `is_god`; named policies read current DB state and reject inactive, deleted, role-drifted, or tenant-drifted users; v2 failures use canonical errors. Role-only `god` never satisfies `GodOnly`, and explicit-God targets cannot be deleted, suspended, banned, reset, or impersonated by lower privilege tiers. | Resource-level SuperPanel/hub rules, notifications, audit side effects, and full application-runtime proof remain. |
 | 2FA | Password login uses opaque 64-character challenges bound to user, tenant, and TOTP enrollment; `/api/totp/verify` supports TOTP and backup codes, limits attempts, consumes successful or drifted challenges, and rechecks account/tenant state. Canonical setup/verify/disable uses a real SVG QR code, atomic enabled-state/backup-code persistence, and password-confirmed disable. Unsupported forced first-login admin enrollment now fails startup when either legacy flag is enabled instead of emitting a lockout challenge. | Challenges are process-local; trusted-device lifecycle, security notifications, a TOTP-specific encryption key, multi-node proof, and a compatible first-login enrollment client remain open. |
 | Passkeys | `PasskeysController` solely owns all nine canonical `/api/webauthn/*` routes. Registration/authentication use real FIDO options; challenges expire after 120 seconds and are atomically consumed once per process; credential management uses opaque IDs scoped to the authenticated user and tenant. | Anonymous discovery can remain tenantless when no tenant resolves; challenge state is process-local; sign-counter concurrency, multi-instance behavior, and browser smoke remain open. |
 | Scheduler | Natural and manual runs share one execution gate/body; real run/registry outcomes are recorded; per-tenant jobs exclude inactive tenants and aggregate tenant failures, while guardian-consent expiry intentionally remains a global all-tenant sweep. V2 manual execution requires platform-super access. `listing-expiry`, `job-expiry`, `volunteer-expire-consents`, and `recurring-shifts` execute real jobs; unmapped jobs return 501, busy returns 409, and non-persisted/failure outcomes return 500. The list reports these four mappings active and the other 38 disabled with `execution_supported:false`. | 38 of 42 catalog jobs remain unmapped; cross-replica exactly-one execution still relies on data-level idempotence rather than a distributed job lock. |
-| Broker writes | Canonical risk-tag, monitoring, unreviewed-count, and configuration aliases have one `AdminBrokerController` owner under DB-backed `BrokerOrAdmin` authorization. Risk-tag and monitoring writes persist and are covered by a live broker test; tenant-wide configuration writes remain admin-only rather than allowing unsafe arbitrary broker keys. | Canonical risk/monitoring columns, notification/audit fidelity, and granular broker-safe configuration keys remain incomplete. Archive reads are still compatibility scaffolding. |
+| Broker writes | Canonical risk-tag, monitoring, unreviewed-count, and configuration aliases have one `AdminBrokerController` owner under DB-backed `BrokerOrAdmin` authorization. Monitoring persists `messaging_disabled`, expiry and reason, clears stale/removal state, and audits/notifies; tenant-wide configuration writes remain admin-only rather than allowing unsafe arbitrary broker keys. | Exact Laravel risk-tag storage, deeper notification/provider fidelity, and granular broker-safe configuration keys remain incomplete. Monitoring uses the documented `user_monitoring_restrictions` adapter. Archive reads are still compatibility scaffolding. |
 | Federation partnership decisions | Canonical `/api[/v2]/admin/federation/partnerships` lists incoming and outgoing rows without changing the legacy outgoing-only route. Approve/reject require the receiving tenant, conditionally transition only `pending`, atomically persist one receiver-to-requester audit row, return Laravel status/error envelopes, and notify initiating-tenant admins only after commit. Same-action and approve-versus-reject races produce one winner and one side-effect set. | Laravel federation-level permission initialization, durable rejection actor/time/reason columns, localized link/push notifications, durable initial-sync scheduling, and canonical audit-log read visibility remain open. This is core decision-state parity, not complete federation parity. |
 | Generic organisations and wallets | Public reads expose only verified/public organisations; private/pending/suspended reads require canonical tenant owner/member/admin access. Membership roles and tenant relationships are validated. Verified-only donate/transfer/admin-grant writes and deletion share lifecycle/advisory locks; deletion refuses any wallet balance, counters, or history, including an in-flight write. | Notification/audit fidelity and unchanged-frontend runtime smoke remain open. Legacy ambiguous organisation-wallet rows need the read-only operator audit and manual disposition. |
-| Group exchange | Draft edits, start, confirmation, cancellation, and completion use server-owned transitions. Positive immutable splits, distinct provider/receiver roles, all-party confirmation, shared wallet locks, credit conservation, and nonempty ledger evidence are enforced. | Notification fidelity and frontend runtime smoke remain. Legacy one-to-one `Exchange` completion is a separate fail-closed gap. |
+| Group exchange | Create/add/start/confirm/complete/cancel use Laravel caller and role semantics, caller-visible status, lifecycle guards, deterministic locks with caller-order policy evaluation, canonical provider transaction rows, hidden ledger adapters, all-party confirmation, credit conservation, and first-writer race handling. | Notification fidelity and frontend runtime smoke remain. Legacy one-to-one `Exchange` completion is a separate fail-closed gap. |
 | V15 wallet reads and privacy | Community fund/history, pending count, and starting balance use persisted tenant data; starting-balance writes are admin-only. User search is active same-tenant name-only, excludes self/suspended users and email, and is 30/minute. | Community-fund donation/deposit/withdraw and `/api/wallet/donate` remain HTTP 503 until a canonical writer exists. Username search remains unavailable because the .NET user schema has no Laravel username column. |
 | Caring loyalty and estate evidence | New loyalty debit/refund and positive estate settlement rows persist unique tenant-composite transaction links. Concurrent reversal has one winner; unlinked legacy loyalty cannot mint a refund; repeat estate lifecycle mutations are rejected. | Legacy null links require manual reconciliation. Same-platform Caring hour transfers still lack authoritative transaction-id columns; remote transfers remain a federation-saga gap. |
 | Federation external boundary | Listing/member reads enforce opt-in, active state, visibility, tenant match, and blocked-partner rules. Caller-supplied message/review identity, partner webhook list/create, V2 ingest, non-pristine transfer cancellation, and unsupported financial settlement return stable 503 with no mutation. | Durable authenticated remote identity, webhook/ingest processing, cancellation protocol, and settlement saga remain incomplete; fail-closed behavior is not parity completion. |
@@ -184,7 +263,7 @@ the broader writer namespace is not yet closed. ASP.NET also returns canonical
 HTTP 400 for swap messages above its persisted 1,000-character limit, whereas
 Laravel's text column accepts longer input.
 
-Verification evidence for this slice:
+Retained verification evidence for the preceding volunteer-hours slice:
 
 - Debug API/test and solution-wide Release builds: 0 errors; only the same 4 pre-
   existing `xUnit1031` warnings, with Release completing in 4m36s;
@@ -194,7 +273,7 @@ Verification evidence for this slice:
 - affected regression: 3,007 discovered, 243 selected, 243/243 passed with zero
   failed/skipped in 418.639s; the full 3,007-test suite, CI, and unchanged-
   frontend runtime proof remain open;
-- latest migration: `20260711192124_VolunteerHoursLedgerParity`, recorded runtime
+- then-latest migration: `20260711192124_VolunteerHoursLedgerParity`, recorded runtime
   ID 111; source contracts assert no legacy-value insert and conditional Caring/
   non-Caring hours checks;
 - migration runtime gates: blank replay applied all 111 migrations through the
@@ -250,17 +329,12 @@ Earlier published slice evidence retained for context:
 - `Phase73NewScheduledJobsTests`: 16/16 after one Testcontainers-only startup retry;
 - exact React cron/security contracts: 3/3;
 - canonical broker persistence contract: 1/1;
-- API comparator fixture: green; live result: 2,436/2,449 matched. The exact 13
-  missing operations are `GET /api/admin/vetting/policy`,
-  `PUT /api/admin/vetting/policy`, `POST /api/admin/vetting/policy/rotate`,
-  `POST /api/admin/vetting/reviews/{reviewid}/resolve`,
-  `POST /api/admin/vetting/user/{userid}/confirm`,
-  `POST /api/admin/vetting/user/{userid}/revoke`, `GET /api/pwa/manifest`,
-  `POST /api/admin/prerender/reset-all`, `POST /api/prerender/invalidate`,
-  `GET /api/safeguarding/my-vetting-status`,
-  `POST /api/safeguarding/confirm-policy-review`,
-  `POST /api/safeguarding/vetting-review-request`, and
-  `POST /api/volunteering/guardian-consents/verify/{token}`;
+- API comparator fixture: green; live regeneration reports 2,438/2,449 matched
+  and 11 missing. Seven are the deliberately unresolved document-era admin
+  vetting writes (root create, record update/delete, upload/verify/reject, and
+  bulk), with the remaining four at PWA manifest, prerender reset/invalidate,
+  and guardian-consent token verification. The legacy vetting routes cannot be
+  restored as contact-authorizing document workflows;
 - pre-volunteering EF Release baseline: 75 migrations, latest
   `20260710092435_CanonicalRoleSemantics`; no pending model changes.
 - pre-volunteering migration discovery quarantine baseline: 1/1, with 104 source classes split into
@@ -310,8 +384,8 @@ Earlier published slice evidence retained for context:
 - earlier volunteering-chain proof reached
   `20260711031959_NullableTransactionLedgerLegs`; the current migration proof
   is recorded above;
-- API route comparator: 2,436/2,449 current Laravel/supplemental operations
-  matched, 13 route-shape gaps;
+- API route comparator: 2,438/2,449 current Laravel/supplemental operations
+  matched, 11 route-shape gaps;
 - historical schema comparator: 134/361 Laravel tables matched, 227 missing, 194
   ASP.NET-only; the current result above supersedes it and remains a global red
   gate.
@@ -364,9 +438,11 @@ balance effects without losing or silently changing financial history.
 
 Migration metadata was restored only after auditing the formerly invisible
 manual classes. Discovery includes the essential designer-less
-`AddAiMessageTenantId`; the recorded runtime inventory is 111. Final blank,
-populated, invalid atomic-abort, and model-drift gates are green for migration
-111's no-mint source. The
+`AddAiMessageTenantId`; the recorded runtime inventory is now 114 through
+`20260712023810_SafeguardingPreferenceDependencyParity`. Final blank, valid
+populated, invalid atomic-abort, catalog-containment, and model-drift gates are
+green for the latest source. Migration 111's no-mint evidence remains retained
+historical proof. The
 overlapping `FederationCoreExpansion` class remains intentionally outside the
 runtime chain because its later superset already creates the same schema. The
 obsolete `AddTenantUpdatedAt` class also remains outside because `InitialCreate`
@@ -466,20 +542,25 @@ A module or endpoint family is not complete until all of these are true:
 Prioritize workflow-complete slices over raw endpoint count. Route declarations
 are mostly closed; the remaining work is contract correctness.
 
-1. Run the full 3,007-test ASP.NET suite and CI, then complete unchanged-frontend
+1. Close the audited direct-message residual in order: P0 edit, scoped delete,
+   and partner-ID archive/restore/archived-inbox/unread semantics; then P1 real
+   reactions/batch, typing preflight plus Pusher delivery, and coordinator-help
+   restriction/delivery/dedupe/audit. Replace the shallow or false-oracle tests
+   for each workflow rather than accepting route success.
+2. Run the full ASP.NET suite and CI, then complete unchanged-frontend
    member/organisation/admin/Caring runtime smoke. The focused 53/53 and affected
    243/243 gates are green, but the discovery count is not a full-suite pass.
-2. Implement the workflows that currently fail closed: two-party legacy
+3. Implement the workflows that currently fail closed: two-party legacy
    exchange confirmation, managed-user sub-account approval, a canonical
    community-fund donation/deposit/withdraw writer, and the durable
    authenticated federation settlement saga. Preserve explicit HTTP 503/no-write
    behavior until each is real.
-3. Add the outgoing `shift.completed` webhook and child-to-parent tenant-domain
+4. Add the outgoing `shift.completed` webhook and child-to-parent tenant-domain
    inheritance without weakening the completed QR attendance contract.
-4. Complete opportunity list/create/update/application-list contracts, admin
+5. Complete opportunity list/create/update/application-list contracts, admin
    organisation members/DLP, public review listing, and explicit reconciliation
    for historical NULL organisation links.
-5. Run the read-only legacy financial audit, assign a documented manual
+6. Run the read-only legacy financial audit, assign a documented manual
    disposition and balance impact to every ambiguous self-transfer/admin grant/
    starting-balance/loyalty/estate/hour-transfer candidate, and implement only
    reviewed forward remediations. Never auto-link or auto-fix by similarity.

@@ -468,14 +468,21 @@ public class AdminBrokerController : ControllerBase
     [HttpGet("monitoring")]
     public async Task<IActionResult> Monitoring()
     {
+        var now = DateTime.UtcNow;
         var rows = await _db.UserMonitoringRestrictions
             .Include(m => m.User)
             .Include(m => m.SetBy)
-            .OrderByDescending(m => m.UnderMonitoring)
-            .ThenByDescending(m => m.UpdatedAt ?? m.CreatedAt)
+            .Include(m => m.Tenant)
+            .Where(m => m.UnderMonitoring
+                && (!m.MonitoringExpiresAt.HasValue || m.MonitoringExpiresAt > now))
+            .OrderByDescending(m => m.UpdatedAt ?? m.CreatedAt)
             .Take(250)
             .ToListAsync();
-        return Ok(new { data = rows.Select(MapMonitoring), meta = new { total = rows.Count } });
+        return Ok(new
+        {
+            data = rows.Select(MapMonitoring),
+            meta = new { base_url = $"{Request.Scheme}://{Request.Host}" }
+        });
     }
 
     [HttpPost("users/{userId:int}/monitoring")]
@@ -483,28 +490,113 @@ public class AdminBrokerController : ControllerBase
     public async Task<IActionResult> SetMonitoring(int userId, [FromBody] SetMonitoringRequest request)
     {
         var tenantId = _tenant.GetTenantIdOrThrow();
-        if (!await _db.Users.AnyAsync(u => u.Id == userId)) return NotFound(new { error = "User not found" });
+        var user = await _db.Users.SingleOrDefaultAsync(u => u.TenantId == tenantId && u.Id == userId);
+        if (user == null)
+        {
+            return NotFound(new
+            {
+                errors = new[] { new { code = "NOT_FOUND", message = "User not found" } }
+            });
+        }
+
+        var reason = request.Reason?.Trim() ?? string.Empty;
+        if (request.UnderMonitoring && string.IsNullOrEmpty(reason))
+        {
+            return BadRequest(new
+            {
+                errors = new[]
+                {
+                    new
+                    {
+                        code = "VALIDATION_ERROR",
+                        message = "A reason is required to set monitoring",
+                        field = "reason"
+                    }
+                }
+            });
+        }
 
         var row = await _db.UserMonitoringRestrictions.FirstOrDefaultAsync(m => m.UserId == userId);
-        if (row == null)
+        if (request.UnderMonitoring && row == null)
         {
             row = new UserMonitoringRestriction { TenantId = tenantId, UserId = userId };
             _db.UserMonitoringRestrictions.Add(row);
         }
 
-        row.UnderMonitoring = request.UnderMonitoring;
-        if (request.RequiresBrokerApproval.HasValue)
+        var actorId = User.GetUserId();
+        var now = DateTime.UtcNow;
+        if (request.UnderMonitoring)
         {
-            row.RequiresBrokerApproval = request.RequiresBrokerApproval.Value;
+            // Created above when absent.
+            var activeRow = row!;
+            activeRow.UnderMonitoring = true;
+            activeRow.MessagingDisabled = request.MessagingDisabled;
+            activeRow.MonitoringExpiresAt = request.ExpiresDays is > 0
+                ? now.AddDays(request.ExpiresDays.Value)
+                : null;
+            activeRow.Reason = reason;
+            activeRow.SetByUserId = actorId;
         }
-        row.MonitoringExpiresAt = request.ExpiresAt
-            ?? (request.ExpiresDays is > 0 ? DateTime.UtcNow.AddDays(request.ExpiresDays.Value) : null);
-        row.Reason = request.Reason;
-        row.SetByUserId = User.GetUserId();
-        row.UpdatedAt = DateTime.UtcNow;
+        else
+        {
+            if (row != null)
+            {
+                var wasSafeguardingCreated = row.Reason?.StartsWith("Safeguarding:", StringComparison.Ordinal) == true;
+                row.UnderMonitoring = false;
+                row.MessagingDisabled = false;
+                row.MonitoringExpiresAt = null;
+                if (wasSafeguardingCreated)
+                {
+                    row.RequiresBrokerApproval = false;
+                }
+            }
+        }
+
+        if (row != null)
+        {
+            row.UpdatedAt = now;
+        }
+        _db.AuditLogs.Add(new AuditLog
+        {
+            TenantId = tenantId,
+            UserId = actorId,
+            Action = request.UnderMonitoring ? "user_monitoring_added" : "user_monitoring_removed",
+            EntityType = "user",
+            EntityId = userId,
+            Metadata = JsonSerializer.Serialize(new
+            {
+                user_id = userId,
+                user_name = $"{user.FirstName} {user.LastName}".Trim(),
+                reason = request.UnderMonitoring ? reason : null,
+                messaging_disabled = request.UnderMonitoring ? request.MessagingDisabled : false,
+                expires_days = request.UnderMonitoring && request.ExpiresDays is > 0
+                    ? request.ExpiresDays
+                    : null,
+                expires_at = row?.MonitoringExpiresAt
+            }),
+            CreatedAt = now
+        });
+        _db.Notifications.Add(new Notification
+        {
+            TenantId = tenantId,
+            UserId = userId,
+            Type = Notification.Types.System,
+            Title = request.UnderMonitoring
+                ? request.MessagingDisabled
+                    ? "Your messaging has been temporarily restricted by your timebank coordinator."
+                    : "Your account has been placed under review by your timebank coordinator."
+                : "Your messaging restrictions have been lifted.",
+            Link = "/messages",
+            IsRead = false,
+            CreatedAt = now
+        });
         await _db.SaveChangesAsync();
 
-        return Ok(new { data = MapMonitoring(row) });
+        return Ok(new
+        {
+            data = new { user_id = userId, under_monitoring = request.UnderMonitoring },
+            meta = new { base_url = $"{Request.Scheme}://{Request.Host}" }
+        });
     }
 
     [HttpGet("configuration")]
@@ -556,7 +648,11 @@ public class AdminBrokerController : ControllerBase
         var unreviewedMessages = await _db.SafeguardingMessageReviews.CountAsync(r => r.IsFlagged && r.ReviewedAt == null);
         var highRiskListings = await _db.BrokerRiskTags.CountAsync(t => t.RiskLevel == "high" || t.RiskLevel == "critical");
         var monitoredUsers = await _db.UserMonitoringRestrictions.CountAsync(m => m.UnderMonitoring && (m.MonitoringExpiresAt == null || m.MonitoringExpiresAt > DateTime.UtcNow));
-        var vettingPending = await _db.VettingRecords.CountAsync(v => v.Status == "pending" || v.Status == "submitted");
+        // Legacy vetting_records are document-era evidence and never represent
+        // an authoritative contact decision. Broker workload comes exclusively
+        // from the current metadata-only review queue.
+        var vettingPending = await _db.SafeguardingVettingReviewRequests.CountAsync(review =>
+            review.Status == SafeguardingVettingReviewRequest.PendingStatus);
         return new
         {
             baseStats,
@@ -706,12 +802,17 @@ public class AdminBrokerController : ControllerBase
     {
         m.Id,
         user_id = m.UserId,
-        user = MapBrokerUser(m.User, m.UserId),
+        tenant_id = m.TenantId,
+        user_name = m.User == null ? string.Empty : $"{m.User.FirstName} {m.User.LastName}".Trim(),
+        tenant_name = m.Tenant?.Name ?? "Unknown",
         under_monitoring = m.UnderMonitoring,
         requires_broker_approval = m.RequiresBrokerApproval,
+        messaging_disabled = m.MessagingDisabled,
+        monitoring_reason = m.Reason,
+        restriction_reason = m.Reason,
+        monitoring_started_at = m.UpdatedAt ?? m.CreatedAt,
         monitoring_expires_at = m.MonitoringExpiresAt,
-        m.Reason,
-        set_by = MapBrokerUser(m.SetBy, m.SetByUserId),
+        restricted_by = m.SetByUserId,
         created_at = m.CreatedAt,
         updated_at = m.UpdatedAt
     };
@@ -778,6 +879,7 @@ public class AdminBrokerController : ControllerBase
     {
         [JsonPropertyName("under_monitoring")] public bool UnderMonitoring { get; set; } = true;
         [JsonPropertyName("requires_broker_approval")] public bool? RequiresBrokerApproval { get; set; }
+        [JsonPropertyName("messaging_disabled")] public bool MessagingDisabled { get; set; }
         [JsonPropertyName("expires_at")] public DateTime? ExpiresAt { get; set; }
         [JsonPropertyName("expires_days")] public int? ExpiresDays { get; set; }
         [JsonPropertyName("reason"), MaxLength(2000)] public string? Reason { get; set; }

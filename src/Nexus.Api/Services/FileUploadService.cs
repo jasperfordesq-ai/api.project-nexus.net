@@ -6,6 +6,7 @@
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
+using System.Text;
 
 namespace Nexus.Api.Services;
 
@@ -22,6 +23,7 @@ public class FileUploadService
     private const long MaxFileSizeBytes = 10 * 1024 * 1024; // 10 MB
     private const long MaxAvatarSizeBytes = 5 * 1024 * 1024; // 5 MB
     private const long MaxTenantLogoSizeBytes = 2 * 1024 * 1024; // 2 MB
+    private const int MaxVoiceDurationSeconds = 300;
 
     private static readonly HashSet<string> AllowedImageTypes = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -42,14 +44,21 @@ public class FileUploadService
         "text/plain", "text/csv"
     };
 
-    private static readonly HashSet<string> AllowedMessageTypes = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly IReadOnlyDictionary<string, string[]> AllowedMessageTypesByExtension =
+        new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
     {
-        "image/jpeg", "image/png", "image/gif", "image/webp",
-        "application/pdf",
-        "application/msword",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "text/plain", "text/csv",
-        "audio/webm", "audio/mpeg", "audio/mp4", "audio/wav", "audio/ogg"
+        [".jpg"] = ["image/jpeg"],
+        [".jpeg"] = ["image/jpeg"],
+        [".png"] = ["image/png"],
+        [".gif"] = ["image/gif"],
+        [".webp"] = ["image/webp"],
+        [".pdf"] = ["application/pdf"],
+        [".txt"] = ["text/plain"],
+        [".csv"] = ["text/plain", "text/csv", "application/csv"],
+        [".doc"] = ["application/msword"],
+        [".docx"] = ["application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/zip"],
+        [".xls"] = ["application/vnd.ms-excel"],
+        [".xlsx"] = ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/zip"]
     };
 
     public FileUploadService(NexusDbContext db, IConfiguration config, ILogger<FileUploadService> logger)
@@ -64,9 +73,9 @@ public class FileUploadService
     /// </summary>
     public async Task<(FileUpload? File, string? Error)> UploadAsync(
         Stream fileStream, string originalFilename, string contentType, long fileSize,
-        int userId, int tenantId, FileCategory category, int? entityId = null, string? entityType = null)
+        int userId, int tenantId, FileCategory category, int? entityId = null, string? entityType = null,
+        CancellationToken cancellationToken = default)
     {
-        // Validate
         var maxSize = category switch
         {
             FileCategory.Avatar => MaxAvatarSizeBytes,
@@ -74,61 +83,126 @@ public class FileUploadService
             _ => MaxFileSizeBytes
         };
         if (fileSize > maxSize)
-            return (null, $"File too large. Maximum size: {maxSize / 1024 / 1024} MB");
+            return (null, category == FileCategory.Message
+                ? "Attachment is too large (max 10 MB)"
+                : $"File too large. Maximum size: {maxSize / 1024 / 1024} MB");
 
-        if (fileSize == 0)
+        if (fileSize <= 0)
             return (null, "File is empty");
 
-        var allowedTypes = category switch
+        var safeOriginalFilename = SanitizeFilename(originalFilename);
+        var extension = Path.GetExtension(safeOriginalFilename).ToLowerInvariant();
+        string storedContentType;
+
+        if (category == FileCategory.Message)
         {
-            FileCategory.Document => AllowedDocumentTypes,
-            FileCategory.Message => AllowedMessageTypes,
-            FileCategory.TenantLogo => AllowedTenantLogoTypes,
-            _ => AllowedImageTypes
-        };
-        if (!allowedTypes.Contains(contentType))
-            return (null, $"File type '{contentType}' is not allowed for {category}");
+            // Laravel's message uploader requires an allow-listed extension and
+            // validates it against the bytes on disk. The multipart Content-Type
+            // header is intentionally not trusted.
+            if (string.IsNullOrWhiteSpace(extension)
+                || !AllowedMessageTypesByExtension.ContainsKey(extension))
+            {
+                return (null, "That attachment type is not allowed");
+            }
 
-        // Generate stored filename
-        var extension = Path.GetExtension(originalFilename);
-        if (string.IsNullOrEmpty(extension))
-            extension = MimeToExtension(contentType);
+            storedContentType = string.Empty;
+        }
+        else
+        {
+            var allowedTypes = category switch
+            {
+                FileCategory.Document => AllowedDocumentTypes,
+                FileCategory.TenantLogo => AllowedTenantLogoTypes,
+                _ => AllowedImageTypes
+            };
+            if (!allowedTypes.Contains(contentType))
+                return (null, $"File type '{contentType}' is not allowed for {category}");
+
+            storedContentType = contentType;
+            if (string.IsNullOrEmpty(extension))
+                extension = MimeToExtension(contentType);
+        }
+
         var storedFilename = $"{Guid.NewGuid():N}{extension}";
-
-        // Build path: uploads/{tenant_id}/{category}/{filename}
         var relativePath = Path.Combine(tenantId.ToString(), category.ToString().ToLowerInvariant(), storedFilename);
         var uploadsRoot = GetUploadsRoot();
         var fullPath = Path.Combine(uploadsRoot, relativePath);
-
-        // Ensure directory exists
         var directory = Path.GetDirectoryName(fullPath)!;
         Directory.CreateDirectory(directory);
+        var temporaryPath = fullPath + $".{Guid.NewGuid():N}.uploading";
+        FileUpload? upload = null;
+        var databasePersisted = false;
 
-        // Write file
-        await using var output = new FileStream(fullPath, FileMode.Create, FileAccess.Write);
-        await fileStream.CopyToAsync(output);
-
-        // Record in database
-        var upload = new FileUpload
+        try
         {
-            TenantId = tenantId,
-            UserId = userId,
-            OriginalFilename = SanitizeFilename(originalFilename),
-            StoredFilename = storedFilename,
-            FilePath = relativePath.Replace('\\', '/'),
-            ContentType = contentType,
-            FileSizeBytes = fileSize,
-            Category = category,
-            EntityId = entityId,
-            EntityType = entityType,
-            CreatedAt = DateTime.UtcNow
-        };
+            var actualSize = await CopyToTemporaryFileAsync(
+                fileStream,
+                temporaryPath,
+                maxSize,
+                cancellationToken);
+            if (actualSize < 0)
+            {
+                TryDeleteFile(temporaryPath, "oversized upload");
+                return (null, category == FileCategory.Message
+                    ? "Attachment is too large (max 10 MB)"
+                    : $"File too large. Maximum size: {maxSize / 1024 / 1024} MB");
+            }
+            if (actualSize == 0)
+            {
+                TryDeleteFile(temporaryPath, "empty upload");
+                return (null, "File is empty");
+            }
 
-        _db.Set<FileUpload>().Add(upload);
-        await _db.SaveChangesAsync();
+            if (category == FileCategory.Message)
+            {
+                storedContentType = await DetectMessageContentTypeAsync(
+                    temporaryPath,
+                    extension,
+                    cancellationToken);
+                if (!AllowedMessageTypesByExtension[extension].Contains(
+                        storedContentType,
+                        StringComparer.OrdinalIgnoreCase))
+                {
+                    TryDeleteFile(temporaryPath, "invalid message attachment");
+                    return (null, "That attachment type is not allowed");
+                }
+            }
 
-        _logger.LogInformation("File uploaded: {FileId} ({Category}) by user {UserId}", upload.Id, category, userId);
-        return (upload, null);
+            File.Move(temporaryPath, fullPath);
+
+            upload = new FileUpload
+            {
+                TenantId = tenantId,
+                UserId = userId,
+                OriginalFilename = safeOriginalFilename,
+                StoredFilename = storedFilename,
+                FilePath = relativePath.Replace('\\', '/'),
+                ContentType = storedContentType,
+                FileSizeBytes = actualSize,
+                Category = category,
+                EntityId = entityId,
+                EntityType = entityType,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _db.Set<FileUpload>().Add(upload);
+            await _db.SaveChangesAsync(cancellationToken);
+            databasePersisted = true;
+
+            _logger.LogInformation("File uploaded: {FileId} ({Category}) by user {UserId}", upload.Id, category, userId);
+            return (upload, null);
+        }
+        catch
+        {
+            TryDeleteFile(temporaryPath, "failed upload staging");
+            if (!databasePersisted)
+            {
+                TryDeleteFile(fullPath, "failed upload persistence");
+                if (upload != null)
+                    _db.Entry(upload).State = EntityState.Detached;
+            }
+            throw;
+        }
     }
 
     /// <summary>
@@ -201,7 +275,315 @@ public class FileUploadService
     private static string SanitizeFilename(string filename)
     {
         var invalid = Path.GetInvalidFileNameChars();
-        return string.Concat(filename.Where(c => !invalid.Contains(c)));
+        var basename = Path.GetFileName(filename.Trim());
+        var sanitized = string.Concat(basename.Where(c => !invalid.Contains(c) && !char.IsControl(c)));
+        return string.IsNullOrWhiteSpace(sanitized)
+            ? "attachment"
+            : new string(sanitized.Take(255).ToArray());
+    }
+
+    /// <summary>
+    /// Stores a voice-message recording without widening the ordinary message
+    /// attachment allow-list. MIME is derived from file signatures; the client
+    /// header is used only to distinguish audio-only WebM from video/webm, as
+    /// Laravel's AudioUploader accepts both finfo results.
+    /// </summary>
+    public async Task<(FileUpload? File, int DurationSeconds, string? Error)> UploadVoiceAsync(
+        Stream fileStream,
+        string originalFilename,
+        string contentType,
+        long fileSize,
+        int durationSeconds,
+        int userId,
+        int tenantId,
+        CancellationToken cancellationToken = default)
+    {
+        if (fileSize <= 0)
+            return (null, 0, "Voice message file is required");
+        if (fileSize > MaxFileSizeBytes)
+            return (null, 0, "Audio file too large. Maximum 10MB allowed.");
+        if (durationSeconds > MaxVoiceDurationSeconds)
+            return (null, 0, "Voice message too long. Maximum 5 minutes allowed.");
+
+        var uploadsRoot = GetUploadsRoot();
+        var directory = Path.Combine(uploadsRoot, tenantId.ToString(), "voice_messages");
+        Directory.CreateDirectory(directory);
+        var temporaryPath = Path.Combine(directory, $".{Guid.NewGuid():N}.uploading");
+        string? fullPath = null;
+        FileUpload? upload = null;
+        var databasePersisted = false;
+
+        try
+        {
+            var actualSize = await CopyToTemporaryFileAsync(
+                fileStream,
+                temporaryPath,
+                MaxFileSizeBytes,
+                cancellationToken);
+            if (actualSize < 0)
+            {
+                TryDeleteFile(temporaryPath, "oversized voice upload");
+                return (null, 0, "Audio file too large. Maximum 10MB allowed.");
+            }
+            if (actualSize == 0)
+            {
+                TryDeleteFile(temporaryPath, "empty voice upload");
+                return (null, 0, "Voice message file is required");
+            }
+
+            var detectedContentType = await DetectVoiceContentTypeAsync(
+                temporaryPath,
+                contentType,
+                cancellationToken);
+            if (detectedContentType == null)
+            {
+                TryDeleteFile(temporaryPath, "invalid voice upload");
+                return (null, 0, "Invalid audio format. Supported: WebM, OGG, MP3, WAV, M4A, AAC");
+            }
+
+            var extension = VoiceMimeToExtension(detectedContentType);
+            var storedFilename = $"{Guid.NewGuid():N}.{extension}";
+            var relativePath = Path.Combine(tenantId.ToString(), "voice_messages", storedFilename);
+            fullPath = Path.Combine(uploadsRoot, relativePath);
+            File.Move(temporaryPath, fullPath);
+
+            upload = new FileUpload
+            {
+                TenantId = tenantId,
+                UserId = userId,
+                OriginalFilename = SanitizeFilename(originalFilename),
+                StoredFilename = storedFilename,
+                FilePath = relativePath.Replace('\\', '/'),
+                ContentType = detectedContentType,
+                FileSizeBytes = actualSize,
+                Category = FileCategory.Message,
+                EntityType = "message_voice",
+                CreatedAt = DateTime.UtcNow
+            };
+            _db.FileUploads.Add(upload);
+            await _db.SaveChangesAsync(cancellationToken);
+            databasePersisted = true;
+
+            return (upload, Math.Max(1, durationSeconds), null);
+        }
+        catch
+        {
+            TryDeleteFile(temporaryPath, "failed voice staging");
+            if (!databasePersisted && fullPath != null)
+            {
+                TryDeleteFile(fullPath, "failed voice persistence");
+                if (upload != null)
+                    _db.Entry(upload).State = EntityState.Detached;
+            }
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Removes an unattached staged upload. A database row is deliberately
+    /// retained if physical deletion fails so stored bytes never become an
+    /// untracked orphan.
+    /// </summary>
+    public async Task<bool> DeleteStagedAsync(
+        FileUpload upload,
+        CancellationToken cancellationToken = default)
+    {
+        var fullPath = GetFullPath(upload);
+        try
+        {
+            if (File.Exists(fullPath))
+                File.Delete(fullPath);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogCritical(
+                exception,
+                "Failed to remove staged upload {FileUploadId} at {Path}; retaining its database row",
+                upload.Id,
+                fullPath);
+            return false;
+        }
+
+        try
+        {
+            _db.ChangeTracker.Clear();
+            if (upload.Id > 0)
+            {
+                await _db.FileUploads
+                    .IgnoreQueryFilters()
+                    .Where(row => row.Id == upload.Id && row.TenantId == upload.TenantId)
+                    .ExecuteDeleteAsync(cancellationToken);
+            }
+            return true;
+        }
+        catch (Exception exception)
+        {
+            _logger.LogCritical(exception, "Failed to remove staged upload row {FileUploadId}", upload.Id);
+            return false;
+        }
+    }
+
+    private async Task<long> CopyToTemporaryFileAsync(
+        Stream input,
+        string temporaryPath,
+        long maximumBytes,
+        CancellationToken cancellationToken)
+    {
+        var buffer = new byte[81_920];
+        long total = 0;
+        await using var output = new FileStream(
+            temporaryPath,
+            FileMode.CreateNew,
+            FileAccess.Write,
+            FileShare.None,
+            buffer.Length,
+            FileOptions.Asynchronous | FileOptions.SequentialScan);
+
+        while (true)
+        {
+            var read = await input.ReadAsync(buffer.AsMemory(), cancellationToken);
+            if (read == 0)
+                break;
+
+            total += read;
+            if (total > maximumBytes)
+                return -1;
+
+            await output.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
+        }
+
+        await output.FlushAsync(cancellationToken);
+        return total;
+    }
+
+    private static async Task<string> DetectMessageContentTypeAsync(
+        string path,
+        string extension,
+        CancellationToken cancellationToken)
+    {
+        var sample = new byte[8_192];
+        int count;
+        await using (var input = new FileStream(
+            path,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read,
+            sample.Length,
+            FileOptions.Asynchronous | FileOptions.SequentialScan))
+        {
+            count = await input.ReadAsync(sample.AsMemory(), cancellationToken);
+        }
+
+        return DetectMessageContentType(sample, count, extension);
+    }
+
+    private static async Task<string?> DetectVoiceContentTypeAsync(
+        string path,
+        string claimedContentType,
+        CancellationToken cancellationToken)
+    {
+        var sample = new byte[64];
+        int count;
+        await using (var input = new FileStream(
+            path,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read,
+            sample.Length,
+            FileOptions.Asynchronous | FileOptions.SequentialScan))
+        {
+            count = await input.ReadAsync(sample.AsMemory(), cancellationToken);
+        }
+
+        return DetectVoiceContentType(sample, count, claimedContentType);
+    }
+
+    private static string? DetectVoiceContentType(byte[] sample, int count, string claimedContentType)
+    {
+        var bytes = sample.AsSpan(0, count);
+        var baseClaim = claimedContentType.Split(';', 2, StringSplitOptions.None)[0].Trim().ToLowerInvariant();
+
+        if (StartsWith(bytes, [0x1a, 0x45, 0xdf, 0xa3]))
+            return baseClaim is "audio/webm" or "video/webm" ? baseClaim : "video/webm";
+        if (StartsWith(bytes, Encoding.ASCII.GetBytes("OggS")))
+            return "audio/ogg";
+        if (bytes.Length >= 2
+            && bytes[0] == 0xff
+            && bytes[1] is 0xf1 or 0xf9)
+            return "audio/aac";
+        if (StartsWith(bytes, Encoding.ASCII.GetBytes("ID3"))
+            || (bytes.Length >= 2 && bytes[0] == 0xff && bytes[1] is 0xfb or 0xf3 or 0xf2))
+            return "audio/mpeg";
+        if (bytes.Length >= 12
+            && StartsWith(bytes, Encoding.ASCII.GetBytes("RIFF"))
+            && bytes.Slice(8, 4).SequenceEqual(Encoding.ASCII.GetBytes("WAVE")))
+            return "audio/wav";
+        if (bytes.Length >= 12
+            && bytes.Slice(4, 4).SequenceEqual(Encoding.ASCII.GetBytes("ftyp")))
+            return baseClaim is "audio/x-m4a" ? "audio/x-m4a" : "audio/mp4";
+        return null;
+    }
+
+    private static string DetectMessageContentType(byte[] sample, int count, string extension)
+    {
+        var bytes = sample.AsSpan(0, count);
+        if (StartsWith(bytes, [0xff, 0xd8, 0xff]))
+            return "image/jpeg";
+        if (StartsWith(bytes, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+            return "image/png";
+        if (StartsWith(bytes, Encoding.ASCII.GetBytes("GIF87a"))
+            || StartsWith(bytes, Encoding.ASCII.GetBytes("GIF89a")))
+            return "image/gif";
+        if (bytes.Length >= 12
+            && StartsWith(bytes, Encoding.ASCII.GetBytes("RIFF"))
+            && bytes.Slice(8, 4).SequenceEqual(Encoding.ASCII.GetBytes("WEBP")))
+            return "image/webp";
+        if (StartsWith(bytes, Encoding.ASCII.GetBytes("%PDF-")))
+            return "application/pdf";
+        if (StartsWith(bytes, [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]))
+            return extension.Equals(".xls", StringComparison.OrdinalIgnoreCase)
+                ? "application/vnd.ms-excel"
+                : "application/msword";
+        if (StartsWith(bytes, [0x50, 0x4b, 0x03, 0x04])
+            || StartsWith(bytes, [0x50, 0x4b, 0x05, 0x06])
+            || StartsWith(bytes, [0x50, 0x4b, 0x07, 0x08]))
+            return "application/zip";
+        if (LooksLikeUtf8Text(bytes))
+            return "text/plain";
+
+        return "application/octet-stream";
+    }
+
+    private static bool StartsWith(ReadOnlySpan<byte> bytes, ReadOnlySpan<byte> signature)
+        => bytes.Length >= signature.Length && bytes[..signature.Length].SequenceEqual(signature);
+
+    private static bool LooksLikeUtf8Text(ReadOnlySpan<byte> bytes)
+    {
+        try
+        {
+            var text = new UTF8Encoding(false, true).GetString(bytes);
+            return text.All(character => character is '\r' or '\n' or '\t'
+                || (!char.IsControl(character) && character != '\u007f'));
+        }
+        catch (DecoderFallbackException)
+        {
+            return false;
+        }
+    }
+
+    private void TryDeleteFile(string path, string reason)
+    {
+        if (!File.Exists(path))
+            return;
+
+        try
+        {
+            File.Delete(path);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogCritical(exception, "Failed to remove {Reason} file at {Path}", reason, path);
+        }
     }
 
     private static string MimeToExtension(string contentType) => contentType switch
@@ -213,5 +595,16 @@ public class FileUploadService
         "image/svg+xml" => ".svg",
         "application/pdf" => ".pdf",
         _ => ".bin"
+    };
+
+    private static string VoiceMimeToExtension(string contentType) => contentType switch
+    {
+        "audio/webm" or "video/webm" => "webm",
+        "audio/ogg" => "ogg",
+        "audio/mpeg" or "audio/mp3" => "mp3",
+        "audio/wav" or "audio/x-wav" => "wav",
+        "audio/mp4" or "audio/x-m4a" or "video/mp4" => "m4a",
+        "audio/aac" or "audio/x-hx-aac-adts" => "aac",
+        _ => "webm"
     };
 }

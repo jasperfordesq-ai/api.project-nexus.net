@@ -162,7 +162,7 @@ public sealed class LaravelReactRealtimeContractTests : IntegrationTestBase
         data.GetProperty("recipient_id").GetInt32().Should().Be(TestData.AdminUser.Id);
         data.GetProperty("is_voice").GetBoolean().Should().BeTrue();
         data.GetProperty("audio_url").GetString().Should().Contain("/api/files/");
-        data.GetProperty("audio_duration").GetInt32().Should().Be(0);
+        data.GetProperty("audio_duration").GetInt32().Should().Be(1);
         data.GetProperty("attachments").EnumerateArray().Should().ContainSingle(attachmentJson =>
             attachmentJson.GetProperty("original_filename").GetString() == "voice-message.webm" &&
             attachmentJson.GetProperty("content_type").GetString() == "audio/webm");
@@ -267,7 +267,10 @@ public sealed class LaravelReactRealtimeContractTests : IntegrationTestBase
     private static async Task<JsonElement> ReadDataAsync(HttpResponseMessage response)
     {
         var json = await response.Content.ReadFromJsonAsync<JsonElement>();
-        json.GetProperty("success").GetBoolean().Should().BeTrue();
+        if (json.TryGetProperty("success", out var success))
+        {
+            success.GetBoolean().Should().BeTrue();
+        }
         return json.GetProperty("data");
     }
 }

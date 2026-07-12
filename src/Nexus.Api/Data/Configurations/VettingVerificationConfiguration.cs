@@ -24,6 +24,9 @@ public class VettingVerificationConfiguration : TenantScopedConfiguration
             entity.HasKey(e => e.Id);
             entity.Property(e => e.VettingType).HasMaxLength(50).IsRequired();
             entity.Property(e => e.Status).HasMaxLength(30).IsRequired();
+            entity.Property(e => e.LegacySensitiveMetadataRedacted)
+                .HasColumnName("legacy_sensitive_metadata_redacted")
+                .HasDefaultValue(false);
             entity.HasIndex(e => new { e.TenantId, e.UserId });
             entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne(e => e.VerifiedBy).WithMany().HasForeignKey(e => e.VerifiedById).OnDelete(DeleteBehavior.SetNull);

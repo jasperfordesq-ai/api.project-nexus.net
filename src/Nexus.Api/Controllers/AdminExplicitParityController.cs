@@ -1208,7 +1208,6 @@ public class AdminExplicitParityController : ControllerBase
     [HttpPut("/api/v2/admin/reports/municipal-impact/templates/{id}")]
     [HttpPut("/api/v2/admin/reports/social-value/config")]
     [HttpPut("/api/v2/admin/support-reports/{id}")]
-    [HttpPut("/api/v2/admin/safeguarding/options/reorder")]
     [HttpPut("/api/v2/admin/super/identity/fee")]
     [HttpPut("/api/v2/admin/volunteering/community-projects/{id}/review")]
     [HttpPut("/api/v2/admin/volunteering/custom-fields/{id}")]

@@ -17,14 +17,16 @@ namespace Nexus.Api.Services;
 /// Laravel-contract-compatible group time exchanges.
 ///
 /// The Laravel edition stores a mutable balance and writes provider credit rows.
-/// ASP.NET derives balances from its transaction ledger, so completion pairs the
-/// receiver debits with provider credits as direct transfers. This preserves the
-/// same user-visible split while making conservation an invariant of the ledger.
+/// ASP.NET derives balances from its transaction ledger, so completion writes the
+/// canonical provider rows plus hidden balance-adapter rows for the independent
+/// receiver debits. Only the canonical provider row IDs leave this service.
 /// </summary>
 public class GroupExchangeService
 {
     private const string ProviderRole = "provider";
     private const string ReceiverRole = "receiver";
+    private const string ExchangeTransactionType = "exchange";
+    private const string BalanceAdapterTransactionType = "group_exchange_balance_adapter";
 
     private readonly NexusDbContext _db;
     private readonly TenantContext _tenantContext;
@@ -32,6 +34,7 @@ public class GroupExchangeService
     private readonly EmailNotificationService _emailNotifications;
     private readonly ILogger<GroupExchangeService> _logger;
     private readonly PersonalWalletLedgerService _personalWallet;
+    private readonly SafeguardingInteractionPolicy _safeguardingInteractions;
 
     public GroupExchangeService(
         NexusDbContext db,
@@ -39,7 +42,8 @@ public class GroupExchangeService
         PushNotificationService pushNotifications,
         EmailNotificationService emailNotifications,
         ILogger<GroupExchangeService> logger,
-        PersonalWalletLedgerService personalWallet)
+        PersonalWalletLedgerService personalWallet,
+        SafeguardingInteractionPolicy safeguardingInteractions)
     {
         _db = db;
         _tenantContext = tenantContext;
@@ -47,6 +51,7 @@ public class GroupExchangeService
         _emailNotifications = emailNotifications;
         _logger = logger;
         _personalWallet = personalWallet;
+        _safeguardingInteractions = safeguardingInteractions;
     }
 
     public async Task<GroupExchangeListResult> ListForUserAsync(
@@ -114,28 +119,53 @@ public class GroupExchangeService
         CancellationToken cancellationToken = default)
     {
         var tenantId = _tenantContext.GetTenantIdOrThrow();
-        if (RoundHours(input.TotalHours) <= 0m ||
-            (input.SplitType != null && input.SplitType is not ("equal" or "custom" or "weighted")))
-        {
-            return GroupExchangeMutationResult.Failed("Invalid exchange total or split type");
-        }
-
-        var participantInputs = input.Participants ?? Array.Empty<GroupExchangeParticipantInput>();
-        GroupExchange exchange;
+        var participantInputs = NormalizeParticipantInputs(input.Participants);
         try
         {
-            await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
+            await using var transaction = await _db.Database.BeginTransactionAsync(
+                IsolationLevel.ReadCommitted,
+                cancellationToken);
+
+            var participantError = await ValidateParticipantInputsAsync(
+                organizerId,
+                participantInputs,
+                cancellationToken,
+                includeOrganizerInUserValidation: true);
+
+            var contactIds = participantInputs
+                .Select(item => item.UserId)
+                .Prepend(organizerId)
+                .Distinct()
+                .ToArray();
+            var protection = await _safeguardingInteractions.EvaluateLockedAllPairsLocalContactsAsync(
+                contactIds,
+                tenantId,
+                "group_exchange_create",
+                cancellationToken);
+            if (!protection.IsAllowed)
+            {
+                return GroupExchangeMutationResult.SafeguardingFailed(protection);
+            }
+
+            // Laravel evaluates the all-pairs contact policy even when a supplied
+            // participant is not an active tenant user. A contact restriction wins;
+            // otherwise create reports the canonical internal create failure.
+            if (participantError != null)
+            {
+                return GroupExchangeMutationResult.Failed(
+                    "Failed to create exchange",
+                    "INTERNAL_ERROR");
+            }
+
             var now = DateTime.UtcNow;
-            exchange = new GroupExchange
+            var exchange = new GroupExchange
             {
                 TenantId = tenantId,
                 GroupId = null,
                 Title = input.Title.Trim(),
                 Description = NormalizeOptionalText(input.Description),
                 TotalHours = RoundHours(input.TotalHours),
-                // Lifecycle state is server-owned. Accepting a caller supplied
-                // completed/pending status would bypass start and fresh consent.
-                Status = "draft",
+                Status = input.Status ?? "draft",
                 SplitType = input.SplitType ?? "equal",
                 ListingId = input.ListingId,
                 BrokerId = input.BrokerId,
@@ -145,48 +175,38 @@ public class GroupExchangeService
                 UpdatedAt = now
             };
 
+            foreach (var participantInput in participantInputs)
+            {
+                exchange.Participants.Add(new GroupExchangeParticipant
+                {
+                    UserId = participantInput.UserId,
+                    Role = participantInput.Role,
+                    Hours = RoundHours(participantInput.Hours),
+                    Weight = RoundWeight(participantInput.Weight),
+                    IsConfirmed = false,
+                    CreatedAt = now
+                });
+            }
+
             _db.GroupExchanges.Add(exchange);
             await _db.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
+
+            _logger.LogInformation(
+                "User {OrganizerId} created group exchange {ExchangeId} for tenant {TenantId}",
+                organizerId,
+                exchange.Id,
+                tenantId);
+
+            return GroupExchangeMutationResult.Succeeded(exchange.Id);
         }
         catch (DbUpdateException exception)
         {
             _logger.LogWarning(exception, "Could not create group exchange for user {OrganizerId}", organizerId);
-            return GroupExchangeMutationResult.Failed("Failed to create exchange");
+            return GroupExchangeMutationResult.Failed(
+                "An unexpected error occurred.",
+                "SERVER_ERROR");
         }
-
-        // Canonical store semantics persist the exchange first and treat inline
-        // participant additions as independent best-effort operations. A blocked,
-        // cross-tenant, duplicate, or otherwise invalid participant is omitted; it
-        // does not roll back or reject the newly-created exchange.
-        foreach (var participantInput in participantInputs)
-        {
-            try
-            {
-                await AddParticipantAsync(
-                    exchange.Id,
-                    organizerId,
-                    participantInput,
-                    cancellationToken);
-            }
-            catch (Exception exception)
-            {
-                _logger.LogWarning(
-                    exception,
-                    "Inline participant {ParticipantId}/{Role} was skipped for group exchange {ExchangeId}",
-                    participantInput.UserId,
-                    participantInput.Role,
-                    exchange.Id);
-            }
-        }
-
-        _logger.LogInformation(
-            "User {OrganizerId} created group exchange {ExchangeId} for tenant {TenantId}",
-            organizerId,
-            exchange.Id,
-            tenantId);
-
-        return GroupExchangeMutationResult.Succeeded(exchange.Id);
     }
 
     public async Task<bool> UpdateAsync(
@@ -195,10 +215,15 @@ public class GroupExchangeService
         CancellationToken cancellationToken = default)
     {
         var tenantId = _tenantContext.GetTenantIdOrThrow();
-        if (input.TotalHours is <= 0m ||
-            (input.SplitType != null && input.SplitType is not ("equal" or "custom" or "weighted")))
+        if (input.Title is null &&
+            input.Description is null &&
+            input.SplitType is null &&
+            !input.TotalHours.HasValue &&
+            !input.BrokerId.HasValue &&
+            input.BrokerNotes is null &&
+            !input.ListingId.HasValue)
         {
-            return false;
+            return true;
         }
 
         var lockAttempted = false;
@@ -215,14 +240,7 @@ public class GroupExchangeService
                 .Include(item => item.Participants)
                 .FirstOrDefaultAsync(item => item.Id == id && item.TenantId == tenantId, cancellationToken);
 
-            if (exchange == null || exchange.Status is not ("draft" or "pending_participants"))
-            {
-                return false;
-            }
-
-            var resultingSplitType = input.SplitType ?? exchange.SplitType;
-            if (resultingSplitType == "custom" &&
-                exchange.Participants.Any(participant => RoundHours(participant.Hours) <= 0m))
+            if (exchange == null)
             {
                 return false;
             }
@@ -262,8 +280,7 @@ public class GroupExchangeService
             var exchange = await _db.GroupExchanges
                 .FirstOrDefaultAsync(item => item.Id == id && item.TenantId == tenantId, cancellationToken);
 
-            if (exchange == null ||
-                exchange.Status is not ("draft" or "pending_participants" or "pending_confirmation"))
+            if (exchange == null)
             {
                 return false;
             }
@@ -280,7 +297,7 @@ public class GroupExchangeService
         }
     }
 
-    public async Task<bool> AddParticipantAsync(
+    public async Task<GroupExchangeOperationResult> AddParticipantAsync(
         int exchangeId,
         int organizerId,
         GroupExchangeParticipantInput input,
@@ -289,7 +306,7 @@ public class GroupExchangeService
         var tenantId = _tenantContext.GetTenantIdOrThrow();
         if (!IsValidParticipant(input))
         {
-            return false;
+            return GroupExchangeOperationResult.Failed("Failed to add participant (may already exist)");
         }
 
         var lockAttempted = false;
@@ -299,30 +316,56 @@ public class GroupExchangeService
             lockAttempted = true;
             await AcquireSessionExchangeLockAsync(tenantId, exchangeId, cancellationToken);
             await using var transaction = await _db.Database.BeginTransactionAsync(
-                IsolationLevel.Serializable,
+                IsolationLevel.ReadCommitted,
                 cancellationToken);
 
             var exchange = await _db.GroupExchanges
+                .Include(item => item.Participants)
                 .FirstOrDefaultAsync(item => item.Id == exchangeId &&
                                              item.TenantId == tenantId &&
-                                             item.CreatedById == organizerId &&
-                                             (item.Status == "draft" || item.Status == "pending_participants"),
+                                             item.CreatedById == organizerId,
                     cancellationToken);
 
-            if (exchange == null || (exchange.SplitType == "custom" && RoundHours(input.Hours) <= 0m))
+            if (exchange == null)
             {
-                return false;
+                return GroupExchangeOperationResult.Failed("Failed to add participant (may already exist)");
             }
 
             var participantError = await ValidateParticipantInputsAsync(
                 organizerId,
                 new[] { input },
                 cancellationToken,
-                exchangeId);
+                exchangeId,
+                includeOrganizerInUserValidation: false);
 
             if (participantError != null)
             {
-                return false;
+                return participantError;
+            }
+
+            var brokerApprovalError = await CheckBrokerApprovalAsync(
+                new[] { input.UserId },
+                tenantId,
+                cancellationToken);
+            if (brokerApprovalError != null)
+            {
+                return brokerApprovalError;
+            }
+
+            var contactIds = exchange.Participants
+                .Select(item => item.UserId)
+                .Prepend(input.UserId)
+                .Prepend(exchange.CreatedById)
+                .Distinct()
+                .ToArray();
+            var protection = await _safeguardingInteractions.EvaluateLockedAllPairsLocalContactsAsync(
+                contactIds,
+                tenantId,
+                "group_exchange_add_participant",
+                cancellationToken);
+            if (!protection.IsAllowed)
+            {
+                return GroupExchangeOperationResult.SafeguardingFailed(protection);
             }
 
             var participant = new GroupExchangeParticipant
@@ -339,7 +382,7 @@ public class GroupExchangeService
 
             await _db.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
-            return true;
+            return GroupExchangeOperationResult.Succeeded();
         }
         catch (DbUpdateException exception)
         {
@@ -351,12 +394,18 @@ public class GroupExchangeService
                     input.UserId,
                     input.Role,
                     exchangeId);
-                return false;
+                return GroupExchangeOperationResult.Failed("Failed to add participant (may already exist)");
             }
 
-            // Laravel only turns an already-present participant into false. Enum,
-            // precision, and other database-domain failures escape as server errors.
-            throw;
+            _logger.LogError(
+                exception,
+                "Could not add participant {ParticipantId}/{Role} to group exchange {ExchangeId}",
+                input.UserId,
+                input.Role,
+                exchangeId);
+            return GroupExchangeOperationResult.Failed(
+                "An unexpected error occurred.",
+                "SERVER_ERROR");
         }
         finally
         {
@@ -391,7 +440,7 @@ public class GroupExchangeService
                                              item.CreatedById == organizerId,
                     cancellationToken);
 
-            if (exchange == null || exchange.Status is not ("draft" or "pending_participants"))
+            if (exchange == null)
             {
                 return false;
             }
@@ -430,14 +479,13 @@ public class GroupExchangeService
         await _db.Database.OpenConnectionAsync(cancellationToken);
         try
         {
-            // Acquire the session lock BEFORE opening the Serializable
-            // transaction. A waiter therefore begins with a post-lock snapshot
-            // and observes the preceding start instead of reading stale state.
+            // Acquire the session lock before opening the transaction so a
+            // waiter starts from the state committed by the preceding writer.
             lockAttempted = true;
             await AcquireSessionExchangeLockAsync(tenantId, exchangeId, cancellationToken);
 
             await using var transaction = await _db.Database.BeginTransactionAsync(
-                IsolationLevel.Serializable,
+                IsolationLevel.ReadCommitted,
                 cancellationToken);
 
             var exchange = await _db.GroupExchanges
@@ -455,11 +503,6 @@ public class GroupExchangeService
                     "This exchange cannot be started from its current status.");
             }
 
-            if (!await HasValidTenantParticipantsAsync(exchange, tenantId, cancellationToken))
-            {
-                return GroupExchangeOperationResult.Failed("Exchange has invalid participants");
-            }
-
             if (!exchange.Participants.Any(item => item.Role == ProviderRole) ||
                 !exchange.Participants.Any(item => item.Role == ReceiverRole))
             {
@@ -474,18 +517,16 @@ public class GroupExchangeService
                 return GroupExchangeOperationResult.Failed(imbalance);
             }
 
-            if (exchange.Participants.GroupBy(item => item.UserId).Any(group => group.Count() > 1))
+            var protection = await _safeguardingInteractions.EvaluateLockedAllPairsLocalContactsAsync(
+                exchange.Participants
+                    .Select(item => item.UserId)
+                    .Prepend(exchange.CreatedById),
+                tenantId,
+                "group_exchange_start",
+                cancellationToken);
+            if (!protection.IsAllowed)
             {
-                return GroupExchangeOperationResult.Failed(
-                    "A member cannot be both a provider and a receiver in the same exchange.");
-            }
-
-            // Confirmations are consent to the exact immutable split. Quarantine
-            // historical draft confirmations before entering the consent state.
-            foreach (var participant in exchange.Participants)
-            {
-                participant.IsConfirmed = false;
-                participant.ConfirmedAt = null;
+                return GroupExchangeOperationResult.SafeguardingFailed(protection);
             }
 
             exchange.Status = "pending_confirmation";
@@ -510,7 +551,7 @@ public class GroupExchangeService
         return GroupExchangeOperationResult.Succeeded();
     }
 
-    public async Task<bool> ConfirmParticipationAsync(
+    public async Task<GroupExchangeOperationResult> ConfirmParticipationAsync(
         int exchangeId,
         int userId,
         CancellationToken cancellationToken = default)
@@ -526,19 +567,44 @@ public class GroupExchangeService
                 IsolationLevel.ReadCommitted,
                 cancellationToken);
 
-            var affected = await _db.GroupExchangeParticipants
-                .Where(participant => participant.GroupExchangeId == exchangeId &&
-                                      participant.UserId == userId &&
-                                      !participant.IsConfirmed &&
-                                      participant.GroupExchange != null &&
-                                      participant.GroupExchange.TenantId == tenantId &&
-                                      participant.GroupExchange.Status == "pending_confirmation")
-                .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(participant => participant.IsConfirmed, true)
-                    .SetProperty(participant => participant.ConfirmedAt, DateTime.UtcNow), cancellationToken);
+            var exchange = await _db.GroupExchanges
+                .Include(item => item.Participants)
+                .FirstOrDefaultAsync(item => item.Id == exchangeId &&
+                                             item.TenantId == tenantId,
+                    cancellationToken);
+            if (exchange == null)
+            {
+                return GroupExchangeOperationResult.Failed("Failed to confirm participation");
+            }
 
+            var matchingParticipants = exchange.Participants
+                .Where(participant => participant.UserId == userId && !participant.IsConfirmed)
+                .ToArray();
+            if (matchingParticipants.Length == 0)
+            {
+                return GroupExchangeOperationResult.Failed("Failed to confirm participation");
+            }
+
+            var protection = await _safeguardingInteractions.EvaluateLockedAllPairsLocalContactsAsync(
+                exchange.Participants.Select(item => item.UserId),
+                tenantId,
+                "group_exchange_confirm",
+                cancellationToken);
+            if (!protection.IsAllowed)
+            {
+                return GroupExchangeOperationResult.SafeguardingFailed(protection);
+            }
+
+            var now = DateTime.UtcNow;
+            foreach (var participant in matchingParticipants)
+            {
+                participant.IsConfirmed = true;
+                participant.ConfirmedAt = now;
+            }
+
+            await _db.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
-            return affected > 0;
+            return GroupExchangeOperationResult.Succeeded();
         }
         finally
         {
@@ -615,22 +681,21 @@ public class GroupExchangeService
                 return GroupExchangeCompletionResult.Failed("Exchange cancelled");
             }
 
-            if (exchange.Status != "pending_confirmation")
-            {
-                return GroupExchangeCompletionResult.Failed(
-                    "Exchange must be started before it can be completed");
-            }
-
-            if (!await HasValidTenantParticipantsAsync(exchange, tenantId, cancellationToken))
-            {
-                return GroupExchangeCompletionResult.Failed("Exchange has invalid participants");
-            }
-
             var unconfirmed = exchange.Participants.Count(item => !item.IsConfirmed);
             if (unconfirmed > 0)
             {
                 return GroupExchangeCompletionResult.Failed(
                     $"{unconfirmed} participant(s) still need to confirm");
+            }
+
+            var protection = await _safeguardingInteractions.EvaluateLockedAllPairsLocalContactsAsync(
+                exchange.Participants.Select(item => item.UserId),
+                tenantId,
+                "group_exchange_complete",
+                cancellationToken);
+            if (!protection.IsAllowed)
+            {
+                return GroupExchangeCompletionResult.SafeguardingFailed(protection);
             }
 
             split = CalculateSplit(exchange);
@@ -664,43 +729,73 @@ public class GroupExchangeService
                     cancellationToken);
                 if (balance < receiver.Hours)
                 {
-                    return GroupExchangeCompletionResult.Failed("Insufficient balance for transfer");
+                    // Laravel's guarded balance decrement raises from inside the
+                    // transaction. Return its externally-observable generic 500
+                    // contract while the uncommitted completion rolls back.
+                    return GroupExchangeCompletionResult.Failed(
+                        "An unexpected error occurred.",
+                        "SERVER_ERROR");
                 }
             }
 
-            var ledgerRows = PairTransfers(receivers, providers);
-            if (ledgerRows.Count == 0)
-            {
-                return GroupExchangeCompletionResult.Failed(
-                    "An exchange must settle a positive number of hours");
-            }
-            if (ledgerRows.Any(row => row.ReceiverId == row.ProviderId))
-            {
-                return GroupExchangeCompletionResult.Failed(
-                    "A member cannot transfer group-exchange hours to themselves");
-            }
             var now = DateTime.UtcNow;
-            var transactions = ledgerRows.Select(row => new Transaction
+            var canonicalTransactions = providers.Select(provider => new Transaction
             {
                 TenantId = tenantId,
-                SenderId = row.ReceiverId,
-                ReceiverId = row.ProviderId,
-                Amount = row.Hours,
+                SenderId = exchange.CreatedById,
+                ReceiverId = provider.UserId,
+                Amount = provider.Hours,
                 Description = $"Group exchange: {exchange.Title}",
-                TransactionType = "group_exchange",
+                TransactionType = ExchangeTransactionType,
                 ListingId = null,
                 Status = TransactionStatus.Completed,
                 CreatedAt = now
             }).ToList();
 
-            _db.Transactions.AddRange(transactions);
+            // Laravel updates mutable user balances independently of its provider
+            // transaction rows. The .NET edition derives balances from the ledger,
+            // so hidden adapter rows neutralize the organizer metadata leg and apply
+            // the receiver debits without changing the public provider-row contract.
+            var adapterTransactions = new List<Transaction>();
+            if (canonicalTransactions.Count > 0)
+            {
+                adapterTransactions.Add(new Transaction
+                {
+                    TenantId = tenantId,
+                    SenderId = null,
+                    ReceiverId = exchange.CreatedById,
+                    Amount = providers.Sum(provider => provider.Hours),
+                    Description = $"Group exchange balance adapter: {exchange.Id}",
+                    TransactionType = BalanceAdapterTransactionType,
+                    ListingId = null,
+                    Status = TransactionStatus.Completed,
+                    DeletedForReceiver = true,
+                    CreatedAt = now
+                });
+            }
+            adapterTransactions.AddRange(receivers.Select(receiver => new Transaction
+            {
+                TenantId = tenantId,
+                SenderId = receiver.UserId,
+                ReceiverId = null,
+                Amount = receiver.Hours,
+                Description = $"Group exchange balance adapter: {exchange.Id}",
+                TransactionType = BalanceAdapterTransactionType,
+                ListingId = null,
+                Status = TransactionStatus.Completed,
+                DeletedForSender = true,
+                CreatedAt = now
+            }));
+
+            _db.Transactions.AddRange(canonicalTransactions);
+            _db.Transactions.AddRange(adapterTransactions);
             exchange.Status = "completed";
             exchange.CompletedAt = now;
             exchange.UpdatedAt = now;
             await _db.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
 
-            transactionIds = transactions.Select(item => item.Id).ToList();
+            transactionIds = canonicalTransactions.Select(item => item.Id).ToList();
             title = exchange.Title;
         }
         finally
@@ -722,243 +817,99 @@ public class GroupExchangeService
         return GroupExchangeCompletionResult.Succeeded(transactionIds);
     }
 
-    private async Task<string?> ValidateParticipantInputsAsync(
+    private async Task<GroupExchangeOperationResult?> ValidateParticipantInputsAsync(
         int organizerId,
         IReadOnlyCollection<GroupExchangeParticipantInput> participants,
         CancellationToken cancellationToken,
-        int? existingExchangeId = null)
+        int? existingExchangeId = null,
+        bool includeOrganizerInUserValidation = false)
     {
-        if (participants.Any(item => !IsValidParticipant(item)))
-        {
-            return "Failed to add participant (may already exist)";
-        }
-
         var duplicate = participants
-            .GroupBy(item => item.UserId)
+            .GroupBy(item => (item.UserId, item.Role), EqualityComparer<(int, string)>.Default)
             .Any(group => group.Count() > 1);
         if (duplicate)
         {
-            return "Failed to add participant (may already exist)";
-        }
-
-        if (participants.Count == 0)
-        {
-            return null;
+            return GroupExchangeOperationResult.Failed("Failed to add participant (may already exist)");
         }
 
         var tenantId = _tenantContext.GetTenantIdOrThrow();
-        var userIds = participants.Select(item => item.UserId).Distinct().ToArray();
+        var userIds = participants.Select(item => item.UserId);
+        if (includeOrganizerInUserValidation)
+        {
+            userIds = userIds.Append(organizerId);
+        }
+        var distinctUserIds = userIds.Distinct().ToArray();
         var foundUserIds = await _db.Users
+            .IgnoreQueryFilters()
             .AsNoTracking()
-            .Where(user => user.TenantId == tenantId && userIds.Contains(user.Id) && user.IsActive)
+            .Where(user => user.TenantId == tenantId &&
+                           distinctUserIds.Contains(user.Id) &&
+                           user.IsActive)
             .Select(user => user.Id)
             .ToListAsync(cancellationToken);
 
-        if (foundUserIds.Count != userIds.Length)
+        if (foundUserIds.Count != distinctUserIds.Length)
         {
-            return "Failed to add participant (may already exist)";
-        }
-
-        var brokerApprovalRequired = await _db.UserMonitoringRestrictions
-            .AsNoTracking()
-            .AnyAsync(restriction => userIds.Contains(restriction.UserId) &&
-                                     restriction.RequiresBrokerApproval &&
-                                     (restriction.MonitoringExpiresAt == null ||
-                                      restriction.MonitoringExpiresAt > DateTime.UtcNow),
-                cancellationToken);
-        if (brokerApprovalRequired)
-        {
-            _logger.LogInformation(
-                "Organizer {OrganizerId} was blocked from adding a participant whose active restriction requires broker approval",
-                organizerId);
-            return "Failed to add participant (may already exist)";
-        }
-
-        var protectionError = await ValidateSafeguardingAndVettingAsync(
-            tenantId,
-            organizerId,
-            userIds,
-            cancellationToken);
-        if (protectionError != null)
-        {
-            return protectionError;
+            return GroupExchangeOperationResult.Failed("Failed to add participant (may already exist)");
         }
 
         if (existingExchangeId.HasValue)
         {
-            var existingUserIds = await _db.GroupExchangeParticipants
+            var existingParticipants = await _db.GroupExchangeParticipants
                 .AsNoTracking()
-                .Where(item => item.GroupExchangeId == existingExchangeId.Value && userIds.Contains(item.UserId))
-                .Select(item => item.UserId)
+                .Where(item => item.GroupExchangeId == existingExchangeId.Value)
+                .Select(item => new { item.UserId, item.Role })
                 .ToListAsync(cancellationToken);
 
-            if (existingUserIds.Count > 0)
+            if (participants.Any(candidate => existingParticipants.Any(existing =>
+                    existing.UserId == candidate.UserId && existing.Role == candidate.Role)))
             {
-                return "Failed to add participant (may already exist)";
+                return GroupExchangeOperationResult.Failed("Failed to add participant (may already exist)");
             }
         }
 
         return null;
     }
 
-    private async Task<string?> ValidateSafeguardingAndVettingAsync(
+    private async Task<GroupExchangeOperationResult?> CheckBrokerApprovalAsync(
+        IEnumerable<int> targetUserIds,
         int tenantId,
-        int organizerId,
-        IReadOnlyCollection<int> participantUserIds,
         CancellationToken cancellationToken)
     {
-        try
+        foreach (var targetUserId in targetUserIds.Where(id => id > 0).Distinct().OrderBy(id => id))
         {
-            return await ValidateSafeguardingAndVettingCoreAsync(
-                tenantId,
-                organizerId,
-                participantUserIds,
-                cancellationToken);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception exception)
-        {
-            // Canonical behavior treats the denormalized broker restriction as
-            // authoritative, then fails open if the supplemental preference /
-            // vetting lookup itself is unavailable.
-            _logger.LogWarning(
-                exception,
-                "Supplemental safeguarding/vetting lookup failed for organizer {OrganizerId}; continuing after broker gate",
-                organizerId);
-            return null;
-        }
-    }
-
-    private async Task<string?> ValidateSafeguardingAndVettingCoreAsync(
-        int tenantId,
-        int organizerId,
-        IReadOnlyCollection<int> participantUserIds,
-        CancellationToken cancellationToken)
-    {
-        var relevantUserIds = participantUserIds
-            .Append(organizerId)
-            .Distinct()
-            .ToArray();
-
-        var triggerRows = await _db.UserSafeguardingPreferences
-            .AsNoTracking()
-            .Where(preference => preference.TenantId == tenantId &&
-                                 relevantUserIds.Contains(preference.UserId) &&
-                                 preference.RevokedAt == null &&
-                                 preference.Option != null &&
-                                 preference.Option.TenantId == tenantId &&
-                                 preference.Option.IsActive)
-            .Select(preference => new SafeguardingTriggerRow(
-                preference.UserId,
-                preference.Option!.TriggersJson))
-            .ToListAsync(cancellationToken);
-
-        var rulesByUser = relevantUserIds.ToDictionary(
-            userId => userId,
-            _ => new SafeguardingInteractionRules());
-
-        foreach (var triggerRow in triggerRows)
-        {
-            MergeSafeguardingTriggers(rulesByUser[triggerRow.UserId], triggerRow.TriggersJson);
-        }
-
-        foreach (var participantUserId in participantUserIds.Distinct())
-        {
-            var participantRules = rulesByUser[participantUserId];
-            // Laravel skips the bidirectional gate when a user is adding their
-            // own provider/receiver role.
-            if (participantUserId == organizerId)
+            try
             {
-                continue;
+                var triggers = await _safeguardingInteractions.GetLockedActiveTriggerStateAsync(
+                    targetUserId,
+                    tenantId,
+                    cancellationToken);
+                if (triggers.RequiresBrokerApproval)
+                {
+                    _logger.LogInformation(
+                        "Participant {ParticipantId} was blocked because their active safeguarding preference requires broker approval",
+                        targetUserId);
+                    return GroupExchangeOperationResult.Failed("Failed to add participant (may already exist)");
+                }
             }
-
-            var organizerRules = rulesByUser[organizerId];
-            if (!await HasAllValidVettingsAsync(
-                    tenantId,
-                    organizerId,
-                    participantRules.RequiredVettingTypes,
-                    cancellationToken) ||
-                !await HasAllValidVettingsAsync(
-                    tenantId,
-                    participantUserId,
-                    organizerRules.RequiredVettingTypes,
-                    cancellationToken))
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                _logger.LogInformation(
-                    "Organizer {OrganizerId} and participant {ParticipantId} failed the bidirectional vetting gate",
-                    organizerId,
-                    participantUserId);
-                return "Failed to add participant (may already exist)";
+                throw;
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(
+                    exception,
+                    "Safeguarding broker-approval lookup failed closed for participant {ParticipantId} in tenant {TenantId}",
+                    targetUserId,
+                    tenantId);
+                return GroupExchangeOperationResult.Failed(
+                    GroupExchangeSafeguardingError.PolicyUnavailableMessage,
+                    "SAFEGUARDING_POLICY_UNAVAILABLE");
             }
         }
 
         return null;
-    }
-
-    private async Task<bool> HasAllValidVettingsAsync(
-        int tenantId,
-        int userId,
-        IReadOnlyCollection<string> requiredTypes,
-        CancellationToken cancellationToken)
-    {
-        if (requiredTypes.Count == 0)
-        {
-            return true;
-        }
-
-        var distinctTypes = requiredTypes.Distinct(StringComparer.Ordinal).ToArray();
-        var today = DateTime.UtcNow.Date;
-        var validTypes = await _db.Set<VettingRecord>()
-            .AsNoTracking()
-            .Where(record => record.TenantId == tenantId &&
-                             record.UserId == userId &&
-                             record.Status == "verified" &&
-                             distinctTypes.Contains(record.VettingType) &&
-                             (record.ExpiresAt == null || record.ExpiresAt >= today))
-            .Select(record => record.VettingType)
-            .Distinct()
-            .ToListAsync(cancellationToken);
-
-        return validTypes.Count == distinctTypes.Length;
-    }
-
-    private static void MergeSafeguardingTriggers(
-        SafeguardingInteractionRules rules,
-        string? triggersJson)
-    {
-        if (string.IsNullOrWhiteSpace(triggersJson))
-        {
-            return;
-        }
-
-        try
-        {
-            using var document = JsonDocument.Parse(triggersJson);
-            var root = document.RootElement;
-            if (root.ValueKind != JsonValueKind.Object)
-            {
-                return;
-            }
-
-            var requiresVetting = root.TryGetProperty("requires_vetted_interaction", out var vettedInteraction) &&
-                                  vettedInteraction.ValueKind == JsonValueKind.True;
-            if (requiresVetting &&
-                root.TryGetProperty("vetting_type_required", out var vettingType) &&
-                vettingType.ValueKind == JsonValueKind.String &&
-                !string.IsNullOrWhiteSpace(vettingType.GetString()))
-            {
-                rules.RequiredVettingTypes.Add(vettingType.GetString()!);
-            }
-        }
-        catch (JsonException)
-        {
-            // Option writes validate this schema. A historical malformed row has
-            // no safely actionable trigger and therefore contributes no rules,
-            // matching Laravel's json_decode(... ) ?: [] behavior.
-        }
     }
 
     private async Task AcquireSessionExchangeLockAsync(
@@ -1014,27 +965,6 @@ public class GroupExchangeService
         }
     }
 
-    private async Task<bool> HasValidTenantParticipantsAsync(
-        GroupExchange exchange,
-        int tenantId,
-        CancellationToken cancellationToken)
-    {
-        var userIds = exchange.Participants.Select(item => item.UserId).Distinct().ToArray();
-        if (userIds.Length == 0)
-        {
-            return true;
-        }
-
-        var tenantUserCount = await _db.Users
-            .AsNoTracking()
-            .CountAsync(user => user.TenantId == tenantId &&
-                                userIds.Contains(user.Id) &&
-                                user.IsActive &&
-                                user.SuspendedAt == null,
-                cancellationToken);
-        return tenantUserCount == userIds.Length;
-    }
-
     private static List<GroupExchangeSplit> CalculateSplit(GroupExchange exchange)
     {
         var participants = exchange.Participants.OrderBy(item => item.Id).ToList();
@@ -1059,19 +989,18 @@ public class GroupExchangeService
 
             if (exchange.SplitType == "weighted")
             {
-                // Laravel treats each non-positive weight as 1. Calculate the
-                // denominator from those effective weights as well; otherwise a
-                // mix of positive and negative inputs can produce a negative final
-                // remainder even though every participant's effective weight is
-                // positive.
-                var totalWeight = roleParticipants.Sum(item => item.Weight > 0m ? item.Weight : 1m);
+                var totalWeight = roleParticipants.Sum(item => item.Weight);
+                if (totalWeight <= 0m)
+                {
+                    totalWeight = roleParticipants.Count;
+                }
 
                 for (var index = 0; index < roleParticipants.Count; index++)
                 {
                     var participant = roleParticipants[index];
                     var hours = index == roleParticipants.Count - 1
                         ? RoundHours(exchange.TotalHours - allocated)
-                        : RoundHours(((participant.Weight > 0m ? participant.Weight : 1m) / totalWeight) *
+                        : RoundHours(((participant.Weight == 0m ? 1m : participant.Weight) / totalWeight) *
                                      exchange.TotalHours);
                     allocated += hours;
                     result.Add(new GroupExchangeSplit(participant.UserId, participant.Role, hours));
@@ -1097,11 +1026,6 @@ public class GroupExchangeService
 
     private static string? GetSplitImbalanceError(IReadOnlyCollection<GroupExchangeSplit> split)
     {
-        if (split.Any(item => item.Hours <= 0m))
-        {
-            return "Every provider and receiver must settle more than zero hours.";
-        }
-
         var credits = split
             .Where(item => item.Role == ProviderRole && item.Hours > 0m)
             .Sum(item => RoundHours(item.Hours));
@@ -1111,11 +1035,6 @@ public class GroupExchangeService
 
         credits = RoundHours(credits);
         debits = RoundHours(debits);
-        if (credits <= 0m || debits <= 0m)
-        {
-            return "Provider and receiver hours must both be greater than zero.";
-        }
-
         return credits == debits
             ? null
             : $"Provider hours ({credits:F2}) and receiver hours ({debits:F2}) must be equal — " +
@@ -1130,53 +1049,7 @@ public class GroupExchangeService
             .Where(item => item.Role == role && item.Hours > 0m)
             .GroupBy(item => item.UserId)
             .Select(group => new GroupExchangeSplit(group.Key, role, RoundHours(group.Sum(item => item.Hours))))
-            .OrderBy(item => item.UserId)
             .ToList();
-    }
-
-    private static List<GroupExchangeLedgerTransfer> PairTransfers(
-        IReadOnlyList<GroupExchangeSplit> receivers,
-        IReadOnlyList<GroupExchangeSplit> providers)
-    {
-        var result = new List<GroupExchangeLedgerTransfer>();
-        var receiverIndex = 0;
-        var providerIndex = 0;
-        var receiverRemaining = receivers.Count > 0 ? receivers[0].Hours : 0m;
-        var providerRemaining = providers.Count > 0 ? providers[0].Hours : 0m;
-
-        while (receiverIndex < receivers.Count && providerIndex < providers.Count)
-        {
-            var amount = RoundHours(Math.Min(receiverRemaining, providerRemaining));
-            if (amount > 0m)
-            {
-                result.Add(new GroupExchangeLedgerTransfer(
-                    receivers[receiverIndex].UserId,
-                    providers[providerIndex].UserId,
-                    amount));
-            }
-
-            receiverRemaining = RoundHours(receiverRemaining - amount);
-            providerRemaining = RoundHours(providerRemaining - amount);
-
-            if (receiverRemaining == 0m)
-            {
-                receiverIndex++;
-                receiverRemaining = receiverIndex < receivers.Count ? receivers[receiverIndex].Hours : 0m;
-            }
-
-            if (providerRemaining == 0m)
-            {
-                providerIndex++;
-                providerRemaining = providerIndex < providers.Count ? providers[providerIndex].Hours : 0m;
-            }
-        }
-
-        if (receiverIndex != receivers.Count || providerIndex != providers.Count)
-        {
-            throw new InvalidOperationException("Balanced exchange could not be paired into ledger transfers.");
-        }
-
-        return result;
     }
 
     private async Task NotifyStartAsync(
@@ -1419,9 +1292,41 @@ public class GroupExchangeService
         ? string.Empty
         : $"{user.FirstName} {user.LastName}".Trim();
 
+    private static GroupExchangeParticipantInput[] NormalizeParticipantInputs(
+        IReadOnlyCollection<GroupExchangeParticipantInput>? participants)
+    {
+        var normalized = new List<GroupExchangeParticipantInput>();
+        var indexByKey = new Dictionary<(int UserId, string Role), int>();
+        foreach (var participant in participants ?? Array.Empty<GroupExchangeParticipantInput>())
+        {
+            var candidate = NormalizeParticipantInput(participant);
+            if (candidate.UserId <= 0 || string.IsNullOrEmpty(candidate.Role))
+            {
+                continue;
+            }
+
+            // PHP's associative participant map overwrites the value for an exact
+            // user/role key without moving that key's original insertion position.
+            var key = (candidate.UserId, candidate.Role);
+            if (indexByKey.TryGetValue(key, out var existingIndex))
+            {
+                normalized[existingIndex] = candidate;
+            }
+            else
+            {
+                indexByKey[key] = normalized.Count;
+                normalized.Add(candidate);
+            }
+        }
+        return normalized.ToArray();
+    }
+
+    private static GroupExchangeParticipantInput NormalizeParticipantInput(
+        GroupExchangeParticipantInput input) =>
+        input with { Role = (input.Role ?? string.Empty).Trim() };
+
     private static bool IsValidParticipant(GroupExchangeParticipantInput input) =>
-        input.UserId > 0 &&
-        input.Role is ProviderRole or ReceiverRole;
+        input.UserId > 0 && HasPhpNonEmptyString(input.Role);
 
     private static bool HasPhpNonEmptyString(string? value) =>
         !string.IsNullOrEmpty(value) && value != "0";
@@ -1528,25 +1433,40 @@ public sealed record GroupExchangeListResult(
     IReadOnlyCollection<GroupExchangeListItem> Items,
     bool HasMore);
 
-public sealed record GroupExchangeMutationResult(bool Success, int? ExchangeId, string? Error)
+public sealed record GroupExchangeMutationResult(
+    bool Success,
+    int? ExchangeId,
+    string? Error,
+    string? ErrorCode)
 {
-    public static GroupExchangeMutationResult Succeeded(int exchangeId) => new(true, exchangeId, null);
-    public static GroupExchangeMutationResult Failed(string error) => new(false, null, error);
+    public static GroupExchangeMutationResult Succeeded(int exchangeId) => new(true, exchangeId, null, null);
+    public static GroupExchangeMutationResult Failed(string error, string? errorCode = "VALIDATION_ERROR") =>
+        new(false, null, error, errorCode);
+    public static GroupExchangeMutationResult SafeguardingFailed(SafeguardingInteractionDecision decision) =>
+        new(false, null, GroupExchangeSafeguardingError.Message(decision), decision.Code);
 }
 
-public sealed record GroupExchangeOperationResult(bool Success, string? Error)
+public sealed record GroupExchangeOperationResult(bool Success, string? Error, string? ErrorCode)
 {
-    public static GroupExchangeOperationResult Succeeded() => new(true, null);
-    public static GroupExchangeOperationResult Failed(string error) => new(false, error);
+    public static GroupExchangeOperationResult Succeeded() => new(true, null, null);
+    public static GroupExchangeOperationResult Failed(string error, string? errorCode = "VALIDATION_ERROR") =>
+        new(false, error, errorCode);
+    public static GroupExchangeOperationResult SafeguardingFailed(SafeguardingInteractionDecision decision) =>
+        new(false, GroupExchangeSafeguardingError.Message(decision), decision.Code);
 }
 
 public sealed record GroupExchangeCompletionResult(
     bool Success,
     IReadOnlyCollection<int> TransactionIds,
-    string? Error)
+    string? Error,
+    string? ErrorCode)
 {
-    public static GroupExchangeCompletionResult Succeeded(IReadOnlyCollection<int> ids) => new(true, ids, null);
-    public static GroupExchangeCompletionResult Failed(string error) => new(false, Array.Empty<int>(), error);
+    public static GroupExchangeCompletionResult Succeeded(IReadOnlyCollection<int> ids) =>
+        new(true, ids, null, null);
+    public static GroupExchangeCompletionResult Failed(string error, string? errorCode = "VALIDATION_ERROR") =>
+        new(false, Array.Empty<int>(), error, errorCode);
+    public static GroupExchangeCompletionResult SafeguardingFailed(SafeguardingInteractionDecision decision) =>
+        new(false, Array.Empty<int>(), GroupExchangeSafeguardingError.Message(decision), decision.Code);
 }
 
 public sealed record GroupExchangeListItem(
@@ -1609,11 +1529,20 @@ public sealed record GroupExchangeSplit(
     [property: JsonPropertyName("role")] string Role,
     [property: JsonPropertyName("hours")] decimal Hours);
 
-internal sealed record GroupExchangeLedgerTransfer(int ReceiverId, int ProviderId, decimal Hours);
-
-internal sealed record SafeguardingTriggerRow(int UserId, string? TriggersJson);
-
-internal sealed class SafeguardingInteractionRules
+internal static class GroupExchangeSafeguardingError
 {
-    public HashSet<string> RequiredVettingTypes { get; } = new(StringComparer.Ordinal);
+    public const string PolicyUnavailableMessage =
+        "We cannot confirm the community safeguarding policy right now. No message has been sent. Please try again shortly.";
+
+    public static string Message(SafeguardingInteractionDecision decision)
+    {
+        return decision.Code switch
+        {
+            "SAFEGUARDING_POLICY_UNAVAILABLE" => PolicyUnavailableMessage,
+            "VETTING_REQUIRED" =>
+                $"This conversation is paused by a community safeguarding rule. Your community must have recorded a current {string.Join(", ", decision.RequiredAttestationLabels ?? Array.Empty<string>())} confirmation for you before you can message this member. Ask your broker or community administrator to record this metadata-only status. Do not send or upload any vetting document.",
+            _ =>
+                "This member has asked for a coordinator to arrange contact on their behalf. Your message has not been sent. Please contact your broker or community administrator so they can help arrange the next safe step."
+        };
+    }
 }

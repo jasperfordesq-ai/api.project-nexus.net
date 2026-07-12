@@ -9,6 +9,7 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
@@ -27,6 +28,10 @@ public class MemberParityController : ControllerBase
     private readonly NexusDbContext _db;
     private readonly TenantContext _tenantContext;
     private readonly FileUploadService _fileUploadService;
+    private readonly SafeguardingInteractionPolicy _safeguardingInteractionPolicy;
+    private readonly GamificationService _gamification;
+    private readonly IRealTimeMessagingService _realTimeMessaging;
+    private readonly ILogger<MemberParityController> _logger;
     private const string LocalAdvertisingCampaignsKey = "local_advertising.campaigns";
     private const string PaidPushCampaignsKey = "paid_push.campaigns";
     private const string MerchantOnboardingProfileKeyPrefix = "merchant_onboarding.profile.";
@@ -38,11 +43,22 @@ public class MemberParityController : ControllerBase
         PropertyNameCaseInsensitive = true
     };
 
-    public MemberParityController(NexusDbContext db, TenantContext tenantContext, FileUploadService fileUploadService)
+    public MemberParityController(
+        NexusDbContext db,
+        TenantContext tenantContext,
+        FileUploadService fileUploadService,
+        SafeguardingInteractionPolicy safeguardingInteractionPolicy,
+        GamificationService gamification,
+        IRealTimeMessagingService realTimeMessaging,
+        ILogger<MemberParityController> logger)
     {
         _db = db;
         _tenantContext = tenantContext;
         _fileUploadService = fileUploadService;
+        _safeguardingInteractionPolicy = safeguardingInteractionPolicy;
+        _gamification = gamification;
+        _realTimeMessaging = realTimeMessaging;
+        _logger = logger;
     }
 
     [HttpGet("me/dashboard")]
@@ -1120,110 +1136,223 @@ public class MemberParityController : ControllerBase
     public IActionResult UploadVoiceMessage([FromBody] JsonElement body) => Ok(new { data = new { id = StableId(body), status = "uploaded" } });
 
     [HttpPost("messages/voice")]
+    [RequestSizeLimit(12L * 1024 * 1024)]
+    [RequestFormLimits(MultipartBodyLengthLimit = 12L * 1024 * 1024)]
     public async Task<IActionResult> CreateVoiceMessage(CancellationToken ct)
     {
         if (!Request.HasFormContentType)
         {
-            return StatusCode(StatusCodes.Status415UnsupportedMediaType, new
-            {
-                errors = new[] { new { code = "VALIDATION_ERROR", message = "Voice message must be multipart form data.", field = "voice_message" } }
-            });
+            return VoiceWriteError("VALIDATION_ERROR", "Recipient ID is required", "recipient_id", 400);
         }
 
         var form = await Request.ReadFormAsync(ct);
         if (!int.TryParse(form["recipient_id"].ToString(), out var recipientId) || recipientId <= 0)
-        {
-            return BadRequest(new
-            {
-                errors = new[] { new { code = "VALIDATION_ERROR", message = "recipient_id is required.", field = "recipient_id" } }
-            });
-        }
+            return VoiceWriteError("VALIDATION_ERROR", "Recipient ID is required", "recipient_id", 400);
 
         var voiceFile = form.Files.GetFile("voice_message");
         if (voiceFile == null || voiceFile.Length == 0)
-        {
-            return BadRequest(new
-            {
-                errors = new[] { new { code = "VALIDATION_ERROR", message = "voice_message is required.", field = "voice_message" } }
-            });
-        }
+            return VoiceWriteError("VALIDATION_ERROR", "Voice message file is required", "voice_message", 400);
 
         var tenantId = TenantId();
         var userId = UserId();
-        var recipient = await _db.Users.FirstOrDefaultAsync(u => u.Id == recipientId && u.TenantId == tenantId && u.IsActive);
-        if (recipient == null || recipient.Id == userId)
+        if (recipientId == userId)
+            return VoiceWriteError("VALIDATION_ERROR", "You cannot send a message to yourself", null, 422);
+
+        var sender = await LoadActiveVoiceUserAsync(userId, tenantId, ct);
+        if (sender == null)
+            return VoiceWriteError("FORBIDDEN", "Your account is not allowed to send messages", null, 403);
+
+        var recipient = await LoadVoiceRecipientAsync(recipientId, tenantId, ct);
+        if (recipient == null)
+            return VoiceWriteError("NOT_FOUND", "Recipient not found", null, 404);
+
+        if (await IsVoiceSenderMessagingDisabledAsync(userId, tenantId, ct))
+            return VoiceWriteError("MESSAGING_DISABLED", "Your messaging has been restricted by an administrator", null, 403);
+        if (await IsVoicePairBlockedAsync(userId, recipientId, tenantId, ct))
+            return VoiceWriteError("BLOCKED", "You cannot send messages to this user", null, 403);
+
+        var preflightDecision = await _safeguardingInteractionPolicy.EvaluateLocalContactAsync(
+            userId,
+            recipientId,
+            tenantId,
+            "direct_message",
+            ct);
+        if (!preflightDecision.IsAllowed)
+            return VoiceSafeguardingError(preflightDecision);
+
+        FileUpload stagedUpload;
+        int durationSeconds;
+        try
         {
-            return BadRequest(new
-            {
-                errors = new[] { new { code = "VALIDATION_ERROR", message = "Recipient not found.", field = "recipient_id" } }
-            });
+            await using var stream = voiceFile.OpenReadStream();
+            var staged = await _fileUploadService.UploadVoiceAsync(
+                stream,
+                voiceFile.FileName,
+                string.IsNullOrWhiteSpace(voiceFile.ContentType) ? "audio/webm" : voiceFile.ContentType,
+                voiceFile.Length,
+                0,
+                userId,
+                tenantId,
+                ct);
+            if (staged.Error != null || staged.File == null)
+                return VoiceWriteError("UPLOAD_FAILED", "Failed to send voice message", "voice_message", 400);
+
+            stagedUpload = staged.File;
+            durationSeconds = staged.DurationSeconds;
         }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Voice message upload failed before persistence");
+            return VoiceWriteError("UPLOAD_FAILED", "Failed to send voice message", "voice_message", 400);
+        }
+
+        _db.ChangeTracker.Clear();
 
         var participant1Id = Math.Min(userId, recipientId);
         var participant2Id = Math.Max(userId, recipientId);
-        var conversation = await _db.Conversations
-            .FirstOrDefaultAsync(c => c.Participant1Id == participant1Id && c.Participant2Id == participant2Id);
-        if (conversation == null)
+        Conversation? conversation = null;
+        Message? message = null;
+        MessageAttachment? attachment = null;
+        IDbContextTransaction? transaction = null;
+
+        async Task<IActionResult> AbortAsync(IActionResult result)
         {
-            conversation = new Conversation
+            if (transaction != null)
             {
-                Participant1Id = participant1Id,
-                Participant2Id = participant2Id,
-                CreatedAt = DateTime.UtcNow
+                try { await transaction.RollbackAsync(CancellationToken.None); }
+                catch (Exception exception) { _logger.LogCritical(exception, "Voice message rollback failed; cleanup will continue"); }
+                try { await transaction.DisposeAsync(); }
+                catch (Exception exception) { _logger.LogCritical(exception, "Voice message transaction disposal failed; cleanup will continue"); }
+                transaction = null;
+            }
+            await _fileUploadService.DeleteStagedAsync(stagedUpload, CancellationToken.None);
+            return result;
+        }
+
+        try
+        {
+            transaction = await _db.Database.BeginTransactionAsync(ct);
+            sender = await LoadActiveVoiceUserAsync(userId, tenantId, ct);
+            recipient = await LoadVoiceRecipientAsync(recipientId, tenantId, ct);
+            if (sender == null)
+                return await AbortAsync(VoiceWriteError("FORBIDDEN", "Your account is not allowed to send messages", null, 403));
+            if (recipient == null)
+                return await AbortAsync(VoiceWriteError("NOT_FOUND", "Recipient not found", null, 404));
+            if (await IsVoiceSenderMessagingDisabledAsync(userId, tenantId, ct))
+                return await AbortAsync(VoiceWriteError("MESSAGING_DISABLED", "Your messaging has been restricted by an administrator", null, 403));
+            if (await IsVoicePairBlockedAsync(userId, recipientId, tenantId, ct))
+                return await AbortAsync(VoiceWriteError("BLOCKED", "You cannot send messages to this user", null, 403));
+
+            var lockedDecision = await _safeguardingInteractionPolicy.EvaluateLockedLocalContactAsync(
+                userId,
+                recipientId,
+                tenantId,
+                "direct_message",
+                ct);
+            if (!lockedDecision.IsAllowed)
+                return await AbortAsync(VoiceSafeguardingError(lockedDecision));
+
+            conversation = await _db.Conversations.IgnoreQueryFilters().FirstOrDefaultAsync(row =>
+                row.TenantId == tenantId
+                && row.Participant1Id == participant1Id
+                && row.Participant2Id == participant2Id, ct);
+            var now = DateTime.UtcNow;
+            if (conversation == null)
+            {
+                conversation = new Conversation
+                {
+                    TenantId = tenantId,
+                    Participant1Id = participant1Id,
+                    Participant2Id = participant2Id,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                };
+                _db.Conversations.Add(conversation);
+            }
+            else
+            {
+                conversation.UpdatedAt = now;
+            }
+
+            message = new Message
+            {
+                TenantId = tenantId,
+                Conversation = conversation,
+                SenderId = userId,
+                Content = string.Empty,
+                IsRead = false,
+                CreatedAt = now
             };
-            _db.Conversations.Add(conversation);
+            _db.Messages.Add(message);
             await _db.SaveChangesAsync(ct);
-        }
 
-        var message = new Message
-        {
-            TenantId = tenantId,
-            ConversationId = conversation.Id,
-            SenderId = userId,
-            Content = string.Empty,
-            IsRead = false,
-            CreatedAt = DateTime.UtcNow
-        };
-        _db.Messages.Add(message);
-        conversation.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync(ct);
+            var upload = await _db.FileUploads.IgnoreQueryFilters().SingleOrDefaultAsync(row =>
+                row.Id == stagedUpload.Id
+                && row.TenantId == tenantId
+                && row.UserId == userId
+                && row.EntityType == "message_voice", ct);
+            if (upload == null)
+                throw new InvalidOperationException("The staged voice upload is no longer available.");
 
-        await using var stream = voiceFile.OpenReadStream();
-        var (upload, uploadError) = await _fileUploadService.UploadAsync(
-            stream,
-            voiceFile.FileName,
-            string.IsNullOrWhiteSpace(voiceFile.ContentType) ? "audio/webm" : voiceFile.ContentType,
-            voiceFile.Length,
-            userId,
-            tenantId,
-            FileCategory.Message,
-            message.Id,
-            "message_voice");
-
-        if (uploadError != null)
-        {
-            return BadRequest(new
+            upload.EntityId = message.Id;
+            attachment = new MessageAttachment
             {
-                errors = new[] { new { code = "UPLOAD_FAILED", message = uploadError, field = "voice_message" } }
+                MessageId = message.Id,
+                FileUploadId = upload.Id,
+                UploadedById = userId,
+                CreatedAt = now
+            };
+            _db.MessageAttachments.Add(attachment);
+            _db.VoiceMessages.Add(new VoiceMessage
+            {
+                TenantId = tenantId,
+                SenderId = userId,
+                Conversation = conversation,
+                AudioUrl = _fileUploadService.GetDownloadUrl(upload),
+                DurationSeconds = durationSeconds,
+                FileSizeBytes = upload.FileSizeBytes,
+                Format = VoiceFormat(upload.ContentType),
+                IsRead = false,
+                CreatedAt = now
             });
+            await _db.SaveChangesAsync(ct);
+
+            await transaction.CommitAsync(ct);
+            var committedTransaction = transaction;
+            transaction = null;
+            try { await committedTransaction.DisposeAsync(); }
+            catch (Exception exception) { _logger.LogError(exception, "Committed voice message transaction disposal failed"); }
+        }
+        catch (OperationCanceledException)
+        {
+            await AbortAsync(new EmptyResult());
+            throw;
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Voice message persistence failed");
+            return await AbortAsync(VoiceWriteError("UPLOAD_FAILED", "Failed to send voice message", "voice_message", 400));
+        }
+        finally
+        {
+            if (transaction != null)
+            {
+                try { await transaction.DisposeAsync(); }
+                catch (Exception exception) { _logger.LogCritical(exception, "Residual voice message transaction disposal failed"); }
+            }
         }
 
-        var savedUpload = upload!;
-        var attachment = new MessageAttachment
-        {
-            MessageId = message.Id,
-            FileUploadId = savedUpload.Id,
-            UploadedById = userId,
-            CreatedAt = DateTime.UtcNow
-        };
-        _db.MessageAttachments.Add(attachment);
-        await _db.SaveChangesAsync(ct);
+        if (conversation == null || message == null || attachment == null || sender == null || recipient == null)
+            throw new InvalidOperationException("Committed voice message graph is unavailable.");
 
-        var audioUrl = _fileUploadService.GetDownloadUrl(savedUpload);
-        var sender = await CurrentUser();
+        await DispatchVoiceMessageEffectsAsync(tenantId, sender, recipient, conversation.Id, message);
+        var audioUrl = _fileUploadService.GetDownloadUrl(stagedUpload);
         return StatusCode(StatusCodes.Status201Created, new
         {
-            success = true,
             data = new
             {
                 id = message.Id,
@@ -1235,14 +1364,14 @@ public class MemberParityController : ControllerBase
                 content = string.Empty,
                 is_voice = true,
                 audio_url = audioUrl,
-                audio_duration = 0,
+                audio_duration = durationSeconds,
                 transcript = (string?)null,
                 transcript_language = (string?)null,
                 sender = new
                 {
-                    id = sender?.Id ?? userId,
-                    first_name = sender?.FirstName,
-                    last_name = sender?.LastName
+                    id = sender.Id,
+                    first_name = sender.FirstName,
+                    last_name = sender.LastName
                 },
                 recipient = new
                 {
@@ -1256,20 +1385,24 @@ public class MemberParityController : ControllerBase
                     {
                         id = attachment.Id,
                         message_id = message.Id,
-                        file_upload_id = savedUpload.Id,
-                        original_filename = savedUpload.OriginalFilename,
-                        file_name = savedUpload.OriginalFilename,
-                        content_type = savedUpload.ContentType,
-                        mime_type = savedUpload.ContentType,
-                        file_size_bytes = savedUpload.FileSizeBytes,
-                        file_size = savedUpload.FileSizeBytes,
+                        file_upload_id = stagedUpload.Id,
+                        original_filename = stagedUpload.OriginalFilename,
+                        file_name = stagedUpload.OriginalFilename,
+                        name = stagedUpload.OriginalFilename,
+                        content_type = stagedUpload.ContentType,
+                        mime_type = stagedUpload.ContentType,
+                        type = "audio",
+                        file_size_bytes = stagedUpload.FileSizeBytes,
+                        file_size = stagedUpload.FileSizeBytes,
+                        size = stagedUpload.FileSizeBytes,
                         url = audioUrl,
                         created_at = attachment.CreatedAt
                     }
                 },
                 is_read = message.IsRead,
                 created_at = message.CreatedAt
-            }
+            },
+            meta = new { base_url = $"{Request.Scheme}://{Request.Host}" }
         });
     }
 
@@ -1854,6 +1987,171 @@ public class MemberParityController : ControllerBase
         var name = $"{firstName} {lastName}".Trim();
         return string.IsNullOrWhiteSpace(name) ? email : name;
     }
+
+    private Task<User?> LoadActiveVoiceUserAsync(int userId, int tenantId, CancellationToken ct)
+        => _db.Users.IgnoreQueryFilters().AsNoTracking().SingleOrDefaultAsync(user =>
+            user.Id == userId && user.TenantId == tenantId && user.IsActive && user.SuspendedAt == null, ct);
+
+    private Task<User?> LoadVoiceRecipientAsync(int userId, int tenantId, CancellationToken ct)
+        => _db.Users.IgnoreQueryFilters().AsNoTracking().SingleOrDefaultAsync(user =>
+            user.Id == userId && user.TenantId == tenantId, ct);
+
+    private Task<bool> IsVoicePairBlockedAsync(int senderId, int recipientId, int tenantId, CancellationToken ct)
+        => _db.UserBlocks.IgnoreQueryFilters().AsNoTracking().AnyAsync(block =>
+            block.TenantId == tenantId
+            && ((block.UserId == senderId && block.BlockedUserId == recipientId)
+                || (block.UserId == recipientId && block.BlockedUserId == senderId)), ct);
+
+    private async Task<bool> IsVoiceSenderMessagingDisabledAsync(int senderId, int tenantId, CancellationToken ct)
+    {
+        var now = DateTime.UtcNow;
+        await _db.UserMonitoringRestrictions.IgnoreQueryFilters()
+            .Where(row => row.TenantId == tenantId
+                && row.UserId == senderId
+                && row.UnderMonitoring
+                && row.MonitoringExpiresAt != null
+                && row.MonitoringExpiresAt <= now)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(row => row.UnderMonitoring, false)
+                .SetProperty(row => row.MessagingDisabled, false)
+                .SetProperty(row => row.MonitoringExpiresAt, (DateTime?)null), ct);
+        return await _db.UserMonitoringRestrictions.IgnoreQueryFilters().AsNoTracking().AnyAsync(row =>
+            row.TenantId == tenantId && row.UserId == senderId && row.MessagingDisabled, ct);
+    }
+
+    private IActionResult VoiceWriteError(string code, string message, string? field, int status)
+    {
+        var error = new Dictionary<string, object?> { ["code"] = code, ["message"] = message };
+        if (field != null)
+            error["field"] = field;
+        return StatusCode(status, new { errors = new[] { error } });
+    }
+
+    private IActionResult VoiceSafeguardingError(SafeguardingInteractionDecision decision)
+    {
+        var codes = decision.RequiredAttestationCodes?.ToArray() ?? [];
+        var labels = decision.RequiredAttestationLabels?.ToArray() ?? [];
+        Dictionary<string, object?> error;
+        if (decision.IsUnavailable)
+        {
+            error = new()
+            {
+                ["code"] = "SAFEGUARDING_POLICY_UNAVAILABLE",
+                ["message"] = "We cannot confirm the community safeguarding policy right now. No message has been sent. Please try again shortly.",
+                ["title"] = "Safeguarding check temporarily unavailable",
+                ["detail"] = "Project NEXUS could not safely evaluate the contact policy, so this interaction has been paused.",
+                ["action_label"] = "Check again",
+                ["required_vetting_types"] = codes,
+                ["required_vetting_labels"] = labels,
+                ["retryable"] = true
+            };
+        }
+        else if (decision.Code == "VETTING_REQUIRED")
+        {
+            var types = string.Join(", ", labels);
+            error = new()
+            {
+                ["code"] = "VETTING_REQUIRED",
+                ["message"] = $"This conversation is paused by a community safeguarding rule. Your community must have recorded a current {types} confirmation for you before you can message this member. Ask your broker or community administrator to record this metadata-only status. Do not send or upload any vetting document.",
+                ["title"] = "Safeguarding check needed",
+                ["detail"] = $"This member can only be contacted for this type of interaction by members whose community has recorded a current {types} status. The record is metadata only; no document should be sent or uploaded.",
+                ["action_label"] = "Open help",
+                ["required_vetting_types"] = codes,
+                ["required_vetting_labels"] = labels
+            };
+        }
+        else
+        {
+            error = new()
+            {
+                ["code"] = "SAFEGUARDING_CONTACT_RESTRICTED",
+                ["message"] = "This member has asked for a coordinator to arrange contact on their behalf. Your message has not been sent. Please contact your broker or community administrator so they can help arrange the next safe step.",
+                ["title"] = "Coordinator arrangement needed",
+                ["detail"] = "This member is not available for direct messages because their safeguarding preferences require coordinator-mediated contact. You can ask a coordinator to help arrange contact.",
+                ["action_label"] = "Open help"
+            };
+        }
+        return StatusCode(decision.IsUnavailable ? 503 : 403, new { errors = new[] { error } });
+    }
+
+    private async Task DispatchVoiceMessageEffectsAsync(
+        int tenantId,
+        User sender,
+        User recipient,
+        int conversationId,
+        Message message)
+    {
+        try
+        {
+            var data = JsonSerializer.Serialize(new
+            {
+                message_id = message.Id,
+                conversation_id = conversationId,
+                sender_id = sender.Id
+            });
+            if (!await _db.Notifications.IgnoreQueryFilters().AnyAsync(row =>
+                    row.TenantId == tenantId && row.UserId == recipient.Id
+                    && row.Type == "new_message" && row.Data == data))
+            {
+                _db.Notifications.Add(new Notification
+                {
+                    TenantId = tenantId,
+                    UserId = recipient.Id,
+                    Type = "new_message",
+                    Title = "New message",
+                    Body = $"New message from {sender.FirstName}",
+                    Data = data,
+                    Link = $"/messages/{sender.Id}",
+                    CreatedAt = DateTime.UtcNow
+                });
+                await _db.SaveChangesAsync();
+            }
+
+            if (!await _db.XpLogs.IgnoreQueryFilters().AnyAsync(row =>
+                    row.TenantId == tenantId && row.UserId == sender.Id
+                    && row.Source == "send_message" && row.ReferenceId == message.Id))
+            {
+                await _gamification.AwardXpAsync(
+                    sender.Id,
+                    XpLog.Amounts.MessageSent,
+                    "send_message",
+                    message.Id,
+                    "Sent a message");
+            }
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Post-commit effects failed for voice message {MessageId}", message.Id);
+        }
+
+        try
+        {
+            await _realTimeMessaging.NotifyNewMessageAsync(tenantId, recipient.Id, new MessageNotification
+            {
+                Id = message.Id,
+                ConversationId = conversationId,
+                Content = string.Empty,
+                Sender = new SenderInfo { Id = sender.Id, FirstName = sender.FirstName },
+                IsRead = false,
+                CreatedAt = message.CreatedAt
+            });
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Real-time delivery failed for committed voice message {MessageId}", message.Id);
+        }
+    }
+
+    private static string VoiceFormat(string contentType) => contentType switch
+    {
+        "audio/webm" or "video/webm" => "webm",
+        "audio/ogg" => "ogg",
+        "audio/mpeg" or "audio/mp3" => "mp3",
+        "audio/wav" or "audio/x-wav" => "wav",
+        "audio/mp4" or "audio/x-m4a" or "video/mp4" => "m4a",
+        "audio/aac" or "audio/x-hx-aac-adts" => "aac",
+        _ => "webm"
+    };
 
     private async Task<User?> CurrentUser() => await _db.Users.FirstOrDefaultAsync(u => u.Id == UserId());
     private int TenantId() => _tenantContext.TenantId ?? throw new InvalidOperationException("Tenant context not resolved");

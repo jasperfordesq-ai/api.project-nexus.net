@@ -5,6 +5,7 @@
 
 using System.Reflection;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Nexus.Api.Entities;
 using Nexus.Api.Data.Configurations;
 
@@ -401,6 +402,11 @@ public class NexusDbContext : DbContext
     public DbSet<BrokerNote> BrokerNotes => Set<BrokerNote>();
     public DbSet<SafeguardingOption> SafeguardingOptions => Set<SafeguardingOption>();
     public DbSet<UserSafeguardingPreference> UserSafeguardingPreferences => Set<UserSafeguardingPreference>();
+    public DbSet<TenantSafeguardingSetting> TenantSafeguardingSettings => Set<TenantSafeguardingSetting>();
+    public DbSet<MemberVettingAttestation> MemberVettingAttestations => Set<MemberVettingAttestation>();
+    public DbSet<MemberVettingAttestationEvent> MemberVettingAttestationEvents => Set<MemberVettingAttestationEvent>();
+    public DbSet<SafeguardingVettingReviewRequest> SafeguardingVettingReviewRequests => Set<SafeguardingVettingReviewRequest>();
+    public DbSet<SafeguardingPolicyRotationEvent> SafeguardingPolicyRotationEvents => Set<SafeguardingPolicyRotationEvent>();
     public DbSet<SafeguardingAssignment> SafeguardingAssignments => Set<SafeguardingAssignment>();
     public DbSet<SafeguardingMessageReview> SafeguardingMessageReviews => Set<SafeguardingMessageReview>();
     public DbSet<SafeguardingReport> SafeguardingReports => Set<SafeguardingReport>();
@@ -565,6 +571,7 @@ public class NexusDbContext : DbContext
             new TenantHierarchyInsuranceConfiguration(_tenantContext),
             new ResourcesCommentsConfiguration(_tenantContext),
             new VettingVerificationConfiguration(_tenantContext),
+            new SafeguardingAttestationConfiguration(_tenantContext),
             new MemberActivityFaqConfiguration(_tenantContext),
             new BrokerEnterpriseConfiguration(_tenantContext),
             new DiscoveryConfiguration(_tenantContext),
@@ -602,16 +609,114 @@ public class NexusDbContext : DbContext
         }
     }
 
-        public override int SaveChanges()
+    public override int SaveChanges()
+    {
+        return SaveChanges(acceptAllChangesOnSuccess: true);
+    }
+
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
         SetTenantIdOnInsert();
-        return base.SaveChanges();
+        EnforceImmutableSafeguardingAuditRows();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
+        return SaveChangesAsync(acceptAllChangesOnSuccess: true, cancellationToken);
+    }
+
+    public override Task<int> SaveChangesAsync(
+        bool acceptAllChangesOnSuccess,
+        CancellationToken cancellationToken = default)
+    {
         SetTenantIdOnInsert();
-        return base.SaveChangesAsync(cancellationToken);
+        EnforceImmutableSafeguardingAuditRows();
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    private void EnforceImmutableSafeguardingAuditRows()
+    {
+        ChangeTracker.DetectChanges();
+
+        foreach (var entry in ChangeTracker.Entries<MemberVettingAttestation>())
+        {
+            if (entry.State == EntityState.Deleted
+                && !IsTrackedDeletedTenant(entry.Entity.TenantId)
+                && !IsTrackedDeletedUser(entry.Entity.UserId))
+            {
+                throw new InvalidOperationException(
+                    "Safeguarding attestations are retained audit evidence and cannot be deleted directly.");
+            }
+        }
+
+        foreach (var entry in ChangeTracker.Entries<MemberVettingAttestationEvent>())
+        {
+            var invalidUpdate = entry.State == EntityState.Modified
+                && !IsActorSetNullFromDeletedUser(entry, nameof(MemberVettingAttestationEvent.ActorUserId));
+            var invalidDelete = entry.State == EntityState.Deleted
+                && !IsAttestationEventCascadeDelete(entry.Entity);
+
+            if (invalidUpdate || invalidDelete)
+            {
+                throw new InvalidOperationException(
+                    "Safeguarding attestation events are append-only and cannot be updated or deleted directly.");
+            }
+        }
+
+        foreach (var entry in ChangeTracker.Entries<SafeguardingPolicyRotationEvent>())
+        {
+            var invalidUpdate = entry.State == EntityState.Modified
+                && !IsActorSetNullFromDeletedUser(entry, nameof(SafeguardingPolicyRotationEvent.ActorUserId));
+            var invalidDelete = entry.State == EntityState.Deleted
+                && !IsTrackedDeletedTenant(entry.Entity.TenantId);
+
+            if (invalidUpdate || invalidDelete)
+            {
+                throw new InvalidOperationException(
+                    "Safeguarding policy rotation events are append-only and cannot be updated or deleted directly.");
+            }
+        }
+    }
+
+    private bool IsAttestationEventCascadeDelete(MemberVettingAttestationEvent auditEvent)
+    {
+        return ChangeTracker.Entries<MemberVettingAttestation>().Any(entry =>
+                   entry.State == EntityState.Deleted && entry.Entity.Id == auditEvent.AttestationId)
+               || IsTrackedDeletedTenant(auditEvent.TenantId)
+               || IsTrackedDeletedUser(auditEvent.UserId);
+    }
+
+    private bool IsTrackedDeletedTenant(int tenantId)
+    {
+        return ChangeTracker.Entries<Tenant>().Any(entry =>
+            entry.State == EntityState.Deleted && entry.Entity.Id == tenantId);
+    }
+
+    private bool IsTrackedDeletedUser(int userId)
+    {
+        return ChangeTracker.Entries<User>().Any(entry =>
+            entry.State == EntityState.Deleted && entry.Entity.Id == userId);
+    }
+
+    private bool IsActorSetNullFromDeletedUser<TEntity>(
+        EntityEntry<TEntity> entry,
+        string actorPropertyName)
+        where TEntity : class
+    {
+        var modifiedProperties = entry.Properties
+            .Where(property => property.IsModified)
+            .ToArray();
+        if (modifiedProperties.Length != 1
+            || modifiedProperties[0].Metadata.Name != actorPropertyName)
+        {
+            return false;
+        }
+
+        var actorProperty = entry.Property<int?>(actorPropertyName);
+        return actorProperty.CurrentValue is null
+            && actorProperty.OriginalValue is int deletedActorId
+            && IsTrackedDeletedUser(deletedActorId);
     }
 
     private void ApplyTenantQueryFilter<T>(ModelBuilder modelBuilder) where T : class, ITenantEntity

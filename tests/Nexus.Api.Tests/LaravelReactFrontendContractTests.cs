@@ -616,120 +616,66 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task AdminVettingV2_UsesLaravelReactWorkflowShape()
+    public async Task AdminVettingV2_UsesMetadataOnlySafeguardingWorkflowShape()
     {
         await AuthenticateAsAdminAsync();
 
-        var reference = $"GV-{Guid.NewGuid():N}"[..12];
-        var create = await Client.PostAsJsonAsync("/api/v2/admin/vetting", new
+        var policyUpdate = await Client.PutAsJsonAsync("/api/v2/admin/vetting/policy", new
         {
-            user_id = TestData.MemberUser.Id,
-            vetting_type = "garda_vetting",
-            status = "submitted",
-            reference_number = reference,
-            issue_date = "2026-01-01",
-            expiry_date = "2027-01-01",
-            notes = "Created by Laravel React contract smoke test.",
-            works_with_children = true,
-            works_with_vulnerable_adults = true,
-            requires_enhanced_check = false
+            jurisdiction = "england_wales"
         });
+        policyUpdate.StatusCode.Should().Be(HttpStatusCode.OK);
+        var policyData = (await policyUpdate.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        policyData.GetProperty("policy").GetProperty("attestation_code").GetString().Should().Be("dbs_enhanced");
+        policyData.GetProperty("preference_transition").GetProperty("created").GetArrayLength().Should().Be(7);
 
-        create.StatusCode.Should().Be(HttpStatusCode.Created);
-        var created = (await create.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
-        var vettingId = created.GetProperty("id").GetInt32();
-        vettingId.Should().BeGreaterThan(0);
-        created.GetProperty("user_id").GetInt32().Should().Be(TestData.MemberUser.Id);
-        created.GetProperty("first_name").GetString().Should().Be(TestData.MemberUser.FirstName);
-        created.GetProperty("last_name").GetString().Should().Be(TestData.MemberUser.LastName);
-        created.GetProperty("email").GetString().Should().Be(TestData.MemberUser.Email);
-        created.GetProperty("vetting_type").GetString().Should().Be("garda_vetting");
-        created.GetProperty("status").GetString().Should().Be("submitted");
-        created.GetProperty("reference_number").GetString().Should().Be(reference);
-        created.GetProperty("issue_date").GetString().Should().StartWith("2026-01-01");
-        created.GetProperty("expiry_date").GetString().Should().StartWith("2027-01-01");
-        created.GetProperty("works_with_children").GetBoolean().Should().BeTrue();
-        created.GetProperty("works_with_vulnerable_adults").GetBoolean().Should().BeTrue();
-        created.GetProperty("requires_enhanced_check").GetBoolean().Should().BeFalse();
+        var confirm = await Client.PostAsJsonAsync(
+            $"/api/v2/admin/vetting/user/{TestData.MemberUser.Id}/confirm",
+            new { acknowledgement = true });
+        confirm.StatusCode.Should().Be(HttpStatusCode.Created);
+        var confirmed = (await confirm.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        var attestationId = confirmed.GetProperty("id").GetInt64();
+        confirmed.GetProperty("user_id").GetInt32().Should().Be(TestData.MemberUser.Id);
+        confirmed.GetProperty("decision").GetString().Should().Be("confirmed");
+        confirmed.GetProperty("attestation_code").GetString().Should().Be("dbs_enhanced");
+        confirmed.TryGetProperty("document_url", out _).Should().BeFalse();
+        confirmed.TryGetProperty("reference_number", out _).Should().BeFalse();
 
-        var list = await Client.GetAsync($"/api/v2/admin/vetting?status=pending_review&vetting_type=garda_vetting&search={Uri.EscapeDataString(reference)}&page=1&per_page=10");
+        var list = await Client.GetAsync("/api/v2/admin/vetting?status=confirmed&page=1&per_page=10");
         list.StatusCode.Should().Be(HttpStatusCode.OK);
         var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
         listJson.GetProperty("data").EnumerateArray().Should().Contain(item =>
-            item.GetProperty("id").GetInt32() == vettingId &&
-            item.GetProperty("reference_number").GetString() == reference);
-        var meta = listJson.GetProperty("meta");
-        meta.GetProperty("current_page").GetInt32().Should().Be(1);
-        meta.GetProperty("per_page").GetInt32().Should().Be(10);
-        meta.GetProperty("total").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+            item.GetProperty("user_id").GetInt32() == TestData.MemberUser.Id
+            && item.GetProperty("decision").GetString() == "confirmed");
+        listJson.GetProperty("meta").GetProperty("pagination").GetProperty("per_page").GetInt32().Should().Be(10);
+
+        var show = await Client.GetAsync($"/api/v2/admin/vetting/{attestationId}");
+        show.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await show.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data")
+            .GetProperty("confirmed_by").GetInt32().Should().Be(TestData.AdminUser.Id);
 
         var stats = await Client.GetAsync("/api/v2/admin/vetting/stats");
         stats.StatusCode.Should().Be(HttpStatusCode.OK);
-        var statsData = (await stats.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
-        statsData.GetProperty("total").GetInt32().Should().BeGreaterThanOrEqualTo(1);
-        statsData.GetProperty("submitted").GetInt32().Should().BeGreaterThanOrEqualTo(1);
-        statsData.GetProperty("pending_review").GetInt32().Should().BeGreaterThanOrEqualTo(1);
-        statsData.GetProperty("by_type").GetProperty("garda_vetting").GetInt32().Should().BeGreaterThanOrEqualTo(1);
+        (await stats.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data")
+            .GetProperty("confirmed").GetInt32().Should().Be(1);
 
-        var show = await Client.GetAsync($"/api/v2/admin/vetting/{vettingId}");
-        show.StatusCode.Should().Be(HttpStatusCode.OK);
-        var shown = (await show.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
-        shown.GetProperty("id").GetInt32().Should().Be(vettingId);
-        shown.GetProperty("verifier_first_name").ValueKind.Should().Be(JsonValueKind.Null);
-        shown.GetProperty("rejection_reason").ValueKind.Should().Be(JsonValueKind.Null);
+        var revoke = await Client.PostAsJsonAsync(
+            $"/api/v2/admin/vetting/user/{TestData.MemberUser.Id}/revoke",
+            new { reason_code = "community_decision_withdrawn" });
+        revoke.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await revoke.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data")
+            .GetProperty("decision").GetString().Should().Be("revoked");
 
-        var update = await Client.PutAsJsonAsync($"/api/v2/admin/vetting/{vettingId}", new
-        {
-            notes = "Updated by Laravel React contract smoke test.",
-            requires_enhanced_check = true
-        });
-
-        update.StatusCode.Should().Be(HttpStatusCode.OK);
-        var updated = (await update.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
-        updated.GetProperty("id").GetInt32().Should().Be(vettingId);
-        updated.GetProperty("notes").GetString().Should().Be("Updated by Laravel React contract smoke test.");
-        updated.GetProperty("requires_enhanced_check").GetBoolean().Should().BeTrue();
-
-        var verify = await Client.PostAsync($"/api/v2/admin/vetting/{vettingId}/verify", null);
-        verify.StatusCode.Should().Be(HttpStatusCode.OK);
-        var verified = (await verify.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
-        verified.GetProperty("status").GetString().Should().Be("verified");
-        verified.GetProperty("verified_by").GetInt32().Should().Be(TestData.AdminUser.Id);
-        verified.GetProperty("verifier_first_name").GetString().Should().Be(TestData.AdminUser.FirstName);
-        verified.GetProperty("verified_at").GetString().Should().NotBeNullOrWhiteSpace();
-
-        var userRecords = await Client.GetAsync($"/api/v2/admin/vetting/user/{TestData.MemberUser.Id}");
-        userRecords.StatusCode.Should().Be(HttpStatusCode.OK);
-        var userRecordData = (await userRecords.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
-        userRecordData.EnumerateArray().Should().Contain(item =>
-            item.GetProperty("id").GetInt32() == vettingId &&
-            item.GetProperty("user_id").GetInt32() == TestData.MemberUser.Id);
-
-        var reject = await Client.PostAsJsonAsync($"/api/v2/admin/vetting/{vettingId}/reject", new
-        {
-            reason = "Contract test rejection reason"
-        });
-
-        reject.StatusCode.Should().Be(HttpStatusCode.OK);
-        var rejected = (await reject.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
-        rejected.GetProperty("status").GetString().Should().Be("rejected");
-        rejected.GetProperty("rejected_by").GetInt32().Should().Be(TestData.AdminUser.Id);
-        rejected.GetProperty("rejector_first_name").GetString().Should().Be(TestData.AdminUser.FirstName);
-        rejected.GetProperty("rejection_reason").GetString().Should().Be("Contract test rejection reason");
-
-        var bulkDelete = await Client.PostAsJsonAsync("/api/v2/admin/vetting/bulk", new
-        {
-            ids = new[] { vettingId },
-            action = "delete"
-        });
-
-        bulkDelete.StatusCode.Should().Be(HttpStatusCode.OK);
-        var bulkData = (await bulkDelete.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
-        bulkData.GetProperty("action").GetString().Should().Be("delete");
-        bulkData.GetProperty("processed").GetInt32().Should().Be(1);
-        bulkData.GetProperty("failed").GetInt32().Should().Be(0);
-        bulkData.GetProperty("total").GetInt32().Should().Be(1);
+        (await Client.PostAsJsonAsync("/api/v2/admin/vetting", new { status = "verified" }))
+            .StatusCode.Should().Be(HttpStatusCode.MethodNotAllowed);
+        (await Client.PutAsJsonAsync($"/api/v2/admin/vetting/{attestationId}", new { status = "verified" }))
+            .StatusCode.Should().Be(HttpStatusCode.MethodNotAllowed);
+        (await Client.DeleteAsync($"/api/v2/admin/vetting/{attestationId}"))
+            .StatusCode.Should().Be(HttpStatusCode.MethodNotAllowed);
+        (await Client.PostAsync($"/api/v2/admin/vetting/{attestationId}/upload", null))
+            .StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
+
 
     [Fact]
     public async Task AdminInsuranceV2_UsesLaravelReactWorkflowShape()
@@ -3314,6 +3260,17 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
         {
             SetAuthToken(brokerToken);
 
+            var invalidMonitoring = await Client.PostAsJsonAsync($"/api/v2/admin/broker/monitoring/{brokerId}", new
+            {
+                under_monitoring = true,
+                messaging_disabled = true
+            });
+            invalidMonitoring.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            var invalidMonitoringError = (await invalidMonitoring.Content.ReadFromJsonAsync<JsonElement>())
+                .GetProperty("errors")[0];
+            invalidMonitoringError.GetProperty("code").GetString().Should().Be("VALIDATION_ERROR");
+            invalidMonitoringError.GetProperty("field").GetString().Should().Be("reason");
+
             var saveRisk = await Client.PostAsJsonAsync($"/api/v2/admin/broker/risk-tags/{listingId}", new
             {
                 risk_level = "high",
@@ -3331,12 +3288,23 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
             {
                 under_monitoring = true,
                 reason = "Canonical monitoring persistence",
+                messaging_disabled = true,
                 expires_days = 2
             });
             monitoring.StatusCode.Should().Be(HttpStatusCode.OK);
             var monitoringData = (await monitoring.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
             monitoringData.GetProperty("user_id").GetInt32().Should().Be(brokerId);
             monitoringData.GetProperty("under_monitoring").GetBoolean().Should().BeTrue();
+
+            var monitoringList = await Client.GetAsync("/api/v2/admin/broker/monitoring");
+            monitoringList.StatusCode.Should().Be(HttpStatusCode.OK);
+            var monitoredUser = (await monitoringList.Content.ReadFromJsonAsync<JsonElement>())
+                .GetProperty("data")
+                .EnumerateArray()
+                .Single(item => item.GetProperty("user_id").GetInt32() == brokerId);
+            monitoredUser.GetProperty("user_name").GetString().Should().NotBeNullOrWhiteSpace();
+            monitoredUser.GetProperty("monitoring_reason").GetString().Should().Be("Canonical monitoring persistence");
+            monitoredUser.GetProperty("messaging_disabled").GetBoolean().Should().BeTrue();
 
             var configuration = await Client.GetAsync("/api/v2/admin/broker/configuration");
             configuration.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -3356,8 +3324,46 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
 
                 var storedMonitoring = await db.UserMonitoringRestrictions.SingleAsync(row => row.UserId == brokerId);
                 storedMonitoring.UnderMonitoring.Should().BeTrue();
+                storedMonitoring.MessagingDisabled.Should().BeTrue();
                 storedMonitoring.Reason.Should().Be("Canonical monitoring persistence");
                 storedMonitoring.MonitoringExpiresAt.Should().BeAfter(DateTime.UtcNow.AddHours(47));
+
+                (await db.AuditLogs.SingleAsync(row =>
+                    row.UserId == brokerId
+                    && row.EntityId == brokerId
+                    && row.Action == "user_monitoring_added"))
+                    .Metadata.Should().Contain("\"messaging_disabled\":true");
+                (await db.Notifications.SingleAsync(row =>
+                    row.UserId == brokerId
+                    && row.Title == "Your messaging has been temporarily restricted by your timebank coordinator."))
+                    .Link.Should().Be("/messages");
+            }
+
+            var removeMonitoring = await Client.PostAsJsonAsync($"/api/v2/admin/broker/monitoring/{brokerId}", new
+            {
+                under_monitoring = false
+            });
+            removeMonitoring.StatusCode.Should().Be(HttpStatusCode.OK);
+
+            using (var verifyRemoval = Factory.Services.CreateScope())
+            {
+                var db = verifyRemoval.ServiceProvider.GetRequiredService<NexusDbContext>();
+                var storedMonitoring = await db.UserMonitoringRestrictions.SingleAsync(row => row.UserId == brokerId);
+                storedMonitoring.UnderMonitoring.Should().BeFalse();
+                storedMonitoring.MessagingDisabled.Should().BeFalse();
+                storedMonitoring.MonitoringExpiresAt.Should().BeNull();
+                storedMonitoring.Reason.Should().Be("Canonical monitoring persistence");
+                (await db.AuditLogs.CountAsync(row =>
+                    row.UserId == brokerId
+                    && row.EntityId == brokerId
+                    && (row.Action == "user_monitoring_added" || row.Action == "user_monitoring_removed")))
+                    .Should().Be(2);
+                (await db.Notifications.CountAsync(row =>
+                    row.UserId == brokerId
+                    && row.Link == "/messages"
+                    && (row.Title == "Your messaging has been temporarily restricted by your timebank coordinator."
+                        || row.Title == "Your messaging restrictions have been lifted.")))
+                    .Should().Be(2);
             }
 
             var removeRisk = await Client.DeleteAsync($"/api/v2/admin/broker/risk-tags/{listingId}");
@@ -3373,6 +3379,8 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
             var db = cleanup.ServiceProvider.GetRequiredService<NexusDbContext>();
             await db.BrokerRiskTags.IgnoreQueryFilters().Where(tag => tag.ListingId == listingId).ExecuteDeleteAsync();
             await db.UserMonitoringRestrictions.IgnoreQueryFilters().Where(row => row.UserId == brokerId).ExecuteDeleteAsync();
+            await db.Notifications.IgnoreQueryFilters().Where(row => row.UserId == brokerId).ExecuteDeleteAsync();
+            await db.AuditLogs.IgnoreQueryFilters().Where(row => row.UserId == brokerId).ExecuteDeleteAsync();
             await db.RefreshTokens.IgnoreQueryFilters().Where(token => token.UserId == brokerId).ExecuteDeleteAsync();
             await db.Listings.IgnoreQueryFilters().Where(listing => listing.Id == listingId).ExecuteDeleteAsync();
             await db.Users.IgnoreQueryFilters().Where(user => user.Id == brokerId).ExecuteDeleteAsync();

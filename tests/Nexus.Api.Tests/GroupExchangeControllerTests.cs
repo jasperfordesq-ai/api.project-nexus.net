@@ -13,6 +13,7 @@ using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.Extensions.DependencyInjection;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
+using Nexus.Api.Services;
 using Nexus.Api.Tests.Fixtures;
 
 namespace Nexus.Api.Tests;
@@ -54,8 +55,17 @@ public class GroupExchangeControllerTests : IntegrationTestBase
     public async Task CanonicalRoutes_RequireAuthentication_AndReturnLaravelEnvelopes()
     {
         ClearAuthToken();
-        (await Client.GetAsync("/api/v2/group-exchanges")).StatusCode
-            .Should().Be(HttpStatusCode.Unauthorized);
+        using var unauthorizedRequest = new HttpRequestMessage(
+            HttpMethod.Get,
+            "/api/v2/group-exchanges");
+        unauthorizedRequest.Headers.Add("X-Tenant-ID", TestData.Tenant1.Id.ToString());
+        var unauthorized = await Client.SendAsync(unauthorizedRequest);
+        unauthorized.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        var unauthorizedJson = await JsonAsync(unauthorized);
+        unauthorizedJson.GetProperty("success").GetBoolean().Should().BeFalse();
+        unauthorizedJson.GetProperty("error").GetString().Should().Be("Authentication required");
+        unauthorizedJson.GetProperty("code").GetString().Should().Be("AUTH_REQUIRED");
+        unauthorizedJson.TryGetProperty("errors", out _).Should().BeFalse();
 
         await AuthenticateAsAdminAsync();
         var phpEmptyTitle = await Client.PostAsJsonAsync("/api/v2/group-exchanges", new
@@ -106,24 +116,20 @@ public class GroupExchangeControllerTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task RoundedSubCentHours_AreRejectedBeforeExchangeOrCustomParticipantPersistence()
+    public async Task RoundedSubCentHours_ArePersistedWithDatabasePrecisionLikeLaravel()
     {
         await AuthenticateAsAdminAsync();
         var roundedZeroTitle = $"Rounded zero {Guid.NewGuid():N}";
         var create = await Client.PostAsJsonAsync("/api/v2/group-exchanges", new
         {
             title = roundedZeroTitle,
-            split_type = "custom",
+            split_type = "equal",
             total_hours = 0.001m
         });
 
-        create.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        using (var scope = Factory.Services.CreateScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
-            (await db.GroupExchanges.AsNoTracking().AnyAsync(item => item.Title == roundedZeroTitle))
-                .Should().BeFalse();
-        }
+        create.StatusCode.Should().Be(HttpStatusCode.Created);
+        (await JsonAsync(create)).GetProperty("data").GetProperty("total_hours").GetDecimal()
+            .Should().Be(0m);
 
         var exchangeId = await CreateExchangeAsync(
             $"Custom rounded participant {Guid.NewGuid():N}",
@@ -140,13 +146,13 @@ public class GroupExchangeControllerTests : IntegrationTestBase
                 weight = 1m
             });
 
-        add.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        add.StatusCode.Should().Be(HttpStatusCode.OK);
         using var finalScope = Factory.Services.CreateScope();
         var finalDb = finalScope.ServiceProvider.GetRequiredService<NexusDbContext>();
         (await finalDb.GroupExchangeParticipants.AsNoTracking()
-            .AnyAsync(item => item.GroupExchangeId == exchangeId
-                && item.UserId == TestData.MemberUser.Id))
-            .Should().BeFalse();
+            .SingleAsync(item => item.GroupExchangeId == exchangeId
+                && item.UserId == TestData.MemberUser.Id)).Hours
+            .Should().Be(0m);
     }
 
     [Fact]
@@ -234,9 +240,23 @@ public class GroupExchangeControllerTests : IntegrationTestBase
                            item.Description == "Group exchange: Community repair day")
             .ToListAsync();
         settlementRows.Should().ContainSingle();
-        settlementRows[0].SenderId.Should().Be(TestData.MemberUser.Id);
+        settlementRows[0].SenderId.Should().Be(TestData.AdminUser.Id);
         settlementRows[0].ReceiverId.Should().Be(TestData.AdminUser.Id);
         settlementRows[0].Amount.Should().Be(6m);
+        settlementRows[0].TransactionType.Should().Be("exchange");
+
+        var balanceAdapters = await db.Transactions.AsNoTracking()
+            .Where(item => item.TenantId == TestData.Tenant1.Id &&
+                           item.Description == $"Group exchange balance adapter: {exchangeId}")
+            .ToListAsync();
+        balanceAdapters.Should().HaveCount(2);
+        balanceAdapters.Should().OnlyContain(item => item.TransactionType == "group_exchange_balance_adapter");
+        balanceAdapters.Should().ContainSingle(item => item.ReceiverId == TestData.AdminUser.Id &&
+                                                       item.SenderId == null &&
+                                                       item.DeletedForReceiver);
+        balanceAdapters.Should().ContainSingle(item => item.SenderId == TestData.MemberUser.Id &&
+                                                       item.ReceiverId == null &&
+                                                       item.DeletedForSender);
 
         var adminBalance = await BalanceAsync(db, TestData.AdminUser.Id);
         var memberBalance = await BalanceAsync(db, TestData.MemberUser.Id);
@@ -256,7 +276,7 @@ public class GroupExchangeControllerTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task CompletionRejectsUnconfirmedAndInsufficientBalance_WithoutChangingStatusOrLedger()
+    public async Task CompletionRejectsUnconfirmedAndUsesCanonicalServerErrorForInsufficientBalance()
     {
         await AuthenticateAsAdminAsync();
         var exchangeId = await CreateExchangeAsync(
@@ -284,9 +304,12 @@ public class GroupExchangeControllerTests : IntegrationTestBase
         await AuthenticateAsAdminAsync();
 
         var insufficient = await Client.PostAsync($"/api/v2/group-exchanges/{exchangeId}/complete", null);
-        insufficient.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        (await JsonAsync(insufficient)).GetProperty("errors")[0].GetProperty("message").GetString()
-            .Should().Be("Insufficient balance for transfer");
+        insufficient.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+        var insufficientJson = await JsonAsync(insufficient);
+        insufficientJson.GetProperty("errors")[0].GetProperty("message").GetString()
+            .Should().Be("An unexpected error occurred.");
+        insufficientJson.GetProperty("errors")[0].GetProperty("code").GetString()
+            .Should().Be("SERVER_ERROR");
 
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
@@ -318,16 +341,9 @@ public class GroupExchangeControllerTests : IntegrationTestBase
             "equal",
             Array.Empty<object>(),
             status: "pending_participants");
-
-        // Store always starts in draft. Seed a historical pending row directly so
-        // the list filter itself remains covered without weakening lifecycle ownership.
-        using (var scope = Factory.Services.CreateScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
-            await db.GroupExchanges
-                .Where(item => item.Id == pendingId)
-                .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.Status, "pending_participants"));
-        }
+        var pendingCreated = (await JsonAsync(await Client.GetAsync(
+            $"/api/v2/group-exchanges/{pendingId}"))).GetProperty("data");
+        pendingCreated.GetProperty("status").GetString().Should().Be("pending_participants");
 
         var firstPage = await JsonAsync(await Client.GetAsync(
             "/api/v2/group-exchanges?status=draft&limit=1&offset=0"));
@@ -386,6 +402,30 @@ public class GroupExchangeControllerTests : IntegrationTestBase
         weighted.Where(item => item.Role == "provider").Sum(item => item.Hours).Should().Be(10m);
         weighted.Where(item => item.Role == "receiver").Sum(item => item.Hours).Should().Be(10m);
 
+        var zeroWeightId = await CreateExchangeAsync(
+            "Laravel zero-weight fallback",
+            10m,
+            "weighted",
+            new[]
+            {
+                Participant(TestData.AdminUser.Id, "provider", weight: 1m),
+                Participant(providerTwo, "provider", weight: 0m),
+                Participant(TestData.MemberUser.Id, "receiver", weight: 1m),
+                Participant(receiverTwo, "receiver", weight: 0m)
+            });
+        var zeroWeightSplit = (await JsonAsync(await Client.GetAsync(
+                $"/api/v2/group-exchanges/{zeroWeightId}")))
+            .GetProperty("data").GetProperty("calculated_split").EnumerateArray()
+            .ToDictionary(
+                item => item.GetProperty("user_id").GetInt32(),
+                item => item.GetProperty("hours").GetDecimal());
+        zeroWeightSplit[TestData.AdminUser.Id].Should().Be(10m);
+        zeroWeightSplit[providerTwo].Should().Be(0m);
+        zeroWeightSplit[TestData.MemberUser.Id].Should().Be(10m);
+        zeroWeightSplit[receiverTwo].Should().Be(0m);
+        (await Client.PostAsync($"/api/v2/group-exchanges/{zeroWeightId}/start", null))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+
         var customId = await CreateExchangeAsync(
             "Unbalanced custom rota",
             5m,
@@ -414,7 +454,7 @@ public class GroupExchangeControllerTests : IntegrationTestBase
                     GroupExchangeId = zeroId,
                     UserId = TestData.AdminUser.Id,
                     Role = "provider",
-                    Hours = 2m,
+                    Hours = 10m,
                     Weight = 1m,
                     IsConfirmed = true,
                     ConfirmedAt = DateTime.UtcNow,
@@ -425,7 +465,7 @@ public class GroupExchangeControllerTests : IntegrationTestBase
                     GroupExchangeId = zeroId,
                     UserId = TestData.MemberUser.Id,
                     Role = "receiver",
-                    Hours = 2m,
+                    Hours = 5m,
                     Weight = 1m,
                     IsConfirmed = true,
                     ConfirmedAt = DateTime.UtcNow,
@@ -436,18 +476,7 @@ public class GroupExchangeControllerTests : IntegrationTestBase
                     GroupExchangeId = zeroId,
                     UserId = providerTwo,
                     Role = "provider",
-                    Hours = 0m,
-                    Weight = 1m,
-                    IsConfirmed = true,
-                    ConfirmedAt = DateTime.UtcNow,
-                    CreatedAt = DateTime.UtcNow
-                },
-                new GroupExchangeParticipant
-                {
-                    GroupExchangeId = zeroId,
-                    UserId = receiverTwo,
-                    Role = "receiver",
-                    Hours = -1m,
+                    Hours = -5m,
                     Weight = 1m,
                     IsConfirmed = true,
                     ConfirmedAt = DateTime.UtcNow,
@@ -486,9 +515,7 @@ public class GroupExchangeControllerTests : IntegrationTestBase
         var roundedZeroStart = await Client.PostAsync(
             $"/api/v2/group-exchanges/{roundedZeroId}/start",
             null);
-        roundedZeroStart.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        (await JsonAsync(roundedZeroStart)).GetProperty("errors")[0].GetProperty("message").GetString()
-            .Should().Contain("more than zero hours");
+        roundedZeroStart.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var invalidTransitionId = await CreateExchangeAsync(
             "Invalid custom transition",
@@ -502,11 +529,11 @@ public class GroupExchangeControllerTests : IntegrationTestBase
         (await Client.PutAsJsonAsync(
             $"/api/v2/group-exchanges/{invalidTransitionId}",
             new { split_type = "custom" }))
-            .StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            .StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     [Fact]
-    public async Task OrganizerCanMutateParticipantsAndFields_ButStatusInputIsIgnored()
+    public async Task OrganizerMutationsUseCanonicalUserRolePairSemantics()
     {
         await AuthenticateAsAdminAsync();
         var exchangeId = await CreateExchangeAsync(
@@ -520,11 +547,12 @@ public class GroupExchangeControllerTests : IntegrationTestBase
             new { user_id = TestData.MemberUser.Id, role = "provider", hours = 1m, weight = 1m });
         addProvider.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        // A user cannot occupy both sides of a settlement.
+        // Laravel's unique key is (exchange, user, role): the same member may
+        // occupy both roles, while an exact role duplicate is rejected.
         var addReceiver = await Client.PostAsJsonAsync(
             $"/api/v2/group-exchanges/{exchangeId}/participants",
             new { user_id = TestData.MemberUser.Id, role = "receiver", hours = 1m, weight = 1m });
-        addReceiver.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        addReceiver.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var duplicateRole = await Client.PostAsJsonAsync(
             $"/api/v2/group-exchanges/{exchangeId}/participants",
@@ -536,6 +564,13 @@ public class GroupExchangeControllerTests : IntegrationTestBase
             new { user_id = TestData.AdminUser.Id, role = "0", hours = 1m, weight = 1m });
         zeroRole.StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
+        var unsupportedRole = await Client.PostAsJsonAsync(
+            $"/api/v2/group-exchanges/{exchangeId}/participants",
+            new { user_id = TestData.AdminUser.Id, role = "coordinator", hours = 1m, weight = 1m });
+        unsupportedRole.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+        (await JsonAsync(unsupportedRole)).GetProperty("errors")[0].GetProperty("code").GetString()
+            .Should().Be("SERVER_ERROR");
+
         var updated = await Client.PutAsJsonAsync($"/api/v2/group-exchanges/{exchangeId}", new
         {
             title = "Renamed exchange",
@@ -546,6 +581,14 @@ public class GroupExchangeControllerTests : IntegrationTestBase
         var updatedData = (await JsonAsync(updated)).GetProperty("data");
         updatedData.GetProperty("title").GetString().Should().Be("Renamed exchange");
         updatedData.GetProperty("status").GetString().Should().Be("draft");
+        updatedData.GetProperty("participant_count").GetInt32().Should().Be(2);
+
+        var invalidSplit = await Client.PutAsJsonAsync(
+            $"/api/v2/group-exchanges/{exchangeId}",
+            new { split_type = "invalid" });
+        invalidSplit.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+        (await JsonAsync(invalidSplit)).GetProperty("errors")[0].GetProperty("code").GetString()
+            .Should().Be("SERVER_ERROR");
 
         var removed = await Client.DeleteAsync(
             $"/api/v2/group-exchanges/{exchangeId}/participants/{TestData.MemberUser.Id}");
@@ -560,118 +603,129 @@ public class GroupExchangeControllerTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task StoreForcesDraftState_PreservesSplit_AndIgnoresInlineParticipantFailure()
+    public async Task StoreOverwritesExactPairDuplicatesAndKeepsDualRoles()
     {
         await AuthenticateAsAdminAsync();
         var response = await Client.PostAsJsonAsync("/api/v2/group-exchanges", new
         {
-            title = "Forward-compatible exchange",
+            title = "Composite participant identity",
+            split_type = "equal",
+            total_hours = 3m,
+            participants = new[]
+            {
+                new { user_id = TestData.MemberUser.Id, role = "provider", hours = 1m, weight = 1m },
+                new { user_id = TestData.MemberUser.Id, role = "provider", hours = 2m, weight = 3m },
+                new { user_id = TestData.MemberUser.Id, role = "receiver", hours = 3m, weight = 1m }
+            }
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var data = (await JsonAsync(response)).GetProperty("data");
+        data.GetProperty("participant_count").GetInt32().Should().Be(2);
+        var participants = data.GetProperty("participants").EnumerateArray().ToArray();
+        participants.Should().ContainSingle(item => item.GetProperty("role").GetString() == "provider" &&
+                                                    item.GetProperty("hours").GetDecimal() == 2m &&
+                                                    item.GetProperty("weight").GetDecimal() == 3m);
+        participants.Should().ContainSingle(item => item.GetProperty("role").GetString() == "receiver" &&
+                                                    item.GetProperty("hours").GetDecimal() == 3m);
+        var exchangeId = data.GetProperty("id").GetInt32();
+        (await Client.PostAsync(
+            $"/api/v2/group-exchanges/{exchangeId}/start",
+            null)).StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task StoreUsesCanonicalInternalErrorForInvalidInlineParticipantAndRollsBack()
+    {
+        await AuthenticateAsAdminAsync();
+        var response = await Client.PostAsJsonAsync("/api/v2/group-exchanges", new
+        {
+            title = "Atomic participant validation",
             status = "pending_broker",
             split_type = "weighted",
             total_hours = 2m,
             participants = new[]
             {
                 new { user_id = TestData.OtherTenantUser.Id, role = "provider", hours = 2m, weight = 1m },
-                new { user_id = TestData.MemberUser.Id, role = "receiver", hours = 2m, weight = 1m },
-                new { user_id = TestData.MemberUser.Id, role = "receiver", hours = 2m, weight = 1m },
-                new { user_id = TestData.AdminUser.Id, role = "provider", hours = 2m, weight = 1m }
+                new { user_id = TestData.MemberUser.Id, role = "receiver", hours = 2m, weight = 1m }
             }
         });
 
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-        var data = (await JsonAsync(response)).GetProperty("data");
-        data.GetProperty("status").GetString().Should().Be("draft");
-        data.GetProperty("split_type").GetString().Should().Be("weighted");
-        data.GetProperty("participant_count").GetInt32().Should().Be(2);
-        data.GetProperty("participants").EnumerateArray()
-            .Select(item => (item.GetProperty("user_id").GetInt32(), item.GetProperty("role").GetString()))
-            .Should().BeEquivalentTo(new[]
-            {
-                (TestData.MemberUser.Id, "receiver"),
-                (TestData.AdminUser.Id, "provider")
-            });
+        response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+        (await JsonAsync(response)).GetProperty("errors")[0].GetProperty("code").GetString()
+            .Should().Be("INTERNAL_ERROR");
+
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        (await db.GroupExchanges.AsNoTracking()
+                .AnyAsync(item => item.Title == "Atomic participant validation"))
+            .Should().BeFalse();
+
+        var invalidStatus = await Client.PostAsJsonAsync("/api/v2/group-exchanges", new
+        {
+            title = "Invalid database status",
+            status = "invalid",
+            total_hours = 1m
+        });
+        invalidStatus.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+        (await JsonAsync(invalidStatus)).GetProperty("errors")[0].GetProperty("code").GetString()
+            .Should().Be("SERVER_ERROR");
+        (await db.GroupExchanges.AsNoTracking()
+                .AnyAsync(item => item.Title == "Invalid database status"))
+            .Should().BeFalse();
     }
 
     [Fact]
-    public async Task BrokerApprovalRestriction_UsesActiveWindow_AndInlineFailureDoesNotRollbackStore()
+    public async Task BrokerApprovalIsAddOnlyAndPrecedesContactPolicy()
     {
-        int restrictionId;
-        using (var scope = Factory.Services.CreateScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
-            var restriction = new UserMonitoringRestriction
-            {
-                TenantId = TestData.Tenant1.Id,
-                UserId = TestData.MemberUser.Id,
-                UnderMonitoring = true,
-                RequiresBrokerApproval = false,
-                MonitoringExpiresAt = DateTime.UtcNow.AddDays(7),
-                Reason = "False broker flag must not block"
-            };
-            db.UserMonitoringRestrictions.Add(restriction);
-            await db.SaveChangesAsync();
-            restrictionId = restriction.Id;
-        }
+        await AddSafeguardingPreferenceAsync(
+            TestData.MemberUser.Id,
+            "broker-approval-only",
+            "{\"requires_broker_approval\":true}");
 
         await AuthenticateAsAdminAsync();
-        var falseFlagId = await CreateExchangeAsync(
-            "False broker flag",
-            1m,
-            "equal",
-            new[] { Participant(TestData.MemberUser.Id, "receiver") });
-        var falseFlagDetail = await JsonAsync(await Client.GetAsync($"/api/v2/group-exchanges/{falseFlagId}"));
-        falseFlagDetail.GetProperty("data").GetProperty("participant_count").GetInt32().Should().Be(1);
-
-        using (var scope = Factory.Services.CreateScope())
+        var inline = await Client.PostAsJsonAsync("/api/v2/group-exchanges", new
         {
-            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
-            var restriction = await db.UserMonitoringRestrictions.SingleAsync(item => item.Id == restrictionId);
-            restriction.RequiresBrokerApproval = true;
-            restriction.MonitoringExpiresAt = DateTime.UtcNow.AddMinutes(-1);
-            await db.SaveChangesAsync();
-        }
-
-        var expiredId = await CreateExchangeAsync(
-            "Expired broker gate",
-            1m,
-            "equal",
-            new[] { Participant(TestData.MemberUser.Id, "receiver") });
-        var expiredDetail = await JsonAsync(await Client.GetAsync($"/api/v2/group-exchanges/{expiredId}"));
-        expiredDetail.GetProperty("data").GetProperty("participant_count").GetInt32().Should().Be(1);
-
-        using (var scope = Factory.Services.CreateScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
-            var restriction = await db.UserMonitoringRestrictions.SingleAsync(item => item.Id == restrictionId);
-            restriction.MonitoringExpiresAt = DateTime.UtcNow.AddDays(7);
-            await db.SaveChangesAsync();
-        }
-
-        var blocked = await Client.PostAsJsonAsync("/api/v2/group-exchanges", new
-        {
-            title = "Blocked inline participant",
+            title = "Broker approval inline",
             split_type = "equal",
             total_hours = 1m,
-            participants = new[]
-            {
-                new { user_id = TestData.MemberUser.Id, role = "receiver", hours = 1m, weight = 1m }
-            }
+            participants = new[] { Participant(TestData.MemberUser.Id, "receiver", 1m) }
         });
-        blocked.StatusCode.Should().Be(HttpStatusCode.Created);
-        var blockedData = (await JsonAsync(blocked)).GetProperty("data");
-        blockedData.GetProperty("participant_count").GetInt32().Should().Be(0);
-        var blockedExchangeId = blockedData.GetProperty("id").GetInt32();
+        inline.StatusCode.Should().Be(HttpStatusCode.Created);
+        (await JsonAsync(inline)).GetProperty("data").GetProperty("participant_count").GetInt32()
+            .Should().Be(1);
+
+        await AddSafeguardingPreferenceAsync(
+            TestData.MemberUser.Id,
+            "unavailable-vetting-after-broker",
+            "{\"requires_vetted_interaction\":true,\"vetting_type_required\":\"dbs_enhanced\"}");
+
+        var exchangeId = await CreateExchangeAsync(
+            "Broker approval explicit",
+            1m,
+            "equal",
+            Array.Empty<object>());
 
         var explicitAdd = await Client.PostAsJsonAsync(
-            $"/api/v2/group-exchanges/{blockedExchangeId}/participants",
+            $"/api/v2/group-exchanges/{exchangeId}/participants",
             new { user_id = TestData.MemberUser.Id, role = "receiver", hours = 1m, weight = 1m });
         explicitAdd.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await JsonAsync(explicitAdd)).GetProperty("errors")[0].GetProperty("code").GetString()
+            .Should().Be("VALIDATION_ERROR");
+
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        (await db.GroupExchanges.AsNoTracking().AnyAsync(item => item.Title == "Broker approval inline"))
+            .Should().BeTrue();
+        (await db.GroupExchangeParticipants.AsNoTracking()
+                .AnyAsync(item => item.GroupExchangeId == exchangeId && item.UserId == TestData.MemberUser.Id))
+            .Should().BeFalse();
     }
 
     [Fact]
-    public async Task ParticipantAdd_EnforcesBidirectionalRequiredVetting()
+    public async Task LegacyVettingNeverAuthorizes_ButExactAttestationAllows_AndRevocationClosesStart()
     {
-        var (secondParticipantId, _) = await AddSameTenantUsersAsync();
+        await ConfigureEnglandWalesPolicyAsync();
         await AuthenticateAsAdminAsync();
         var exchangeId = await CreateExchangeAsync(
             "Vetting-gated exchange",
@@ -681,8 +735,8 @@ public class GroupExchangeControllerTests : IntegrationTestBase
 
         await AddSafeguardingPreferenceAsync(
             TestData.MemberUser.Id,
-            "participant-garda",
-            "{\"requires_vetted_interaction\":true,\"vetting_type_required\":\"garda_vetting\"}");
+            "participant-dbs",
+            "{\"requires_vetted_interaction\":true,\"vetting_type_required\":\"dbs_enhanced\"}");
 
         var participantRequest = new
         {
@@ -693,52 +747,320 @@ public class GroupExchangeControllerTests : IntegrationTestBase
         };
         (await Client.PostAsJsonAsync(
             $"/api/v2/group-exchanges/{exchangeId}/participants",
-            participantRequest)).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            participantRequest)).StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
-        await AddVerifiedVettingAsync(TestData.AdminUser.Id, "garda_vetting");
+        await AddLegacyVerifiedVettingAsync(TestData.AdminUser.Id, "dbs_enhanced");
+        var legacyStillBlocked = await Client.PostAsJsonAsync(
+            $"/api/v2/group-exchanges/{exchangeId}/participants",
+            participantRequest);
+        legacyStillBlocked.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await JsonAsync(legacyStillBlocked)).GetProperty("errors")[0].GetProperty("code").GetString()
+            .Should().Be("VETTING_REQUIRED");
+
+        await ConfirmCurrentAttestationAsync(TestData.AdminUser.Id);
+        var allowed = await Client.PostAsJsonAsync(
+            $"/api/v2/group-exchanges/{exchangeId}/participants",
+            participantRequest);
+        allowed.StatusCode.Should().Be(HttpStatusCode.OK);
+
         (await Client.PostAsJsonAsync(
             $"/api/v2/group-exchanges/{exchangeId}/participants",
-            participantRequest)).StatusCode.Should().Be(HttpStatusCode.OK);
+            new { user_id = TestData.AdminUser.Id, role = "provider", hours = 2m, weight = 1m }))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
 
-        await AddSafeguardingPreferenceAsync(
-            TestData.AdminUser.Id,
-            "organizer-dbs",
-            "{\"requires_vetted_interaction\":true,\"vetting_type_required\":\"dbs_enhanced\"}");
-        var secondRole = new
-        {
-            user_id = secondParticipantId,
-            role = "provider",
-            hours = 2m,
-            weight = 1m
-        };
-        (await Client.PostAsJsonAsync(
-            $"/api/v2/group-exchanges/{exchangeId}/participants",
-            secondRole)).StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await RevokeCurrentAttestationAsync(TestData.AdminUser.Id);
+        var start = await Client.PostAsync($"/api/v2/group-exchanges/{exchangeId}/start", null);
+        start.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await JsonAsync(start)).GetProperty("errors")[0].GetProperty("code").GetString()
+            .Should().Be("VETTING_REQUIRED");
 
-        await AddVerifiedVettingAsync(secondParticipantId, "dbs_enhanced");
-        (await Client.PostAsJsonAsync(
-            $"/api/v2/group-exchanges/{exchangeId}/participants",
-            secondRole)).StatusCode.Should().Be(HttpStatusCode.OK);
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        (await db.GroupExchanges.AsNoTracking().SingleAsync(item => item.Id == exchangeId)).Status
+            .Should().Be("draft");
     }
 
     [Fact]
-    public async Task StartFreezesRevision_ResetsDraftConfirmations_AndCompletedCannotCancel()
+    public async Task UnavailablePolicy_FailsClosedBeforeInlineExchangePersistence()
+    {
+        await AddSafeguardingPreferenceAsync(
+            TestData.MemberUser.Id,
+            "unconfigured-vetting",
+            "{\"requires_vetted_interaction\":true,\"vetting_type_required\":\"dbs_enhanced\"}");
+        await AuthenticateAsAdminAsync();
+
+        var response = await Client.PostAsJsonAsync("/api/v2/group-exchanges", new
+        {
+            title = "Unavailable policy exchange",
+            split_type = "equal",
+            total_hours = 1m,
+            participants = new[] { Participant(TestData.MemberUser.Id, "receiver", 1m) }
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
+        (await JsonAsync(response)).GetProperty("errors")[0].GetProperty("code").GetString()
+            .Should().Be("SAFEGUARDING_POLICY_UNAVAILABLE");
+
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        (await db.GroupExchanges.AsNoTracking().AnyAsync(item => item.Title == "Unavailable policy exchange"))
+            .Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task AllPairGate_RechecksExistingParticipants_WhenAddingAnotherMember()
+    {
+        await ConfigureEnglandWalesPolicyAsync();
+        var (protectedUserId, unconfirmedSenderId) = await AddSameTenantUsersAsync();
+        var extraUser = await AddSameTenantUserAsync("extra-pair@test.com", "Extra");
+        await AuthenticateAsAdminAsync();
+        var exchangeId = await CreateExchangeAsync(
+            "All-pairs protection",
+            3m,
+            "custom",
+            new[]
+            {
+                Participant(protectedUserId, "provider", 3m),
+                Participant(unconfirmedSenderId, "receiver", 3m)
+            });
+
+        await AddSafeguardingPreferenceAsync(
+            protectedUserId,
+            "protected-after-create",
+            "{\"requires_vetted_interaction\":true,\"vetting_type_required\":\"dbs_enhanced\"}");
+        await ConfirmCurrentAttestationAsync(TestData.AdminUser.Id);
+
+        var blocked = await Client.PostAsJsonAsync(
+            $"/api/v2/group-exchanges/{exchangeId}/participants",
+            new { user_id = extraUser, role = "provider", hours = 3m, weight = 1m });
+        blocked.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await JsonAsync(blocked)).GetProperty("errors")[0].GetProperty("code").GetString()
+            .Should().Be("VETTING_REQUIRED");
+
+        await ConfirmCurrentAttestationAsync(unconfirmedSenderId);
+        await ConfirmCurrentAttestationAsync(extraUser);
+        (await Client.PostAsJsonAsync(
+            $"/api/v2/group-exchanges/{exchangeId}/participants",
+            new { user_id = extraUser, role = "provider", hours = 3m, weight = 1m }))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task AllPairGate_PreservesCallerOrderForFirstDenialWhileLockingDeterministically()
+    {
+        await ConfigureEnglandWalesPolicyAsync();
+        var (lowerIdVettedMember, higherIdContactRestrictedMember) = await AddSameTenantUsersAsync();
+        lowerIdVettedMember.Should().BeLessThan(higherIdContactRestrictedMember);
+
+        await AddSafeguardingPreferenceAsync(
+            higherIdContactRestrictedMember,
+            "caller-first-contact-restriction",
+            "{\"restricts_messaging\":true}");
+        await AddSafeguardingPreferenceAsync(
+            lowerIdVettedMember,
+            "sorted-first-vetting-restriction",
+            "{\"requires_vetted_interaction\":true,\"vetting_type_required\":\"dbs_enhanced\"}");
+
+        await AuthenticateAsAdminAsync();
+        var response = await Client.PostAsJsonAsync("/api/v2/group-exchanges", new
+        {
+            title = "Caller ordered denial",
+            split_type = "equal",
+            total_hours = 1m,
+            participants = new[]
+            {
+                Participant(higherIdContactRestrictedMember, "provider", 1m),
+                Participant(lowerIdVettedMember, "receiver", 1m)
+            }
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await JsonAsync(response)).GetProperty("errors")[0].GetProperty("code").GetString()
+            .Should().Be("SAFEGUARDING_CONTACT_RESTRICTED");
+
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        (await db.GroupExchanges.AsNoTracking().AnyAsync(item => item.Title == "Caller ordered denial"))
+            .Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task StartConfirmAndComplete_RecheckCurrentAttestationBeforeEachMutation()
+    {
+        await ConfigureEnglandWalesPolicyAsync();
+        await AuthenticateAsAdminAsync();
+        var exchangeId = await CreateExchangeAsync(
+            "Lifecycle safeguarding recheck",
+            2m,
+            "custom",
+            new[]
+            {
+                Participant(TestData.AdminUser.Id, "provider", 2m),
+                Participant(TestData.MemberUser.Id, "receiver", 2m)
+            });
+
+        await AddSafeguardingPreferenceAsync(
+            TestData.MemberUser.Id,
+            "lifecycle-protected-member",
+            "{\"requires_vetted_interaction\":true,\"vetting_type_required\":\"dbs_enhanced\"}");
+
+        var blockedStart = await Client.PostAsync($"/api/v2/group-exchanges/{exchangeId}/start", null);
+        blockedStart.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await JsonAsync(blockedStart)).GetProperty("errors")[0].GetProperty("code").GetString()
+            .Should().Be("VETTING_REQUIRED");
+
+        await ConfirmCurrentAttestationAsync(TestData.AdminUser.Id);
+        (await Client.PostAsync($"/api/v2/group-exchanges/{exchangeId}/start", null))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+
+        await RevokeCurrentAttestationAsync(TestData.AdminUser.Id);
+        await AuthenticateAsMemberAsync();
+        var blockedConfirm = await Client.PostAsync($"/api/v2/group-exchanges/{exchangeId}/confirm", null);
+        blockedConfirm.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await JsonAsync(blockedConfirm)).GetProperty("errors")[0].GetProperty("code").GetString()
+            .Should().Be("VETTING_REQUIRED");
+
+        await ConfirmCurrentAttestationAsync(TestData.AdminUser.Id);
+        (await Client.PostAsync($"/api/v2/group-exchanges/{exchangeId}/confirm", null))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        await AuthenticateAsAdminAsync();
+        (await Client.PostAsync($"/api/v2/group-exchanges/{exchangeId}/confirm", null))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+
+        await RevokeCurrentAttestationAsync(TestData.AdminUser.Id);
+        var blockedComplete = await Client.PostAsync($"/api/v2/group-exchanges/{exchangeId}/complete", null);
+        blockedComplete.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await JsonAsync(blockedComplete)).GetProperty("errors")[0].GetProperty("code").GetString()
+            .Should().Be("VETTING_REQUIRED");
+
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        (await db.GroupExchanges.AsNoTracking().SingleAsync(item => item.Id == exchangeId)).Status
+            .Should().Be("pending_confirmation");
+        (await db.Transactions.AsNoTracking()
+                .AnyAsync(item => item.Description == "Group exchange: Lifecycle safeguarding recheck"))
+            .Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ConcurrentRevocationSerializesCreateAndCompleteBeforeMutation()
+    {
+        await ConfigureEnglandWalesPolicyAsync();
+        await AddSafeguardingPreferenceAsync(
+            TestData.MemberUser.Id,
+            "transaction-boundary-vetting",
+            "{\"requires_vetted_interaction\":true,\"vetting_type_required\":\"dbs_enhanced\"}");
+        await ConfirmCurrentAttestationAsync(TestData.AdminUser.Id);
+        await AuthenticateAsAdminAsync();
+
+        var blockedCreateTitle = $"Blocked concurrent create {Guid.NewGuid():N}";
+        await using (var blockingScope = Factory.Services.CreateAsyncScope())
+        {
+            var blockingDb = blockingScope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            await using var blockingTransaction = await blockingDb.Database.BeginTransactionAsync();
+            var attestations = blockingScope.ServiceProvider.GetRequiredService<MemberVettingAttestationService>();
+            await attestations.RevokeForCurrentPolicyAsync(
+                TestData.Tenant1.Id,
+                TestData.AdminUser.Id,
+                TestData.MemberUser.Id);
+            var blockingPid = await blockingDb.Database
+                .SqlQueryRaw<int>("SELECT pg_backend_pid() AS \"Value\"")
+                .SingleAsync();
+
+            var createTask = Client.PostAsJsonAsync("/api/v2/group-exchanges", new
+            {
+                title = blockedCreateTitle,
+                split_type = "equal",
+                total_hours = 1m,
+                participants = new[]
+                {
+                    Participant(TestData.AdminUser.Id, "provider"),
+                    Participant(TestData.MemberUser.Id, "receiver")
+                }
+            });
+            await WaitUntilBlockedByBackendAsync(blockingPid, createTask);
+            await blockingTransaction.CommitAsync();
+
+            var blockedCreate = await createTask;
+            blockedCreate.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+            (await JsonAsync(blockedCreate)).GetProperty("errors")[0].GetProperty("code").GetString()
+                .Should().Be("VETTING_REQUIRED");
+        }
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            (await db.GroupExchanges.AsNoTracking().AnyAsync(item => item.Title == blockedCreateTitle))
+                .Should().BeFalse();
+        }
+
+        await ConfirmCurrentAttestationAsync(TestData.AdminUser.Id);
+        var exchangeId = await CreateExchangeAsync(
+            "Blocked concurrent completion",
+            1m,
+            "equal",
+            new[]
+            {
+                Participant(TestData.AdminUser.Id, "provider"),
+                Participant(TestData.MemberUser.Id, "receiver")
+            });
+        (await Client.PostAsync($"/api/v2/group-exchanges/{exchangeId}/start", null))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        (await Client.PostAsync($"/api/v2/group-exchanges/{exchangeId}/confirm", null))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        await AuthenticateAsMemberAsync();
+        (await Client.PostAsync($"/api/v2/group-exchanges/{exchangeId}/confirm", null))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        await AuthenticateAsAdminAsync();
+
+        await using (var blockingScope = Factory.Services.CreateAsyncScope())
+        {
+            var blockingDb = blockingScope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            await using var blockingTransaction = await blockingDb.Database.BeginTransactionAsync();
+            var attestations = blockingScope.ServiceProvider.GetRequiredService<MemberVettingAttestationService>();
+            await attestations.RevokeForCurrentPolicyAsync(
+                TestData.Tenant1.Id,
+                TestData.AdminUser.Id,
+                TestData.MemberUser.Id);
+            var blockingPid = await blockingDb.Database
+                .SqlQueryRaw<int>("SELECT pg_backend_pid() AS \"Value\"")
+                .SingleAsync();
+
+            var completeTask = Client.PostAsync($"/api/v2/group-exchanges/{exchangeId}/complete", null);
+            await WaitUntilBlockedByBackendAsync(blockingPid, completeTask);
+            await blockingTransaction.CommitAsync();
+
+            var blockedComplete = await completeTask;
+            blockedComplete.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+            (await JsonAsync(blockedComplete)).GetProperty("errors")[0].GetProperty("code").GetString()
+                .Should().Be("VETTING_REQUIRED");
+        }
+
+        using var finalScope = Factory.Services.CreateScope();
+        var finalDb = finalScope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        (await finalDb.GroupExchanges.AsNoTracking().SingleAsync(item => item.Id == exchangeId)).Status
+            .Should().Be("pending_confirmation");
+        (await finalDb.Transactions.AsNoTracking()
+                .AnyAsync(item => item.Description == "Group exchange: Blocked concurrent completion"))
+            .Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task CallerStatusAndLifecycleMutationsMatchLaravel()
     {
         var (additionalUserId, _) = await AddSameTenantUsersAsync();
         await AuthenticateAsAdminAsync();
         var exchangeId = await CreateExchangeAsync(
-            "Immutable consent revision",
+            "Canonical lifecycle revision",
             2m,
             "equal",
             new[]
             {
                 Participant(TestData.AdminUser.Id, "provider"),
                 Participant(TestData.MemberUser.Id, "receiver")
-            },
-            status: "completed");
+            });
 
-        // A confirmation written by a historical/pre-fix client while draft must
-        // never survive the transition into the immutable consent state.
+        // Laravel start changes only status; an existing confirmation is retained.
         using (var scope = Factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
@@ -750,7 +1072,7 @@ public class GroupExchangeControllerTests : IntegrationTestBase
         }
 
         (await Client.PutAsJsonAsync($"/api/v2/group-exchanges/{exchangeId}", new { total_hours = 0m }))
-            .StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            .StatusCode.Should().Be(HttpStatusCode.OK);
 
         (await Client.PostAsync($"/api/v2/group-exchanges/{exchangeId}/complete", null))
             .StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -763,17 +1085,68 @@ public class GroupExchangeControllerTests : IntegrationTestBase
             .GetProperty("data");
         frozen.GetProperty("status").GetString().Should().Be("pending_confirmation");
         frozen.GetProperty("participants").EnumerateArray()
-            .Should().OnlyContain(item => !item.GetProperty("confirmed").GetBoolean());
+            .Single(item => item.GetProperty("user_id").GetInt32() == TestData.AdminUser.Id)
+            .GetProperty("confirmed").GetBoolean().Should().BeTrue();
 
         (await Client.PutAsJsonAsync($"/api/v2/group-exchanges/{exchangeId}", new { total_hours = 9m }))
-            .StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            .StatusCode.Should().Be(HttpStatusCode.OK);
         (await Client.PostAsJsonAsync(
             $"/api/v2/group-exchanges/{exchangeId}/participants",
             new { user_id = additionalUserId, role = "provider", hours = 1m, weight = 1m }))
-            .StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            .StatusCode.Should().Be(HttpStatusCode.OK);
         (await Client.DeleteAsync(
             $"/api/v2/group-exchanges/{exchangeId}/participants/{TestData.MemberUser.Id}"))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var completedId = await CreateExchangeAsync(
+            "Caller supplied completed state",
+            1m,
+            "equal",
+            new[] { Participant(TestData.AdminUser.Id, "provider") },
+            status: "completed");
+        var completed = (await JsonAsync(await Client.GetAsync($"/api/v2/group-exchanges/{completedId}")))
+            .GetProperty("data");
+        completed.GetProperty("status").GetString().Should().Be("completed");
+        (await Client.PostAsync($"/api/v2/group-exchanges/{completedId}/start", null))
             .StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await Client.PostAsJsonAsync(
+            $"/api/v2/group-exchanges/{completedId}/participants",
+            new { user_id = TestData.MemberUser.Id, role = "receiver", hours = 1m, weight = 1m }))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        await AuthenticateAsMemberAsync();
+        (await Client.PostAsync($"/api/v2/group-exchanges/{completedId}/confirm", null))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        await AuthenticateAsAdminAsync();
+        (await Client.DeleteAsync(
+            $"/api/v2/group-exchanges/{completedId}/participants/{TestData.MemberUser.Id}"))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        // Removing a missing participant is also a successful no-op in Laravel.
+        (await Client.DeleteAsync(
+            $"/api/v2/group-exchanges/{completedId}/participants/{TestData.MemberUser.Id}"))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // Laravel destroy always writes cancelled, including from completed.
+        (await Client.DeleteAsync($"/api/v2/group-exchanges/{completedId}"))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+        var cancelled = (await JsonAsync(await Client.GetAsync($"/api/v2/group-exchanges/{completedId}")))
+            .GetProperty("data");
+        cancelled.GetProperty("status").GetString().Should().Be("cancelled");
+    }
+
+    [Fact]
+    public async Task ConfirmAndCompleteDoNotRequirePendingConfirmationStatus()
+    {
+        await AuthenticateAsAdminAsync();
+        var exchangeId = await CreateExchangeAsync(
+            "Active exchange completion",
+            1m,
+            "equal",
+            new[]
+            {
+                Participant(TestData.AdminUser.Id, "provider"),
+                Participant(TestData.MemberUser.Id, "receiver")
+            },
+            status: "active");
 
         (await Client.PostAsync($"/api/v2/group-exchanges/{exchangeId}/confirm", null))
             .StatusCode.Should().Be(HttpStatusCode.OK);
@@ -783,17 +1156,10 @@ public class GroupExchangeControllerTests : IntegrationTestBase
         await AuthenticateAsAdminAsync();
         (await Client.PostAsync($"/api/v2/group-exchanges/{exchangeId}/complete", null))
             .StatusCode.Should().Be(HttpStatusCode.OK);
-        (await Client.DeleteAsync($"/api/v2/group-exchanges/{exchangeId}"))
-            .StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
-        using var finalScope = Factory.Services.CreateScope();
-        var finalDb = finalScope.ServiceProvider.GetRequiredService<NexusDbContext>();
-        var persisted = await finalDb.GroupExchanges.AsNoTracking()
-            .SingleAsync(item => item.Id == exchangeId);
-        persisted.Status.Should().Be("completed");
-        (await finalDb.Transactions.AsNoTracking()
-            .CountAsync(item => item.Description == "Group exchange: Immutable consent revision"))
-            .Should().Be(1);
+        var completed = (await JsonAsync(await Client.GetAsync($"/api/v2/group-exchanges/{exchangeId}")))
+            .GetProperty("data");
+        completed.GetProperty("status").GetString().Should().Be("completed");
     }
 
     private async Task<int> CreateExchangeAsync(
@@ -833,6 +1199,30 @@ public class GroupExchangeControllerTests : IntegrationTestBase
         return received - sent;
     }
 
+    private async Task WaitUntilBlockedByBackendAsync(int blockingPid, Task requestTask)
+    {
+        using var observerScope = Factory.Services.CreateScope();
+        var observerDb = observerScope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        for (var attempt = 0; attempt < 100; attempt++)
+        {
+            requestTask.IsCompleted.Should().BeFalse(
+                "the mutation must wait for the safeguarding transaction instead of committing from stale state");
+            var isBlocked = await observerDb.Database.SqlQueryRaw<bool>(
+                    "SELECT EXISTS (SELECT 1 FROM pg_stat_activity AS activity " +
+                    "WHERE {0} = ANY(pg_blocking_pids(activity.pid))) AS \"Value\"",
+                    blockingPid)
+                .SingleAsync();
+            if (isBlocked)
+            {
+                return;
+            }
+            await Task.Delay(25);
+        }
+
+        throw new TimeoutException(
+            $"No HTTP mutation was observed waiting on safeguarding backend {blockingPid}.");
+    }
+
     private async Task<(int ProviderId, int ReceiverId)> AddSameTenantUsersAsync()
     {
         using var scope = Factory.Services.CreateScope();
@@ -843,6 +1233,19 @@ public class GroupExchangeControllerTests : IntegrationTestBase
         db.Users.AddRange(provider, receiver);
         await db.SaveChangesAsync();
         return (provider.Id, receiver.Id);
+    }
+
+    private async Task<int> AddSameTenantUserAsync(string email, string firstName)
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var user = NewUser(
+            email,
+            firstName,
+            BCrypt.Net.BCrypt.HashPassword(TestDataSeeder.TestPassword));
+        db.Users.Add(user);
+        await db.SaveChangesAsync();
+        return user.Id;
     }
 
     private User NewUser(string email, string firstName, string passwordHash) => new()
@@ -885,7 +1288,43 @@ public class GroupExchangeControllerTests : IntegrationTestBase
         await db.SaveChangesAsync();
     }
 
-    private async Task AddVerifiedVettingAsync(int userId, string type)
+    private async Task ConfigureEnglandWalesPolicyAsync()
+    {
+        using var scope = Factory.Services.CreateScope();
+        var service = scope.ServiceProvider.GetRequiredService<SafeguardingJurisdictionService>();
+        await service.ConfigureAsync(
+            TestData.Tenant1.Id,
+            "england_wales",
+            TestData.AdminUser.Id);
+    }
+
+    private async Task ConfirmCurrentAttestationAsync(int userId)
+    {
+        using var scope = Factory.Services.CreateScope();
+        var service = scope.ServiceProvider.GetRequiredService<MemberVettingAttestationService>();
+        var actorUserId = userId == TestData.AdminUser.Id
+            ? TestData.MemberUser.Id
+            : TestData.AdminUser.Id;
+        await service.ConfirmForCurrentPolicyAsync(
+            TestData.Tenant1.Id,
+            userId,
+            actorUserId);
+    }
+
+    private async Task RevokeCurrentAttestationAsync(int userId)
+    {
+        using var scope = Factory.Services.CreateScope();
+        var service = scope.ServiceProvider.GetRequiredService<MemberVettingAttestationService>();
+        var actorUserId = userId == TestData.AdminUser.Id
+            ? TestData.MemberUser.Id
+            : TestData.AdminUser.Id;
+        await service.RevokeForCurrentPolicyAsync(
+            TestData.Tenant1.Id,
+            userId,
+            actorUserId);
+    }
+
+    private async Task AddLegacyVerifiedVettingAsync(int userId, string type)
     {
         using var scope = Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();

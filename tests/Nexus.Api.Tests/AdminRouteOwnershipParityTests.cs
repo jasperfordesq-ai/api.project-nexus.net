@@ -159,6 +159,21 @@ public sealed class AdminRouteOwnershipParityTests : IClassFixture<AdminRouteOwn
 
         AddLegacyAndV2(routes, "POST", "safeguarding/flagged-messages/{id:int}/review", "AdminSafeguarding", "ReviewMessage");
         AddLegacyAndV2(routes, "DELETE", "safeguarding/assignments/{id:int}", "AdminSafeguarding", "DeleteAssignment");
+        AddLegacyAndV2(routes, "GET", "safeguarding/options", "AdminSafeguarding", "Options");
+        AddLegacyAndV2(routes, "POST", "safeguarding/options", "AdminSafeguarding", "CreateOption");
+        AddLegacyAndV2(routes, "PUT", "safeguarding/options/reorder", "AdminSafeguarding", "ReorderOptions");
+        AddLegacyAndV2(routes, "PUT", "safeguarding/options/{id:int}", "AdminSafeguarding", "UpdateOption");
+        AddLegacyAndV2(routes, "DELETE", "safeguarding/options/{id:int}", "AdminSafeguarding", "DeactivateOption");
+        routes.Add("GET", "api/v2/admin/vetting", "AdminSafeguardingVetting", "List");
+        routes.Add("GET", "api/v2/admin/vetting/stats", "AdminSafeguardingVetting", "Stats");
+        routes.Add("GET", "api/v2/admin/vetting/policy", "AdminSafeguardingVetting", "Policy");
+        routes.Add("PUT", "api/v2/admin/vetting/policy", "AdminSafeguardingVetting", "UpdatePolicy");
+        routes.Add("POST", "api/v2/admin/vetting/policy/rotate", "AdminSafeguardingVetting", "RotatePolicy");
+        routes.Add("GET", "api/v2/admin/vetting/user/{userId:int}", "AdminSafeguardingVetting", "GetUserRecords");
+        routes.Add("POST", "api/v2/admin/vetting/user/{userId:int}/confirm", "AdminSafeguardingVetting", "Confirm");
+        routes.Add("POST", "api/v2/admin/vetting/user/{userId:int}/revoke", "AdminSafeguardingVetting", "Revoke");
+        routes.Add("POST", "api/v2/admin/vetting/reviews/{reviewId:long}/resolve", "AdminSafeguardingVetting", "ResolveReview");
+        routes.Add("GET", "api/v2/admin/vetting/{id:long}", "AdminSafeguardingVetting", "Show");
         AddLegacyAndV2(routes, "GET", "tools/seo-audit", "AdminCompatibility", "RunSeoAudit");
         AddLegacyAndV2(routes, "GET", "community-analytics/geography", "AdminCompatibility", "GetCommunityAnalyticsGeography");
         AddLegacyAndV2(routes, "POST", "federation/partnerships/{id:int}/approve", "AdminCompatibility2", "ApprovePartnership");

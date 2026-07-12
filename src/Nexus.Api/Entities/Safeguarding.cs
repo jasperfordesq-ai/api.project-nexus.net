@@ -48,13 +48,13 @@ public class UserSafeguardingPreference : ITenantEntity
     public int UserId { get; set; }
     public int OptionId { get; set; }
 
-    [MaxLength(120)]
+    [MaxLength(255)]
     public string SelectedValue { get; set; } = "true";
 
     [MaxLength(2000)]
     public string? Notes { get; set; }
 
-    public DateTime? ConsentGivenAt { get; set; }
+    public DateTime ConsentGivenAt { get; set; } = DateTime.UtcNow;
 
     [MaxLength(64)]
     public string? ConsentIp { get; set; }
@@ -63,6 +63,11 @@ public class UserSafeguardingPreference : ITenantEntity
     public DateTime? ReviewReminderSentAt { get; set; }
     public DateTime? ReviewConfirmedAt { get; set; }
     public DateTime? ReviewEscalatedAt { get; set; }
+    public DateTime? PolicyReviewRequiredAt { get; set; }
+
+    [MaxLength(64)]
+    public string? PolicyReviewReasonCode { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 
@@ -212,6 +217,7 @@ public class UserMonitoringRestriction : ITenantEntity
     public int UserId { get; set; }
     public bool UnderMonitoring { get; set; } = true;
     public bool RequiresBrokerApproval { get; set; }
+    public bool MessagingDisabled { get; set; }
     public DateTime? MonitoringExpiresAt { get; set; }
 
     [MaxLength(2000)]

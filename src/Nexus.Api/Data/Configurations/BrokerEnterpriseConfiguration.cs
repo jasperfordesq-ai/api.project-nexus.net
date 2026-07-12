@@ -60,14 +60,20 @@ public class BrokerEnterpriseConfiguration : TenantScopedConfiguration
         {
             entity.ToTable("user_safeguarding_preferences");
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.SelectedValue).HasMaxLength(120).IsRequired();
+            entity.Property(e => e.SelectedValue).HasMaxLength(255).IsRequired();
             entity.Property(e => e.Notes).HasMaxLength(2000);
             entity.Property(e => e.ConsentIp).HasMaxLength(64);
-            entity.HasIndex(e => new { e.TenantId, e.UserId, e.OptionId, e.RevokedAt });
+            entity.Property(e => e.ConsentGivenAt).IsRequired();
+            entity.Property(e => e.PolicyReviewRequiredAt)
+                .HasColumnName("policy_review_required_at");
+            entity.Property(e => e.PolicyReviewReasonCode)
+                .HasColumnName("policy_review_reason_code")
+                .HasMaxLength(64);
+            entity.HasIndex(e => new { e.TenantId, e.UserId, e.OptionId }).IsUnique();
             entity.HasIndex(e => new { e.TenantId, e.ReviewReminderSentAt });
-            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
-            entity.HasOne(e => e.Option).WithMany().HasForeignKey(e => e.OptionId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Option).WithMany().HasForeignKey(e => e.OptionId).OnDelete(DeleteBehavior.Cascade);
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
         });
 
@@ -120,6 +126,9 @@ public class BrokerEnterpriseConfiguration : TenantScopedConfiguration
             entity.ToTable("user_monitoring_restrictions");
             entity.HasKey(e => e.Id);
             entity.Property(e => e.RequiresBrokerApproval).HasDefaultValue(false);
+            entity.Property(e => e.MessagingDisabled)
+                .HasColumnName("messaging_disabled")
+                .HasDefaultValue(false);
             entity.Property(e => e.Reason).HasMaxLength(2000);
             entity.HasIndex(e => new { e.TenantId, e.UserId }).IsUnique();
             entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);

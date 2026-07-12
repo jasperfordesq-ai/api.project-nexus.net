@@ -960,14 +960,6 @@ public class MiscParityController : ControllerBase
     [Authorize]
     public IActionResult OnboardingStatus() => Ok(new { data = new { complete = false } });
 
-    [HttpGet("onboarding/safeguarding-options")]
-    [Authorize]
-    public IActionResult SafeguardingOptions() => Ok(new { data = Array.Empty<object>() });
-
-    [HttpPost("onboarding/safeguarding")]
-    [Authorize]
-    public IActionResult SaveSafeguarding([FromBody] JsonElement body) => Ok(new { data = new { saved = true } });
-
     [HttpPost("pilot-inquiry")]
     [AllowAnonymous]
     public IActionResult PilotInquiry([FromBody] JsonElement body) => Ok(new { data = new { received = true } });

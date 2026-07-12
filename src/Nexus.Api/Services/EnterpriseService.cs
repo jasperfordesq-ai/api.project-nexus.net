@@ -277,9 +277,13 @@ public class EnterpriseService
             .IgnoreQueryFilters()
             .CountAsync(s => s.TenantId == tenantId && s.IsActive);
 
-        var expiringVetting = await _db.VettingRecords
+        // Metadata-only attestations do not expire like legacy document
+        // records. Surface unresolved current-policy review workload in the
+        // existing dashboard slot; vetting_records must never affect trust.
+        var expiringVetting = await _db.SafeguardingVettingReviewRequests
             .IgnoreQueryFilters()
-            .CountAsync(v => v.TenantId == tenantId && v.ExpiresAt != null && v.ExpiresAt <= now.AddDays(30) && v.ExpiresAt > now);
+            .CountAsync(review => review.TenantId == tenantId
+                && review.Status == SafeguardingVettingReviewRequest.PendingStatus);
 
         var openGdprBreaches = await _db.GdprBreaches
             .IgnoreQueryFilters()
@@ -345,13 +349,15 @@ public class EnterpriseService
         totalScore += breachPoints;
         breakdown.Add(new { metric = "no_open_gdpr_breaches", points = breachPoints, max_points = 20, status = openBreaches == 0 ? "pass" : "fail" });
 
-        // 3. All vetting records current (none expired) => +15
-        var expiredVetting = await _db.VettingRecords
+        // 3. Current-policy safeguarding review queue clear => +15. Legacy
+        // document-era vetting rows are deliberately excluded from authority.
+        var pendingVettingReviews = await _db.SafeguardingVettingReviewRequests
             .IgnoreQueryFilters()
-            .CountAsync(v => v.TenantId == tenantId && v.ExpiresAt != null && v.ExpiresAt < now);
-        var vettingPoints = expiredVetting == 0 ? 15 : 0;
+            .CountAsync(review => review.TenantId == tenantId
+                && review.Status == SafeguardingVettingReviewRequest.PendingStatus);
+        var vettingPoints = pendingVettingReviews == 0 ? 15 : 0;
         totalScore += vettingPoints;
-        breakdown.Add(new { metric = "vetting_records_current", points = vettingPoints, max_points = 15, status = expiredVetting == 0 ? "pass" : "fail" });
+        breakdown.Add(new { metric = "vetting_records_current", points = vettingPoints, max_points = 15, status = pendingVettingReviews == 0 ? "pass" : "fail" });
 
         // 4. Email verification rate > 80% => +15
         var totalUsers = await _db.Users

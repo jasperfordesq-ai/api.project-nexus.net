@@ -43,7 +43,88 @@ Before any production deployment or production-container action, stop and read
 deployment or touching production containers. Never modify the Laravel repo or
 Laravel Edition containers from this worktree.
 
-## 2026-07-12 ASP.NET Volunteer Hours Ledger Checkpoint
+## 2026-07-12 ASP.NET Safeguarding And Messaging Checkpoint
+
+Laravel at `C:\platforms\htdocs\staging` and the canonical React frontend remain
+the read-only contract sources. This backend-only slice did not authorize or
+require frontend changes; preserve unrelated `apps/web-uk` edits.
+
+The new safeguarding domain stores metadata only. Migration 112 creates the
+five exact Laravel tables `tenant_safeguarding_settings`,
+`member_vetting_attestations`, `member_vetting_attestation_events`,
+`safeguarding_vetting_review_requests`, and
+`safeguarding_policy_rotation_events`. Legacy vetting rows never authorize the
+new contact policy, event/rotation history is append-only, and controllers
+reject certificate files, reference numbers, arbitrary statuses, free text,
+expiry dates, and other sensitive evidence.
+
+Focused onboarding, member, administrator/broker vetting, policy rotation, and
+safeguarding-option owners replace the generic recorded responses. Option
+mutations use trigger/type allowlists, locks, live-selection weakening guards,
+member re-evaluation, and audit. The exact risk buckets are onboarding save
+5/minute, option mutation and vetting decision 60/minute, policy update
+20/minute, policy rotation 5/minute, member mutation 10/minute, and message
+restriction status 30/minute. Vetting throttles use Laravel `errors[]` and
+retry/version/tenant headers.
+
+Migration 113 adds `messaging_disabled` to
+`user_monitoring_restrictions`, a documented workflow adapter for Laravel's
+`user_messaging_restrictions`. Live status/admin monitoring now expire stale
+state, validate reason and tenant/user boundaries, persist the flag/expiry,
+audit/notify, and clear safeguarding-created approval on removal. Migration 114
+widens preference values, requires consent time, installs one unique
+tenant/user/option selection, and cascades tenant/option dependencies.
+
+The recorded chain is now 114 migrations through
+`20260712023810_SafeguardingPreferenceDependencyParity`. A blank PostgreSQL
+replay applied all 114. A valid populated 113-to-114 upgrade preserved rows and
+filled null consent times from `CreatedAt`; a duplicate tenant/user/option
+fixture raised `P0001` before DDL/data mutation, left history at 113, and left
+no partial migration-114 schema. Exact catalog containment and
+`has-pending-model-changes` are green. No production resource was touched.
+
+Direct text send/thread now has detected attachment content, partial/staged
+cleanup, sanitization and Unicode length, first-conversation serialization,
+same-tenant inactive-recipient compatibility, corrected partner/attachment
+projection, and awaited notification/XP/realtime effects. Blocked POST attempts
+alert safeguarding staff once; reads do not. Voice send now uses a dedicated
+detected-audio policy, preflight plus locked policy recheck, one transaction for
+all graph rows, independent rollback/file cleanup, minimum-one-second duration,
+and normal message effects. Spoofed audio and restricted sends leave no ghost
+state. Provider transcription remains open.
+
+Group exchange create/add/start/confirm/complete/cancel now follows Laravel's
+caller and role order, dual-role/participant semantics, caller-visible status,
+lifecycle guards, deterministic locking with caller-order policy evaluation,
+canonical provider transaction rows, hidden ledger adapters, exact failure
+contracts, conservation, idempotency, and first-writer behavior. Notification
+depth and frontend runtime smoke remain open.
+
+This checkpoint does not close direct messaging. Execute the audited residual
+in this order:
+
+1. **P0 edit:** React `body`, sender-only authorization, 24-hour window,
+   sanitization, current policy recheck, and edited metadata.
+2. **P0 delete:** sender/receiver participant authorization and durable
+   `scope=self|everyone` visibility rather than hard deletion.
+3. **P0 archive/restore:** treat `{id}` as partner user, persist per-user scope,
+   separate active/archived inboxes, exclude hidden unread rows, and restore
+   real state without deleting history.
+4. **P1 reactions:** exact emoji allowlist, durable unique reactions, policy on
+   add but withdrawal after policy closes, and participant-scoped batch
+   aggregation.
+5. **P1 typing:** full message preflight and a proven canonical Pusher
+   pair-channel `typing` event, including first-conversation behavior.
+6. **P1 coordinator help:** restricted-only gate, unrestricted 422, staff
+   delivery, successful-delivery dedupe/retry, and activity audit.
+
+Replace route-only and false-oracle tests for those handlers with two-user,
+reload, tenant, policy, and side-effect assertions. The final consolidated
+affected suite selected and passed 323/323 with zero failed or skipped in
+20m47s. Do not report full-suite, CI, unchanged-frontend runtime, or backend
+1000/1000 green from this checkpoint.
+
+## 2026-07-12 ASP.NET Volunteer Hours Ledger Checkpoint (Preceding)
 
 The current backend slice replaces the former unavailable/recorded-only
 volunteer-hours paths with one canonical `VolunteerHoursService` workflow across
@@ -83,8 +164,8 @@ organisation-facing free-text description. Other feed producers, admin
 moderation consumers, compatibility cleanup, and historical backfill remain on
 the feed backlog.
 
-`20260711192124_VolunteerHoursLedgerParity` is migration 111 and the current
-latest migration. It hardens `vol_logs` status/hours/provenance, installs
+`20260711192124_VolunteerHoursLedgerParity` is migration 111. It hardens
+`vol_logs` status/hours/provenance, installs
 tenant-composite relationships and active natural-key uniqueness, links personal
 transactions to `VolunteerLogId`, and enforces unique organisation-payment and
 volunteer-hour XP evidence. Its source also defines `feed_activity` and the
@@ -92,9 +173,9 @@ user's nullable public-hours preference used by privacy-aware publication. It
 never inserts legacy transaction, payment, or XP value: uniquely provable
 existing evidence may be linked, evidence-free approved
 whole-hour organisation rows are downgraded to `pending`, and approved Caring
-sub-hour rows remain valid without fabricated evidence. Final non-production
-certification applied all 111 migrations to a blank PostgreSQL database with
-latest ID `20260711192124_VolunteerHoursLedgerParity` and directly verified the
+sub-hour rows remain valid without fabricated evidence. At that checkpoint,
+non-production certification applied all 111 migrations to a blank PostgreSQL
+database and directly verified the
 exact 13-column/eight-index `feed_activity` schema, nullable-boolean
 `users.show_on_leaderboard` defaulting to `true`, all 11 column-specific
 `ON DELETE SET NULL` relationships, and the volunteer-user `CASCADE`
@@ -159,7 +240,8 @@ explicit HTTP 400 rather than a database 500.
 
 Evidence at the preceding 110-migration checkpoint:
 
-- latest migration: `20260711143546_VolunteerQrAttendanceParity`;
+- then-latest migration at that checkpoint:
+  `20260711143546_VolunteerQrAttendanceParity`;
 - at that checkpoint, EF discovered/applied 110 IDs and reported no model drift;
 - test-project build: 0 errors and 4 pre-existing `xUnit1031` warnings;
 - migration-discovery regression: green;
@@ -246,8 +328,9 @@ Current evidence:
   legacy rows retained and known organisation-role casing normalized;
 - deliberately invalid cross-tenant organisation-wallet transaction: latest
   preflight aborted and left the preceding migration history/schema intact;
-- API comparator fixture green; the live result is 2,436/2,449 matched. Its exact
-  13 missing operations are `GET /api/admin/vetting/policy`,
+- API comparator fixture green; at that checkpoint the live result was
+  2,436/2,449 matched. Its exact 13 missing operations were
+  `GET /api/admin/vetting/policy`,
   `PUT /api/admin/vetting/policy`, `POST /api/admin/vetting/policy/rotate`,
   `POST /api/admin/vetting/reviews/{reviewid}/resolve`,
   `POST /api/admin/vetting/user/{userid}/confirm`,
@@ -343,9 +426,9 @@ route coverage is not a completion score.
 
 | Check | Current result or retained historical evidence |
 | --- | --- |
-| ASP.NET static operations | 4,323 |
+| ASP.NET static operations | 4,316 |
 | Laravel source operations | 2,449 |
-| Static method/path matches | 2,436 matched, 13 missing |
+| Static method/path matches | 2,438 matched, 11 missing |
 | Explicit admin compatibility behavior | At least 196 of 329 `AdminExplicitParityController` route declarations reached generic fallbacks at audit time |
 | Schema inventory | Historical audit result: 361 Laravel tables, 134 exact matches, 227 missing names, 194 ASP.NET-only names; the current checkpoint above supersedes it |
 | ASP.NET backend localization comparator | 7/11 locales, 49/605 namespaces, 157 comparable English keys matched, 5,018 missing |
@@ -354,7 +437,7 @@ route coverage is not a completion score.
 | Web UK conservative template localization | 1,595 safe static substitutions across 257 templates; the post-write audit reports 290 templates and zero remaining conservative matches, which is not a contextual-copy completion claim |
 | ASP.NET API/test builds | Debug API/test and required solution-wide Release builds passed with zero errors; the only warnings are the same four pre-existing `xUnit1031` warnings, and Release took 4m36s. |
 | Transactional volunteering regression | Prior core 61/61; guardian lifecycle 7/7; recurring-pattern CRUD 13/13 plus route ownership 1/1; recurring-shift generation/scheduler 13/13; volunteer-organisation relationship/lifecycle 13/13; wallet integration 6/6; QR attendance 32/32 plus persistence-failure 1/1; shift-swap assignment/member/admin/concurrency 12/12; affected-module gate 90/90; route/auth 5/5; ambient-transaction regression green. Current focused proof is one 53/53 disposable-Linux run: all 51 `VolunteerHoursParityTests` plus both `V15FeedActivityCompatibilityTests`, with 3,007 tests discovered. The clean affected rerun selected and passed 243/243 with zero failed/skipped in 418.639s. The full 3,007-test suite remains open. |
-| Migration runtime chain | Recorded inventory is 111 EF-discovered/applicable migrations through `20260711192124_VolunteerHoursLedgerParity`. Blank 111/latest, valid populated 110-to-111, invalid `P0001` atomic-abort/no-partial-DDL, and `has-pending-model-changes` gates are green; direct assertions cover the exact feed/privacy/FK contract, and disposable Docker cleanup is zero. |
+| Migration runtime chain | Recorded inventory is 114 EF-discovered/applicable migrations through `20260712023810_SafeguardingPreferenceDependencyParity`. Blank 114/latest, valid populated 113-to-114, invalid duplicate `P0001` atomic-abort/no-partial-schema, catalog-containment, and `has-pending-model-changes` gates are green. Retained 110-to-111 proof covers the feed/privacy/FK contract; no production resource was touched. |
 | Web UK route matrix | 608/608 matched, 0 missing, 0 extra application routes, 3 infrastructure routes ignored |
 | Web UK Jest | 31/31 suites and 1,021/1,021 tests passed after the localization/RTL, tenant-boundary, contextual identity/auth/accessibility, Explore, and profile-status slices |
 | Web UK lint and CSS build | Passed |
@@ -440,14 +523,28 @@ that implementation movement and the lower amount of current green evidence.
   `src\Nexus.Api\Controllers\VolunteerHoursController.cs`,
   `src\Nexus.Api\Migrations\20260711192124_VolunteerHoursLedgerParity.cs`, and
   `tests\Nexus.Api.Tests\VolunteerHoursParityTests.cs`.
+  Current safeguarding/messaging anchors are
+  `src\Nexus.Api\Controllers\AdminSafeguardingVettingController.cs`,
+  `src\Nexus.Api\Controllers\SafeguardingVettingMemberController.cs`,
+  `src\Nexus.Api\Controllers\OnboardingSafeguardingController.cs`,
+  `src\Nexus.Api\Services\SafeguardingInteractionPolicy.cs`,
+  `src\Nexus.Api\Migrations\20260712020049_SafeguardingVettingAttestationParity.cs`,
+  `src\Nexus.Api\Migrations\20260712022243_MessagingDisabledRestrictionParity.cs`,
+  `src\Nexus.Api\Migrations\20260712023810_SafeguardingPreferenceDependencyParity.cs`,
+  `tests\Nexus.Api.Tests\SafeguardingVettingControllerTests.cs`,
+  `tests\Nexus.Api.Tests\DirectMessageParityCorrectionsTests.cs`, and
+  `tests\Nexus.Api.Tests\VoiceMessageParityRegressionTests.cs`.
   Historical focused proof is the prior 61/61 core, clean 7/7 guardian lifecycle, clean
   13/13 recurring CRUD plus 1/1 route ownership, clean 13/13 recurring
   generation/scheduler, clean 13/13 organisation relationships/lifecycle, and
   clean 6/6 transactional wallets. The preceding financial proof is the initial
   103/106 high-risk run plus corrected/retried 3/3 and the 119/119 fail-closed
   suite. Current proof is the 32/32 attendance suite, 5/5 route/auth subset,
-  green ambient-transaction regression, and the final green 111-migration blank,
-  populated, invalid atomic-abort, and model-drift gates. The current hours/feed
+  green ambient-transaction regression, and the retained green 111-migration
+  hours replay. The final 114-migration blank, valid populated, invalid atomic-
+  abort, catalog-containment, and model-drift gates are green. The current
+  safeguarding/messaging consolidated affected suite selected and passed
+  323/323 with zero failed or skipped in 20m47s. The preceding hours/feed
   proof adds zero-error Debug and solution-wide Release builds with only four
   pre-existing `xUnit1031` warnings (Release took 4m36s) and one 53/53
   disposable-Linux run: all 51
@@ -621,34 +718,39 @@ sites. Web UK is an additional consumer once Laravel-first conversion is green.
 
 ### P0: close current contract and safety regressions
 
-1. Run the full 3,007-test ASP.NET suite and CI, then complete unchanged-frontend
+1. Close the exact direct-message residual: sender-only 24-hour edit, scoped
+   participant delete, and partner-ID per-user archive/restore are P0; durable
+   reactions/batch, full typing preflight plus Pusher delivery, and restricted-
+   only coordinator help with delivery/dedupe/audit are P1. Use two-user reload,
+   tenant, policy, cleanup, and side-effect tests; remove false oracles.
+2. Run the full ASP.NET suite and CI, then complete unchanged-frontend
    member, organisation, administrator, and Caring runtime smoke. The focused
    53/53 and affected 243/243 gates are green, but the discovery count is not a
    full-suite pass.
-2. Finish the residual group-exchange contract around notification fidelity,
+3. Finish the residual group-exchange contract around notification fidelity,
    list/detail pagination/shape audit, and unchanged-frontend runtime smoke. The
    start/confirm/complete ledger workflow itself is now real and must not be
    conflated with the separate legacy one-to-one `Exchange` service.
-3. Implement each financial workflow that still fails closed: two-party legacy
+4. Implement each financial workflow that still fails closed: two-party legacy
    exchange confirmation, managed-user sub-account approval, canonical
    community-fund donation/deposit/withdrawal, and durable authenticated
    federation settlement.
-4. Run the read-only legacy financial candidate report, document manual
+5. Run the read-only legacy financial candidate report, document manual
    disposition and current/proposed balance impact, and implement only reviewed
    forward remediations. Never infer evidence by amount or timestamp proximity.
-5. Inventory every canonical React-used route that reaches a generic catch-all,
+6. Inventory every canonical React-used route that reaches a generic catch-all,
    recorded-only write, unconditional empty response, mock secret, or fabricated
    success. Replace each with a real workflow or an explicit honest unsupported
    result while implementing the remaining workflow. Never return a success
    envelope for an operation that did not happen.
-6. Correct scheduled-job `run now`: execute the compatible operation and record
+7. Correct scheduled-job `run now`: execute the compatible operation and record
    its real outcome, or fail explicitly. Do not record success without running
    the job.
-7. Match current role semantics: supported roles, tenant-super-admin flag,
+8. Match current role semantics: supported roles, tenant-super-admin flag,
    authorization policies, validation, response values, and migrations.
-8. Match Laravel's AI-provider test authorization and throttling.
-9. Add the `features.explore` bootstrap contract.
-10. Port regression tests for Laravel's recent cross-tenant read and route-auth
+9. Match Laravel's AI-provider test authorization and throttling.
+10. Add the `features.explore` bootstrap contract.
+11. Port regression tests for Laravel's recent cross-tenant read and route-auth
    fixes. Prove tenant isolation with negative tests, not only happy paths.
 
 > **2026-07-10 backend progress, extended 2026-07-11:** The previously missing
@@ -665,8 +767,9 @@ sites. Web UK is an additional consumer once Laravel-first conversion is green.
 > DB-backed policies,
 > stale-token rejection, canonical v2 auth errors, protected explicit-God
 > targets, and focused role regression coverage. The recorded chain inventory is
-> 111 migrations; final blank/populated/invalid replay and model-drift gates are
-> green for migration 111's no-mint source. Full
+> 114 migrations through `SafeguardingPreferenceDependencyParity`; final blank,
+> valid populated, invalid atomic-abort, catalog-containment, and model-drift
+> gates are green. Migration 111's no-mint proof remains retained evidence. Full
 > application runtime remains open. Canonical federation partnership list/approve/reject now has
 > real receiver-only pending transitions,
 > atomic audit, post-commit in-app notifications, Laravel error envelopes, and
@@ -718,11 +821,11 @@ sites. Web UK is an additional consumer once Laravel-first conversion is green.
 > lifecycle/wallet rules, wallet-evidence-preserving delete refusal, the full
 > group-exchange state machine, persisted V15 community-fund/starting-balance
 > reads, privacy-safe wallet search, and linked loyalty/estate evidence. The
-> latest migration is `20260711192124_VolunteerHoursLedgerParity`; the recorded
-> EF inventory is 111 migrations. Final blank 111/latest, valid populated
-> 110-to-111, invalid `P0001` atomic-abort/no-partial-DDL, and model-drift gates
-> are green, with exact feed/privacy/FK assertions and zero disposable Docker
-> resources left. The
+> latest migration is `20260712023810_SafeguardingPreferenceDependencyParity`;
+> the recorded EF inventory is 114 migrations. Final blank 114/latest, valid
+> populated 113-to-114, invalid duplicate `P0001` atomic-abort/no-partial-
+> schema, catalog-containment, and model-drift gates are green. Migration 111's
+> feed/privacy/FK replay remains retained evidence. The
 > preceding financial migration's valid populated upgrade
 > preserves legacy rows and normalizes known role casing; its invalid
 > cross-tenant wallet-transaction upgrade aborts before changing history or
