@@ -67,6 +67,7 @@ public class Event : ITenantEntity
     public bool AllDay { get; set; }
     public string FederatedVisibility { get; set; } = "none";
     public long CalendarSequence { get; set; }
+    public long AgendaVersion { get; set; }
 
     /// <summary>
     /// Whether the event has been cancelled.

@@ -16,14 +16,14 @@ blank PostgreSQL replay.
 | --- | ---: | --- |
 | Laravel migrations | 377 | PHP migration files under `database/migrations`. |
 | ASP.NET migration source files | 126 | Main migration `.cs` files excluding designers and the model snapshot. |
-| ASP.NET runtime migrations | 124 | Blank replay applied every recorded EF migration through `20260712221737_EventPeopleAttendanceWorkflowParity`; `has-pending-model-changes` is green. |
+| ASP.NET runtime migrations | 125 | Blank replay applied every recorded EF migration through `20260712224838_EventAgendaWorkflowParity`; `has-pending-model-changes` is green. |
 | Laravel created tables | 298 | Unique `Schema::create(...)` table names. |
 | Laravel touched tables | 128 | Unique `Schema::table(...)` table names. |
 | Laravel explicit model tables | 267 | Unique `protected/public $table = ...` model declarations. |
 | Laravel source tables | 455 | Union of migration-created, migration-touched, and explicit model tables. |
-| ASP.NET tables | 356 | Static table union after adding canonical attendance activity evidence. |
-| Exact matched tables | 165 | Current exact table-name matches. |
-| Missing Laravel tables | 290 | Laravel source names not represented exactly in ASP.NET. |
+| ASP.NET tables | 362 | Static table union after adding canonical agenda/session evidence. |
+| Exact matched tables | 171 | Current exact table-name matches. |
+| Missing Laravel tables | 284 | Laravel source names not represented exactly in ASP.NET. |
 | Extra ASP.NET tables | 191 | .NET table names with no exact Laravel table name. |
 
 These counts are not a parity score. Static table-name matching will overstate
@@ -41,6 +41,16 @@ make activity append-only, and downgrade refuses to discard evidence. All 124
 migrations applied to blank disposable PostgreSQL 16, EF reports no pending
 model changes, and focused Event People proof passed 4/4. No production
 resource was touched.
+
+`20260712224838_EventAgendaWorkflowParity` is now the latest migration and
+runtime ID 125. It adds exact `event_sessions`, `event_session_speakers`,
+`event_session_resources`, `event_session_history`,
+`event_session_registrations`, and `event_session_registration_history`
+tables plus `events.AgendaVersion`. PostgreSQL checks enforce session/resource/
+registration domains, positive capacity, time ordering, and speaker identity;
+three triggers keep both histories immutable and prevent destructive
+registration deletion. Blank replay, model-drift proof, trigger catalog proof
+at 3/3, and focused agenda workflow proof at 4/4 are green.
 
 `20260712214912_EventRegistrationWaitlistLifecycleParity` is the preceding
 migration and runtime ID 123. It deterministically upgrades existing canonical

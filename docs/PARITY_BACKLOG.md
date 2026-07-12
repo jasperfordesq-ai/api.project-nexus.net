@@ -21,8 +21,8 @@ localization artifacts.
 | P0 items | 131 |
 | P1 items | 6,367 |
 | P2 items | 4 |
-| API items | 102 |
-| Schema items | 290 |
+| API items | 95 |
+| Schema items | 284 |
 | Frontend items | 532 |
 | Localization items | 5,578 |
 

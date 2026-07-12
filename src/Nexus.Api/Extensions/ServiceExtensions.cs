@@ -157,6 +157,7 @@ public static class ServiceExtensions
         services.AddScoped<EventBroadcastService>();
         services.AddScoped<EventRegistrationLifecycleService>();
         services.AddScoped<EventPeopleWorkflowService>();
+        services.AddScoped<EventAgendaService>();
         services.AddScoped<DirectMessageMutationService>();
         services.AddScoped<SafeguardingCoordinationService>();
         services.AddScoped<DirectMessageReactionService>();
