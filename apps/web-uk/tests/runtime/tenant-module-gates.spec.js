@@ -18,16 +18,22 @@ test('honours a real tenant disabled-module bootstrap at route level', async ({ 
     expect(bootstrap.features?.[feature] ?? bootstrap.modules?.[feature]).toBe(false);
   }
   expect(bootstrap.features?.member_premium).toBe(false);
+  expect(bootstrap.features?.merchant_coupons).toBe(false);
+  expect(bootstrap.features?.maps).toBe(false);
+  expect(bootstrap.features?.groups).toBe(true);
+  expect(bootstrap.features?.job_vacancies).toBe(true);
 
   const home = await request.get(mountPath, { maxRedirects: 0, timeout: 180_000 });
   expect(home.status()).toBe(200);
   const homeHtml = await home.text();
   expect(homeHtml).toContain('timebanking.org');
-  for (const path of ['/marketplace', '/courses', '/podcasts', '/premium']) {
+  for (const path of ['/marketplace', '/courses', '/podcasts', '/premium', '/coupons']) {
     expect(homeHtml).not.toContain(`href="${mountPath}${path}"`);
   }
 
-  for (const path of ['/marketplace', '/courses', '/podcasts', '/premium']) {
+  for (const path of [
+    '/marketplace', '/courses', '/podcasts', '/premium', '/coupons', '/events/6/map'
+  ]) {
     const response = await request.get(`${mountPath}${path}`, {
       maxRedirects: 0,
       timeout: 180_000
@@ -41,4 +47,13 @@ test('honours a real tenant disabled-module bootstrap at route level', async ({ 
   });
   expect(resources.status()).toBe(302);
   expect(resources.headers().location).toBe(`${mountPath}/login?status=auth-required`);
+
+  for (const path of ['/groups', '/jobs']) {
+    const response = await request.get(`${mountPath}${path}`, {
+      maxRedirects: 0,
+      timeout: 180_000
+    });
+    expect(response.status(), `${path} must remain available for the enabled tenant`).toBe(302);
+    expect(response.headers().location).toBe(`${mountPath}/login?status=auth-required`);
+  }
 });
