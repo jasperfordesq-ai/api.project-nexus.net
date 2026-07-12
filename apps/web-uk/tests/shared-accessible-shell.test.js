@@ -7547,6 +7547,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Repair a bicycle');
     expect(response.text).toContain(`${longDescription.slice(0, 157)}...`);
     expect(response.text).not.toContain(longDescription);
+    expect(response.text).toContain('Matched 1 week ago');
     expect(response.text).toContain('87% match');
     expect(response.text).toContain('+1 more');
     expect(response.text).toContain('action="/matches/board/77/dismiss"');

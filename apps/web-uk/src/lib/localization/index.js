@@ -167,6 +167,27 @@ function formatLocaleDate(value, locale, options = {}) {
   }).format(date);
 }
 
+function formatLocaleRelativeTime(value, locale, now = new Date()) {
+  if (value === null || value === undefined || value === '') return '';
+  const date = value instanceof Date ? value : new Date(value);
+  const reference = now instanceof Date ? now : new Date(now);
+  if (Number.isNaN(date.getTime()) || Number.isNaN(reference.getTime())) return '';
+
+  const seconds = (date.getTime() - reference.getTime()) / 1000;
+  const units = [
+    ['year', 31557600],
+    ['month', 2629800],
+    ['week', 604800],
+    ['day', 86400],
+    ['hour', 3600],
+    ['minute', 60],
+    ['second', 1]
+  ];
+  const [unit, divisor] = units.find(([, size]) => Math.abs(seconds) >= size) || units[units.length - 1];
+  return new Intl.RelativeTimeFormat(localeForIntl(locale), { numeric: 'always' })
+    .format(Math.round(seconds / divisor), unit);
+}
+
 module.exports = {
   SUPPORTED_LOCALES,
   catalogFor,
@@ -175,6 +196,7 @@ module.exports = {
   createTranslator,
   formatLocaleDate,
   formatLocaleNumber,
+  formatLocaleRelativeTime,
   isSupportedLocale,
   localeForIntl,
   translate,

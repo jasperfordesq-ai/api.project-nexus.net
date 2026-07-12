@@ -6,6 +6,7 @@ const {
   createTranslator,
   formatLocaleDate,
   formatLocaleNumber,
+  formatLocaleRelativeTime,
   isSupportedLocale
 } = require('../lib/localization');
 const { runWithRequestLocale } = require('../lib/request-locale-context');
@@ -147,6 +148,7 @@ async function localization(req, res, next) {
     res.locals.tc = tc;
     res.locals.formatLocaleNumber = (value, options = {}) => formatLocaleNumber(value, locale, options);
     res.locals.formatLocaleDate = (value, options = {}) => formatLocaleDate(value, locale, options);
+    res.locals.formatLocaleRelativeTime = (value, now = new Date()) => formatLocaleRelativeTime(value, locale, now);
     res.set('Content-Language', locale);
 
     runWithRequestLocale(locale, next);

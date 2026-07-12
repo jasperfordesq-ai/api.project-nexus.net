@@ -5,6 +5,7 @@ const {
   catalogFor,
   formatLocaleDate,
   formatLocaleNumber,
+  formatLocaleRelativeTime,
   translate
 } = require('../src/lib/localization');
 const {
@@ -150,6 +151,10 @@ describe('translation and formatter foundation', () => {
         year: 'numeric',
         timeZone: 'UTC'
       }).format(new Date('2026-07-10T12:00:00Z')));
+    expect(formatLocaleRelativeTime('2026-07-05T12:00:00Z', 'en', '2026-07-12T12:00:00Z'))
+      .toBe('1 week ago');
+    expect(formatLocaleRelativeTime('2026-07-12T13:00:00Z', 'fr', '2026-07-12T12:00:00Z'))
+      .toBe(new Intl.RelativeTimeFormat('fr', { numeric: 'always' }).format(1, 'hour'));
   });
 });
 

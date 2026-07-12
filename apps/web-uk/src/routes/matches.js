@@ -82,7 +82,7 @@ function normalizeReasons(value) {
     : [];
 }
 
-function normalizeMatch(match = {}, t, board = false) {
+function normalizeMatch(match = {}, t, board = false, formatRelativeTime = () => '') {
   const module = moduleKey(match.module || match.source_type || match.sourceType);
   const listingId = Number(match.listing_id || match.listingId || (module === 'listing' ? match.id : 0)) || 0;
   const groupId = Number(match.group_id || match.groupId || (module === 'group' ? match.id : 0)) || 0;
@@ -124,7 +124,8 @@ function normalizeMatch(match = {}, t, board = false) {
     ),
     pct,
     reasons: normalizeReasons(match.match_reasons || match.matchReasons || match.reasons),
-    createdAt: match.created_at || match.createdAt || ''
+    createdAt: match.created_at || match.createdAt || '',
+    matchedWhen: board ? formatRelativeTime(match.created_at || match.createdAt || '') : ''
   };
 }
 
@@ -218,7 +219,7 @@ router.get('/board', requireAuth, asyncRoute(async (req, res) => {
 
   try {
     const payload = payloadFrom(await callMatchesApi(req.token, 'GET', matchesApiPath(50)));
-    matches = payload.matches.map((match) => normalizeMatch(match, res.locals.t, true));
+    matches = payload.matches.map((match) => normalizeMatch(match, res.locals.t, true, res.locals.formatLocaleRelativeTime));
     matchMeta = payload.meta;
   } catch (error) {
     if (isAuthError(error)) throw error;
