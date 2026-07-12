@@ -35,9 +35,9 @@
     {% endif %}
   {% endif %}
 
-  <span class="govuk-caption-l">Volunteering</span>
-  <h1 class="govuk-heading-xl">My expenses</h1>
-  <p class="govuk-body-l">Claim back costs such as travel, meals or supplies from an organisation you volunteer for. Each claim is reviewed before it is paid.</p>
+  <span class="govuk-caption-l">{{ t("govuk_alpha_volunteering.expenses.caption") }}</span>
+  <h1 class="govuk-heading-xl">{{ t("govuk_alpha_volunteering.expenses.title") }}</h1>
+  <p class="govuk-body-l">{{ t("govuk_alpha_volunteering.expenses.description") }}</p>
 
   {% if loadError %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
@@ -51,43 +51,43 @@
   {% endif %}
 
   {% if dashboard.expenses.length %}
-    <h2 class="govuk-heading-l">Your totals</h2>
+    <h2 class="govuk-heading-l">{{ t("govuk_alpha_volunteering.expenses.stats_title") }}</h2>
     <dl class="nexus-alpha-stat-grid govuk-!-margin-bottom-6">
       <div class="nexus-alpha-stat">
-        <dt>Total claimed</dt>
+        <dt>{{ t("govuk_alpha_volunteering.expenses.stat_total_claimed") }}</dt>
         <dd>{{ dashboard.stats.totalClaimedLabel }}</dd>
       </div>
       <div class="nexus-alpha-stat">
-        <dt>Approved</dt>
+        <dt>{{ t("govuk_alpha_volunteering.expenses.stat_approved") }}</dt>
         <dd>{{ dashboard.stats.approvedLabel }}</dd>
       </div>
       <div class="nexus-alpha-stat">
-        <dt>{{ t("jobs.type_paid") }}</dt>
+        <dt>{{ t("govuk_alpha_volunteering.expenses.stat_paid") }}</dt>
         <dd>{{ dashboard.stats.paidLabel }}</dd>
       </div>
     </dl>
   {% endif %}
 
-  <h2 class="govuk-heading-l">Submit an expense claim</h2>
-  <p class="govuk-body">Tell us what the cost was for and how much you spent. Your claim will be sent to the organisation for review.</p>
+  <h2 class="govuk-heading-l">{{ t("govuk_alpha_volunteering.expenses.form_title") }}</h2>
+  <p class="govuk-body">{{ t("govuk_alpha_volunteering.expenses.form_intro") }}</p>
 
   {% if not dashboard.organizations.length %}
-    <div class="govuk-inset-text">You need to be an approved volunteer with an organisation before you can claim expenses.</div>
+    <div class="govuk-inset-text">{{ t("govuk_alpha_volunteering.expenses.no_organisation") }}</div>
   {% else %}
     <form method="post" action="{{ urlFor('/volunteering/expenses') }}" class="govuk-!-margin-bottom-8">
       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
       <div class="govuk-form-group{% if status and status.field == 'organization_id' %} govuk-form-group--error{% endif %}">
-        <label class="govuk-label" for="organization_id">{{ t("auth.profile_type_organisation") }}</label>
-        <div id="organization_id-hint" class="govuk-hint">The organisation you are claiming the expense from.</div>
+        <label class="govuk-label" for="organization_id">{{ t("govuk_alpha_volunteering.expenses.org_label") }}</label>
+        <div id="organization_id-hint" class="govuk-hint">{{ t("govuk_alpha_volunteering.expenses.org_hint") }}</div>
         {% if status and status.field == 'organization_id' %}
           <p id="organization_id-error" class="govuk-error-message">
-            <span class="govuk-visually-hidden">There is a problem:</span>
+            <span class="govuk-visually-hidden">{{ t("govuk_alpha_volunteering.shared.error_title") }}:</span>
             {{ status.message }}
           </p>
         {% endif %}
         <select class="govuk-select" id="organization_id" name="organization_id" aria-describedby="organization_id-hint{% if status and status.field == 'organization_id' %} organization_id-error{% endif %}" required>
-          <option value="">Choose an organisation</option>
+          <option value="">{{ t("govuk_alpha_volunteering.expenses.org_select") }}</option>
           {% for organization in dashboard.organizations %}
             <option value="{{ organization.id }}">{{ organization.name }}</option>
           {% endfor %}
@@ -95,7 +95,7 @@
       </div>
 
       <div class="govuk-form-group">
-        <label class="govuk-label" for="expense_type">Expense type</label>
+        <label class="govuk-label" for="expense_type">{{ t("govuk_alpha_volunteering.expenses.type_label") }}</label>
         <select class="govuk-select" id="expense_type" name="expense_type">
           {% for type in dashboard.expenseTypes %}
             <option value="{{ type.value }}">{{ type.label }}</option>
@@ -104,11 +104,11 @@
       </div>
 
       <div class="govuk-form-group{% if status and status.field == 'amount' %} govuk-form-group--error{% endif %}">
-        <label class="govuk-label" for="amount">Amount</label>
-        <div id="amount-hint" class="govuk-hint">A whole or decimal amount, for example 12 or 12.50.</div>
+        <label class="govuk-label" for="amount">{{ t("govuk_alpha_volunteering.expenses.amount_label") }}</label>
+        <div id="amount-hint" class="govuk-hint">{{ t("govuk_alpha_volunteering.expenses.amount_hint") }}</div>
         {% if status and status.field == 'amount' %}
           <p id="amount-error" class="govuk-error-message">
-            <span class="govuk-visually-hidden">There is a problem:</span>
+            <span class="govuk-visually-hidden">{{ t("govuk_alpha_volunteering.shared.error_title") }}:</span>
             {{ status.message }}
           </p>
         {% endif %}
@@ -116,38 +116,38 @@
       </div>
 
       <div class="govuk-form-group">
-        <label class="govuk-label" for="currency">Currency optional</label>
-        <div id="currency-hint" class="govuk-hint">A currency code such as EUR or GBP. Leave blank to use the community currency.</div>
+        <label class="govuk-label" for="currency">{{ t("govuk_alpha_volunteering.expenses.currency_label") }} {{ t("govuk_alpha_volunteering.shared.optional") }}</label>
+        <div id="currency-hint" class="govuk-hint">{{ t("govuk_alpha_volunteering.expenses.currency_hint") }}</div>
         <input class="govuk-input govuk-input--width-5" id="currency" name="currency" type="text" maxlength="10" aria-describedby="currency-hint">
       </div>
 
       <div class="govuk-form-group{% if status and status.field == 'description' %} govuk-form-group--error{% endif %}">
-        <label class="govuk-label" for="description">Description</label>
-        <div id="description-hint" class="govuk-hint">A short note explaining the cost.</div>
+        <label class="govuk-label" for="description">{{ t("govuk_alpha_volunteering.expenses.description_label") }}</label>
+        <div id="description-hint" class="govuk-hint">{{ t("govuk_alpha_volunteering.expenses.description_hint") }}</div>
         {% if status and status.field == 'description' %}
           <p id="description-error" class="govuk-error-message">
-            <span class="govuk-visually-hidden">There is a problem:</span>
+            <span class="govuk-visually-hidden">{{ t("govuk_alpha_volunteering.shared.error_title") }}:</span>
             {{ status.message }}
           </p>
         {% endif %}
         <textarea class="govuk-textarea" id="description" name="description" rows="3" aria-describedby="description-hint{% if status and status.field == 'description' %} description-error{% endif %}" required></textarea>
       </div>
 
-      <button class="govuk-button" data-module="govuk-button">Submit claim</button>
+      <button class="govuk-button" data-module="govuk-button">{{ t("govuk_alpha_volunteering.expenses.submit_button") }}</button>
     </form>
   {% endif %}
 
-  <h2 class="govuk-heading-l">Your claims</h2>
+  <h2 class="govuk-heading-l">{{ t("govuk_alpha_volunteering.expenses.list_title") }}</h2>
   {% if dashboard.expenses.length %}
     <table class="govuk-table">
-      <caption class="govuk-visually-hidden">Your claims</caption>
+      <caption class="govuk-visually-hidden">{{ t("govuk_alpha_volunteering.expenses.list_title") }}</caption>
       <thead class="govuk-table__head">
         <tr class="govuk-table__row">
-          <th scope="col" class="govuk-table__header">Type</th>
-          <th scope="col" class="govuk-table__header govuk-table__header--numeric">Amount</th>
-          <th scope="col" class="govuk-table__header">Description</th>
-          <th scope="col" class="govuk-table__header">Status</th>
-          <th scope="col" class="govuk-table__header">Submitted</th>
+          <th scope="col" class="govuk-table__header">{{ t("govuk_alpha_volunteering.expenses.col_type") }}</th>
+          <th scope="col" class="govuk-table__header govuk-table__header--numeric">{{ t("govuk_alpha_volunteering.expenses.col_amount") }}</th>
+          <th scope="col" class="govuk-table__header">{{ t("govuk_alpha_volunteering.expenses.col_description") }}</th>
+          <th scope="col" class="govuk-table__header">{{ t("govuk_alpha_volunteering.expenses.col_status") }}</th>
+          <th scope="col" class="govuk-table__header">{{ t("govuk_alpha_volunteering.expenses.col_submitted") }}</th>
         </tr>
       </thead>
       <tbody class="govuk-table__body">
@@ -158,16 +158,16 @@
             <td class="govuk-table__cell">
               {{ expense.description }}
               {% if expense.reviewNotes %}
-                <br><span class="govuk-hint govuk-!-margin-bottom-0">Reviewer notes: {{ expense.reviewNotes }}</span>
+                <br><span class="govuk-hint govuk-!-margin-bottom-0">{{ t("govuk_alpha_volunteering.expenses.col_notes") }}: {{ expense.reviewNotes }}</span>
               {% endif %}
             </td>
             <td class="govuk-table__cell"><strong class="govuk-tag {{ expense.status.className }}">{{ expense.status.label }}</strong></td>
-            <td class="govuk-table__cell">{{ expense.submittedAtLabel or "-" }}</td>
+            <td class="govuk-table__cell">{{ expense.submittedAtLabel or "—" }}</td>
           </tr>
         {% endfor %}
       </tbody>
     </table>
   {% else %}
-    <div class="govuk-inset-text">You have not submitted any expense claims yet.</div>
+    <div class="govuk-inset-text">{{ t("govuk_alpha_volunteering.expenses.empty") }}</div>
   {% endif %}
 {% endblock %}

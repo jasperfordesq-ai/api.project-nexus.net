@@ -592,7 +592,7 @@ describe('tenant-aware template helper conversion', () => {
     expect(donations).toContain('<div class="govuk-input__prefix">{{ tenantCurrency }}</div>');
     expect(donations).not.toMatch(/aria-hidden="true">(?:&euro;|€)/i);
     expect(donations).not.toMatch(/\beuro\b/i);
-    expect(expenses).toContain('Leave blank to use the community currency.');
+    expect(expenses).toContain('{{ t("govuk_alpha_volunteering.expenses.currency_hint") }}');
     expect(expenses).not.toMatch(/\buse euro\b/i);
   });
 

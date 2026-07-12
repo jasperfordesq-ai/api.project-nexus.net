@@ -676,45 +676,21 @@ function orgWalletStatus(status, t = null) {
   };
 }
 
-function expenseStatus(status) {
+function expenseStatus(status, t = null) {
   const messages = {
-    'expense-submitted': {
-      type: 'success',
-      message: 'Your expense claim has been submitted and is awaiting review.'
-    },
-    'expense-org-required': {
-      type: 'error',
-      message: 'Choose an organisation',
-      field: 'organization_id'
-    },
-    'expense-amount-invalid': {
-      type: 'error',
-      message: 'Enter an amount greater than zero',
-      field: 'amount'
-    },
-    'expense-description-required': {
-      type: 'error',
-      message: 'Enter a description',
-      field: 'description'
-    },
-    'expense-validation': {
-      type: 'error',
-      message: 'Your claim could not be submitted. Check your answers and any expense limits, then try again.'
-    },
-    'expense-forbidden': {
-      type: 'error',
-      message: 'You are not allowed to claim expenses from this organisation.'
-    },
-    'expense-not-found': {
-      type: 'error',
-      message: 'That organisation could not be found.'
-    },
-    'expense-failed': {
-      type: 'error',
-      message: 'Your claim could not be submitted. Please try again.'
-    }
+    'expense-submitted': { type: 'success', key: 'success_submitted' },
+    'expense-org-required': { type: 'error', key: 'error_org_required', field: 'organization_id' },
+    'expense-amount-invalid': { type: 'error', key: 'error_amount_invalid', field: 'amount' },
+    'expense-description-required': { type: 'error', key: 'error_description_required', field: 'description' },
+    'expense-validation': { type: 'error', key: 'error_validation' },
+    'expense-forbidden': { type: 'error', key: 'error_forbidden' },
+    'expense-not-found': { type: 'error', key: 'error_not_found' },
+    'expense-failed': { type: 'error', key: 'error_failed' }
   };
-  return messages[status] || null;
+  const config = messages[status] || null;
+  return config
+    ? { ...config, message: t ? t(`govuk_alpha_volunteering.expenses.${config.key}`) : config.key }
+    : null;
 }
 
 function credentialStatus(status) {
@@ -1494,8 +1470,9 @@ function expenseRowsFrom(result) {
   return [];
 }
 
-function expenseStatusPresentation(value) {
-  const status = trimmed(value) || 'pending';
+function expenseStatusPresentation(value, t = null) {
+  const rawStatus = trimmed(value);
+  const status = ['pending', 'approved', 'rejected', 'paid'].includes(rawStatus) ? rawStatus : 'pending';
   const labels = {
     pending: 'Pending',
     approved: 'Approved',
@@ -1510,20 +1487,22 @@ function expenseStatusPresentation(value) {
   };
   return {
     value: status,
-    label: labels[status] || headline(status) || 'Pending',
+    label: t ? t(`govuk_alpha_volunteering.expenses.status_${status}`) : labels[status],
     className: classNames[status] || 'govuk-tag--grey'
   };
 }
 
-function normalizeExpense(row) {
+function normalizeExpense(row, t = null) {
   const expense = row && typeof row === 'object' ? row : {};
   const type = trimmed(expense.expense_type ?? expense.expenseType);
-  const status = expenseStatusPresentation(expense.status);
+  const status = expenseStatusPresentation(expense.status, t);
   const currency = trimmed(expense.currency);
   return {
     id: positiveInteger(expense.id),
     type,
-    typeLabel: EXPENSE_TYPE_LABELS[type] || headline(type) || 'Other',
+    typeLabel: Object.hasOwn(EXPENSE_TYPE_LABELS, type) && t
+      ? t(`govuk_alpha_volunteering.expenses.type_${type}`)
+      : (EXPENSE_TYPE_LABELS[type] || headline(type) || (t ? t('govuk_alpha_volunteering.expenses.type_other') : 'Other')),
     amountLabel: moneyLabel(expense.amount),
     currency,
     amountWithCurrency: `${currency ? `${currency} ` : ''}${moneyLabel(expense.amount)}`,
@@ -1534,12 +1513,12 @@ function normalizeExpense(row) {
   };
 }
 
-function normalizeExpenseDashboard(expensesResult, organizationsResult) {
+function normalizeExpenseDashboard(expensesResult, organizationsResult, t = null) {
   const data = dataFrom(expensesResult);
   const statsData = data && typeof data === 'object' && data.stats && typeof data.stats === 'object'
     ? data.stats
     : {};
-  const expenses = expenseRowsFrom(expensesResult).map(normalizeExpense);
+  const expenses = expenseRowsFrom(expensesResult).map((expense) => normalizeExpense(expense, t));
   const fallbackStats = expenses.reduce((totals, expense) => {
     const amount = Number(expense.amountLabel);
     return {
@@ -1552,7 +1531,10 @@ function normalizeExpenseDashboard(expensesResult, organizationsResult) {
   return {
     expenses,
     organizations: collectionFrom(organizationsResult).map(normalizeOrganization).filter(Boolean),
-    expenseTypes: EXPENSE_TYPES,
+    expenseTypes: EXPENSE_TYPES.map((type) => ({
+      ...type,
+      label: t ? t(`govuk_alpha_volunteering.expenses.type_${type.value}`) : type.label
+    })),
     stats: {
       totalClaimedLabel: moneyLabel(statsData.total_submitted ?? statsData.total_claimed ?? fallbackStats.totalClaimed),
       approvedLabel: moneyLabel(statsData.approved_total ?? statsData.total_approved ?? fallbackStats.approved),
@@ -2365,23 +2347,23 @@ router.get('/expenses', asyncRoute(async (req, res) => {
     return redirectTo(res, loginRedirect());
   }
 
-  let dashboard = normalizeExpenseDashboard({}, {});
+  let dashboard = normalizeExpenseDashboard({}, {}, res.locals.t);
   let loadError = null;
   try {
     const expenses = await callApi(token, 'GET', '/expenses?per_page=50');
     const organizations = await callApi(token, 'GET', '/my-organisations?per_page=50');
-    dashboard = normalizeExpenseDashboard(expenses, organizations);
+    dashboard = normalizeExpenseDashboard(expenses, organizations, res.locals.t);
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
     loadError = 'We could not load your expenses. Please try again.';
   }
 
   return res.render('volunteering/expenses', {
-    title: 'My expenses',
+    title: res.locals.t('govuk_alpha_volunteering.expenses.title'),
     activeNav: 'volunteering',
     dashboard,
     loadError,
-    status: expenseStatus(trimmed(req.query.status)),
+    status: expenseStatus(trimmed(req.query.status), res.locals.t),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { redirectOn401: loginRedirect() }));

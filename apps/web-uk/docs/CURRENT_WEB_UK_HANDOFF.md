@@ -5403,6 +5403,17 @@ Focused Laravel-contract render proof passed. Full Jest remains `45/45` suites
 and `1,456/1,456` tests with green lint and the 285-template zero-match audit.
 This surface is read-only; tenant/skill recommendation depth remains open.
 
+## 2026-07-12 Default-English Volunteer Expenses Parity
+
+Expenses now use Laravel's catalog for totals, form fields and hints, linked
+validation states, expense types/statuses, reviewer notes, and claim history.
+Unknown statuses fail safely to pending and missing dates use the Blade em dash.
+
+Focused render/action proof passed. Full Jest remains `45/45` suites and
+`1,456/1,456` tests with green lint and the 285-template zero-match audit. No
+live claim was submitted because Laravel exposes no residue-free claim deletion
+path; existing records were not mutated.
+
 ## Final Handoff Checklist
 
 Before leaving this job for another agent, write a short note containing:
