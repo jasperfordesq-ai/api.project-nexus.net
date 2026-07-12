@@ -7658,8 +7658,8 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Community picnic');
     expect(response.text).toContain('href="/events/66"');
     expect(response.text).not.toContain('Repair a bicycle');
-    expect(response.text).toContain('Add your location to see nearby matches.');
-    expect(response.text).toContain('Matching is paused in your preferences');
+    expect(response.text).not.toContain('Add your location to see nearby matches.');
+    expect(response.text).not.toContain('Matching is paused in your preferences');
   });
 
   it('links every supported recommendation module to its real Web UK target', async () => {

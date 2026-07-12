@@ -22,20 +22,6 @@
   <p class="govuk-body-l">{{ t("matches.description") }}</p>
   <p class="govuk-body"><a class="govuk-link" href="{{ urlFor('/matches/board') }}">{{ t("govuk_alpha_connections.nav.matches_board") }}</a></p>
 
-  {% if matchMeta.degraded_reason == 'no_coordinates' or matchMeta.needs_location %}
-    <div class="govuk-warning-text">
-      <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
-      <strong class="govuk-warning-text__text">
-        <span class="govuk-visually-hidden">{{ t("states.warning") }}</span>
-        Add your location to see nearby matches. <a class="govuk-link" href="{{ urlFor('/settings?tab=profile') }}">Update your profile</a>.
-      </strong>
-    </div>
-  {% endif %}
-
-  {% if matchMeta.paused %}
-    <div class="govuk-inset-text">Matching is paused in your preferences, so your suggestions may not update.</div>
-  {% endif %}
-
   <dl class="govuk-summary-list govuk-!-margin-bottom-6">
     <div class="govuk-summary-list__row">
       <dt class="govuk-summary-list__key">{{ t("polish_listings.matches_total_label") }}</dt>
