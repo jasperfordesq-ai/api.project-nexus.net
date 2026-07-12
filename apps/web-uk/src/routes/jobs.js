@@ -31,6 +31,8 @@ const JOB_STATUSES = ['open', 'draft'];
 const JOB_SORTS = ['newest', 'deadline', 'salary_desc'];
 const JOBS_PER_PAGE = 12;
 const TALENT_PER_PAGE = 20;
+const JOB_CV_MAX_BYTES = 5 * 1024 * 1024;
+const JOB_CV_EXTENSIONS = new Set(['.pdf', '.doc', '.docx']);
 const JOB_TYPE_LABELS = {
   paid: 'Paid',
   volunteer: 'Volunteer',
@@ -1538,6 +1540,29 @@ function recalledJobForm(req) {
   return values.length > 0 && values[0] && typeof values[0] === 'object' ? values[0] : {};
 }
 
+function rememberJobApplication(req, jobId, body) {
+  if (typeof req.flash !== 'function') return;
+  req.flash('jobApplicationValues', {
+    jobId,
+    cover_letter: trimmed(body && body.cover_letter, 5000)
+  });
+}
+
+function recalledJobApplication(req, jobId) {
+  if (typeof req.flash !== 'function') return {};
+  const values = req.flash('jobApplicationValues');
+  const value = values.length > 0 && values[0] && typeof values[0] === 'object' ? values[0] : {};
+  return Number(value.jobId) === Number(jobId) ? value : {};
+}
+
+function jobCvErrorStatus(file) {
+  if (!file) return '';
+  if (Number(file.size) > JOB_CV_MAX_BYTES) return 'cv-too-large';
+  const filename = trimmed(file.originalFilename || file.newFilename, 255).toLowerCase();
+  const dot = filename.lastIndexOf('.');
+  return JOB_CV_EXTENSIONS.has(dot >= 0 ? filename.slice(dot) : '') ? '' : 'cv-invalid';
+}
+
 function applicationStatusPayload(body) {
   return {
     status: allowed(body.app_status, APPLICATION_STATUSES, 'pending'),
@@ -2340,10 +2365,12 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
   }
 
   const decorated = decorateJob(job);
+  const applicationValues = recalledJobApplication(req, decorated.id);
   return res.render('jobs/detail', {
     title: decorated.title,
     activeNav: 'explore',
     job: decorated,
+    applicationValues,
     status: req.query.status || '',
     successMessage: statusMessage(req, req.query.status),
     errorMessage: actionErrorMessage(req, req.query.status),
@@ -2430,6 +2457,13 @@ router.post('/:id(\\d+)/apply', asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const payload = { message: trimmed(req.body.cover_letter, 5000) };
   const file = uploadedFile(req, 'cv');
+  const cvErrorStatus = jobCvErrorStatus(file);
+
+  if (cvErrorStatus) {
+    rememberJobApplication(req, id, req.body);
+    await removeUploadedFile(file);
+    return redirectTo(res, jobRedirect(id, cvErrorStatus));
+  }
 
   try {
     if (file) {
@@ -2449,6 +2483,7 @@ router.post('/:id(\\d+)/apply', asyncRoute(async (req, res) => {
     return redirectTo(res, jobRedirect(id, 'applied'));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
+    rememberJobApplication(req, id, req.body);
     return redirectTo(res, jobRedirect(id, 'apply-failed'));
   } finally {
     await removeUploadedFile(file);

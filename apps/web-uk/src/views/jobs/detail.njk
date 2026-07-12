@@ -23,7 +23,7 @@
         <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
         <div class="govuk-error-summary__body">
           <ul class="govuk-list govuk-error-summary__list">
-            <li>{{ errorMessage }}</li>
+            <li>{% if status in ["cv-invalid", "cv-too-large"] %}<a href="#cv">{{ errorMessage }}</a>{% else %}{{ errorMessage }}{% endif %}</li>
           </ul>
         </div>
       </div>
@@ -122,12 +122,13 @@
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
         <div class="govuk-form-group">
           <label class="govuk-label" for="cover_letter">{{ t("jobs.cover_letter_label") }}</label>
-          <textarea class="govuk-textarea" id="cover_letter" name="cover_letter" rows="5" maxlength="5000"></textarea>
+          <textarea class="govuk-textarea" id="cover_letter" name="cover_letter" rows="5" maxlength="5000">{{ applicationValues.cover_letter or "" }}</textarea>
         </div>
-        <div class="govuk-form-group">
+        <div class="govuk-form-group{% if status in ["cv-invalid", "cv-too-large"] %} govuk-form-group--error{% endif %}">
           <label class="govuk-label" for="cv">{{ t("jobs.cv_label") }}</label>
           <div id="cv-hint" class="govuk-hint">{{ t("jobs.cv_hint") }}</div>
-          <input class="govuk-file-upload" id="cv" name="cv" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" aria-describedby="cv-hint">
+          {% if status in ["cv-invalid", "cv-too-large"] %}<p id="cv-error" class="govuk-error-message"><span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span> {{ errorMessage }}</p>{% endif %}
+          <input class="govuk-file-upload{% if status in ["cv-invalid", "cv-too-large"] %} govuk-file-upload--error{% endif %}" id="cv" name="cv" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" aria-describedby="cv-hint{% if status in ["cv-invalid", "cv-too-large"] %} cv-error{% endif %}">
         </div>
         <button type="submit" class="govuk-button" data-module="govuk-button">{{ t("jobs.apply_button") }}</button>
       </form>

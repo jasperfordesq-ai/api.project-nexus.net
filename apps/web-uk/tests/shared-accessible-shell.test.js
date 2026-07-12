@@ -20437,6 +20437,63 @@ describe('shared accessible frontend shell', () => {
     expect(api.callJobApi).not.toHaveBeenCalled();
   });
 
+  it('rejects invalid job CVs locally and replays the cover letter with field-linked errors', async () => {
+    const api = require('../src/lib/api');
+    api.uploadJobApplication.mockClear();
+    api.callJobApi.mockClear();
+    api.getJob.mockResolvedValue({ data: { id: 42, title: 'Community coordinator', type: 'paid', author: { id: 77 } } });
+
+    const first = await request(app).get('/contact').set('Cookie', signedCookieHeader());
+    const csrf = first.text.match(/name="_csrf" value="([^"]+)"/)[1];
+    const sessionCookies = (first.headers['set-cookie'] || []).map(value => value.split(';')[0]);
+    const cookies = [signedCookieHeader(), ...sessionCookies].join('; ');
+    const invalid = await request(app)
+      .post('/jobs/42/apply')
+      .set('Cookie', cookies)
+      .field('_csrf', csrf)
+      .field('cover_letter', ' Preserve this application statement. ')
+      .attach('cv', Buffer.from('not a cv', 'utf8'), { filename: 'notes.txt', contentType: 'text/plain' });
+
+    expect(invalid.status).toBe(302);
+    expect(invalid.headers.location).toBe('/jobs/42?status=cv-invalid');
+    expect(api.uploadJobApplication).not.toHaveBeenCalled();
+    expect(api.callJobApi).not.toHaveBeenCalled();
+
+    const replayCookies = [cookies, ...(invalid.headers['set-cookie'] || []).map(value => value.split(';')[0])].join('; ');
+    const replay = await request(app).get(invalid.headers.location).set('Cookie', replayCookies);
+    expect(replay.status).toBe(200);
+    expect(replay.text).toContain('<a href="#cv">Your CV must be a PDF, DOC or DOCX file. Your application was not submitted.</a>');
+    expect(replay.text).toContain('class="govuk-form-group govuk-form-group--error"');
+    expect(replay.text).toContain('aria-describedby="cv-hint cv-error"');
+    expect(replay.text).toContain('Preserve this application statement.');
+
+    const second = await request(app).get('/contact').set('Cookie', signedCookieHeader());
+    const secondCsrf = second.text.match(/name="_csrf" value="([^"]+)"/)[1];
+    const secondCookies = [
+      signedCookieHeader(),
+      ...(second.headers['set-cookie'] || []).map(value => value.split(';')[0])
+    ].join('; ');
+    const oversized = await request(app)
+      .post('/jobs/42/apply')
+      .set('Cookie', secondCookies)
+      .field('_csrf', secondCsrf)
+      .field('cover_letter', ' Preserve the oversized-file statement. ')
+      .attach('cv', Buffer.alloc((5 * 1024 * 1024) + 1, 65), { filename: 'large-cv.pdf', contentType: 'application/pdf' });
+
+    expect(oversized.status).toBe(302);
+    expect(oversized.headers.location).toBe('/jobs/42?status=cv-too-large');
+    const oversizedReplayCookies = [
+      secondCookies,
+      ...(oversized.headers['set-cookie'] || []).map(value => value.split(';')[0])
+    ].join('; ');
+    const oversizedReplay = await request(app).get(oversized.headers.location).set('Cookie', oversizedReplayCookies);
+    expect(oversizedReplay.status).toBe(200);
+    expect(oversizedReplay.text).toContain('<a href="#cv">Your CV must be 5MB or smaller. Your application was not submitted.</a>');
+    expect(oversizedReplay.text).toContain('Preserve the oversized-file statement.');
+    expect(api.uploadJobApplication).not.toHaveBeenCalled();
+    expect(api.callJobApi).not.toHaveBeenCalled();
+  });
+
   it('renders the Laravel event category browse page', async () => {
     const api = require('../src/lib/api');
     const staticPageRoutes = require('../src/routes/static-pages');

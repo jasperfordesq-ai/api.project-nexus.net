@@ -1583,7 +1583,10 @@ app.use(
   groupMultipartErrorRedirect('file-too-large', 'file-missing')
 );
 app.use(/^\/podcasts\/studio\/\d+\/episodes$/, parseMultipartForm({ maxFileSize: 100 * 1024 * 1024 }));
-app.use(/^\/jobs\/\d+\/apply$/, parseMultipartForm({ maxFileSize: 5 * 1024 * 1024 }));
+// Parse a narrow amount above the product's 5 MB CV limit so the Jobs route
+// can return its field-linked cv-too-large state; larger requests still fail
+// closed in Formidable before application code sees them.
+app.use(/^\/jobs\/\d+\/apply$/, parseMultipartForm({ maxFileSize: 6 * 1024 * 1024 }));
 
 app.use(doubleCsrfProtection, postOnly(formLimiter), contactSupportRoutes);
 app.use('/jobs', doubleCsrfProtection, postOnly(formLimiter), jobsRoutes);

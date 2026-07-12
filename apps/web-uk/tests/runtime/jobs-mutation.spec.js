@@ -6,7 +6,7 @@
 const { test, expect } = require('@playwright/test');
 const AxeBuilder = require('@axe-core/playwright').default;
 const { resolveOptions } = require('../../scripts/laravel-runtime-smoke');
-const { callJobApi, login } = require('../../src/lib/api');
+const { callJobApi, getJobs, login } = require('../../src/lib/api');
 
 const smoke = resolveOptions({}, process.env);
 const mountPath = `/${encodeURIComponent(smoke.tenant)}/accessible`;
@@ -73,6 +73,32 @@ async function expectAccessibleReflow(page) {
   const results = await new AxeBuilder({ page }).analyze();
   expect(results.violations.filter(({ impact }) => impact === 'serious' || impact === 'critical')).toEqual([]);
 }
+
+test('replays safe CV validation errors without creating a Laravel application', async ({ page }) => {
+  const auth = await login(smoke.email, smoke.password, smoke.tenant);
+  const token = auth.access_token;
+  const result = await getJobs(token, { limit: 20, status: 'open' });
+  const job = rowsFrom(result).find(row => !row?.is_owner && !row?.has_applied);
+  expect(job).toBeTruthy();
+
+  await page.setViewportSize({ width: 320, height: 640 });
+  await authenticate(page);
+  await page.goto(`${mountPath}/jobs/${job.id}`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
+  await page.locator('#cover_letter').fill('Preserve this browser validation statement.');
+  await page.locator('#cv').setInputFiles({ name: 'not-a-cv.txt', mimeType: 'text/plain', buffer: Buffer.from('invalid CV fixture') });
+  const response = await submit(page, `/jobs/${job.id}/apply`, page.locator(`form[action$="/jobs/${job.id}/apply"] button[type="submit"]`));
+  expect(response.status()).toBe(302);
+  await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+
+  const errorLink = page.locator('.govuk-error-summary a[href="#cv"]');
+  await expect(errorLink).toHaveText('Your CV must be a PDF, DOC or DOCX file. Your application was not submitted.');
+  await expect(page.locator('#cv')).toHaveAttribute('aria-describedby', 'cv-hint cv-error');
+  await expect(page.locator('#cover_letter')).toHaveValue('Preserve this browser validation statement.');
+  await expectAccessibleReflow(page);
+
+  const applications = rowsFrom(await callJobApi(token, 'GET', '/my-applications?limit=200'));
+  expect(applications.some(application => Number(application?.job_id ?? application?.vacancy_id) === Number(job.id))).toBe(false);
+});
 
 test('certifies a disposable job owner lifecycle through Web UK', async ({ page }) => {
   const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;

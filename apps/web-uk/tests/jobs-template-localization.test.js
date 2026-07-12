@@ -107,7 +107,8 @@ describe('Laravel-first Jobs template localization', () => {
     const source = templateSource('jobs/detail.njk');
 
     expect(source).toContain('{% if errorMessage %}');
-    expect(source).toContain('<li>{{ errorMessage }}</li>');
+    expect(source).toContain('<a href="#cv">{{ errorMessage }}</a>');
+    expect(source).toContain('{% else %}{{ errorMessage }}{% endif %}');
     expect(source).not.toContain('We could not complete that jobs action. Please try again.');
 
     for (const translationKey of [
