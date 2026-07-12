@@ -27566,16 +27566,24 @@ describe('shared accessible frontend shell', () => {
     expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/organisations/42/stats');
     expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(3, 'test-token', 'GET', '/organisations/42/applications?status=pending&per_page=20');
     expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(4, 'test-token', 'GET', '/organisations/42/hours/pending?per_page=20');
-    expect(manageResponse.text).toContain('Application approved.');
+    expect(manageResponse.text).toContain('The application has been approved.');
     expect(manageResponse.text).toContain('Manage your organisation');
+    expect(manageResponse.text).toContain('Back to your organisations');
+    expect(manageResponse.text).toContain('Approve or decline volunteers who have applied to your opportunities.');
     expect(manageResponse.text).toContain('Alex Applicant');
     expect(manageResponse.text).toContain('Kitchen helper');
     expect(manageResponse.text).toContain('Happy to help with lunch service.');
+    expect(manageResponse.text).toContain('Message from the applicant');
+    expect(manageResponse.text).toContain('Approving accepts this volunteer for the opportunity. Declining lets them know they were not selected.');
+    expect(manageResponse.text).toContain('for Alex Applicant');
     expect(manageResponse.text).toContain('method="post" action="/volunteering/organisations/42/applications/91"');
     expect(manageResponse.text).toContain('Sam Logger');
     expect(manageResponse.text).toContain('2.5');
     expect(manageResponse.text).toContain('3 August 2026');
     expect(manageResponse.text).toContain('Front desk welcome');
+    expect(manageResponse.text).toContain('Approving logged hours automatically credits the volunteer one time credit for each whole hour.');
+    expect(manageResponse.text).toContain('Approving credits the volunteer automatically');
+    expect(manageResponse.text).toContain('for Sam Logger');
     expect(manageResponse.text).toContain('method="post" action="/volunteering/organisations/42/hours/19"');
     expect(manageResponse.text).not.toContain('shared accessible frontend preparation page');
 
@@ -27982,6 +27990,16 @@ describe('shared accessible frontend shell', () => {
       action: 'decline',
       org_note: 'Not this time'
     });
+
+    api.callVolunteeringApi.mockRejectedValueOnce(new api.ApiError('Safeguarding unavailable', 503, {
+      code: 'SAFEGUARDING_POLICY_UNAVAILABLE'
+    }));
+    const safeguardingResponse = await agent
+      .post('/volunteering/organisations/42/applications/91')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], action: 'approve' });
+    expect(safeguardingResponse.headers.location).toBe('/volunteering/organisations/42/manage?status=application-safeguarding-unavailable');
 
     const hoursVerifyResponse = await agent
       .post('/volunteering/organisations/42/hours/19')

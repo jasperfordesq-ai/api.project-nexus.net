@@ -629,16 +629,32 @@ function swapPageStatus(status) {
   return messages[status] || null;
 }
 
-function orgManageStatus(status) {
+function orgManageStatus(status, t = null) {
   const messages = {
-    'application-approved': { type: 'success', message: 'Application approved.' },
-    'application-declined': { type: 'success', message: 'Application declined.' },
-    'hours-approved': { type: 'success', message: 'Hours approved.' },
-    'hours-declined': { type: 'success', message: 'Hours declined.' },
-    'application-failed': { type: 'error', message: 'The application could not be updated.' },
-    'hours-verify-failed': { type: 'error', message: 'The hours could not be verified.' }
+    'application-approved': { type: 'success', key: 'govuk_alpha.vol_org.states.application-approved' },
+    'application-declined': { type: 'success', key: 'govuk_alpha.vol_org.states.application-declined' },
+    'hours-approved': { type: 'success', key: 'govuk_alpha.vol_org.states.hours-approved' },
+    'hours-declined': { type: 'success', key: 'govuk_alpha.vol_org.states.hours-declined' },
+    'application-failed': { type: 'error', key: 'govuk_alpha.vol_org.states.application-failed' },
+    'application-safeguarding-restricted': {
+      type: 'error',
+      key: 'safeguarding.errors.interaction_not_allowed',
+      fallback: 'The recipient’s community safeguarding policy does not allow this direct interaction. Ask a coordinator for help.'
+    },
+    'application-safeguarding-unavailable': {
+      type: 'error',
+      key: 'safeguarding.errors.policy_unavailable',
+      fallback: 'We cannot confirm the community safeguarding policy right now. No message has been sent. Please try again shortly.'
+    },
+    'hours-verify-failed': { type: 'error', key: 'govuk_alpha.vol_org.states.hours-verify-failed' }
   };
-  return messages[status] || null;
+  const config = messages[status] || null;
+  if (!config) return null;
+  const translated = typeof t === 'function' ? t(config.key) : config.key;
+  return {
+    ...config,
+    message: translated !== config.key ? translated : (config.fallback || translated)
+  };
 }
 
 function orgSettingsStatus(status, t = null) {
@@ -1342,7 +1358,7 @@ function normalizeOrgDetail(result) {
   };
 }
 
-function normalizeOrgApplication(row) {
+function normalizeOrgApplication(row, t = null) {
   const application = row && typeof row === 'object' ? row : {};
   const user = application.user && typeof application.user === 'object' ? application.user : {};
   const opportunity = application.opportunity && typeof application.opportunity === 'object' ? application.opportunity : {};
@@ -1354,7 +1370,8 @@ function normalizeOrgApplication(row) {
     createdAtLabel: dateLabel(application.created_at ?? application.createdAt),
     applicant: {
       id: positiveInteger(user.id ?? application.user_id ?? application.userId),
-      name: trimmed(user.name ?? application.user_name ?? application.userName) || 'Volunteer',
+      name: trimmed(user.name ?? application.user_name ?? application.userName)
+        || (typeof t === 'function' ? t('govuk_alpha.vol_org.applicant_unknown') : 'A volunteer'),
       email: trimmed(user.email ?? application.user_email ?? application.userEmail)
     },
     opportunity: {
@@ -1365,7 +1382,7 @@ function normalizeOrgApplication(row) {
   };
 }
 
-function normalizeOrgPendingHour(row) {
+function normalizeOrgPendingHour(row, t = null) {
   const log = row && typeof row === 'object' ? row : {};
   const user = log.user && typeof log.user === 'object' ? log.user : {};
   const opportunity = log.opportunity && typeof log.opportunity === 'object' ? log.opportunity : {};
@@ -1376,7 +1393,8 @@ function normalizeOrgPendingHour(row) {
     description: trimmed(log.description),
     volunteer: {
       id: positiveInteger(user.id ?? log.user_id ?? log.userId),
-      name: trimmed(user.name ?? log.user_name ?? log.userName) || 'Volunteer'
+      name: trimmed(user.name ?? log.user_name ?? log.userName)
+        || (typeof t === 'function' ? t('govuk_alpha.vol_org.applicant_unknown') : 'A volunteer')
     },
     opportunity: {
       id: positiveInteger(opportunity.id ?? log.opportunity_id ?? log.opportunityId),
@@ -2059,10 +2077,10 @@ router.get('/organisations/:id(\\d+)/manage', asyncRoute(async (req, res) => {
     dashboard = normalizeOrgStats(await callApi(token, 'GET', `/organisations/${id}/stats`));
     applications = collectionFrom(
       await callApi(token, 'GET', `/organisations/${id}/applications?status=pending&per_page=20`)
-    ).map(normalizeOrgApplication).filter((application) => application.id);
+    ).map((application) => normalizeOrgApplication(application, res.locals.t)).filter((application) => application.id);
     hours = collectionFrom(
       await callApi(token, 'GET', `/organisations/${id}/hours/pending?per_page=20`)
-    ).map(normalizeOrgPendingHour).filter((log) => log.id);
+    ).map((log) => normalizeOrgPendingHour(log, res.locals.t)).filter((log) => log.id);
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
     loadError = 'We could not load the organisation management queue. Check that you manage this organisation and try again.';
@@ -2076,7 +2094,7 @@ router.get('/organisations/:id(\\d+)/manage', asyncRoute(async (req, res) => {
     applications,
     hours,
     loadError,
-    status: orgManageStatus(trimmed(req.query.status)),
+    status: orgManageStatus(trimmed(req.query.status), res.locals.t),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { redirectOn401: loginRedirect() }));
@@ -2839,19 +2857,28 @@ router.post('/organisations/:id(\\d+)/applications/:appId(\\d+)', asyncRoute(asy
   const appId = Number(req.params.appId);
   const action = trimmed(req.body.action) === 'decline' ? 'decline' : 'approve';
   const status = action === 'approve' ? 'application-approved' : 'application-declined';
+  const token = tokenFrom(req);
+  if (!token) {
+    return redirectTo(res, loginRedirect());
+  }
 
-  return runAction(
-    req,
-    res,
-    'PUT',
-    `/applications/${appId}`,
-    {
+  try {
+    await callApi(token, 'PUT', `/applications/${appId}`, {
       action,
       org_note: trimmed(req.body.org_note)
-    },
-    orgManageRedirect(id, status),
-    orgManageRedirect(id, 'application-failed')
-  );
+    });
+    return redirectTo(res, orgManageRedirect(id, status));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    const code = apiErrorCode(error);
+    if (code === 'SAFEGUARDING_POLICY_UNAVAILABLE') {
+      return redirectTo(res, orgManageRedirect(id, 'application-safeguarding-unavailable'));
+    }
+    if (['SAFEGUARDING_CONTACT_RESTRICTED', 'VETTING_REQUIRED'].includes(code)) {
+      return redirectTo(res, orgManageRedirect(id, 'application-safeguarding-restricted'));
+    }
+    return redirectTo(res, orgManageRedirect(id, 'application-failed'));
+  }
 }));
 
 router.post('/organisations/:id(\\d+)/hours/:logId(\\d+)', asyncRoute(async (req, res) => {

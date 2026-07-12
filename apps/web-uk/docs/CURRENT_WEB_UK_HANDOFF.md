@@ -5302,6 +5302,19 @@ Focused owner-page/action proof passed. Full Jest remains `45/45` suites and
 live deposit remains open because it irreversibly moves real wallet value and
 there is no residue-free wallet fixture.
 
+## 2026-07-12 Default-English Organisation Review Queue
+
+The organisation manage page now matches Blade's catalog-backed application
+and hour decisions, empty guidance, action hints, applicant context in button
+names, and automatic-credit warning. Safeguarding-policy unavailable,
+contact-restricted, and vetting-required API failures now map to their specific
+safe error states instead of the generic application failure.
+
+Focused owner render/action/error proof passed. Full Jest remains `45/45`
+suites and `1,456/1,456` tests with green lint and the 285-template zero-match
+audit. No live approval or decline was submitted because there is no disposable
+pending application/hour fixture.
+
 ## Final Handoff Checklist
 
 Before leaving this job for another agent, write a short note containing:
