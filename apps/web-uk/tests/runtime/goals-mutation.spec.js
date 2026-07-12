@@ -63,6 +63,7 @@ test('certifies a disposable goal, check-in, and reminder lifecycle through Web 
   const createdTitle = `Codex disposable goal ${runId}`;
   const updatedTitle = `${createdTitle} updated`;
   const checkinNote = `Disposable goal check-in ${runId}`;
+  const socialComment = `Disposable goal comment ${runId}`;
   const auth = await login(smoke.email, smoke.password, smoke.tenant);
   const token = auth.access_token;
   let goalId = null;
@@ -122,6 +123,31 @@ test('certifies a disposable goal, check-in, and reminder lifecycle through Web 
     expect(removeResponse.status()).toBe(302);
     await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
     await expect(page.getByText('No reminder set', { exact: true })).toBeVisible();
+
+    await page.goto(`${mountPath}/goals/${goalId}/social`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
+    const likeButton = page.locator('form[action$="/like"] button');
+    const likeResponse = await submit(page, `/goals/${goalId}/like`, likeButton);
+    expect(likeResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    await expect(page.locator('form[action$="/like"] button')).toHaveAttribute('aria-pressed', 'true');
+
+    await page.locator('#body').fill(socialComment);
+    const commentResponse = await submit(page, `/goals/${goalId}/comments`, page.locator('form:has(#body) button[type="submit"]'));
+    expect(commentResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    const commentRow = page.locator('li.nexus-alpha-comment', { hasText: socialComment });
+    await expect(commentRow).toHaveCount(1);
+    const commentDeleteForm = commentRow.locator('form[action$="/delete"]');
+    const commentDeleteAction = await commentDeleteForm.getAttribute('action');
+    expect(commentDeleteAction).toBeTruthy();
+    const commentId = Number(commentDeleteAction.match(/\/comments\/(\d+)\/delete$/)?.[1]);
+    expect(commentId).toBeGreaterThan(0);
+    await commentDeleteForm.locator('xpath=ancestor::details').locator('summary').click();
+    const commentDeleteResponse = await submit(page, `/goals/${goalId}/comments/${commentId}/delete`, commentDeleteForm.locator('button'));
+    expect(commentDeleteResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    await expect(page.getByText(socialComment, { exact: true })).toHaveCount(0);
+    await expectAccessibleReflow(page);
 
     await page.goto(`${mountPath}/goals/${goalId}/edit`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
     const deleteResponse = await submit(page, `/goals/${goalId}/delete`, page.locator('form[action$="/delete"] button[type="submit"]'));

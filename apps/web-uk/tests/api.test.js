@@ -5501,6 +5501,30 @@ describe('API Request Functions', () => {
       );
     });
 
+    it('should read polymorphic likers through Laravel legacy social compatibility', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { likers: [{ id: 7 }], total_count: 1 } })
+      });
+
+      await api.getSocialLikers('test-token', {
+        target_type: 'goal',
+        target_id: 42,
+        page: 1,
+        limit: 50
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/social/likers',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' }),
+          body: JSON.stringify({ target_type: 'goal', target_id: 42, page: 1, limit: 50 })
+        })
+      );
+    });
+
     it('should save safeguarding preferences through the Laravel v2 endpoint', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,

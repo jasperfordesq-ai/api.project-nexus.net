@@ -8,6 +8,8 @@ const {
   getGoals,
   getGoal,
   getComments,
+  getFeedItemV2,
+  getSocialLikers,
   callGoalApi,
   createComment,
   deleteComment,
@@ -17,6 +19,7 @@ const {
 const { asyncRoute } = require('../lib/routeHelpers');
 const { normalizeResponse } = require('../lib/normalizeResponse');
 const { getRequestIntlLocale } = require('../lib/request-intl-locale');
+const { getRequestProfile } = require('../lib/request-profile');
 
 const router = express.Router();
 
@@ -142,6 +145,46 @@ async function optionalGoalRead(promise, fallback) {
   } catch (error) {
     if (isAuthError(error)) throw error;
     return fallback;
+  }
+}
+
+async function goalLikeState(req, token, id) {
+  try {
+    const item = dataFrom(await getFeedItemV2(token, 'goal', id)) || {};
+    return {
+      likeCount: socialCountFrom(item, ['likes_count', 'like_count', 'likesCount', 'likeCount'], 0),
+      liked: checked(item.is_liked ?? item.has_liked ?? item.hasLiked ?? item.liked)
+    };
+  } catch (error) {
+    if (isAuthError(error)) throw error;
+  }
+
+  try {
+    const profile = dataFrom(await getRequestProfile(req, token)) || {};
+    const currentUserId = positiveInteger(profile.id ?? profile.user_id ?? profile.userId);
+    let page = 1;
+    let likeCount = 0;
+    let liked = false;
+    let hasMore = true;
+
+    while (hasMore && !liked && page <= 20) {
+      const result = dataFrom(await getSocialLikers(token, {
+        target_type: 'goal',
+        target_id: id,
+        page,
+        limit: 50
+      })) || {};
+      const likers = Array.isArray(result.likers) ? result.likers : [];
+      likeCount = socialCountFrom(result, ['total_count', 'total', 'count'], likeCount);
+      liked = currentUserId !== null && likers.some((liker) => positiveInteger(liker?.id ?? liker?.user_id) === currentUserId);
+      hasMore = checked(result.has_more ?? result.hasMore);
+      page += 1;
+    }
+
+    return { likeCount, liked };
+  } catch (error) {
+    if (isAuthError(error)) throw error;
+    return {};
   }
 }
 
@@ -945,16 +988,13 @@ router.get('/:id(\\d+)/social', asyncRoute(async (req, res) => {
 
   const id = req.params.id;
   const numericId = Number(id);
-  const [goalResult, commentsResult, socialResult] = await Promise.all([
+  const [goalResult, commentsResult, feedItemResult] = await Promise.all([
     getGoal(token, id),
     getComments(token, { target_type: 'goal', target_id: numericId }).catch((error) => {
       if (isAuthError(error)) throw error;
       return { data: { comments: [], count: 0 } };
     }),
-    callGoal(token, 'GET', `/${id}/social`).catch((error) => {
-      if (isAuthError(error)) throw error;
-      return { data: {} };
-    })
+    goalLikeState(req, token, numericId)
   ]);
 
   const goal = normalizeGoal(dataFrom(goalResult), res.locals.t);
@@ -969,10 +1009,10 @@ router.get('/:id(\\d+)/social', asyncRoute(async (req, res) => {
     ['count', 'total', 'comments_count', 'commentsCount'],
     commentsFallback
   );
-  const socialData = dataFrom(socialResult) || {};
+  const socialData = feedItemResult || {};
   const likeFallback = socialCountFrom(
     goal,
-    ['like_count', 'likes_count', 'likeCount', 'likesCount'],
+    ['likeCount', 'like_count', 'likes_count', 'likesCount'],
     0
   );
   const likeCount = socialCountFrom(
@@ -984,6 +1024,7 @@ router.get('/:id(\\d+)/social', asyncRoute(async (req, res) => {
     socialData.liked
       ?? socialData.has_liked
       ?? socialData.hasLiked
+      ?? socialData.is_liked
       ?? goal.liked
       ?? goal.has_liked
       ?? goal.hasLiked

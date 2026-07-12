@@ -2677,6 +2677,14 @@ async function getGamificationProfile(token, userId = null) {
   });
 }
 
+async function getSocialLikers(token, data) {
+  return request('/api/social/likers', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
 async function getGamificationProfileByUserId(token, userId) {
   return getGamificationProfile(token, userId);
 }
@@ -3424,6 +3432,7 @@ module.exports = {
   updateFeedPostV2,
   deleteFeedPostV2,
   toggleFeedLike,
+  getSocialLikers,
   markFeedItemNotInterested,
   hideFeedItem,
   reportFeedItem,

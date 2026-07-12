@@ -73,6 +73,7 @@ jest.mock('../src/lib/api', () => ({
   getFeedHashtagPosts: jest.fn().mockResolvedValue({ data: [], meta: { total_items: 0, has_more: false } }),
   getFeedPostV2: jest.fn(),
   getFeedItemV2: jest.fn(),
+  getSocialLikers: jest.fn(),
   getGroups: jest.fn().mockResolvedValue({ data: [] }),
   getMyGroups: jest.fn().mockResolvedValue({ data: [] }),
   getGroup: jest.fn().mockResolvedValue({ data: { id: 42, name: 'Group' } }),
@@ -407,6 +408,7 @@ describe('shared accessible frontend shell', () => {
     api.getFeedHashtagPosts.mockReset().mockResolvedValue({ data: [], meta: { total_items: 0, has_more: false } });
     api.getFeedPostV2.mockReset();
     api.getFeedItemV2.mockReset();
+    api.getSocialLikers.mockReset();
     api.getGroups.mockReset().mockResolvedValue({ data: [], meta: { cursor: null, has_more: false } });
     api.getMyGroups.mockReset().mockResolvedValue({ data: [], meta: { cursor: null, has_more: false } });
     api.getGroupMembers.mockReset().mockResolvedValue({ data: [], meta: { cursor: null, has_more: false } });
@@ -8762,10 +8764,13 @@ describe('shared accessible frontend shell', () => {
         count: 2
       }
     });
-    api.callGoalApi.mockReset().mockResolvedValueOnce({
+    api.getFeedItemV2.mockReset().mockRejectedValueOnce(new api.ApiError('Not found', 404, {}));
+    api.getProfile.mockReset().mockResolvedValueOnce({ data: { id: 101 } });
+    api.getSocialLikers.mockReset().mockResolvedValueOnce({
       data: {
-        like_count: 2,
-        liked: true
+        likers: [{ id: 101, name: 'Avery Green' }, { id: 202, name: 'Sam Lee' }],
+        total_count: 2,
+        has_more: false
       }
     });
 
@@ -8815,8 +8820,14 @@ describe('shared accessible frontend shell', () => {
     expect(api.getGoal).toHaveBeenCalledWith('test-token', '42');
     expect(api.getComments).toHaveBeenCalledTimes(1);
     expect(api.getComments).toHaveBeenCalledWith('test-token', { target_type: 'goal', target_id: 42 });
-    expect(api.callGoalApi).toHaveBeenCalledTimes(1);
-    expect(api.callGoalApi).toHaveBeenCalledWith('test-token', 'GET', '/42/social');
+    expect(api.getFeedItemV2).toHaveBeenCalledTimes(1);
+    expect(api.getFeedItemV2).toHaveBeenCalledWith('test-token', 'goal', 42);
+    expect(api.getSocialLikers).toHaveBeenCalledWith('test-token', {
+      target_type: 'goal',
+      target_id: 42,
+      page: 1,
+      limit: 50
+    });
   });
 
   it('redirects flat signed-out coupon pages and gates tenant-mounted disabled coupon pages before calling Laravel', async () => {
