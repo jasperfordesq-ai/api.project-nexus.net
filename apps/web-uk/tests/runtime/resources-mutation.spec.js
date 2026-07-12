@@ -55,6 +55,29 @@ async function authenticate(page) {
   expect(response.status()).toBe(302);
 }
 
+async function uploadDisposableResource(page, { title, description, filename, contents }) {
+  await page.goto(`${mountPath}/resources/upload`, {
+    waitUntil: 'domcontentloaded',
+    timeout: 300_000
+  });
+  await page.locator('#title').fill(title);
+  await page.locator('#description').fill(description);
+  await page.locator('#file').setInputFiles({
+    name: filename,
+    mimeType: 'text/plain',
+    buffer: Buffer.from(contents)
+  });
+
+  const uploadResponsePromise = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return response.request().method() === 'POST' && url.pathname.endsWith('/resources/upload');
+  }, { timeout: 300_000 });
+  await page.getByRole('button', { name: 'Upload resource', exact: true }).click();
+  const uploadResponse = await uploadResponsePromise;
+  expect(uploadResponse.status()).toBe(302);
+  await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+}
+
 async function findByTitle(token, title) {
   const result = await getResources(token, { search: title, per_page: 50 });
   return rowsFrom(result).find((resource) => resource?.title === title) || null;
@@ -77,7 +100,7 @@ async function expectAccessibleReflow(page) {
   expect(results.violations.filter(({ impact }) => impact === 'serious' || impact === 'critical')).toEqual([]);
 }
 
-test('uploads, downloads, and deletes a disposable resource through Web UK', async ({ page }) => {
+test('uploads, enforces the non-admin reorder guard, downloads, and deletes a disposable resource through Web UK', async ({ page }) => {
   const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
   const title = `Codex disposable resource ${runId}`;
   const contents = `Disposable Laravel resource fixture ${runId}\n`;
@@ -92,31 +115,42 @@ test('uploads, downloads, and deletes a disposable resource through Web UK', asy
 
   try {
     await authenticate(page);
-    await page.goto(`${mountPath}/resources/upload`, {
-      waitUntil: 'domcontentloaded',
-      timeout: 300_000
+    await uploadDisposableResource(page, {
+      title,
+      description: 'Disposable upload, download, and delete smoke fixture.',
+      filename: `codex-resource-${runId}.txt`,
+      contents
     });
-    await page.locator('#title').fill(title);
-    await page.locator('#description').fill('Disposable upload, download, and delete smoke fixture.');
-    await page.locator('#file').setInputFiles({
-      name: `codex-resource-${runId}.txt`,
-      mimeType: 'text/plain',
-      buffer: Buffer.from(contents)
-    });
-
-    const uploadResponsePromise = page.waitForResponse((response) => {
-      const url = new URL(response.url());
-      return response.request().method() === 'POST' && url.pathname.endsWith('/resources/upload');
-    }, { timeout: 300_000 });
-    await page.getByRole('button', { name: 'Upload resource', exact: true }).click();
-    const uploadResponse = await uploadResponsePromise;
-    expect(uploadResponse.status()).toBe(302);
-    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
 
     const created = await findByTitle(token, title);
     expect(created).toBeTruthy();
     resourceId = Number(created.id);
     expect(resourceId).toBeGreaterThan(0);
+
+    await page.goto(`${mountPath}/resources/library?q=${encodeURIComponent(title)}&reorder=1`, {
+      waitUntil: 'domcontentloaded',
+      timeout: 300_000
+    });
+    await expect(page.locator('form[action$="/resources/reorder"]')).toHaveCount(0);
+    const csrfTokens = await page.locator('form[action$="/logout"] input[name="_csrf"]').evaluateAll((elements) => (
+      [...new Set(elements.map((element) => element.value).filter(Boolean))]
+    ));
+    expect(csrfTokens).toHaveLength(1);
+    const [csrfToken] = csrfTokens;
+    const forbiddenReorder = await page.request.post(new URL(`${mountPath}/resources/reorder`, page.url()).toString(), {
+      form: {
+        _csrf: csrfToken,
+        resource_id: String(resourceId),
+        direction: 'down',
+        q: title,
+        reorder: '1'
+      },
+      maxRedirects: 0,
+      timeout: 300_000
+    });
+    expect(forbiddenReorder.status()).toBe(403);
+    const unchanged = await findByTitle(token, title);
+    expect(Number(unchanged?.sort_order)).toBe(Number(created.sort_order));
 
     await page.goto(`${mountPath}/resources/library?q=${encodeURIComponent(title)}`, {
       waitUntil: 'domcontentloaded',
