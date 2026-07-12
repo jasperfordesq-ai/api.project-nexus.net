@@ -26,6 +26,7 @@ public class Transaction : ITenantEntity
     public string? Description { get; set; }
     public string TransactionType { get; set; } = "transfer";
     public int? ListingId { get; set; }
+    public int? VolunteerLogId { get; set; }
     public TransactionStatus Status { get; set; } = TransactionStatus.Completed;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
@@ -50,6 +51,7 @@ public class Transaction : ITenantEntity
     public User? Sender { get; set; }
     public User? Receiver { get; set; }
     public Listing? Listing { get; set; }
+    public VolunteerLog? VolunteerLog { get; set; }
 }
 
 /// <summary>

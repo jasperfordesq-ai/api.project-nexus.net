@@ -65,6 +65,13 @@ public class User : ITenantEntity
     public string? NotificationPreferences { get; set; }
 
     /// <summary>
+    /// Laravel's existing public-volunteering preference. A null legacy value
+    /// is treated as opted in; an explicit false prevents approved hour logs
+    /// from being broadcast to the community activity feed.
+    /// </summary>
+    public bool? ShowOnLeaderboard { get; set; } = true;
+
+    /// <summary>
     /// Registration lifecycle state. Defaults to Active for backward compatibility.
     /// </summary>
     public RegistrationStatus RegistrationStatus { get; set; } = RegistrationStatus.Active;

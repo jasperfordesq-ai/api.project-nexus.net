@@ -139,9 +139,12 @@ public sealed class AdminCaringCommunitySupportController : ControllerBase
                 "ALREADY_EXISTS" => "Support hours have already been logged for this relationship and date.",
                 _ => "Support hours could not be logged."
             };
-            var status = code == "NOT_FOUND"
-                ? StatusCodes.Status404NotFound
-                : StatusCodes.Status422UnprocessableEntity;
+            var status = code switch
+            {
+                "NOT_FOUND" => StatusCodes.Status404NotFound,
+                "SERVER_ERROR" => StatusCodes.Status500InternalServerError,
+                _ => StatusCodes.Status422UnprocessableEntity
+            };
             return StatusCode(status, LaravelError(code, message));
         }
 

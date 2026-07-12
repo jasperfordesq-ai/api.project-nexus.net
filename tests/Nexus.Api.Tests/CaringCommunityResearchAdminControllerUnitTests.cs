@@ -359,6 +359,16 @@ public class CaringCommunityResearchAdminControllerUnitTests
             ("CreatedBy", 9001), ("CreatedAt", new DateTime(2026, 6, 1, 9, 0, 0, DateTimeKind.Utc)), ("UpdatedAt", null)));
         for (var userId = 1001; userId <= 1005; userId++)
         {
+            db.Users.Add(new User
+            {
+                Id = userId,
+                TenantId = 42,
+                Email = $"research-member-{userId}@example.test",
+                PasswordHash = "hash",
+                FirstName = "Research",
+                LastName = $"Member {userId}",
+                IsActive = true
+            });
             db.CaringResearchConsents.Add(new CaringResearchConsent
             {
                 TenantId = 42,
@@ -378,6 +388,16 @@ public class CaringCommunityResearchAdminControllerUnitTests
                 CreatedAt = new DateTime(2026, 1, userId - 1000, 8, 0, 0, DateTimeKind.Utc)
             });
         }
+        db.Users.Add(new User
+        {
+            Id = 2001,
+            TenantId = 42,
+            Email = "research-pending@example.test",
+            PasswordHash = "hash",
+            FirstName = "Pending",
+            LastName = "Member",
+            IsActive = true
+        });
         db.VolunteerLogs.Add(new VolunteerLog
         {
             TenantId = 42,

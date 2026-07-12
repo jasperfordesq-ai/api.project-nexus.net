@@ -1,6 +1,6 @@
 # Schema Parity Map
 
-Last reviewed: 2026-07-11
+Last reviewed: 2026-07-12
 
 Laravel source of truth: `C:\platforms\htdocs\staging\database\migrations` and
 `C:\platforms\htdocs\staging\app\Models`.
@@ -8,32 +8,64 @@ Laravel source of truth: `C:\platforms\htdocs\staging\database\migrations` and
 ## Current Source Counts
 
 Static schema-table counts were generated with
-`scripts/compare-laravel-schema-parity.ps1` on 2026-07-11. The EF migration
-inventory was refreshed and runtime-verified on the same date.
+`scripts/compare-laravel-schema-parity.ps1` on 2026-07-12. The comparator fixture
+passed before the live artifact was regenerated. The EF migration inventory was
+refreshed and runtime-verified on the same date.
 
 | Source | Count | Notes |
 | --- | ---: | --- |
-| Laravel migrations | 330 | PHP migration files under `database/migrations`. |
-| ASP.NET migration source files | 112 | Main migration `.cs` files excluding designers and the model snapshot. |
-| ASP.NET runtime migrations | 110 | EF-discovered/applicable IDs through `20260711143546_VolunteerQrAttendanceParity`; all replay on blank PostgreSQL. |
-| Laravel created tables | 215 | Unique `Schema::create(...)` table names. |
-| Laravel touched tables | 104 | Unique `Schema::table(...)` table names. |
-| Laravel explicit model tables | 195 | Unique `protected/public $table = ...` model declarations. |
-| Laravel source tables | 362 | Union of migration-created, migration-touched, and explicit model tables. |
-| ASP.NET tables | 330 | Union of EF `ToTable(...)`, `[Table(...)]`, migration `CreateTable(...)`, and explicit SQL table names. |
-| Exact matched tables | 135 | Static name matches only; canonical `vol_organizations`, `org_members`, and `vol_org_transactions` are now represented. |
-| Missing Laravel tables | 227 | Laravel source tables with no exact .NET table name. |
-| Extra ASP.NET tables | 195 | .NET table names with no exact Laravel table name. |
+| Laravel migrations | 333 | PHP migration files under `database/migrations`. |
+| ASP.NET migration source files | 113 | Main migration `.cs` files excluding designers and the model snapshot. |
+| ASP.NET runtime migrations | 111 | Blank replay applied every recorded EF migration through latest `20260711192124_VolunteerHoursLedgerParity`; `has-pending-model-changes` is green. |
+| Laravel created tables | 220 | Unique `Schema::create(...)` table names. |
+| Laravel touched tables | 105 | Unique `Schema::table(...)` table names. |
+| Laravel explicit model tables | 199 | Unique `protected/public $table = ...` model declarations. |
+| Laravel source tables | 368 | Union of migration-created, migration-touched, and explicit model tables. |
+| ASP.NET tables | 331 | Union of EF `ToTable(...)`, `[Table(...)]`, migration `CreateTable(...)`, and explicit SQL table names. |
+| Exact matched tables | 137 | Static name matches only; canonical `vol_organizations`, `org_members`, `vol_org_transactions`, and `feed_activity` are represented. |
+| Missing Laravel tables | 231 | Laravel source tables with no exact .NET table name. |
+| Extra ASP.NET tables | 194 | .NET table names with no exact Laravel table name. |
 
 These counts are not a parity score. Static table-name matching will overstate
 some gaps where .NET intentionally renamed tables, for example Laravel `vol_*`
 tables versus .NET `volunteer_*` tables. Those aliases still need explicit
 triage and compatibility decisions before any table can be marked equivalent.
 
-## 2026-07-11 Runtime Migration And Attendance Evidence Status
+## 2026-07-12 Runtime Migration And Volunteer Hours Evidence Status
 
-`20260711143546_VolunteerQrAttendanceParity` is the current latest migration.
-It makes `volunteer_check_ins.CheckedInAt` nullable, adds nullable global
+`20260711192124_VolunteerHoursLedgerParity` is the current latest migration and
+runtime ID 111. It hardens canonical `vol_logs` hours, status, organisation,
+opportunity, reviewer, recipient, and Caring relationship provenance; installs
+tenant-composite relationships and active natural-key uniqueness; adds the
+personal `transactions.VolunteerLogId` link; and enforces unique, semantically
+linked organisation-payment and volunteer-hour XP evidence. The same migration
+source adds the Laravel-aligned tenant-scoped `feed_activity` projection with its
+unique source tuple/hot-path indexes and the nullable `users.show_on_leaderboard`
+privacy preference. `FeedActivityService` publishes approved hours idempotently
+as `volunteer_hours` without copying the volunteer description; other producers,
+admin moderation integration, cleanup, and backfill remain gaps. Its preflight
+rejects invalid hours/status, orphan or cross-tenant relationships, inconsistent
+organisation/opportunity/Caring provenance, ambiguous or contradictory payout/
+XP evidence, and duplicate active log keys before any DDL. It never inserts
+legacy transaction, payment, or XP rows. Uniquely provable existing evidence may
+be linked; evidence-free approved whole-hour organisation rows are downgraded to
+`pending`, while approved Caring sub-hour rows remain valid without fabricated
+evidence. Source-level migration contract tests cover the no-mint and conditional
+hours rules. Final non-production certification applied all 111 migrations to a
+blank PostgreSQL database with latest ID
+`20260711192124_VolunteerHoursLedgerParity`; direct assertions verified the exact
+13-column/eight-index `feed_activity` schema, nullable-boolean
+`users.show_on_leaderboard` with default `true`, all 11 column-specific
+`ON DELETE SET NULL` relationships, and the volunteer-user `CASCADE`
+relationship. A valid populated 110-to-111 upgrade preserved and linked existing
+evidence without minting transaction, payment, or XP value. A deliberately
+invalid fixture raised PostgreSQL `P0001` atomically: history remained at 110 and
+no migration-111 DDL was left behind. `has-pending-model-changes` is green.
+Disposable Docker container, network, and anonymous-volume cleanup left zero
+matching resources. No production database or container was touched.
+
+The preceding `20260711143546_VolunteerQrAttendanceParity` migration makes
+`volunteer_check_ins.CheckedInAt` nullable, adds nullable global
 `QrToken`, nullable `CheckedInById`/`CheckedOutById`, required lifecycle
 `Status`, and required `UpdatedAt`, and installs a global filtered unique token
 index plus one attendance row per `(TenantId, ShiftId, UserId)`. Status is
@@ -87,11 +119,11 @@ and adds nullable
 `volunteer_opportunities.organization_id`. Owner, membership, and opportunity
 foreign keys use tenant-composite principals; the opportunity link uses
 non-destructive `RESTRICT`. No organisations or opportunity links are
-backfilled. Nullable `vol_org_transactions.vol_log_id` remains a scalar because
-the discovered runtime chain does not create Laravel's `vol_logs` table. The
-ledger still has Laravel's unique `(tenant_id, vol_log_id, type)` payment guard,
-and its nullable user relationship is tenant-composite. API aggregate reads
-degrade to honest zero-hour results on a discovered-chain-only database.
+backfilled. Its original nullable `vol_org_transactions.vol_log_id` scalar is
+now a tenant-composite foreign key to `vol_logs`, with Laravel's unique
+`(tenant_id, vol_log_id, type)` payment guard retained. The canonical hours
+migration also links the matching personal transaction and XP evidence rather
+than degrading to zero-hour aggregates.
 Historical NULL-linked opportunities require explicit tenant/operator mapping;
 `OrganizerId` is a user key and must never be treated as an organisation id.
 
@@ -128,15 +160,10 @@ passes a clean 7/7 PostgreSQL-backed regression. Recurring-shift math,
 idempotence, concurrency, tenant sweep, and scheduled-run persistence pass a
 clean 13/13 PostgreSQL-backed regression.
 
-The verified runtime inventory is 110 EF-discovered/applicable migrations. EF
-reports no pending model changes. A clean recreated database applied all 110
-after restoring `AddAiMessageTenantId` discovery metadata. Migration history
-contains 110 rows through the latest ID; `ai_messages.TenantId` is non-nullable
-and its tenant index and foreign key are present. One populated 109-to-110
-upgrade is green; duplicate-attendance and cross-tenant fixtures each prove the
-expected atomic preflight abort at 109 before DDL.
-The chain runs through
-`20260711143546_VolunteerQrAttendanceParity`. The preceding discovery repair
+The recorded runtime inventory is 111 EF-discovered/applicable migrations
+through `20260711192124_VolunteerHoursLedgerParity`. Blank, populated, and
+invalid final-source replays and the model-drift gate are green as described
+above. The preceding discovery repair
 restored explicit discovery metadata to 27 essential designer-less migrations,
 including `20260303120000_AddAiMessageTenantId`. The overlapping
 `20260307181700_FederationCoreExpansion` class remains intentionally outside
@@ -145,26 +172,28 @@ full schema superset. `20260305120000_AddTenantUpdatedAt` also remains outside:
 `InitialCreate` already creates `tenants.UpdatedAt`, so discovering it would
 duplicate the column.
 
-The current test-project build has zero errors and four pre-existing
-`xUnit1031` warnings. Migration discovery, the 32/32 QR attendance suite, 1/1
-persistence-failure regression, 12/12 shift-swap suite, 5/5 route/auth subset,
-90/90 affected-module gate, and the ambient-transaction regression are green. These
-focused results validate the current schema consumers but do not replace the
-full-suite and frontend-runtime gates. Descendant CI run `29154079189` was later
+The Debug API/test builds and required solution-wide Release build complete with
+zero errors; the only warnings are the same four pre-existing `xUnit1031`
+warnings in the test project. The Release build took 4m36s. One disposable Linux run
+discovered 3,007 tests and passed 53/53: all 51
+`VolunteerHoursParityTests` plus both `V15FeedActivityCompatibilityTests`.
+Windows Smart App Control prevents loading the freshly rebuilt unsigned API
+assembly locally; host policy was not weakened. The clean affected rerun
+discovered 3,007 tests, selected 243, and passed 243/243 with zero failed and zero
+skipped in 418.639s. The
+preceding 32/32 QR attendance, 1/1 persistence-failure, 12/12 shift-swap, 5/5
+route/auth, 90/90 affected-module, and ambient-transaction results remain useful
+historical evidence but do not certify the new hours slice or replace full-suite
+and frontend-runtime gates. Descendant CI run `29154079189` was later
 cancelled after its completed Integration Tests job reported 51 failures out of
 2,888 tests. Its only direct regression from the preceding
 `bfeafb2e` backend slice was nested transaction handling, now fixed and green
 locally; the other CI failures remain open for independent triage.
 
-A blank database and a populated database stopped at the preceding migration
-both upgraded from 109 to 110. The populated proof retained checked-out and
-checked-in history with the deterministic status/`UpdatedAt = CreatedAt`
-backfill, null historical QR/coordinator columns, and untouched
-`HoursLogged`/`TransactionId` evidence. Separate duplicate-attendance and
-cross-tenant fixtures both aborted in preflight, stayed at 109 migrations, and
-installed none of the new DDL. The uniquely named disposable PostgreSQL
-container was removed. No production database or container was inspected or
-changed.
+Migration 111's final runtime replay and model-drift gates are green as
+described above. The preceding QR migration has a populated 109-to-110 backfill and
+duplicate/cross-tenant atomic-abort proof. No production database or container
+was inspected or changed.
 
 Do not auto-link null legacy loyalty/estate evidence or rewrite ambiguous
 self-transfers, admin grants, starting-balance grants, or hour transfers. The
@@ -172,10 +201,12 @@ copy-ready `BEGIN TRANSACTION READ ONLY` candidate report in
 `docs/database-migrations.md` exposes current and expected balance effects for
 manual disposition without making changes.
 
-Schema presence is not workflow parity. Legacy one-to-one exchange,
-sub-account pooling, volunteer hours/rewards, community-fund writes, and
-federation settlement remain explicit HTTP 503 or equivalent fail-closed
-workflows until their missing approval/evidence/saga models are implemented.
+Schema presence is not workflow parity. Legacy one-to-one exchange, sub-account
+pooling, community-fund writes, and federation settlement remain explicit HTTP
+503 or equivalent fail-closed workflows until their missing approval/evidence/
+saga models are implemented. Volunteer-hours schema and workflow now exist, but
+the full 3,007-test suite, CI, and unchanged-frontend runtime certification
+remain open.
 
 `AdminVolunteerApprovalWorkflow.Down()` is intentionally irreversible. Restoring
 the former unique application index after valid reapplication history could
@@ -188,6 +219,10 @@ downgrade would discard QR token, attendance-status, and coordinator evidence
 and make pending attendance timestamps non-nullable. Recovery requires a tested
 pre-migration backup or a reviewed forward remediation, never a forced down
 migration.
+`VolunteerHoursLedgerParity.Down()` also throws before changing schema because
+rollback would remove immutable feedback and personal/organisation/XP ledger
+provenance. Restore a verified pre-migration backup or use a reviewed forward
+remediation.
 `RecurringShiftGenerationParity.Down()` removes the two new indexes and
 restores the former simple tenant index; no application data is deleted.
 
@@ -217,7 +252,7 @@ of semantic absence. It highlights the domains that need table-by-table review:
 | Prefix/family | Missing source tables | Parity implication |
 | --- | ---: | --- |
 | `caring_*` | 0 | Caring Community and KISS exact-name `caring_*` schema gaps are currently cleared in the static schema comparator; `caring_emergency_alerts`, `caring_federation_peers`, `caring_sub_regions`, `caring_care_providers`, `caring_caregiver_links`, `caring_cover_requests`, `caring_support_categories`, `caring_support_relationships`, `caring_tandem_suggestion_log`, `caring_help_requests`, `caring_project_announcements`, `caring_project_updates`, `caring_project_subscriptions`, `caring_smart_nudges`, `caring_paper_onboarding_intakes`, `caring_favours`, `caring_municipality_feedback`, `caring_trust_tier_config`, `municipality_surveys`, `municipality_survey_questions`, `municipality_survey_responses`, `caring_hour_estates`, `caring_hour_transfers`, `caring_hour_gifts`, `caring_kiss_treffen`, `caring_invite_codes`, `caring_kpi_baselines`, `caring_loyalty_redemptions`, `caring_regional_point_accounts`, `caring_regional_point_transactions`, `caring_research_partners`, `caring_research_consents`, and `caring_research_dataset_exports` are now represented in .NET. Laravel's `municipal_report_templates`, `municipal_verifications`, shared `categories.substitution_coefficient`, `users.trust_tier`, `safeguarding_reports`, `safeguarding_report_actions`, and member-facing `user_safeguarding_preferences` are also represented. Success stories intentionally use tenant-config key `caring.success_stories` to mirror Laravel's tenant-setting storage. |
-| `vol_*` | 19 | The .NET model contains `VolunteerLog` consumers, but the 110-migration runtime chain does not create Laravel's `vol_logs` table; the legacy hours write alias therefore returns HTTP 503 `VOLUNTEER_HOURS_UNAVAILABLE`, hour aggregates degrade honestly, and hour verification/rewards remain open. QR attendance now has migration-backed token/status/coordinator evidence, tenant-composite assignment and attendance relationships, and one attendance row per tenant/shift/user without minting hours or credits. The renamed volunteering schema also has shared capacity indexes, canonical notification links, scoped hashed guardian consent, race-safe recurrence, canonical creator ownership, and dedicated volunteer-organisation/member/wallet storage. Exact Laravel `vol_*` aliases, legacy NULL organisation mapping, hour/payment evidence, and the remaining volunteering schema families still require reconciliation. |
+| `vol_*` | 17 | The 111-ID runtime inventory contains canonical `vol_logs` with tenant-composite user/organisation/opportunity/reviewer/Caring provenance, hours/status checks, active natural-key uniqueness, personal transaction links, organisation-payment links, and volunteer-hour XP evidence. Migration 111 never inserts legacy value: evidence-free approved whole-hour organisation rows become `pending`, while approved Caring sub-hour rows remain valid. The eight member/organisation/admin hour routes and Caring relationship logging share the same locked workflow; direct Caring input retains raw fractional semantics for whole-hour flooring/regional points before rounded storage. QR attendance separately has migration-backed token/status/coordinator evidence and remains deliberately free of credit/XP side effects. The current live count reports 17 exact-name gaps because other Laravel `vol_*` tables/aliases remain; broader workflow semantics, the full 3,007-test suite, CI, and unchanged-frontend certification still require reconciliation. |
 | `federation_*` | 17 | Receiver-scoped partnership decisions now persist native status/audit state, but exact federation-level permission columns, rejection actor/time/reason metadata, initial-sync/outbox state, and broader partner/network schema still need reconciliation. |
 | `course_*` | 15 | Course module has no clear .NET implementation surface. |
 | `job_*` | 13 | Job schema is partially present but not exact-name complete. |

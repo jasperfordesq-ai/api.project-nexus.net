@@ -78,4 +78,5 @@ public sealed class VolunteerOrganisationTransaction : ITenantEntity
     public Tenant? Tenant { get; set; }
     public VolunteerOrganisation? VolunteerOrganisation { get; set; }
     public User? User { get; set; }
+    public VolunteerLog? VolunteerLog { get; set; }
 }

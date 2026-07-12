@@ -148,7 +148,12 @@ public class VolunteerConfiguration : TenantScopedConfiguration
                 .WithMany()
                 .HasForeignKey(e => new { e.TenantId, e.UserId })
                 .HasPrincipalKey(e => new { e.TenantId, e.Id })
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.ClientSetNull);
+            entity.HasOne(e => e.VolunteerLog)
+                .WithMany()
+                .HasForeignKey(e => new { e.TenantId, e.VolunteerLogId })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
+                .OnDelete(DeleteBehavior.ClientSetNull);
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
         });
 
@@ -168,6 +173,9 @@ public class VolunteerConfiguration : TenantScopedConfiguration
             entity.HasIndex(e => e.TenantId);
             entity.HasIndex(e => e.OrganizerId);
             entity.HasIndex(e => new { e.TenantId, e.VolunteerOrganisationId });
+            entity.HasIndex(e => new { e.TenantId, e.VolunteerOrganisationId, e.Id })
+                .IsUnique()
+                .HasDatabaseName("ux_volunteer_opportunities_tenant_org_id");
             entity.HasIndex(e => e.Status);
             entity.HasIndex(e => e.StartsAt);
             entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);

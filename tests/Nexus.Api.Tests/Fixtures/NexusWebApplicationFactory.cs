@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Nexus.Api.Data;
+using Npgsql;
 using Testcontainers.PostgreSql;
 
 namespace Nexus.Api.Tests.Fixtures;
@@ -27,7 +28,14 @@ public class NexusWebApplicationFactory : WebApplicationFactory<Program>, IAsync
         .WithPassword("postgres")
         .Build();
 
-    public string ConnectionString => _postgres.GetConnectionString();
+    // Docker Desktop can occasionally take longer than Npgsql's 15-second
+    // default to complete a fresh PostgreSQL handshake while integration tests
+    // are creating a child host or deliberately holding row locks. Keep the
+    // production connection settings untouched, but give this disposable test
+    // database enough time to distinguish a slow local handshake from a real
+    // endpoint failure.
+    public string ConnectionString =>
+        $"{_postgres.GetConnectionString()};Timeout=60;Command Timeout=60";
 
     // Test JWT secret - generated deterministically to avoid hardcoded secrets in source control
     private static readonly string TestJwtSecret = Convert.ToBase64String(
@@ -69,6 +77,7 @@ public class NexusWebApplicationFactory : WebApplicationFactory<Program>, IAsync
                 ["RateLimiting:VolunteerOrganisationWallet:DepositWindowSeconds"] = "1",
                 ["Cors:AllowedOrigins:0"] = "https://wallet-ui.example.test",
                 ["RabbitMq:Enabled"] = "false", // Disable RabbitMQ for tests
+                ["BackgroundServices:SuppressAutomaticExecution"] = "true",
                 ["LlamaService:BaseUrl"] = "http://localhost:11434", // Mock URL
                 // Disable the outbound-network security gates in the test host.
                 // Otherwise registration hits live third-party APIs in CI: the
@@ -108,17 +117,37 @@ public class NexusWebApplicationFactory : WebApplicationFactory<Program>, IAsync
                 options.UseNpgsql(ConnectionString);
             });
 
-            // Ensure database is created and migrated
-            var sp = services.BuildServiceProvider();
-            using var scope = sp.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
-            db.Database.EnsureCreated();
         });
     }
 
     public async Task InitializeAsync()
     {
         await _postgres.StartAsync();
+
+        // Create the disposable schema once, after PostgreSQL is ready and before
+        // any test host is built. Derived WithWebHostBuilder factories share this
+        // database; creating it from ConfigureServices made every derived host
+        // reconnect and rerun EnsureCreated, which could race or lose a Docker
+        // Desktop socket during long integration classes.
+        var options = new DbContextOptionsBuilder<NexusDbContext>()
+            .UseNpgsql(ConnectionString)
+            .Options;
+
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                await using var db = new NexusDbContext(options, new TenantContext());
+                await db.Database.EnsureCreatedAsync();
+                break;
+            }
+            catch (NpgsqlException) when (attempt < 3)
+            {
+                // Testcontainers has completed its readiness probe, but Docker
+                // Desktop can still reset the first client handshake under load.
+                await Task.Delay(TimeSpan.FromMilliseconds(250 * attempt));
+            }
+        }
     }
 
     public new async Task DisposeAsync()

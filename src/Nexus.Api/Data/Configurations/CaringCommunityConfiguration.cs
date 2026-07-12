@@ -246,6 +246,7 @@ public class CaringCommunityConfiguration : TenantScopedConfiguration
         {
             entity.ToTable("caring_support_relationships");
             entity.HasKey(e => e.Id);
+            entity.HasAlternateKey(e => new { e.TenantId, e.Id });
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.TenantId).HasColumnName("tenant_id");
             entity.Property(e => e.SupporterId).HasColumnName("supporter_id");
@@ -277,18 +278,27 @@ public class CaringCommunityConfiguration : TenantScopedConfiguration
 
             entity.HasOne(e => e.Supporter)
                 .WithMany()
-                .HasForeignKey(e => e.SupporterId)
+                .HasForeignKey(e => new { e.TenantId, e.SupporterId })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
                 .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasOne(e => e.Recipient)
                 .WithMany()
-                .HasForeignKey(e => e.RecipientId)
+                .HasForeignKey(e => new { e.TenantId, e.RecipientId })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
                 .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasOne(e => e.Coordinator)
                 .WithMany()
-                .HasForeignKey(e => e.CoordinatorId)
-                .OnDelete(DeleteBehavior.SetNull);
+                .HasForeignKey(e => new { e.TenantId, e.CoordinatorId })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
+                .OnDelete(DeleteBehavior.ClientSetNull);
+
+            entity.HasOne(e => e.Organization)
+                .WithMany()
+                .HasForeignKey(e => new { e.TenantId, e.OrganizationId })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
+                .OnDelete(DeleteBehavior.ClientSetNull);
 
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
         });
@@ -354,8 +364,20 @@ public class CaringCommunityConfiguration : TenantScopedConfiguration
 
         modelBuilder.Entity<VolunteerLog>(entity =>
         {
-            entity.ToTable("vol_logs");
+            entity.ToTable("vol_logs", table =>
+            {
+                table.HasCheckConstraint(
+                    "CK_VolunteerLogs_Hours",
+                    "\"hours\" >= 0 AND \"hours\" <= 24 AND (\"caring_support_relationship_id\" IS NOT NULL OR \"hours\" >= 0.25)");
+                table.HasCheckConstraint(
+                    "CK_VolunteerLogs_Status",
+                    "\"status\" IN ('pending', 'approved', 'declined', 'rejected')");
+                table.HasCheckConstraint(
+                    "CK_VolunteerLogs_OpportunityOrganisation",
+                    "\"opportunity_id\" IS NULL OR \"organization_id\" IS NOT NULL");
+            });
             entity.HasKey(e => e.Id);
+            entity.HasAlternateKey(e => new { e.TenantId, e.Id });
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.TenantId).HasColumnName("tenant_id");
             entity.Property(e => e.UserId).HasColumnName("user_id");
@@ -366,6 +388,7 @@ public class CaringCommunityConfiguration : TenantScopedConfiguration
             entity.Property(e => e.DateLogged).HasColumnName("date_logged").HasColumnType("date").IsRequired();
             entity.Property(e => e.Hours).HasColumnName("hours").HasPrecision(5, 2);
             entity.Property(e => e.Description).HasColumnName("description").HasColumnType("text");
+            entity.Property(e => e.Feedback).HasColumnName("feedback").HasColumnType("text");
             entity.Property(e => e.Status).HasColumnName("status").HasMaxLength(20).HasDefaultValue("pending").IsRequired();
             entity.Property(e => e.AssignedTo).HasColumnName("assigned_to");
             entity.Property(e => e.AssignedAt).HasColumnName("assigned_at");
@@ -381,6 +404,41 @@ public class CaringCommunityConfiguration : TenantScopedConfiguration
             entity.HasIndex(e => e.SupportRecipientId).HasDatabaseName("idx_vol_logs_support_recipient");
             entity.HasIndex(e => new { e.TenantId, e.Status });
             entity.HasIndex(e => new { e.TenantId, e.DateLogged });
+            entity.HasIndex(e => new { e.TenantId, e.Status, e.CreatedAt })
+                .HasDatabaseName("idx_vol_logs_tenant_status_created");
+            entity.HasIndex(e => new { e.TenantId, e.OrganizationId, e.OpportunityId })
+                .HasDatabaseName("idx_vol_logs_tenant_org_opportunity");
+            entity.HasIndex(e => new
+                {
+                    e.TenantId,
+                    e.UserId,
+                    e.OrganizationId,
+                    e.DateLogged,
+                    e.OpportunityId
+                })
+                .IsUnique()
+                .HasFilter("\"status\" NOT IN ('declined', 'rejected') AND \"opportunity_id\" IS NOT NULL")
+                .HasDatabaseName("ux_vol_logs_active_with_opportunity");
+            entity.HasIndex(e => new
+                {
+                    e.TenantId,
+                    e.UserId,
+                    e.OrganizationId,
+                    e.DateLogged
+                })
+                .IsUnique()
+                .HasFilter("\"status\" NOT IN ('declined', 'rejected') AND \"opportunity_id\" IS NULL AND \"caring_support_relationship_id\" IS NULL AND \"organization_id\" IS NOT NULL")
+                .HasDatabaseName("ux_vol_logs_active_without_opportunity");
+            entity.HasIndex(e => new
+                {
+                    e.TenantId,
+                    e.UserId,
+                    e.CaringSupportRelationshipId,
+                    e.DateLogged
+                })
+                .IsUnique()
+                .HasFilter("\"status\" NOT IN ('declined', 'rejected') AND \"caring_support_relationship_id\" IS NOT NULL")
+                .HasDatabaseName("ux_vol_logs_active_caring_relationship");
 
             entity.HasOne(e => e.Tenant)
                 .WithMany()
@@ -389,18 +447,43 @@ public class CaringCommunityConfiguration : TenantScopedConfiguration
 
             entity.HasOne(e => e.User)
                 .WithMany()
-                .HasForeignKey(e => e.UserId)
+                .HasForeignKey(e => new { e.TenantId, e.UserId })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
                 .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Organization)
+                .WithMany()
+                .HasForeignKey(e => new { e.TenantId, e.OrganizationId })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
+                // PostgreSQL migration 111 installs a column-specific SET NULL
+                // action so tenant_id remains intact when the optional parent is
+                // removed. ClientSetNull keeps EF from generating an unsafe
+                // composite SET NULL that would also null the tenant key.
+                .OnDelete(DeleteBehavior.ClientSetNull);
+
+            entity.HasOne(e => e.Opportunity)
+                .WithMany()
+                .HasForeignKey(e => new { e.TenantId, e.OpportunityId })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
+                .OnDelete(DeleteBehavior.ClientSetNull);
 
             entity.HasOne(e => e.SupportRecipient)
                 .WithMany()
-                .HasForeignKey(e => e.SupportRecipientId)
-                .OnDelete(DeleteBehavior.SetNull);
+                .HasForeignKey(e => new { e.TenantId, e.SupportRecipientId })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
+                .OnDelete(DeleteBehavior.ClientSetNull);
+
+            entity.HasOne(e => e.AssignedUser)
+                .WithMany()
+                .HasForeignKey(e => new { e.TenantId, e.AssignedTo })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
+                .OnDelete(DeleteBehavior.ClientSetNull);
 
             entity.HasOne(e => e.CaringSupportRelationship)
                 .WithMany()
-                .HasForeignKey(e => e.CaringSupportRelationshipId)
-                .OnDelete(DeleteBehavior.SetNull);
+                .HasForeignKey(e => new { e.TenantId, e.CaringSupportRelationshipId })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
+                .OnDelete(DeleteBehavior.ClientSetNull);
 
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
         });

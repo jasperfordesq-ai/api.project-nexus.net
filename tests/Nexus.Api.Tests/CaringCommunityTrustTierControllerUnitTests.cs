@@ -62,8 +62,8 @@ public sealed class CaringCommunityTrustTierControllerUnitTests
         db.VolunteerLogs.AddRange(
             VolunteerLog(100, 42, 10, 7m, "approved"),
             VolunteerLog(101, 42, 10, 5m, "approved"),
-            VolunteerLog(102, 42, 10, 90m, "pending"),
-            VolunteerLog(103, 7, 10, 90m, "approved"));
+            VolunteerLog(102, 42, 10, 24m, "pending"),
+            VolunteerLog(103, 7, 90, 24m, "approved"));
         db.Reviews.AddRange(
             Review(200, 42, reviewerId: 11, targetUserId: 10),
             Review(201, 42, reviewerId: 12, targetUserId: 10),
@@ -120,8 +120,8 @@ public sealed class CaringCommunityTrustTierControllerUnitTests
             User(90, 7, "Other", "Tenant", active: true));
         db.VolunteerLogs.AddRange(
             VolunteerLog(100, 42, 10, 2m, "approved"),
-            VolunteerLog(101, 42, 11, 100m, "approved"),
-            VolunteerLog(102, 7, 90, 100m, "approved"));
+            VolunteerLog(101, 42, 11, 24m, "approved"),
+            VolunteerLog(102, 7, 90, 24m, "approved"));
         db.Reviews.Add(Review(200, 42, reviewerId: 11, targetUserId: 10));
         await db.SaveChangesAsync();
 

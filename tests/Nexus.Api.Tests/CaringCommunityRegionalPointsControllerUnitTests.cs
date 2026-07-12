@@ -799,7 +799,9 @@ public class CaringCommunityRegionalPointsControllerUnitTests
             new CaringCommunityFutureCareFundService(db),
             new CaringRegionalPointService(db),
             new CaringResearchPartnershipService(db),
-            tenant)!;
+            new CaringCommunityVereineAdminService(db),
+            tenant,
+            db)!;
         controller.ControllerContext = ControllerContextFor(userId, tenant.GetTenantIdOrThrow());
         return controller;
     }

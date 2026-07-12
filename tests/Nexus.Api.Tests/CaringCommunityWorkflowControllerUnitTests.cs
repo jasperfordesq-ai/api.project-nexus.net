@@ -227,6 +227,25 @@ public sealed class CaringCommunityWorkflowControllerUnitTests
         await using var db = CreateDbContext(tenant);
         SeedFeature(db, 42, enabled: true);
         SeedPolicy(db, 42);
+        db.TenantConfigs.AddRange(
+            new TenantConfig
+            {
+                TenantId = 42,
+                Key = CaringRegionalPointService.KeyPrefix + "enabled",
+                Value = "true"
+            },
+            new TenantConfig
+            {
+                TenantId = 42,
+                Key = CaringRegionalPointService.KeyPrefix + "auto_issue_enabled",
+                Value = "true"
+            },
+            new TenantConfig
+            {
+                TenantId = 42,
+                Key = CaringRegionalPointService.KeyPrefix + "points_per_approved_hour",
+                Value = "2"
+            });
         db.Users.AddRange(
             User(1, 42, "Ava", "Admin", Role.Names.Admin),
             User(10, 42, "Mia", "Member", Role.Names.Member),
@@ -251,7 +270,9 @@ public sealed class CaringCommunityWorkflowControllerUnitTests
         review.GetProperty("id").GetInt32().Should().Be(100);
         review.GetProperty("status").GetString().Should().Be("approved");
         review.GetProperty("payment_result").ValueKind.Should().Be(JsonValueKind.Null);
-        review.GetProperty("regional_points_result").ValueKind.Should().Be(JsonValueKind.Null);
+        var regionalAward = review.GetProperty("regional_points_result");
+        regionalAward.GetProperty("points").GetDecimal().Should().Be(4.8m);
+        regionalAward.GetProperty("already_awarded").GetBoolean().Should().BeFalse();
 
         var summary = review.GetProperty("summary");
         summary.GetProperty("stats").GetProperty("pending_count").GetInt32().Should().Be(1);
@@ -262,6 +283,11 @@ public sealed class CaringCommunityWorkflowControllerUnitTests
         var stored = await db.VolunteerLogs.IgnoreQueryFilters().SingleAsync(log => log.Id == 100);
         stored.Status.Should().Be("approved");
         stored.UpdatedAt.Should().NotBeNull();
+        (await db.CaringRegionalPointTransactions.IgnoreQueryFilters().SingleAsync(row =>
+            row.TenantId == 42
+            && row.ReferenceType == "vol_log"
+            && row.ReferenceId == 100
+            && row.Type == "earned_for_hours")).Points.Should().Be(4.8m);
 
         (await db.VolunteerLogs.IgnoreQueryFilters().SingleAsync(log => log.Id == 200)).Status.Should().Be("pending");
     }

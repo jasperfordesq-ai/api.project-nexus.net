@@ -21,7 +21,7 @@ public class XpLog : ITenantEntity
     public int Amount { get; set; }
 
     /// <summary>
-    /// Source/reason for the XP change (e.g., "badge_earned", "listing_created", "connection_made").
+    /// Source/reason for the XP change (e.g., "earn_badge", "listing_created", "connection_made").
     /// </summary>
     public string Source { get; set; } = string.Empty;
 
@@ -46,7 +46,7 @@ public class XpLog : ITenantEntity
     /// </summary>
     public static class Sources
     {
-        public const string BadgeEarned = "badge_earned";
+        public const string BadgeEarned = "earn_badge";
         public const string ListingCreated = "listing_created";
         public const string ConnectionMade = "connection_made";
         public const string TransactionCompleted = "transaction_completed";

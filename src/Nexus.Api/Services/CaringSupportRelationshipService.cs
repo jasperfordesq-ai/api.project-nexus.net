@@ -23,13 +23,38 @@ public sealed class CaringSupportRelationshipService
 
     private readonly NexusDbContext _db;
     private readonly ICaringHelpRequestVoiceProcessor? _voiceProcessor;
+    private readonly VolunteerHoursService _volunteerHours;
+    private readonly CaringRegionalPointService _regionalPoints;
 
     public CaringSupportRelationshipService(
         NexusDbContext db,
         ICaringHelpRequestVoiceProcessor? voiceProcessor = null)
+        : this(
+            db,
+            voiceProcessor,
+            new VolunteerHoursService(db),
+            new CaringRegionalPointService(db))
+    {
+    }
+
+    public CaringSupportRelationshipService(
+        NexusDbContext db,
+        ICaringHelpRequestVoiceProcessor? voiceProcessor,
+        VolunteerHoursService volunteerHours)
+        : this(db, voiceProcessor, volunteerHours, new CaringRegionalPointService(db))
+    {
+    }
+
+    public CaringSupportRelationshipService(
+        NexusDbContext db,
+        ICaringHelpRequestVoiceProcessor? voiceProcessor,
+        VolunteerHoursService volunteerHours,
+        CaringRegionalPointService regionalPoints)
     {
         _db = db;
         _voiceProcessor = voiceProcessor;
+        _volunteerHours = volunteerHours;
+        _regionalPoints = regionalPoints;
     }
 
     public async Task<bool> IsFeatureEnabledAsync(int tenantId, CancellationToken ct)
@@ -328,19 +353,6 @@ public sealed class CaringSupportRelationshipService
         IReadOnlyDictionary<string, object?>? input,
         CancellationToken ct)
     {
-        var relationship = await _db.CaringSupportRelationships
-            .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(row => row.TenantId == tenantId && row.Id == relationshipId, ct);
-        if (relationship is null)
-        {
-            return SupportRelationshipLogHoursResult.Fail("NOT_FOUND");
-        }
-
-        if (relationship.Status != "active")
-        {
-            return SupportRelationshipLogHoursResult.Fail("RELATIONSHIP_INACTIVE");
-        }
-
         var date = DateValue(StringValue(input, "date"));
         var hours = DecimalValue(input, "hours") ?? 0m;
         if (date is null || date.Value > DateOnly.FromDateTime(DateTime.UtcNow) || hours <= 0m || hours > 24m)
@@ -348,44 +360,39 @@ public sealed class CaringSupportRelationshipService
             return SupportRelationshipLogHoursResult.Fail("VALIDATION_ERROR");
         }
 
-        var duplicate = await _db.VolunteerLogs
-            .IgnoreQueryFilters()
-            .AnyAsync(log =>
-                log.TenantId == tenantId
-                && log.UserId == relationship.SupporterId
-                && log.CaringSupportRelationshipId == relationshipId
-                && log.DateLogged == date.Value
-                && log.Status != "declined"
-                && log.Status != "rejected",
-                ct);
-        if (duplicate)
+        var ledgerResult = await _volunteerHours.LogCaringRelationshipAsync(
+            tenantId,
+            relationshipId,
+            date.Value,
+            hours,
+            StringValue(input, "description"),
+            await _volunteerHours.ResolveCaringRelationshipStatusAsync(tenantId, coordinatorId, ct),
+            ct);
+        if (!ledgerResult.IsSuccess)
+            return SupportRelationshipLogHoursResult.Fail(ledgerResult.ErrorCode ?? "SERVER_ERROR");
+
+        var log = ledgerResult.Log!;
+        var relationship = ledgerResult.Relationship!;
+        RegionalPointHoursAwardResult? regionalPointsResult = null;
+        if (string.Equals(log.Status, "approved", StringComparison.Ordinal))
         {
-            return SupportRelationshipLogHoursResult.Fail("ALREADY_EXISTS");
+            try
+            {
+                regionalPointsResult = await _regionalPoints.AwardForApprovedHoursAsync(
+                    tenantId,
+                    log.UserId,
+                    log.Id,
+                    hours,
+                    coordinatorId,
+                    ct);
+            }
+            catch
+            {
+                // Laravel treats regional points as an additive, best-effort
+                // reward; a provider/storage failure must not undo paid hours.
+                regionalPointsResult = null;
+            }
         }
-
-        var now = DateTime.UtcNow;
-        var description = NullIfEmpty(StringValue(input, "description")?.Trim()) ?? relationship.Title;
-        var log = new VolunteerLog
-        {
-            TenantId = tenantId,
-            UserId = relationship.SupporterId,
-            OrganizationId = relationship.OrganizationId,
-            OpportunityId = null,
-            CaringSupportRelationshipId = relationshipId,
-            SupportRecipientId = relationship.RecipientId,
-            DateLogged = date.Value,
-            Hours = Math.Round(hours, 2, MidpointRounding.AwayFromZero),
-            Description = Truncate(description, 2000),
-            Status = await ResolveLogStatusAsync(tenantId, coordinatorId, ct),
-            CreatedAt = now,
-            UpdatedAt = now
-        };
-
-        _db.VolunteerLogs.Add(log);
-        relationship.LastLoggedAt = now;
-        relationship.NextCheckInAt = NextCheckIn(date.Value, relationship.Frequency);
-        relationship.UpdatedAt = now;
-        await _db.SaveChangesAsync(ct);
 
         var users = await _db.Users
             .IgnoreQueryFilters()
@@ -413,8 +420,8 @@ public sealed class CaringSupportRelationshipService
                 status = log.Status,
                 hours = Math.Round(log.Hours, 2, MidpointRounding.AwayFromZero),
                 date_logged = log.DateLogged.ToString(DateFormat, CultureInfo.InvariantCulture),
-                payment_result = (object?)null,
-                regional_points_result = (object?)null
+                payment_result = ledgerResult.PaymentOutcome,
+                regional_points_result = regionalPointsResult
             },
             relationship = RelationshipRow(relationship, users, categories)
         });
@@ -569,20 +576,6 @@ public sealed class CaringSupportRelationshipService
         await _db.SaveChangesAsync(ct);
 
         return RelationshipLifecycleResult.Success(targetStatus);
-    }
-
-    private async Task<string> ResolveLogStatusAsync(int tenantId, int coordinatorId, CancellationToken ct)
-    {
-        var role = await _db.Users
-            .IgnoreQueryFilters()
-            .AsNoTracking()
-            .Where(user => user.TenantId == tenantId && user.Id == coordinatorId)
-            .Select(user => user.Role)
-            .FirstOrDefaultAsync(ct);
-
-        return role is "admin" or "tenant_admin" or "super_admin" or "broker"
-            ? "approved"
-            : "pending";
     }
 
     private async Task UpsertSuggestionLogAsync(

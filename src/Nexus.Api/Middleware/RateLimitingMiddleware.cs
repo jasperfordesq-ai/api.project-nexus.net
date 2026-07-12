@@ -39,6 +39,12 @@ public static class RateLimitingExtensions
     public const string VolunteerAttendanceVerifyPolicy = "volunteering-attendance-verify";
     public const string VolunteerAttendanceCheckoutPolicy = "volunteering-attendance-checkout";
     public const string VolunteerAttendanceRosterPolicy = "volunteering-attendance-roster";
+    public const string VolunteerHoursListPolicy = "volunteering-hours-list";
+    public const string VolunteerHoursLogPolicy = "volunteering-hours-log";
+    public const string VolunteerHoursSummaryPolicy = "volunteering-hours-summary";
+    public const string VolunteerHoursPendingReviewPolicy = "volunteering-hours-pending-review";
+    public const string VolunteerHoursOrganisationPendingPolicy = "volunteering-hours-organisation-pending";
+    public const string VolunteerHoursVerifyPolicy = "volunteering-hours-verify";
     public const string VolunteerSwapListPolicy = "volunteering-swap-list";
     public const string VolunteerSwapRequestPolicy = "volunteering-swap-request";
     public const string VolunteerSwapRespondPolicy = "volunteering-swap-respond";
@@ -281,6 +287,48 @@ public static class RateLimitingExtensions
                         config.GetValue("RateLimiting:VolunteerAttendance:RosterPermitLimit", 60),
                         TimeSpan.FromSeconds(config.GetValue("RateLimiting:VolunteerAttendance:RosterWindowSeconds", 60)))));
 
+            options.AddPolicy(VolunteerHoursListPolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:VolunteerHours:ListPermitLimit", 60),
+                        TimeSpan.FromSeconds(config.GetValue("RateLimiting:VolunteerHours:ListWindowSeconds", 60)))));
+
+            options.AddPolicy(VolunteerHoursLogPolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:VolunteerHours:LogPermitLimit", 20),
+                        TimeSpan.FromSeconds(config.GetValue("RateLimiting:VolunteerHours:LogWindowSeconds", 60)))));
+
+            options.AddPolicy(VolunteerHoursSummaryPolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:VolunteerHours:SummaryPermitLimit", 60),
+                        TimeSpan.FromSeconds(config.GetValue("RateLimiting:VolunteerHours:SummaryWindowSeconds", 60)))));
+
+            options.AddPolicy(VolunteerHoursPendingReviewPolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:VolunteerHours:PendingReviewPermitLimit", 60),
+                        TimeSpan.FromSeconds(config.GetValue("RateLimiting:VolunteerHours:PendingReviewWindowSeconds", 60)))));
+
+            options.AddPolicy(VolunteerHoursOrganisationPendingPolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:VolunteerHours:OrganisationPendingPermitLimit", 60),
+                        TimeSpan.FromSeconds(config.GetValue("RateLimiting:VolunteerHours:OrganisationPendingWindowSeconds", 60)))));
+
+            options.AddPolicy(VolunteerHoursVerifyPolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:VolunteerHours:VerifyPermitLimit", 30),
+                        TimeSpan.FromSeconds(config.GetValue("RateLimiting:VolunteerHours:VerifyWindowSeconds", 60)))));
+
             options.AddPolicy(VolunteerSwapListPolicy, context =>
                 RateLimitPartition.GetFixedWindowLimiter(
                     partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
@@ -403,6 +451,21 @@ public static class RateLimitingExtensions
                             && (path.Value.EndsWith("/checkin", StringComparison.OrdinalIgnoreCase)
                                 || path.Value.EndsWith("/checkins", StringComparison.OrdinalIgnoreCase))));
                 var normalizedPath = path.Value?.TrimEnd('/');
+                var isVolunteerHoursOrganisationPendingPath =
+                    normalizedPath?.Contains(
+                        "/volunteering/organisations/",
+                        StringComparison.OrdinalIgnoreCase) == true
+                    && normalizedPath.EndsWith(
+                        "/hours/pending",
+                        StringComparison.OrdinalIgnoreCase);
+                var isVolunteerHoursPath =
+                    normalizedPath?.StartsWith(
+                        "/api/v2/volunteering/hours",
+                        StringComparison.OrdinalIgnoreCase) == true
+                    || normalizedPath?.StartsWith(
+                        "/api/volunteering/hours",
+                        StringComparison.OrdinalIgnoreCase) == true
+                    || isVolunteerHoursOrganisationPendingPath;
                 var isVolunteerSwapAdminPath =
                     normalizedPath?.StartsWith(
                         "/api/v2/volunteering/admin/swaps",
@@ -431,6 +494,18 @@ public static class RateLimitingExtensions
                     ? config.GetValue("RateLimiting:VolunteerOrganisationWallet:ReadPermitLimit", 60)
                     : isPersonalWalletTransferPath
                     ? config.GetValue("RateLimiting:PersonalWallet:TransferPermitLimit", 10)
+                    : isVolunteerHoursPath
+                    ? HttpMethods.IsPost(context.HttpContext.Request.Method)
+                        ? config.GetValue("RateLimiting:VolunteerHours:LogPermitLimit", 20)
+                        : HttpMethods.IsPut(context.HttpContext.Request.Method)
+                            ? config.GetValue("RateLimiting:VolunteerHours:VerifyPermitLimit", 30)
+                            : normalizedPath?.EndsWith("/summary", StringComparison.OrdinalIgnoreCase) == true
+                                ? config.GetValue("RateLimiting:VolunteerHours:SummaryPermitLimit", 60)
+                                : isVolunteerHoursOrganisationPendingPath
+                                    ? config.GetValue("RateLimiting:VolunteerHours:OrganisationPendingPermitLimit", 60)
+                                : normalizedPath?.Contains("/pending", StringComparison.OrdinalIgnoreCase) == true
+                                    ? config.GetValue("RateLimiting:VolunteerHours:PendingReviewPermitLimit", 60)
+                                    : config.GetValue("RateLimiting:VolunteerHours:ListPermitLimit", 60)
                     : isVolunteerSwapPath
                     ? isVolunteerSwapAdminPath
                         ? HttpMethods.IsGet(context.HttpContext.Request.Method)

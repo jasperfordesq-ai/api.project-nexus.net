@@ -131,6 +131,19 @@ public abstract class ScheduledHostedService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        // Integration hosts need the real registered job instances for manual
+        // execution and diagnostics, but starting every natural loop at once
+        // creates nondeterministic database traffic against their disposable
+        // PostgreSQL container. The switch suppresses only automatic hosted
+        // execution; IsEnabled and RunNowAsync retain their normal semantics.
+        if (Configuration.GetValue<bool>("BackgroundServices:SuppressAutomaticExecution"))
+        {
+            Logger.LogInformation(
+                "Scheduled job {JobName} automatic execution suppressed by configuration",
+                JobName);
+            return;
+        }
+
         // Resolve the singleton registry once (it's optional so existing tests
         // that build the host without registering it keep working).
         var registry = TryGetRegistry();

@@ -17,18 +17,28 @@ public class SavedSearchAlertService : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<SavedSearchAlertService> _logger;
+    private readonly IConfiguration _configuration;
     private readonly TimeSpan _checkInterval = TimeSpan.FromMinutes(15);
 
     public SavedSearchAlertService(
         IServiceScopeFactory scopeFactory,
-        ILogger<SavedSearchAlertService> logger)
+        ILogger<SavedSearchAlertService> logger,
+        IConfiguration configuration)
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
+        _configuration = configuration;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        if (_configuration.GetValue<bool>("BackgroundServices:SuppressAutomaticExecution"))
+        {
+            _logger.LogInformation(
+                "SavedSearchAlertService automatic execution suppressed by configuration");
+            return;
+        }
+
         _logger.LogInformation("SavedSearchAlertService started. Check interval: {Interval}", _checkInterval);
 
         while (!stoppingToken.IsCancellationRequested)

@@ -1,8 +1,8 @@
 # Current Laravel Backend Parity Handoff
 
-Last reviewed: 2026-07-11
+Last reviewed: 2026-07-12
 
-> **Current audit notice (2026-07-11):** Read the verified slice below and
+> **Current audit notice (2026-07-12):** Read the verified slice below and
 > `docs/FULL_PARITY_REMEDIATION_RUNBOOK.md` before using the historical numeric
 > snapshot or score. Route closure is not workflow, schema, localization, or
 > runtime certification.
@@ -52,35 +52,56 @@ containers from this repo.
 - Keep generated scratch artifacts out of committed docs unless curated into a
   maintained map.
 
-## Latest Verified Backend Slice — 2026-07-11
+## Latest Verified Backend Slice — 2026-07-12
 
-The current backend slice implements Laravel's four-route volunteer QR
-attendance workflow without modifying the read-only Laravel source, canonical
-React frontend, frozen legacy React copy, or concurrent `apps/web-uk`
-workstream. The preceding published slice hardened personal,
-volunteer-organisation, and generic organisation wallets; completed the
-group-exchange settlement state machine; replaced V15 wallet false-success
-reads with persisted values; and added Caring loyalty/estate evidence.
+The current backend slice implements Laravel's canonical volunteer-hours ledger
+without modifying the read-only Laravel source, canonical React frontend,
+frozen legacy React copy, or concurrent `apps/web-uk` workstream. One
+`VolunteerHoursService` now owns member list/create/summary/pending-review/
+verify, organisation pending review, administrator list, and administrator
+verify across all eight Laravel method/path pairs. It replaces the former 503
+and recorded-only paths with tenant-scoped locked `vol_logs`, strict action and
+request parsing, surface-specific status/error envelopes, feature/policy gates,
+and independent rate limits.
 
-`GET /api/v2/volunteering/shifts/{id}/checkin` issues or reuses one globally
-unique 64-lowercase-hex token only for the authenticated volunteer's exact
-approved shift assignment. Active tenant/platform administrators, the volunteer
-organisation owner, and active organisation `owner`, `admin`, `manager`, or
-`coordinator` members may verify, checkout, and read the sanitized roster via
-the three remaining Laravel routes. The implementation matches Laravel's
-early/stale verification window, permits late checkout after a real check-in,
-masks malformed/unknown/cross-tenant token lookups with the canonical 404
-contract, returns 403 `FORBIDDEN` to an authenticated same-tenant caller without
-coordinator permission, and retains history after later shift/application
-lifecycle changes. Verify is idempotent; checkout intentionally uses a safer
-conditional single-winner transition under concurrency.
+Approving a whole-hour log atomically mints the personal time-credit transaction,
+records the organisation payment, permits Laravel's negative organisation
+balance, and writes the configured volunteer-hour XP exactly once. Sub-hour
+approval awards XP but creates no rounded-zero personal or organisation ledger
+rows. Replayed payout and XP evidence must match the tenant, user, organisation,
+type, amount, status, source, and reference; conflicting evidence aborts and
+rolls back instead of being reused by proximity. Caring support relationship
+hour logging and decisions now use the same canonical ledger and respect the
+configured flag administrators, approval-required setting, and trusted-review
+policy.
 
-QR attendance creates no hours/logs, personal or organisation transactions,
-balance movement, XP, or rewards. The legacy hours POST alias now fails with
-HTTP 503 `VOLUNTEER_HOURS_UNAVAILABLE` because Laravel's `vol_logs` ledger is
-absent from the EF chain. The outgoing `shift.completed` webhook,
-child-to-parent tenant-domain inheritance, and real hour/reward workflows remain
-open.
+Direct Caring logging accepts sub-hour values. The raw request hours drive the
+whole-hour floor and regional-points calculation before the canonical stored
+hours value is rounded to two decimals. Normal non-Caring reviewed decisions run
+post-commit decision bell/push side effects. Approved decisions force immediate
+email; declined decisions send immediate email only when the global
+notification frequency is explicitly `instant`. Tenant-default frequency
+fallback, daily/monthly notification-queue delivery, and recipient
+locale/provider breadth remain open. The post-approval badge sweep covers every
+badge family represented in ASP.NET; Laravel-only badge families and realtime
+badge broadcast remain open. Reviewed Caring decisions deliberately emit no
+decision bell, push, or email.
+
+The tenant-scoped `FeedActivity` entity/configuration/service now owns the
+Laravel-aligned idempotent feed projection. Approved hours publish with the
+distinct `volunteer_hours` source type only when `show_on_leaderboard` permits;
+the organisation-facing free-text description is never copied into feed content
+or metadata. Other feed producers, admin moderation consumers, compatibility
+cleanup, and historical backfill remain open.
+
+The preceding slice implements Laravel's four-route volunteer QR-attendance
+workflow. `GET /api/v2/volunteering/shifts/{id}/checkin` issues or reuses one
+globally unique token for the authenticated volunteer's exact approved shift
+assignment, while authorized tenant/organisation coordinators verify, checkout,
+and read sanitized history. QR attendance itself still creates no hours,
+transactions, balances, XP, or rewards; those effects belong only to the
+separate canonical hours workflow. The outgoing `shift.completed` webhook and
+child-to-parent tenant-domain inheritance remain open.
 
 Generic organisation visibility is now status/tenant/member aware. Wallet
 writes require verified organisations, canonical owners/managers/admins, and
@@ -105,17 +126,34 @@ without valid debit evidence cannot be reversed, preventing an unproven refund.
 Legacy null links remain for manual reconciliation; they are not guessed from
 amount or timestamp similarity.
 
-The latest migration is `20260711143546_VolunteerQrAttendanceParity`. EF
-discovers/applies 110 migrations and reports no pending model changes. Blank and
-populated 109-to-110 upgrades are green; historical status/`UpdatedAt` backfill
-is verified, tokens/coordinator IDs remain null, and `HoursLogged`/
-`TransactionId` evidence is preserved. Duplicate-attendance and cross-tenant
-preflight fixtures fail atomically at 109 with no new DDL. The disposable
-container was removed. The test-project build has zero errors and four
-pre-existing `xUnit1031` warnings; migration discovery, the 32/32 attendance
-suite, 1/1 persistence-failure regression, 12/12 shift-swap suite, 5/5
-route/auth subset, 90/90 affected-module gate, and ambient-transaction
-regression are green.
+The latest migration is `20260711192124_VolunteerHoursLedgerParity`, runtime ID
+111. Its source creates `feed_activity` and the nullable public-hours preference
+alongside the hours-ledger provenance. It never inserts legacy transaction,
+payment, or XP value. Uniquely provable existing evidence may be linked;
+evidence-free approved whole-hour
+organisation rows are downgraded to `pending`, and approved Caring sub-hour rows
+remain valid without fabricated evidence. Final non-production certification
+applied all 111 migrations to a blank PostgreSQL database with latest ID
+`20260711192124_VolunteerHoursLedgerParity` and directly verified the exact
+13-column/eight-index `feed_activity` schema, nullable-boolean
+`users.show_on_leaderboard` defaulting to `true`, all 11 column-specific
+`ON DELETE SET NULL` relationships, and the volunteer-user `CASCADE`
+relationship. A valid populated 110-to-111 upgrade preserved and linked existing
+evidence without minting. A deliberately invalid fixture raised PostgreSQL
+`P0001` atomically, left history at 110, and left no partial migration-111 DDL.
+`has-pending-model-changes` is green; disposable Docker cleanup left zero
+matching resources. No production resource was touched.
+
+The Debug API/test builds and required solution-wide Release build complete with
+zero errors; the only warnings are the same four pre-existing `xUnit1031`
+warnings in the test project. The Release build took 4m36s. One disposable Linux run
+discovered 3,007 tests and passed 53/53: all 51
+`VolunteerHoursParityTests` plus both `V15FeedActivityCompatibilityTests`.
+Windows Smart App Control blocks loading the freshly rebuilt unsigned API
+assembly, so the run used Linux without weakening host policy. The clean
+affected rerun then discovered 3,007 tests, selected 243, and passed 243/243 with
+zero failed and zero skipped in 418.639s. The full 3,007-test suite, CI, and
+unchanged-frontend runtime proof remain open.
 
 Do not report CI green. Descendant run `29154079189` was later cancelled after
 its completed Integration Tests job reported 51 failures out of 2,888 tests.
@@ -136,7 +174,7 @@ failures still require independent triage.
 | V15 wallet reads and privacy | Community fund/history, pending count, and starting balance use persisted tenant data; starting-balance writes are admin-only. User search is active same-tenant name-only, excludes self/suspended users and email, and is 30/minute. | Community-fund donation/deposit/withdraw and `/api/wallet/donate` remain HTTP 503 until a canonical writer exists. Username search remains unavailable because the .NET user schema has no Laravel username column. |
 | Caring loyalty and estate evidence | New loyalty debit/refund and positive estate settlement rows persist unique tenant-composite transaction links. Concurrent reversal has one winner; unlinked legacy loyalty cannot mint a refund; repeat estate lifecycle mutations are rejected. | Legacy null links require manual reconciliation. Same-platform Caring hour transfers still lack authoritative transaction-id columns; remote transfers remain a federation-saga gap. |
 | Federation external boundary | Listing/member reads enforce opt-in, active state, visibility, tenant match, and blocked-partner rules. Caller-supplied message/review identity, partner webhook list/create, V2 ingest, non-pristine transfer cancellation, and unsupported financial settlement return stable 503 with no mutation. | Durable authenticated remote identity, webhook/ingest processing, cancellation protocol, and settlement saga remain incomplete; fail-closed behavior is not parity completion. |
-| Transactional volunteering core | Selected-shift applications/decisions, direct signup/cancellation, reservations, waitlists, guardian consent, recurrence, organisation lifecycle/wallets, the four Laravel QR-attendance routes, and member/admin V2 shift swaps use tenant-scoped transactional storage and canonical gates. Swap request/list/respond/cancel and admin pending/decision routes now use Laravel/React snake-case payloads, `{action}` decisions, envelopes, feature gates, and rate limits. Direct/admin-approved decisions atomically exchange the two exact approved `VolunteerApplication.ShiftId` values while preserving QR rows/tokens on their original shifts; duplicate requests serialize, stale/started/overlapping assignments fail without mutation, admin approval comes from tenant config, and only pending states can be cancelled. QR attendance issues one global 64-lowercase-hex token for an exact approved assignment, authorizes tenant/org coordinators, enforces Laravel timing and malformed/unknown/cross-tenant 404 masking, returns 403 `FORBIDDEN` to authenticated same-tenant non-coordinators, permits late checkout, returns sanitized history, and never mints hours, transactions, balances, XP, or rewards. Checkout is deliberately single-winner. | Swap notification/localization side effects, cross-workflow serialization against a concurrently approved third overlapping assignment, and unchanged-frontend swap smoke remain open. `vol_logs` hour reads/verification/rewards remain absent; the legacy hours POST is honest HTTP 503 `VOLUNTEER_HOURS_UNAVAILABLE`. Outgoing `shift.completed`, child-to-parent domain inheritance, the recorded-only admin timebank overview, contract depth elsewhere, provider/localization behavior, and unchanged-frontend runtime smoke remain open. |
+| Transactional volunteering core | Selected-shift applications/decisions, direct signup/cancellation, reservations, waitlists, guardian consent, recurrence, organisation lifecycle/wallets, QR attendance, V2 shift swaps, and all eight member/organisation/admin volunteer-hours routes use tenant-scoped transactional storage and canonical gates. `VolunteerHoursService` locks the canonical `vol_logs` row, uses strict Laravel action/request contracts, converges Caring relationship logging, and creates one semantically linked personal credit, organisation payment, and XP record for an approved whole-hour log; sub-hour approvals award XP without zero-value ledgers. Direct Caring logging preserves raw fractional semantics for whole-hour flooring and regional points while storing rounded hours. QR attendance remains deliberately side-effect free. | Volunteer-hours/feed focused proof is one 53/53 disposable-Linux run: all 51 `VolunteerHoursParityTests` plus both `V15FeedActivityCompatibilityTests`, with 3,007 tests discovered. Final migration replay and model-drift gates are green. The clean affected rerun selected and passed 243/243 with zero failed/skipped in 418.639s. The full 3,007-test suite, CI, and unchanged-frontend runtime smoke remain open. Swap notification/localization, cross-workflow serialization against a concurrently approved third overlapping assignment, outgoing `shift.completed`, child-to-parent domain inheritance, provider/localization depth, and wider runtime certification also remain open. |
 | Route ownership | Synthetic duplicate owners were removed, six federation credit-agreement actions use literal routes, and the live endpoint-table test enforces one owner per verb/normalized admin template plus expected owners for high-risk routes. The comparator requires all six literal actions before treating Laravel's constrained `{action}` route as covered. | Ownership covers admin routes, not all API routes, and does not prove handler semantics. Recorded-only/catch-all handlers remain elsewhere. |
 
 The shift-swap concurrency residual specifically includes the absence of one
@@ -148,22 +186,23 @@ Laravel's text column accepts longer input.
 
 Verification evidence for this slice:
 
-- test-project build: 0 errors and 4 pre-existing `xUnit1031` warnings;
-- migration discovery, EF no-model-drift gate, and ambient-transaction
-  regression: green;
-- QR attendance suite: 32/32; route/auth subset: 5/5;
-- attendance persistence-failure 500 regression: 1/1;
-- shift-swap assignment/member/admin/concurrency suite: 12/12;
-- affected legacy-hours/caring/demo/route-alias/volunteering gate: 90/90;
-- latest migration: `20260711143546_VolunteerQrAttendanceParity`; EF discovers
-  and applies 110 migrations;
-- blank and populated disposable PostgreSQL upgrades: 109 to 110 green, with
-  deterministic checked-out/checked-in/`UpdatedAt` backfill, null historical QR
-  tokens/coordinator IDs, and preserved `HoursLogged`/`TransactionId` evidence;
-- duplicate attendance and cross-tenant relationship fixtures: preflight failed
-  atomically at 109 with no new DDL;
-- uniquely named disposable PostgreSQL container: removed; no production
-  database or container was touched; and
+- Debug API/test and solution-wide Release builds: 0 errors; only the same 4 pre-
+  existing `xUnit1031` warnings, with Release completing in 4m36s;
+- focused volunteer-hours/feed proof: one disposable-Linux run discovered 3,007
+  tests and passed 53/53, comprising 51/51 `VolunteerHoursParityTests` and 2/2
+  `V15FeedActivityCompatibilityTests`;
+- affected regression: 3,007 discovered, 243 selected, 243/243 passed with zero
+  failed/skipped in 418.639s; the full 3,007-test suite, CI, and unchanged-
+  frontend runtime proof remain open;
+- latest migration: `20260711192124_VolunteerHoursLedgerParity`, recorded runtime
+  ID 111; source contracts assert no legacy-value insert and conditional Caring/
+  non-Caring hours checks;
+- migration runtime gates: blank replay applied all 111 migrations through the
+  latest ID and verified the exact 13-column/eight-index feed schema, nullable-
+  boolean/default-true privacy field, 11 `SET NULL` foreign keys, and volunteer-
+  user `CASCADE`; valid populated 110-to-111 behavior passed; invalid `P0001`
+  abort left history at 110 with no partial DDL; `has-pending-model-changes` is
+  green; disposable cleanup is zero and no production resource was touched; and
 - descendant CI run `29154079189`: later cancelled after its completed
   Integration Tests job reported 51/2,888 failures. The direct
   nested-transaction regression from `bfeafb2e` is fixed and green locally; the
@@ -195,8 +234,9 @@ Preceding financial slice evidence retained for context:
   additions were absent;
 - all disposable databases and the uniquely named container were removed; no
   production database or container was touched;
-- current schema comparator: 135/362 Laravel table names matched, 227 missing,
-  and 195 ASP.NET-only;
+- schema comparator fixture: green; live result: 333 Laravel migration files,
+  113 ASP.NET migration source files, 368 Laravel source tables, 331 ASP.NET
+  tables, 137 exact matches, 231 missing, and 194 ASP.NET-only;
 - copy-ready, read-only financial candidate SQL is maintained in
   `docs/database-migrations.md`. It reports balance impact and requires manual
   disposition; it never auto-fixes or auto-links evidence.
@@ -210,7 +250,17 @@ Earlier published slice evidence retained for context:
 - `Phase73NewScheduledJobsTests`: 16/16 after one Testcontainers-only startup retry;
 - exact React cron/security contracts: 3/3;
 - canonical broker persistence contract: 1/1;
-- API comparator: 2,436/2,436 matched, 0 missing;
+- API comparator fixture: green; live result: 2,436/2,449 matched. The exact 13
+  missing operations are `GET /api/admin/vetting/policy`,
+  `PUT /api/admin/vetting/policy`, `POST /api/admin/vetting/policy/rotate`,
+  `POST /api/admin/vetting/reviews/{reviewid}/resolve`,
+  `POST /api/admin/vetting/user/{userid}/confirm`,
+  `POST /api/admin/vetting/user/{userid}/revoke`, `GET /api/pwa/manifest`,
+  `POST /api/admin/prerender/reset-all`, `POST /api/prerender/invalidate`,
+  `GET /api/safeguarding/my-vetting-status`,
+  `POST /api/safeguarding/confirm-policy-review`,
+  `POST /api/safeguarding/vetting-review-request`, and
+  `POST /api/volunteering/guardian-consents/verify/{token}`;
 - pre-volunteering EF Release baseline: 75 migrations, latest
   `20260710092435_CanonicalRoleSemantics`; no pending model changes.
 - pre-volunteering migration discovery quarantine baseline: 1/1, with 104 source classes split into
@@ -260,8 +310,8 @@ Earlier published slice evidence retained for context:
 - earlier volunteering-chain proof reached
   `20260711031959_NullableTransactionLedgerLegs`; the current migration proof
   is recorded above;
-- API route comparator: 2,436/2,436 Laravel/supplemental operations matched,
-  0 route-shape gaps;
+- API route comparator: 2,436/2,449 current Laravel/supplemental operations
+  matched, 13 route-shape gaps;
 - historical schema comparator: 134/361 Laravel tables matched, 227 missing, 194
   ASP.NET-only; the current result above supersedes it and remains a global red
   gate.
@@ -278,6 +328,10 @@ a downgrade would discard QR token, lifecycle-status, and coordinator evidence
 and would make pending attendance timestamps non-nullable. Restore a tested
 pre-migration backup or implement a reviewed forward remediation; do not force
 or improvise a destructive down migration.
+`VolunteerHoursLedgerParity.Down()` likewise throws before changing schema: a
+downgrade would remove immutable feedback plus personal, organisation, and XP
+ledger provenance. Restore a verified pre-migration backup or use a reviewed
+forward remediation.
 `RecurringShiftGenerationParity` is reversible, but its upgrade fails closed
 when historical duplicate occurrences exist because automatically deleting a
 shift could destroy linked operational history.
@@ -290,18 +344,19 @@ navigations. The required creator FK deliberately uses non-destructive
 `RESTRICT` instead of Laravel's user-delete cascade until deletion side effects
 are explicitly reconciled and tested.
 
-`VolunteerOrganisationRelationshipsParity` performs no data backfill. Its new
+`VolunteerOrganisationRelationshipsParity` performed no data backfill. Its new
 organisation/member/opportunity relationships use tenant-composite keys; the
-opportunity relationship uses non-destructive `RESTRICT`. Transaction
-`vol_log_id` is intentionally a nullable scalar without a foreign key because
-the 110-migration discovered chain does not create Laravel's `vol_logs` table.
-The API therefore returns honest zero hour aggregates on a discovered-chain-only
-database while still reading real hours when that legacy table exists. The
-ledger retains Laravel's unique `(tenant_id, vol_log_id, type)` payment guard,
-and transaction users are tenant-composite. Historical opportunities remain
+opportunity relationship uses non-destructive `RESTRICT`. Its nullable
+transaction `vol_log_id` began as a scalar; the current
+`VolunteerHoursLedgerParity` migration now binds it to canonical tenant-scoped
+`vol_logs`, adds the personal `transactions.VolunteerLogId` evidence link, and
+enforces unique active log/payment/XP evidence. It does not mint legacy value:
+evidence-free approved whole-hour organisation rows become `pending`, while
+approved Caring sub-hour rows do not require fabricated payout/XP evidence.
+Historical opportunities remain
 NULL-linked by design; operators must map them to a tenant organisation before
 organisation-manager decisions can work. Never infer an organisation id from
-`OrganizerId`, which is a user key. The following nullable-ledger-leg migration
+`OrganizerId`, which is a user key. The nullable-ledger-leg migration
 supports one-sided member debits/credits without fabricating counterpart users
 and adds participant-specific history-hide flags. Its downgrade is intentionally
 unsupported because the former required-leg model cannot preserve one-sided
@@ -309,15 +364,17 @@ balance effects without losing or silently changing financial history.
 
 Migration metadata was restored only after auditing the formerly invisible
 manual classes. Discovery includes the essential designer-less
-`AddAiMessageTenantId`; the current runtime inventory is 110 and all 110 replay
-cleanly on a recreated blank database. The
+`AddAiMessageTenantId`; the recorded runtime inventory is 111. Final blank,
+populated, invalid atomic-abort, and model-drift gates are green for migration
+111's no-mint source. The
 overlapping `FederationCoreExpansion` class remains intentionally outside the
 runtime chain because its later superset already creates the same schema. The
 obsolete `AddTenantUpdatedAt` class also remains outside because `InitialCreate`
 already creates `tenants.UpdatedAt`. The gate must prevent silent inventory
 drift without making duplicate DDL
-discoverable. `WalletLedgerFederationPartnerParity` and
-`LoyaltyEstateOrganisationEvidence` are intentionally irreversible. Use the
+discoverable. `WalletLedgerFederationPartnerParity`,
+`LoyaltyEstateOrganisationEvidence`, and `VolunteerHoursLedgerParity` are
+intentionally irreversible. Use the
 read-only candidate report in `docs/database-migrations.md` and record a manual
 disposition and balance impact before any forward remediation. No production
 database or container was touched.
@@ -409,16 +466,14 @@ A module or endpoint family is not complete until all of these are true:
 Prioritize workflow-complete slices over raw endpoint count. Route declarations
 are mostly closed; the remaining work is contract correctness.
 
-1. Replace volunteer-organisation member/admin hour false-success or
-   recorded-only handlers with locked canonical `vol_logs` hour/payment/reward
-   workflows. Keep the legacy hours POST at HTTP 503
-   `VOLUNTEER_HOURS_UNAVAILABLE` until that ledger exists, and audit the
-   recorded-only admin timebank organisation-wallet overview separately.
+1. Run the full 3,007-test ASP.NET suite and CI, then complete unchanged-frontend
+   member/organisation/admin/Caring runtime smoke. The focused 53/53 and affected
+   243/243 gates are green, but the discovery count is not a full-suite pass.
 2. Implement the workflows that currently fail closed: two-party legacy
-   exchange confirmation, managed-user sub-account approval, volunteer hour/
-   reward posting, a canonical community-fund donation/
-   deposit/withdraw writer, and the durable authenticated federation settlement
-   saga. Preserve explicit HTTP 503/no-write behavior until each is real.
+   exchange confirmation, managed-user sub-account approval, a canonical
+   community-fund donation/deposit/withdraw writer, and the durable
+   authenticated federation settlement saga. Preserve explicit HTTP 503/no-write
+   behavior until each is real.
 3. Add the outgoing `shift.completed` webhook and child-to-parent tenant-domain
    inheritance without weakening the completed QR attendance contract.
 4. Complete opportunity list/create/update/application-list contracts, admin

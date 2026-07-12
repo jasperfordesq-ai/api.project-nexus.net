@@ -43,6 +43,7 @@ public static class ServiceExtensions
         services.AddScoped<VolunteerOrganisationWalletService>();
         services.AddScoped<PersonalWalletLedgerService>();
         services.AddScoped<VolunteerAttendanceService>();
+        services.AddScoped<VolunteerHoursService>();
         services.AddScoped<VolunteerService>();
         services.AddScoped<AdminVolunteerApprovalService>();
         services.AddScoped<ShiftManagementService>();
@@ -77,6 +78,7 @@ public static class ServiceExtensions
         services.AddScoped<ContentReportService>();
         services.AddScoped<GdprService>();
         services.AddScoped<LocationService>();
+        services.AddScoped<FeedActivityService>();
         services.AddScoped<FeedRankingService>();
         services.AddScoped<AdminAnalyticsService>();
         services.AddScoped<AdminCrmService>();

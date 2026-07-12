@@ -150,8 +150,21 @@ public class GamificationServiceTests : IDisposable
     [Fact]
     public async Task AwardBadgeAsync_BadgeNotFound_ReturnsFailure()
     {
+        // Arrange: isolate the missing-badge branch from the tenant-safe
+        // missing-user guard.
+        var user = new User
+        {
+            TenantId = 1,
+            Email = "missing-badge@test.com",
+            PasswordHash = "hash",
+            FirstName = "Missing",
+            LastName = "Badge"
+        };
+        _db.Users.Add(user);
+        await _db.SaveChangesAsync();
+
         // Act
-        var result = await _service.AwardBadgeAsync(1, "nonexistent_badge");
+        var result = await _service.AwardBadgeAsync(user.Id, "nonexistent_badge");
 
         // Assert
         result.Success.Should().BeFalse();
@@ -242,6 +255,14 @@ public class GamificationServiceTests : IDisposable
     public async Task AwardBadgeAsync_InactiveBadge_ReturnsNotFound()
     {
         // Arrange
+        var user = new User
+        {
+            TenantId = 1,
+            Email = "inactive-badge@test.com",
+            PasswordHash = "hash",
+            FirstName = "Inactive",
+            LastName = "Badge"
+        };
         var badge = new Badge
         {
             TenantId = 1,
@@ -250,11 +271,12 @@ public class GamificationServiceTests : IDisposable
             XpReward = 25,
             IsActive = false // Inactive
         };
+        _db.Users.Add(user);
         _db.Badges.Add(badge);
         await _db.SaveChangesAsync();
 
         // Act
-        var result = await _service.AwardBadgeAsync(1, "inactive_badge");
+        var result = await _service.AwardBadgeAsync(user.Id, "inactive_badge");
 
         // Assert
         result.Success.Should().BeFalse();

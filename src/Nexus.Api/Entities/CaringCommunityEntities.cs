@@ -212,6 +212,7 @@ public class CaringSupportRelationship : ITenantEntity
     public User? Supporter { get; set; }
     public User? Recipient { get; set; }
     public User? Coordinator { get; set; }
+    public VolunteerOrganisation? Organization { get; set; }
 }
 
 /// <summary>
@@ -269,6 +270,7 @@ public class VolunteerLog : ITenantEntity
     public DateOnly DateLogged { get; set; }
     public decimal Hours { get; set; }
     public string? Description { get; set; }
+    public string? Feedback { get; set; }
     public string Status { get; set; } = "pending";
     public int? AssignedTo { get; set; }
     public DateTime? AssignedAt { get; set; }
@@ -279,7 +281,10 @@ public class VolunteerLog : ITenantEntity
 
     public Tenant? Tenant { get; set; }
     public User? User { get; set; }
+    public VolunteerOrganisation? Organization { get; set; }
+    public VolunteerOpportunity? Opportunity { get; set; }
     public User? SupportRecipient { get; set; }
+    public User? AssignedUser { get; set; }
     public CaringSupportRelationship? CaringSupportRelationship { get; set; }
 }
 

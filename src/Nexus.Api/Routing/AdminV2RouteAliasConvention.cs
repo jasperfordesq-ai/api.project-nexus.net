@@ -21,10 +21,7 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
 
     public void Apply(ApplicationModel application)
     {
-        var existingRoutes = application.Controllers
-            .SelectMany(controller => controller.Selectors
-                .Concat(controller.Actions.SelectMany(action => action.Selectors)))
-            .SelectMany(RouteKeys)
+        var existingRoutes = ApplicationRouteKeys(application)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         foreach (var controller in application.Controllers)
@@ -35,7 +32,6 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
             AddFederationControllerAliases(controller, existingRoutes);
             AddGoalsControllerAliases(controller, existingRoutes);
             AddCaringCommunityControllerAliases(controller, existingRoutes);
-            AddVolunteeringControllerAliases(controller, existingRoutes);
             AddSimpleV2ControllerAliases(controller, existingRoutes);
             AddSimpleV2ControllerActionAliases(controller, existingRoutes);
             AddGroupsControllerActionAliases(controller, existingRoutes);
@@ -349,16 +345,32 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
             return;
         }
 
+        var controllerPrefixes = controller.Selectors
+            .Select(selector => Normalize(selector.AttributeRouteModel?.Template))
+            .Where(template => template.Equals("api/volunteering", StringComparison.OrdinalIgnoreCase)
+                || template.StartsWith("api/volunteering/", StringComparison.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
         foreach (var action in controller.Actions)
         {
             var aliases = action.Selectors
                 .Where(selector => selector.AttributeRouteModel is not null)
-                .Select(selector => new
-                {
-                    Selector = selector,
-                    Alias = ToVolunteeringV2Alias(selector.AttributeRouteModel!.Template)
-                })
+                .SelectMany(selector => controllerPrefixes
+                    .Select(prefix => new
+                    {
+                        Selector = selector,
+                        Alias = ToVolunteeringV2Alias(CombineRoute(
+                            prefix,
+                            selector.AttributeRouteModel!.Template))
+                    })
+                    .Append(new
+                    {
+                        Selector = selector,
+                        Alias = ToVolunteeringV2Alias(selector.AttributeRouteModel!.Template)
+                    }))
                 .Where(item => item.Alias is not null)
+                .DistinctBy(item => Normalize(item.Alias), StringComparer.OrdinalIgnoreCase)
                 .ToArray();
 
             foreach (var item in aliases)
@@ -814,38 +826,6 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
         }
     }
 
-    private static void AddVolunteeringControllerAliases(ControllerModel controller, ISet<string> existingRoutes)
-    {
-        // Clone each source selector rather than creating a route-only selector.
-        // Controller-level metadata such as [Authorize] lives on that selector;
-        // dropping it made every convention-generated v2 volunteering alias
-        // anonymously reachable until tenant resolution returned a misleading 400.
-        foreach (var sourceSelector in controller.Selectors.ToArray())
-        {
-            var template = Normalize(sourceSelector.AttributeRouteModel?.Template);
-            if (!template.Equals("api/volunteering", StringComparison.OrdinalIgnoreCase)
-                && !template.StartsWith("api/volunteering/", StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            var alias = "api/v2/volunteering" + template["api/volunteering".Length..];
-            if (HasRoute(controller.Selectors, alias))
-            {
-                continue;
-            }
-
-            controller.Selectors.Add(new SelectorModel(sourceSelector)
-            {
-                AttributeRouteModel = new AttributeRouteModel
-                {
-                    Template = alias
-                }
-            });
-            existingRoutes.Add(Normalize(alias));
-        }
-    }
-
     private static void AddSimpleV2ControllerAliases(ControllerModel controller, ISet<string> existingRoutes)
     {
         var aliases = controller.Selectors
@@ -1080,6 +1060,47 @@ public sealed class AdminV2RouteAliasConvention : IApplicationModelConvention
     private static bool HasExistingActionRoute(ISet<string> existingRoutes, SelectorModel sourceSelector, string alias) =>
         RouteKeys(sourceSelector, alias).Any(existingRoutes.Contains)
         || existingRoutes.Contains(RouteKey("*", alias));
+
+    private static IEnumerable<string> ApplicationRouteKeys(ApplicationModel application)
+    {
+        foreach (var controller in application.Controllers)
+        {
+            foreach (var selector in controller.Selectors)
+            {
+                foreach (var key in RouteKeys(selector))
+                {
+                    yield return key;
+                }
+            }
+
+            foreach (var action in controller.Actions)
+            {
+                foreach (var actionSelector in action.Selectors)
+                {
+                    if (controller.Selectors.Count == 0)
+                    {
+                        foreach (var key in RouteKeys(actionSelector))
+                        {
+                            yield return key;
+                        }
+
+                        continue;
+                    }
+
+                    foreach (var controllerSelector in controller.Selectors)
+                    {
+                        var combined = AttributeRouteModel.CombineAttributeRouteModel(
+                            controllerSelector.AttributeRouteModel,
+                            actionSelector.AttributeRouteModel);
+                        foreach (var key in RouteKeys(actionSelector, combined?.Template))
+                        {
+                            yield return key;
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     private static IEnumerable<string> RouteKeys(SelectorModel selector) =>
         RouteKeys(selector, selector.AttributeRouteModel?.Template);

@@ -1,6 +1,6 @@
 # Database Migration Workflow
 
-Last reviewed: 2026-07-11
+Last reviewed: 2026-07-12
 
 ## Overview
 
@@ -10,8 +10,8 @@ All database schema changes go through a single canonical workflow. This prevent
 
 ## Current Runtime Chain And Replay Evidence
 
-EF currently discovers 110 migration IDs. The latest is
-`20260711143546_VolunteerQrAttendanceParity`. The runtime inventory was
+EF currently discovers 111 migration IDs. The latest is
+`20260711192124_VolunteerHoursLedgerParity`. The runtime inventory was
 repaired by restoring explicit `[Migration]` and `[DbContext]` metadata to 27
 essential designer-less migrations, including
 `20260303120000_AddAiMessageTenantId`. A `.Designer.cs` file is not itself the
@@ -27,26 +27,49 @@ would attempt to add the same column again.
 
 Current non-production evidence is:
 
-- `dotnet ef migrations has-pending-model-changes --no-build` reports no model
-  changes since the latest migration;
-- a clean recreated database applies all 110 discovered IDs from
+- the recorded runtime inventory contains 111 discovered IDs from
   `20260202085043_InitialCreate` through
-  `20260711143546_VolunteerQrAttendanceParity`. Migration history has 110
-  rows; `ai_messages.TenantId` is non-nullable and its tenant index and foreign
-  key each exist;
-- a populated database stopped at the preceding 109-ID migration upgrades to
-  110 successfully. Historical checked-out and checked-in rows receive the
-  deterministic status/`UpdatedAt = CreatedAt` backfill; historical QR tokens
-  and coordinator IDs remain null; `HoursLogged` and `TransactionId` evidence
-  remains untouched;
-- separate clones containing duplicate tenant/shift/user attendance or
-  cross-tenant relationship evidence fail the latest migration preflight. Each
-  history remains at 109 and none of the latest DDL is installed. The migration
-  does not merge evidence, partially apply, or guess a repair;
-- all disposable databases and the uniquely named PostgreSQL container used for
-  this proof were removed. No production database or container was touched.
+  `20260711192124_VolunteerHoursLedgerParity`;
+- source-level migration contract tests prove the latest migration contains no
+  legacy-value `INSERT`, downgrades evidence-free approved whole-hour
+  organisation rows to `pending`, and applies the non-Caring minimum-hours check
+  conditionally;
+- the final blank replay applied all 111 migrations through
+  `20260711192124_VolunteerHoursLedgerParity` and directly verified the exact
+  13-column/eight-index `feed_activity` schema, nullable-boolean
+  `users.show_on_leaderboard` with default `true`, all 11 column-specific
+  `ON DELETE SET NULL` relationships, and the volunteer-user `CASCADE`
+  relationship;
+- the valid populated 110-to-111 replay preserved and linked existing evidence
+  without minting transaction, payment, or XP value;
+- the deliberately invalid fixture raised PostgreSQL `P0001` atomically,
+  leaving migration history at 110 and no partial migration-111 DDL;
+- `has-pending-model-changes` is green, and disposable Docker container,
+  network, and anonymous-volume cleanup left zero matching resources; and
+- no production database or container was touched.
 
-`20260711143546_VolunteerQrAttendanceParity` adds nullable 64-character QR
+`20260711192124_VolunteerHoursLedgerParity` hardens canonical `vol_logs` hours,
+status, and tenant-scoped provenance; adds feedback plus the personal
+`transactions.VolunteerLogId` evidence link; binds organisation payment rows to
+their logs; installs tenant-composite user/organisation/opportunity/reviewer/
+Caring relationships; and enforces active natural-key, personal transaction,
+organisation payment, and volunteer-hour XP uniqueness. It also creates the
+tenant-scoped `feed_activity` table with Laravel's unique source tuple and feed
+indexes, plus nullable `users.show_on_leaderboard` privacy evidence. The
+associated service publishes approved hours as idempotent `volunteer_hours`
+rows without broadcasting the organisation-facing description; other feed
+producers, admin moderation integration, cleanup, and backfill remain separate
+gaps. Its preflight rejects
+invalid hours/status, orphan/cross-tenant relationships, inconsistent
+opportunity/Caring provenance, and contradictory, ambiguous, or duplicate
+payout/XP evidence before DDL. It never creates transaction, payment, or XP rows
+for legacy logs. Uniquely provable existing evidence may be linked; evidence-
+free approved whole-hour organisation rows are downgraded to `pending`, while
+approved Caring sub-hour rows remain valid without fabricated evidence. The
+migration is intentionally forward-only because rollback would remove immutable
+feedback and ledger provenance.
+
+The preceding `20260711143546_VolunteerQrAttendanceParity` adds nullable 64-character QR
 tokens and coordinator identities, required attendance status/updated evidence,
 a global filtered unique QR-token index, and a unique tenant/shift/user
 attendance index. It backfills `checked_out`, then `checked_in`, then `pending`
@@ -84,13 +107,12 @@ the canonical `vol_organizations`, `org_members`,
 and `vol_org_transactions` tables, adds a nullable
 `volunteer_opportunities.organization_id`, and enforces tenant-composite owner,
 membership, and opportunity relationships. It performs no organisation
-backfill. The opportunity foreign key uses non-destructive `RESTRICT`; the
-nullable transaction `vol_log_id` remains a scalar because the discovered
-runtime chain does not create the referenced Laravel `vol_logs` table. A
-filtered unique `(tenant_id, vol_log_id, type)` index still prevents duplicate
-payments, and the nullable transaction user relationship is tenant-composite.
-Discovered-chain-only installs expose zero-hour aggregates until the legacy
-`vol_logs` history is reconciled. Existing NULL-linked opportunities require an
+backfill. The opportunity foreign key uses non-destructive `RESTRICT`; its
+original nullable transaction `vol_log_id` scalar is now bound by
+`VolunteerHoursLedgerParity` to the canonical tenant-scoped `vol_logs` row. The
+filtered unique `(tenant_id, vol_log_id, type)` payment guard remains, and the
+canonical hours migration also links personal transaction and XP evidence.
+Existing NULL-linked opportunities require an
 explicit operator mapping; never backfill from the user-valued `OrganizerId`.
 
 The preceding `20260710221715_RecurringShiftPatternCrudParity` migration makes
@@ -110,11 +132,19 @@ active rows and removes orphan minor rows before enforcing the new constraint.
 The preceding `20260710171315_AdminVolunteerApprovalWorkflow` migration added
 application `ShiftId`/`OrgNote`, notification `Link`, opportunity-scoped expiry,
 and the indexes and `SET NULL` foreign keys used by transactional volunteering
-capacity checks. The latest test-project build has zero errors and four
-pre-existing `xUnit1031` warnings. Migration discovery, the 32/32 QR attendance
-suite, 1/1 persistence-failure regression, 12/12 shift-swap suite, 5/5
-route/auth subset, 90/90 affected-module gate, and the ambient-transaction
-regression are green. These focused sets do not replace a clean full-suite run.
+capacity checks. The Debug API/test builds and required solution-wide Release
+build complete with zero errors; the only warnings are the same four pre-
+existing `xUnit1031` warnings in the test project. The Release build took 4m36s.
+One disposable Linux run discovered 3,007 tests and passed 53/53: all 51
+`VolunteerHoursParityTests` plus both `V15FeedActivityCompatibilityTests`.
+Windows Smart App Control blocks the freshly rebuilt unsigned API assembly, so
+the run used Linux without weakening host policy. The clean affected rerun then
+discovered 3,007 tests, selected 243, and passed 243/243 with zero failed and zero
+skipped in 418.639s. The full 3,007-test suite, CI, and unchanged-frontend
+runtime proof remain open. The
+preceding QR attendance, shift-swap, route/auth, affected-module,
+and ambient-transaction results remain historical evidence; none replaces a
+clean current full-suite run.
 Descendant CI run `29154079189` was later cancelled after its completed
 Integration Tests job reported 51 failures out of 2,888 tests; only its nested-transaction
 failure was a direct regression from the preceding `bfeafb2e` slice, and that
@@ -143,15 +173,16 @@ recorded the migration are not changed or replayed.
 
 Migration discovery must continue to fail closed if a new source migration is
 invisible to EF, a deliberately excluded overlapping migration becomes
-discoverable, or an intended migration ID no longer matches its type. A green
-blank replay certifies all 110 IDs that EF discovers. Discovery does not
+discoverable, or an intended migration ID no longer matches its type. Once
+run against the final migration source, the green blank replay certifies all
+111 IDs that EF discovers. Discovery does not
 authorize replaying either intentionally excluded duplicate.
 
 ## Read-Only Legacy Financial Audit
 
 The following PostgreSQL report is deliberately read-only and is intended for
 an operator working on a database already upgraded through
-`20260711143546_VolunteerQrAttendanceParity`. It identifies candidates;
+`20260711192124_VolunteerHoursLedgerParity`. It identifies candidates;
 it does not decide their meaning. Do not auto-fix, relink, delete, cancel, or
 recreate any returned row. Each row needs a documented manual disposition that
 states the intended business event, the existing sender/receiver balance
@@ -474,9 +505,10 @@ The PR Quality Gate workflow automatically:
 The discovery gate must cover every compiled migration subclass and keep any
 reviewed overlapping source explicitly outside the runtime chain. It prevents a
 new class from becoming silently invisible, but it does not make duplicate DDL
-safe. The successful blank `database update` certifies all 110 discovered IDs,
-not every migration-shaped source file or either intentionally excluded
-duplicate.
+safe. A successful blank `database update` against the final source certifies
+all 111 discovered IDs, not every migration-shaped source file or either
+intentionally excluded duplicate. The final blank replay and
+`has-pending-model-changes` gate are green.
 
 ### 7. Deploy to Production
 
@@ -579,6 +611,12 @@ token, attendance-status, and coordinator evidence and would make pending
 attendance timestamps non-nullable. Restore a tested pre-migration backup or
 apply a reviewed forward remediation; do not force the `Down()` path or
 manually drop its evidence-preserving columns and constraints.
+
+`20260711192124_VolunteerHoursLedgerParity` is also intentionally forward-only.
+Its `Down()` throws before changing schema because rollback would remove
+immutable feedback and personal, organisation, and XP ledger provenance.
+Restore a verified pre-migration backup or apply a reviewed forward remediation;
+do not force the disabled destructive path.
 
 `20260710211122_RecurringShiftGenerationParity` has a data-preserving `Down()`:
 it removes the filtered occurrence and active-pattern indexes and restores the

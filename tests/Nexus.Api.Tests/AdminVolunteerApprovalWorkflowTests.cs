@@ -205,10 +205,9 @@ public sealed class AdminVolunteerApprovalWorkflowTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task Approve_RejectsCrossTenantApplicationAndCrossTenantShift()
+    public async Task Approve_RejectsCrossTenantApplication_AndDatabaseRejectsCrossOpportunityShift()
     {
         int crossTenantApplicationId;
-        int badShiftApplicationId;
         using (var scope = Factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
@@ -222,12 +221,20 @@ public sealed class AdminVolunteerApprovalWorkflowTests : IntegrationTestBase
             await db.SaveChangesAsync();
 
             var crossTenant = NewApplication(otherOpportunity, TestData.OtherTenantUser.Id, ApplicationStatus.Pending);
-            var badShift = NewApplication(localOpportunity, TestData.MemberUser.Id, ApplicationStatus.Pending);
-            badShift.ShiftId = otherShift.Id;
-            db.AddRange(crossTenant, badShift);
+            db.VolunteerApplications.Add(crossTenant);
             await db.SaveChangesAsync();
             crossTenantApplicationId = crossTenant.Id;
-            badShiftApplicationId = badShift.Id;
+
+            // A shift from another opportunity/tenant is no longer a controller-reachable
+            // state: the composite application/shift foreign key rejects it at persistence.
+            var crossOpportunityShift = NewApplication(
+                localOpportunity,
+                TestData.MemberUser.Id,
+                ApplicationStatus.Pending);
+            crossOpportunityShift.ShiftId = otherShift.Id;
+            db.VolunteerApplications.Add(crossOpportunityShift);
+            Func<Task> persistInvalidShift = () => db.SaveChangesAsync();
+            await persistInvalidShift.Should().ThrowAsync<DbUpdateException>();
         }
 
         await AuthenticateAsAdminAsync();
@@ -237,14 +244,6 @@ public sealed class AdminVolunteerApprovalWorkflowTests : IntegrationTestBase
         crossTenantResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
         (await ReadJsonAsync(crossTenantResponse)).GetProperty("errors")[0].GetProperty("code").GetString()
             .Should().Be("NOT_FOUND");
-
-        var badShiftResponse = await Client.PostAsJsonAsync(
-            $"/api/v2/admin/volunteering/approvals/{badShiftApplicationId}/approve",
-            new { });
-        badShiftResponse.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
-        var badShiftError = (await ReadJsonAsync(badShiftResponse)).GetProperty("errors")[0];
-        badShiftError.GetProperty("code").GetString().Should().Be("VALIDATION_ERROR");
-        badShiftError.GetProperty("field").GetString().Should().Be("shift_id");
     }
 
     [Fact]

@@ -97,13 +97,15 @@ public class CaringCommunityCaregiverControllerUnitTests
         var tenant = CreateTenantContext(42);
         await using var db = CreateDbContext(tenant);
         SeedFeature(db, 42, true);
-        db.Users.Add(User(1001, 42, "Cara", "Giver"));
+        db.Users.AddRange(
+            User(1001, 42, "Cara", "Giver"),
+            User(7001, 7, "Other", "Tenant"));
         db.VolunteerLogs.AddRange(
             VolunteerLog(42, 1001, 7.5m, "approved", DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1))),
             VolunteerLog(42, 1001, 5m, "pending", DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-3))),
-            VolunteerLog(42, 1001, 99m, "rejected", DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-2))),
-            VolunteerLog(42, 1001, 99m, "approved", DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-12))),
-            VolunteerLog(7, 1001, 99m, "approved", DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1))));
+            VolunteerLog(42, 1001, 24m, "rejected", DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-2))),
+            VolunteerLog(42, 1001, 24m, "approved", DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-12))),
+            VolunteerLog(7, 7001, 24m, "approved", DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1))));
         await db.SaveChangesAsync();
         var controller = CreateController(db, tenant, userId: 1001);
 
@@ -245,7 +247,8 @@ public class CaringCommunityCaregiverControllerUnitTests
             User(2001, 42, "Pat", "Recipient", "/avatars/pat.png"),
             User(3001, 42, "Sam", "Supporter", "/avatars/sam.png"),
             User(3002, 42, "Noor", "Supporter", "/avatars/noor.png"),
-            User(9001, 7, "Other", "Tenant", "/avatars/other.png"));
+            User(9001, 7, "Other", "Tenant", "/avatars/other.png"),
+            User(9002, 7, "Remote", "Recipient"));
         db.CaringCaregiverLinks.Add(Link(42, 1001, 2001, "family", status: "active"));
         db.CaringSupportRelationships.AddRange(
             SupportRelationship(
@@ -264,7 +267,7 @@ public class CaringCommunityCaregiverControllerUnitTests
             SupportRelationship(
                 7,
                 supporterId: 9001,
-                recipientId: 2001,
+                recipientId: 9002,
                 title: "Other tenant",
                 nextCheckInAt: new DateTime(2026, 7, 3, 9, 0, 0, DateTimeKind.Utc)));
         db.VolunteerLogs.AddRange(
@@ -295,7 +298,7 @@ public class CaringCommunityCaregiverControllerUnitTests
                 hours: 9m,
                 status: "approved",
                 dateLogged: DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1)),
-                supportRecipientId: 2001));
+                supportRecipientId: 9002));
         await db.SaveChangesAsync();
         var controller = CreateController(db, tenant, userId: 1001);
 

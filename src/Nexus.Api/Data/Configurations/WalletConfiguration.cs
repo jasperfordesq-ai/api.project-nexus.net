@@ -31,6 +31,7 @@ public class WalletConfiguration : TenantScopedConfiguration
             entity.Property(e => e.TransactionType)
                 .HasMaxLength(50)
                 .HasDefaultValue("transfer");
+            entity.Property(e => e.VolunteerLogId).HasColumnName("VolunteerLogId");
             entity.Property(e => e.DeletedForSender).HasDefaultValue(false);
             entity.Property(e => e.DeletedForReceiver).HasDefaultValue(false);
 
@@ -48,6 +49,10 @@ public class WalletConfiguration : TenantScopedConfiguration
             entity.HasIndex(e => e.SenderId);
             entity.HasIndex(e => e.ReceiverId);
             entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => new { e.TenantId, e.VolunteerLogId })
+                .IsUnique()
+                .HasFilter("\"VolunteerLogId\" IS NOT NULL")
+                .HasDatabaseName("ux_transactions_volunteer_log");
 
             // Relationships
             entity.HasOne(e => e.Tenant)
@@ -69,6 +74,12 @@ public class WalletConfiguration : TenantScopedConfiguration
                 .WithMany()
                 .HasForeignKey(e => e.ListingId)
                 .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.VolunteerLog)
+                .WithMany()
+                .HasForeignKey(e => new { e.TenantId, e.VolunteerLogId })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
+                .OnDelete(DeleteBehavior.ClientSetNull);
 
             // CRITICAL: Global query filter for tenant isolation
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);

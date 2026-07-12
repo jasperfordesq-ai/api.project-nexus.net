@@ -45,6 +45,7 @@ public class NexusDbContext : DbContext
     public DbSet<Event> Events => Set<Event>();
     public DbSet<EventRsvp> EventRsvps => Set<EventRsvp>();
     public DbSet<FeedPost> FeedPosts => Set<FeedPost>();
+    public DbSet<FeedActivity> FeedActivities => Set<FeedActivity>();
     public DbSet<PostLike> PostLikes => Set<PostLike>();
     public DbSet<PostComment> PostComments => Set<PostComment>();
     public DbSet<CommentReaction> CommentReactions => Set<CommentReaction>();
@@ -531,6 +532,7 @@ public class NexusDbContext : DbContext
             new WalletConfiguration(_tenantContext),
             new MessagingConfiguration(_tenantContext),
             new SocialConfiguration(_tenantContext),
+            new FeedActivityConfiguration(_tenantContext),
             new GroupConfiguration(_tenantContext),
             new EventConfiguration(_tenantContext),
             new GamificationConfiguration(_tenantContext),

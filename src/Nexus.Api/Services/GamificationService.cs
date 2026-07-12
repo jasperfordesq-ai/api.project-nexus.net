@@ -3,6 +3,8 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Data;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
@@ -18,11 +20,22 @@ public class GamificationService
 {
     private readonly NexusDbContext _db;
     private readonly ILogger<GamificationService> _logger;
+    private readonly PushNotificationService? _pushNotifications;
+    private readonly EmailNotificationService? _emailNotifications;
+    private readonly FeedActivityService? _feedActivity;
 
-    public GamificationService(NexusDbContext db, ILogger<GamificationService> logger)
+    public GamificationService(
+        NexusDbContext db,
+        ILogger<GamificationService> logger,
+        PushNotificationService? pushNotifications = null,
+        EmailNotificationService? emailNotifications = null,
+        FeedActivityService? feedActivity = null)
     {
         _db = db;
         _logger = logger;
+        _pushNotifications = pushNotifications;
+        _emailNotifications = emailNotifications;
+        _feedActivity = feedActivity;
     }
 
     /// <summary>
@@ -47,6 +60,7 @@ public class GamificationService
 
                 var xpLog = new XpLog
                 {
+                    TenantId = user.TenantId,
                     UserId = userId,
                     Amount = amount,
                     Source = source,
@@ -114,14 +128,31 @@ public class GamificationService
     /// </summary>
     public async Task<BadgeAwardResult> AwardBadgeAsync(int userId, string badgeSlug)
     {
-        var badge = await _db.Badges.FirstOrDefaultAsync(b => b.Slug == badgeSlug && b.IsActive);
+        var tenantId = await _db.Users
+            .IgnoreQueryFilters()
+            .Where(user => user.Id == userId)
+            .Select(user => (int?)user.TenantId)
+            .SingleOrDefaultAsync();
+        if (tenantId is null)
+        {
+            return new BadgeAwardResult { Success = false, Error = "User not found" };
+        }
+
+        var badge = await _db.Badges
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(b => b.TenantId == tenantId.Value
+                && b.Slug == badgeSlug
+                && b.IsActive);
         if (badge == null)
         {
             return new BadgeAwardResult { Success = false, Error = "Badge not found" };
         }
 
         var existingBadge = await _db.UserBadges
-            .FirstOrDefaultAsync(ub => ub.UserId == userId && ub.BadgeId == badge.Id);
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(ub => ub.TenantId == tenantId.Value
+                && ub.UserId == userId
+                && ub.BadgeId == badge.Id);
 
         if (existingBadge != null)
         {
@@ -130,6 +161,7 @@ public class GamificationService
 
         var userBadge = new UserBadge
         {
+            TenantId = tenantId.Value,
             UserId = userId,
             BadgeId = badge.Id
         };
@@ -159,12 +191,152 @@ public class GamificationService
                 $"Earned badge: {badge.Name}");
         }
 
+        await TryDispatchBadgeEarnedSideEffectsAsync(tenantId.Value, userId, badge);
+
         return new BadgeAwardResult
         {
             Success = true,
             Badge = badge,
             XpAwarded = xpResult
         };
+    }
+
+    /// <summary>
+    /// Recomputes Laravel's volunteer-hour badge milestones from the canonical
+    /// approved <c>vol_logs</c> sum for one tenant/user. Fractional totals are
+    /// truncated before threshold comparison, matching Laravel's integer cast.
+    ///
+    /// Relational callers may invoke this inside an existing approval
+    /// transaction. Otherwise the method creates and commits its own
+    /// transaction. A PostgreSQL advisory transaction lock serializes checks
+    /// for the same tenant/user, while the existing user_badges unique index is
+    /// the final duplicate-award guard.
+    /// </summary>
+    public async Task<VolunteerHourBadgeCheckResult> CheckAndAwardVolunteerHourBadgesAsync(
+        int tenantId,
+        int userId,
+        CancellationToken ct = default)
+    {
+        await using var ownedTransaction = _db.Database.IsRelational()
+            && _db.Database.CurrentTransaction is null
+                ? await _db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct)
+                : null;
+
+        try
+        {
+            if (_db.Database.IsRelational())
+            {
+                var lockKey = VolunteerHourBadgeLockNamespace
+                    ^ ((long)(uint)tenantId << 32)
+                    ^ (uint)userId;
+                await _db.Database.ExecuteSqlInterpolatedAsync(
+                    $"SELECT pg_advisory_xact_lock({lockKey})",
+                    ct);
+            }
+
+            var user = await _db.Users
+                .IgnoreQueryFilters()
+                .SingleOrDefaultAsync(
+                    candidate => candidate.TenantId == tenantId && candidate.Id == userId,
+                    ct);
+            if (user is null)
+            {
+                if (ownedTransaction is not null)
+                    await ownedTransaction.RollbackAsync(ct);
+
+                return new VolunteerHourBadgeCheckResult(
+                    false,
+                    0m,
+                    0,
+                    Array.Empty<string>(),
+                    0,
+                    "User not found");
+            }
+
+            var badgesBySlug = await UpsertVolunteerHourBadgeDefinitionsAsync(tenantId, ct);
+            var approvedHours = await _db.VolunteerLogs
+                .IgnoreQueryFilters()
+                .Where(log => log.TenantId == tenantId
+                    && log.UserId == userId
+                    && log.Status == "approved")
+                .SumAsync(log => (decimal?)log.Hours, ct)
+                ?? 0m;
+            var wholeHours = decimal.ToInt64(decimal.Truncate(approvedHours));
+            var newlyEarned = new List<string>();
+
+            foreach (var definition in Badge.VolunteerHours.Definitions)
+            {
+                if (wholeHours < definition.Threshold)
+                    continue;
+
+                var badge = badgesBySlug[definition.Slug];
+                if (!await TryInsertUserBadgeAsync(tenantId, userId, badge.Id, ct))
+                    continue;
+
+                newlyEarned.Add(definition.Slug);
+                _db.XpLogs.Add(new XpLog
+                {
+                    TenantId = tenantId,
+                    UserId = userId,
+                    Amount = XpLog.Amounts.BadgeEarned,
+                    Source = XpLog.Sources.BadgeEarned,
+                    ReferenceId = badge.Id,
+                    Description = $"Earned badge: {definition.Name}",
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+
+            var xpAwarded = newlyEarned.Count * XpLog.Amounts.BadgeEarned;
+            if (xpAwarded > 0)
+            {
+                user.TotalXp += xpAwarded;
+                user.Level = User.CalculateLevelFromXp(user.TotalXp);
+                user.UpdatedAt = DateTime.UtcNow;
+            }
+
+            await _db.SaveChangesAsync(ct);
+            if (ownedTransaction is not null)
+                await ownedTransaction.CommitAsync(ct);
+
+            // An ambient transaction belongs to the caller. Do not emit email,
+            // push, or feed effects before that caller commits; the canonical
+            // volunteer-hours path invokes this method post-commit and therefore
+            // owns the short badge transaction above.
+            if (ownedTransaction is not null || !_db.Database.IsRelational())
+            {
+                foreach (var slug in newlyEarned)
+                {
+                    await TryDispatchBadgeEarnedSideEffectsAsync(
+                        tenantId,
+                        userId,
+                        badgesBySlug[slug],
+                        ct);
+                }
+            }
+
+            if (newlyEarned.Count > 0)
+            {
+                _logger.LogInformation(
+                    "User {UserId} earned volunteer-hour badges {BadgeSlugs} for {WholeHours} approved hours",
+                    userId,
+                    string.Join(", ", newlyEarned),
+                    wholeHours);
+            }
+
+            return new VolunteerHourBadgeCheckResult(
+                true,
+                approvedHours,
+                wholeHours,
+                newlyEarned,
+                xpAwarded,
+                null);
+        }
+        catch
+        {
+            if (ownedTransaction is not null)
+                await ownedTransaction.RollbackAsync(CancellationToken.None);
+            throw;
+        }
     }
 
     /// <summary>
@@ -226,6 +398,40 @@ public class GamificationService
         {
             _logger.LogWarning(ex, "Badge check failed for user {UserId} action {Action}", userId, action);
         }
+    }
+
+    /// <summary>
+    /// Re-runs every badge family currently represented by the ASP model after
+    /// a canonical activity transition. Laravel performs the equivalent full
+    /// sweep after volunteer-hour XP, rather than checking hour milestones in
+    /// isolation. The user lookup pins the sweep to one tenant even when this
+    /// service is invoked from a background or test scope without a resolved
+    /// request tenant.
+    /// </summary>
+    public async Task RunAllBadgeChecksAsync(int tenantId, int userId, CancellationToken ct = default)
+    {
+        var exists = await _db.Users
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .AnyAsync(user => user.TenantId == tenantId && user.Id == userId, ct);
+        if (!exists)
+            return;
+
+        await CheckAndAwardVolunteerHourBadgesAsync(tenantId, userId, ct);
+        await CheckListingBadges(userId);
+        await CheckConnectionBadges(userId);
+        await CheckTransactionBadges(userId);
+        await CheckReviewBadges(userId);
+        await CheckPostBadges(userId);
+        await CheckEventHostBadges(userId);
+        await CheckEventAttendBadges(userId);
+        await CheckGroupJoinBadges(userId);
+        await CheckGroupCreateBadges(userId);
+        await CheckMessageBadges(userId);
+        await CheckFiveStarBadges(userId);
+        await CheckLikesBadges(userId);
+        await CheckLevelBadges(userId);
+        await CheckMembershipBadges(userId);
     }
 
     #region Badge Checks
@@ -358,8 +564,17 @@ public class GamificationService
         var count = await _db.GroupMembers.CountAsync(gm => gm.UserId == userId);
 
         if (count >= 1) await AwardBadgeAsync(userId, Badge.Slugs.GroupJoin1);
-        if (count >= 5) await AwardBadgeAsync(userId, Badge.Slugs.GroupJoin5);
-        await AwardBadgeAsync(userId, Badge.Slugs.CommunityBuilder);
+        if (count >= 5)
+        {
+            await AwardBadgeAsync(userId, Badge.Slugs.GroupJoin5);
+            await AwardBadgeAsync(userId, Badge.Slugs.CommunityBuilder);
+        }
+    }
+
+    private async Task CheckGroupCreateBadges(int userId)
+    {
+        if (await _db.Groups.AnyAsync(group => group.CreatedById == userId))
+            await AwardBadgeAsync(userId, Badge.Slugs.GroupCreate1);
     }
 
     private async Task CheckMessageBadges(int userId)
@@ -591,6 +806,8 @@ public class GamificationService
             await AwardXpAsync(userId, badge.XpReward, XpLog.Sources.BadgeEarned, badge.Id, $"Badge manually awarded: {badge.Name}");
         }
 
+        await TryDispatchBadgeEarnedSideEffectsAsync(tenantId, userId, badge);
+
         _logger.LogInformation("Admin {AdminId} manually awarded badge '{BadgeSlug}' to user {UserId}", adminId, badge.Slug, userId);
         return (userBadge, null);
     }
@@ -610,6 +827,247 @@ public class GamificationService
 
         _logger.LogInformation("Admin {AdminId} revoked badge {BadgeId} from user {UserId}", adminId, badgeId, userId);
         return (true, null);
+    }
+
+    private const long VolunteerHourBadgeLockNamespace = 0x564F4C4200000000L;
+
+    /// <summary>
+    /// Lazy per-tenant seed/upsert for the six canonical definitions. This
+    /// avoids a schema fork and also covers tenants created after deployment.
+    /// </summary>
+    private async Task<Dictionary<string, Badge>> UpsertVolunteerHourBadgeDefinitionsAsync(
+        int tenantId,
+        CancellationToken ct)
+    {
+        var now = DateTime.UtcNow;
+        if (_db.Database.IsRelational())
+        {
+            foreach (var definition in Badge.VolunteerHours.Definitions)
+            {
+                await _db.Database.ExecuteSqlInterpolatedAsync($"""
+                    INSERT INTO badges
+                        ("TenantId", "Slug", "Name", "Description", "Icon", "XpReward", "IsActive", "SortOrder", "CreatedAt", "UpdatedAt")
+                    VALUES
+                        ({tenantId}, {definition.Slug}, {definition.Name}, {definition.Description}, {definition.Icon}, {XpLog.Amounts.BadgeEarned}, TRUE, {definition.SortOrder}, {now}, NULL)
+                    ON CONFLICT ("TenantId", "Slug") DO UPDATE SET
+                        "Name" = EXCLUDED."Name",
+                        "Description" = EXCLUDED."Description",
+                        "Icon" = EXCLUDED."Icon",
+                        "XpReward" = EXCLUDED."XpReward",
+                        "IsActive" = TRUE,
+                        "SortOrder" = EXCLUDED."SortOrder",
+                        "UpdatedAt" = {now}
+                    """, ct);
+            }
+        }
+        else
+        {
+            var slugs = Badge.VolunteerHours.Definitions
+                .Select(definition => definition.Slug)
+                .ToArray();
+            var existing = await _db.Badges
+                .IgnoreQueryFilters()
+                .Where(badge => badge.TenantId == tenantId && slugs.Contains(badge.Slug))
+                .ToDictionaryAsync(badge => badge.Slug, StringComparer.Ordinal, ct);
+
+            foreach (var definition in Badge.VolunteerHours.Definitions)
+            {
+                if (!existing.TryGetValue(definition.Slug, out var badge))
+                {
+                    badge = new Badge
+                    {
+                        TenantId = tenantId,
+                        Slug = definition.Slug,
+                        CreatedAt = now
+                    };
+                    _db.Badges.Add(badge);
+                    existing.Add(definition.Slug, badge);
+                }
+
+                badge.Name = definition.Name;
+                badge.Description = definition.Description;
+                badge.Icon = definition.Icon;
+                badge.XpReward = XpLog.Amounts.BadgeEarned;
+                badge.IsActive = true;
+                badge.SortOrder = definition.SortOrder;
+                badge.UpdatedAt = badge.Id == 0 ? null : now;
+            }
+
+            await _db.SaveChangesAsync(ct);
+        }
+
+        var definitionSlugs = Badge.VolunteerHours.Definitions
+            .Select(definition => definition.Slug)
+            .ToArray();
+        return await _db.Badges
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(badge => badge.TenantId == tenantId
+                && definitionSlugs.Contains(badge.Slug))
+            .ToDictionaryAsync(badge => badge.Slug, StringComparer.Ordinal, ct);
+    }
+
+    private async Task<bool> TryInsertUserBadgeAsync(
+        int tenantId,
+        int userId,
+        int badgeId,
+        CancellationToken ct)
+    {
+        if (_db.Database.IsRelational())
+        {
+            var inserted = await _db.Database.ExecuteSqlInterpolatedAsync($"""
+                INSERT INTO user_badges ("TenantId", "UserId", "BadgeId", "EarnedAt")
+                VALUES ({tenantId}, {userId}, {badgeId}, {DateTime.UtcNow})
+                ON CONFLICT ("TenantId", "UserId", "BadgeId") DO NOTHING
+                """, ct);
+            return inserted == 1;
+        }
+
+        var exists = await _db.UserBadges
+            .IgnoreQueryFilters()
+            .AnyAsync(userBadge => userBadge.TenantId == tenantId
+                && userBadge.UserId == userId
+                && userBadge.BadgeId == badgeId, ct);
+        if (exists)
+            return false;
+
+        _db.UserBadges.Add(new UserBadge
+        {
+            TenantId = tenantId,
+            UserId = userId,
+            BadgeId = badgeId,
+            EarnedAt = DateTime.UtcNow
+        });
+        return true;
+    }
+
+    private async Task TryDispatchBadgeEarnedSideEffectsAsync(
+        int tenantId,
+        int userId,
+        Badge badge,
+        CancellationToken ct = default)
+    {
+        var iconPrefix = string.IsNullOrWhiteSpace(badge.Icon) ? string.Empty : $"{badge.Icon} ";
+        var message = $"{iconPrefix}You earned the {badge.Name} badge!";
+        var data = JsonSerializer.Serialize(new
+        {
+            badge_key = badge.Slug,
+            badge_name = badge.Name,
+            badge_icon = badge.Icon,
+            url = "/profile"
+        });
+
+        try
+        {
+            _db.Notifications.Add(new Notification
+            {
+                TenantId = tenantId,
+                UserId = userId,
+                Type = "achievement",
+                Title = "Badge earned",
+                Body = message,
+                Data = data,
+                Link = "/profile",
+                CreatedAt = DateTime.UtcNow
+            });
+            await _db.SaveChangesAsync(ct);
+        }
+        catch (Exception exception)
+        {
+            _db.ChangeTracker.Clear();
+            _logger.LogWarning(
+                exception,
+                "Failed to create badge notification for tenant {TenantId}, user {UserId}, badge {BadgeSlug}",
+                tenantId,
+                userId,
+                badge.Slug);
+        }
+
+        if (_pushNotifications is not null)
+        {
+            try
+            {
+                await _pushNotifications.SendPushAsync(
+                    userId,
+                    "Badge earned",
+                    message,
+                    data,
+                    tenantId);
+            }
+            catch (Exception exception)
+            {
+                _db.ChangeTracker.Clear();
+                _logger.LogWarning(
+                    exception,
+                    "Failed to queue badge push for tenant {TenantId}, user {UserId}, badge {BadgeSlug}",
+                    tenantId,
+                    userId,
+                    badge.Slug);
+            }
+        }
+
+        if (_emailNotifications is not null)
+        {
+            try
+            {
+                await _emailNotifications.SendTemplatedEmailAsync(
+                    userId,
+                    "badge_earned",
+                    new Dictionary<string, string>
+                    {
+                        ["badge_key"] = badge.Slug,
+                        ["badge_name"] = badge.Name,
+                        ["name"] = badge.Name,
+                        ["badge_icon"] = badge.Icon ?? string.Empty,
+                        ["profile_url"] = "/profile"
+                    },
+                    tenantId);
+            }
+            catch (Exception exception)
+            {
+                _db.ChangeTracker.Clear();
+                _logger.LogWarning(
+                    exception,
+                    "Failed to send badge email for tenant {TenantId}, user {UserId}, badge {BadgeSlug}",
+                    tenantId,
+                    userId,
+                    badge.Slug);
+            }
+        }
+
+        if (_feedActivity is not null)
+        {
+            try
+            {
+                await _feedActivity.RecordActivityAsync(
+                    tenantId,
+                    userId,
+                    FeedActivitySourceTypes.BadgeEarned,
+                    userId,
+                    new FeedActivityData
+                    {
+                        Title = badge.Name,
+                        Content = $"Earned the \"{badge.Name}\" badge!",
+                        Metadata = new Dictionary<string, object?>
+                        {
+                            ["badge_key"] = badge.Slug,
+                            ["badge_name"] = badge.Name,
+                            ["badge_icon"] = badge.Icon
+                        }
+                    },
+                    ct);
+            }
+            catch (Exception exception)
+            {
+                _db.ChangeTracker.Clear();
+                _logger.LogWarning(
+                    exception,
+                    "Failed to publish badge activity for tenant {TenantId}, user {UserId}, badge {BadgeSlug}",
+                    tenantId,
+                    userId,
+                    badge.Slug);
+            }
+        }
     }
 
 }
@@ -635,3 +1093,11 @@ public class BadgeAwardResult
     public Badge? Badge { get; set; }
     public XpAwardResult? XpAwarded { get; set; }
 }
+
+public sealed record VolunteerHourBadgeCheckResult(
+    bool Success,
+    decimal ApprovedHours,
+    long WholeHours,
+    IReadOnlyList<string> NewlyEarnedBadges,
+    int XpAwarded,
+    string? Error);

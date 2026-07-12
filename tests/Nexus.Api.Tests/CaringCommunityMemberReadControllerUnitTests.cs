@@ -190,18 +190,19 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
         db.Users.AddRange(
             exporter,
             User(11, 42, "Grace", "Neighbour"),
-            User(70, 7, "Other", "Tenant"));
+            User(70, 7, "Other", "Tenant"),
+            User(71, 7, "Remote", "Neighbour"));
 
         db.VolunteerLogs.AddRange(
             Log(801, 42, 10, 301, 11, new DateOnly(2026, 7, 2), 2.5m, "approved"),
             Log(802, 42, 11, 301, 10, new DateOnly(2026, 7, 3), 9m, "approved"),
-            Log(803, 7, 10, 301, 70, new DateOnly(2026, 7, 4), 7m, "approved"));
+            Log(803, 7, 70, 303, 71, new DateOnly(2026, 7, 4), 7m, "approved"));
         db.CaringSupportRelationships.AddRange(
             Relationship(301, 42, supporterId: 10, recipientId: 11, "Forms", "Benefits paperwork",
                 "weekly", 2m, "active", new DateOnly(2026, 7, 1), null, DateTime.UtcNow.AddDays(-3)),
             Relationship(302, 42, supporterId: 11, recipientId: 10, "Shopping", null,
                 "monthly", 1m, "paused", new DateOnly(2026, 6, 1), null, DateTime.UtcNow.AddDays(-2)),
-            Relationship(303, 7, supporterId: 10, recipientId: 70, "Other tenant", null,
+            Relationship(303, 7, supporterId: 70, recipientId: 71, "Other tenant", null,
                 "weekly", 1m, "active", new DateOnly(2026, 6, 1), null, DateTime.UtcNow.AddDays(-1)));
         db.CaringHelpRequests.AddRange(
             new CaringHelpRequest
@@ -434,14 +435,22 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
         db.Users.AddRange(
             User(10, 42, "Ada", "Exporter"),
             User(11, 42, "Grace", "Neighbour"),
-            User(70, 7, "Other", "Tenant"));
+            User(70, 7, "Other", "Tenant"),
+            User(71, 7, "Remote", "Neighbour"));
+        db.CaringSupportRelationships.AddRange(
+            Relationship(301, 42, supporterId: 10, recipientId: 11, "Pension evidence", null,
+                "weekly", 2m, "active", new DateOnly(2025, 12, 1), null,
+                new DateTime(2025, 12, 1, 9, 0, 0, DateTimeKind.Utc)),
+            Relationship(306, 7, supporterId: 70, recipientId: 71, "Other tenant", null,
+                "weekly", 2m, "active", new DateOnly(2025, 12, 1), null,
+                new DateTime(2025, 12, 1, 9, 0, 0, DateTimeKind.Utc)));
         db.VolunteerLogs.AddRange(
             Log(901, 42, 10, 301, 11, new DateOnly(2025, 12, 31), 4m, "approved"),
             Log(902, 42, 10, 301, 11, new DateOnly(2026, 1, 15), 1.257m, "approved"),
             Log(903, 42, 10, 301, 11, new DateOnly(2026, 2, 5), 2.5m, "pending"),
             Log(904, 42, 10, 301, 11, new DateOnly(2026, 3, 1), 3.2m, "approved"),
             Log(905, 42, 11, 301, 10, new DateOnly(2026, 3, 2), 8m, "approved"),
-            Log(906, 7, 10, 301, 70, new DateOnly(2026, 3, 3), 9m, "approved"),
+            Log(906, 7, 70, 306, 71, new DateOnly(2026, 3, 3), 9m, "approved"),
             Log(907, 42, 10, 301, 11, new DateOnly(2027, 1, 1), 6m, "approved"));
         await db.SaveChangesAsync();
 
@@ -505,7 +514,9 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
         db.Users.AddRange(
             User(10, 42, "Ada", "Member"),
             User(11, 42, "Grace", "Helper"),
-            User(70, 7, "Other", "Tenant"));
+            User(12, 42, "Linus", "Neighbour"),
+            User(70, 7, "Other", "Tenant"),
+            User(71, 7, "Remote", "Neighbour"));
 
         var currentMonthStart = new DateOnly(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
         var currentMonthLogDate = currentMonthStart.AddDays(1);
@@ -517,16 +528,22 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
                 "weekly", 2m, "active", new DateOnly(2025, 12, 1), null, new DateTime(2025, 12, 1, 9, 0, 0)),
             Relationship(102, 42, supporterId: 10, recipientId: 11, "Care given", "Supporter relationship",
                 "weekly", 2m, "active", new DateOnly(2025, 12, 1), null, new DateTime(2025, 12, 1, 9, 0, 0)),
-            Relationship(101, 42, supporterId: 11, recipientId: 70, "Other recipient", null,
+            Relationship(101, 42, supporterId: 11, recipientId: 12, "Other recipient", null,
+                "weekly", 2m, "active", new DateOnly(2025, 12, 1), null, new DateTime(2025, 12, 1, 9, 0, 0)),
+            Relationship(107, 7, supporterId: 70, recipientId: 71, "Other tenant", null,
                 "weekly", 2m, "active", new DateOnly(2025, 12, 1), null, new DateTime(2025, 12, 1, 9, 0, 0)));
+        db.VolunteerOrganisations.AddRange(
+            VolunteerOrg(501, 42, ownerUserId: 10),
+            VolunteerOrg(502, 42, ownerUserId: 10),
+            VolunteerOrg(503, 42, ownerUserId: 10));
         db.VolunteerLogs.AddRange(
             Log(1001, 42, 10, 102, 11, new DateOnly(2025, 12, 20), 1.25m, "approved", organizationId: 501),
             Log(1002, 42, 10, 102, 11, currentMonthLogDate, 2.50m, "approved", organizationId: 502),
-            Log(1003, 42, 10, 102, 11, currentMonthLogDate, 99m, "pending", organizationId: 503),
+            Log(1003, 42, 10, 102, 11, currentMonthLogDate.AddDays(1), 24m, "pending", organizationId: 503),
             Log(1004, 42, 11, 100, 10, new DateOnly(2025, 12, 22), 2.00m, "approved"),
             Log(1005, 42, 11, 100, 10, currentMonthReceiveDate, 3.75m, "approved"),
-            Log(1006, 42, 11, 101, 70, currentMonthReceiveDate, 8.00m, "approved"),
-            Log(1007, 7, 10, 100, 70, currentMonthReceiveDate, 7.00m, "approved"));
+            Log(1006, 42, 11, 101, 12, currentMonthReceiveDate, 8.00m, "approved"),
+            Log(1007, 7, 70, 107, 71, currentMonthReceiveDate, 7.00m, "approved"));
         db.Transactions.AddRange(
             Transaction(2001, 42, senderId: 10, receiverId: 11, 4.00m, TransactionStatus.Completed,
                 currentMonthTransactionDate.ToDateTime(new TimeOnly(9, 0))),
@@ -1002,7 +1019,8 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
             User(10, 42, "Ada", "Supporter", "/avatars/ada.png"),
             User(11, 42, "Grace", "Recipient", "/avatars/grace.png"),
             User(12, 42, "Linus", "Helper", "/avatars/linus.png"),
-            User(70, 7, "Other", "Tenant", "/avatars/other.png"));
+            User(70, 7, "Other", "Supporter", "/avatars/other.png"),
+            User(71, 7, "Other", "Recipient", "/avatars/recipient.png"));
 
         var now = DateTime.UtcNow;
         db.CaringSupportRelationships.AddRange(
@@ -1012,14 +1030,14 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
                 "fortnightly", 1.25m, "paused", new DateOnly(2026, 6, 1), now.AddDays(3), now.AddDays(-9)),
             Relationship(203, 42, supporterId: 10, recipientId: 11, "Completed", null,
                 "monthly", 1m, "completed", new DateOnly(2026, 5, 1), now.AddDays(4), now.AddDays(-8)),
-            Relationship(901, 7, supporterId: 10, recipientId: 70, "Other tenant", null,
+            Relationship(901, 7, supporterId: 70, recipientId: 71, "Other tenant", null,
                 "weekly", 99m, "active", new DateOnly(2026, 5, 1), now.AddDays(-2), now.AddDays(-7)));
         db.VolunteerLogs.AddRange(
             Log(701, 42, 10, 201, 11, new DateOnly(2026, 7, 3), 1.5m, "approved"),
             Log(702, 42, 10, 201, 11, new DateOnly(2026, 7, 4), 2.0m, "pending"),
             Log(703, 42, 10, 201, 11, new DateOnly(2026, 7, 5), 2.25m, "approved"),
             Log(704, 42, 10, 201, 11, new DateOnly(2026, 7, 6), 3.0m, "approved"),
-            Log(799, 7, 10, 201, 70, new DateOnly(2026, 7, 7), 9.0m, "approved"));
+            Log(799, 7, 70, 901, 71, new DateOnly(2026, 7, 7), 9.0m, "approved"));
         await db.SaveChangesAsync();
         var controller = CreateController(db, tenant, userId: 10);
 
@@ -1536,6 +1554,20 @@ public sealed class CaringCommunityMemberReadControllerUnitTests
             Type = type,
             Status = "verified",
             IsPublic = true,
+            CreatedAt = DateTime.UtcNow
+        };
+    }
+
+    private static VolunteerOrganisation VolunteerOrg(int id, int tenantId, int ownerUserId)
+    {
+        return new VolunteerOrganisation
+        {
+            Id = id,
+            TenantId = tenantId,
+            OwnerUserId = ownerUserId,
+            Name = $"Volunteer organisation {id}",
+            Slug = $"volunteer-org-{id}",
+            Status = "approved",
             CreatedAt = DateTime.UtcNow
         };
     }

@@ -5,6 +5,7 @@
 
 using System.Net;
 using System.Net.Http;
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
@@ -47,7 +48,15 @@ public class EmailNotificationService
         var user = await users.FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null) return false;
 
-        var template = await _db.Set<EmailTemplate>()
+        IQueryable<EmailTemplate> templates = _db.Set<EmailTemplate>();
+        if (tenantId.HasValue)
+        {
+            templates = templates
+                .IgnoreQueryFilters()
+                .Where(template => template.TenantId == tenantId.Value);
+        }
+
+        var template = await templates
             .FirstOrDefaultAsync(t => t.Key == templateKey && t.IsActive);
 
         string subject;
@@ -75,6 +84,7 @@ public class EmailNotificationService
 
         var log = new EmailLog
         {
+            TenantId = user.TenantId,
             UserId = userId,
             ToEmail = user.Email,
             Subject = subject,
@@ -102,6 +112,79 @@ public class EmailNotificationService
 
         await _db.SaveChangesAsync();
         return log.Status == EmailSendStatus.Sent;
+    }
+
+    /// <summary>
+    /// Sends the immediate email for a reviewed volunteer-hours entry. Active
+    /// tenant templates take precedence over the built-in Laravel-compatible
+    /// fallbacks. Approved entries use <paramref name="paymentOutcome"/> to
+    /// distinguish a paid approval, a sub-hour approval with no credit, and a
+    /// credit-neutral generic approval.
+    /// </summary>
+    public async Task<bool> SendVolunteerHoursDecisionEmailAsync(
+        int userId,
+        int tenantId,
+        string decision,
+        decimal hours,
+        string organizationName,
+        string? paymentOutcome = null)
+    {
+        var normalizedDecision = decision.Trim().ToLowerInvariant();
+        if (normalizedDecision is not ("approved" or "declined"))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(decision),
+                decision,
+                "Volunteer-hours email decision must be approved or declined.");
+        }
+
+        var userName = await _db.Users
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(user => user.Id == userId && user.TenantId == tenantId)
+            .Select(user => user.FirstName)
+            .SingleOrDefaultAsync();
+        if (userName is null)
+        {
+            return false;
+        }
+
+        var normalizedHours = decimal.Round(hours, 2, MidpointRounding.AwayFromZero);
+        var hoursText = normalizedHours.ToString("0.##", CultureInfo.InvariantCulture);
+        var creditedHoursText = decimal.Floor(normalizedHours)
+            .ToString("0", CultureInfo.InvariantCulture);
+        var hoursUrl = await ResolveTenantUrlAsync(tenantId, "/volunteering?tab=hours");
+        var walletUrl = await ResolveTenantUrlAsync(tenantId, "/wallet");
+
+        var templateKey = normalizedDecision == "declined"
+            ? "vol_hours_declined"
+            : paymentOutcome == "paid"
+                ? "vol_hours_approved_paid"
+                : paymentOutcome is "no_whole_hours" or "no_payable_hours"
+                    ? "vol_hours_approved_no_credit"
+                    : "vol_hours_approved";
+        var actionUrl = templateKey == "vol_hours_approved_paid" ? walletUrl : hoursUrl;
+
+        return await SendTemplatedEmailAsync(
+            userId,
+            templateKey,
+            new Dictionary<string, string>
+            {
+                ["user_name"] = WebUtility.HtmlEncode(
+                    string.IsNullOrWhiteSpace(userName) ? "Volunteer" : userName),
+                ["organization_name"] = WebUtility.HtmlEncode(
+                    string.IsNullOrWhiteSpace(organizationName) ? "the organisation" : organizationName),
+                ["org_name"] = WebUtility.HtmlEncode(
+                    string.IsNullOrWhiteSpace(organizationName) ? "the organisation" : organizationName),
+                ["hours"] = hoursText,
+                ["credited_hours"] = creditedHoursText,
+                ["decision"] = normalizedDecision,
+                ["payment_outcome"] = paymentOutcome ?? string.Empty,
+                ["action_url"] = actionUrl,
+                ["volunteering_url"] = hoursUrl,
+                ["wallet_url"] = walletUrl
+            },
+            tenantId);
     }
 
     /// <summary>
@@ -243,7 +326,19 @@ public class EmailNotificationService
         var approved = templateKey is "volunteer_application_approved" or "vol_application_approved";
         var declined = templateKey == "vol_application_declined";
         var waitlistSpot = templateKey == "vol_waitlist_spot";
-        if (!approved && !declined && !waitlistSpot)
+        var hoursApprovedPaid = templateKey == "vol_hours_approved_paid";
+        var hoursApprovedNoCredit = templateKey == "vol_hours_approved_no_credit";
+        var hoursApproved = templateKey == "vol_hours_approved";
+        var hoursDeclined = templateKey == "vol_hours_declined";
+        var badgeEarned = templateKey == "badge_earned";
+        if (!approved
+            && !declined
+            && !waitlistSpot
+            && !hoursApprovedPaid
+            && !hoursApprovedNoCredit
+            && !hoursApproved
+            && !hoursDeclined
+            && !badgeEarned)
         {
             return null;
         }
@@ -257,6 +352,75 @@ public class EmailNotificationService
         var volunteeringUrl = await ResolveTenantUrlAsync(user.TenantId, requestedLink);
         var safeUrl = WebUtility.HtmlEncode(volunteeringUrl);
         var organizationNote = SafeHtml(ValueOrDefault(placeholders, "org_note", string.Empty));
+
+        if (badgeEarned)
+        {
+            var badgeName = SafeHtml(ValueOrDefault(placeholders, "badge_name", "Achievement"));
+            var badgeIcon = SafeHtml(ValueOrDefault(placeholders, "badge_icon", string.Empty));
+            var profileUrl = await ResolveTenantUrlAsync(
+                user.TenantId,
+                ValueOrDefault(placeholders, "profile_url", "/profile"));
+            return new VolunteerFallbackContent(
+                $"Badge earned: {badgeName}",
+                $"<p>Hello {userName},</p>" +
+                $"<p>{badgeIcon} You earned the <strong>{badgeName}</strong> badge.</p>" +
+                $"<p><a href=\"{WebUtility.HtmlEncode(profileUrl)}\">View my profile</a></p>");
+        }
+
+        if (hoursApprovedPaid || hoursApprovedNoCredit || hoursApproved || hoursDeclined)
+        {
+            var organizationName = SafeHtml(ValueOrDefault(
+                placeholders,
+                "organization_name",
+                ValueOrDefault(placeholders, "org_name", "the organisation")));
+            var hours = SafeHtml(ValueOrDefault(placeholders, "hours", "0"));
+            var creditedHours = SafeHtml(ValueOrDefault(placeholders, "credited_hours", "0"));
+            var actionUrl = await ResolveTenantUrlAsync(
+                user.TenantId,
+                ValueOrDefault(
+                    placeholders,
+                    "action_url",
+                    hoursApprovedPaid ? "/wallet" : "/volunteering?tab=hours"));
+            var safeActionUrl = WebUtility.HtmlEncode(actionUrl);
+
+            if (hoursApprovedPaid)
+            {
+                var creditLabel = creditedHours == "1" ? "time credit" : "time credits";
+                return new VolunteerFallbackContent(
+                    "Volunteer hours approved and credits paid",
+                    $"<p>Hello {userName},</p>" +
+                    $"<p>Your volunteer hours with <strong>{organizationName}</strong> have been verified and approved.</p>" +
+                    $"<p><strong>{hours}h</strong> approved; <strong>{creditedHours}</strong> {creditLabel} added to your wallet.</p>" +
+                    $"<p><a href=\"{safeActionUrl}\">View my wallet</a></p>");
+            }
+
+            if (hoursApprovedNoCredit)
+            {
+                return new VolunteerFallbackContent(
+                    "Volunteer hours approved",
+                    $"<p>Hello {userName},</p>" +
+                    $"<p>Your <strong>{hours}h</strong> volunteering log with <strong>{organizationName}</strong> has been verified and approved.</p>" +
+                    "<p>As this was under a whole hour, no time credit was added to your wallet.</p>" +
+                    $"<p><a href=\"{safeActionUrl}\">View my hours</a></p>");
+            }
+
+            if (hoursApproved)
+            {
+                return new VolunteerFallbackContent(
+                    "Volunteer hours approved",
+                    $"<p>Hello {userName},</p>" +
+                    $"<p>Your <strong>{hours}h</strong> volunteering log with <strong>{organizationName}</strong> has been verified and approved.</p>" +
+                    "<p>Thank you for your valuable contribution to the community.</p>" +
+                    $"<p><a href=\"{safeActionUrl}\">View my hours</a></p>");
+            }
+
+            return new VolunteerFallbackContent(
+                "Update on your volunteer hours",
+                $"<p>Hello {userName},</p>" +
+                $"<p>Your <strong>{hours}h</strong> volunteering log with <strong>{organizationName}</strong> was not approved.</p>" +
+                "<p>This may be due to a discrepancy in the hours recorded. If you believe this is an error, please contact the organisation directly to discuss.</p>" +
+                $"<p><a href=\"{safeActionUrl}\">View my hours</a></p>");
+        }
 
         if (waitlistSpot)
         {

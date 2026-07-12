@@ -478,7 +478,13 @@ app.UseAuthorization();
 // organisation registration so 401/403 responses neither consume nor become
 // a 429 from those endpoint buckets.
 app.UseMiddleware<RecurringPatternFeatureGateMiddleware>();
+// Laravel FormRequest validation precedes the controller-level feature gate
+// and action throttle for the two member volunteer-hours mutations.
+app.UseMiddleware<VolunteerHoursMutationValidationMiddleware>();
 app.UseMiddleware<VolunteerOrganisationFeatureGateMiddleware>();
+// The admin hours endpoint validates inside its controller in Laravel, so its
+// canonical 400 body error must run after the controller-level feature gate.
+app.UseMiddleware<AdminVolunteerHoursMutationValidationMiddleware>();
 app.UseMiddleware<OnboardingRequiredMiddleware>();
 
 // Rate limiting follows authentication/authorization so authenticated

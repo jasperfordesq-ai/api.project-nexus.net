@@ -286,8 +286,10 @@ public sealed class VolunteerAttendanceParityTests : IntegrationTestBase
         string sharedFrontendOrigin;
         using (var configScope = Factory.Services.CreateScope())
         {
-            sharedFrontendOrigin = configScope.ServiceProvider
-                .GetRequiredService<IConfiguration>()["App:FrontendUrl"]!
+            var configuredOrigin = configScope.ServiceProvider
+                .GetRequiredService<IConfiguration>()["App:FrontendUrl"];
+            sharedFrontendOrigin = (configuredOrigin
+                ?? Client.BaseAddress!.GetLeftPart(UriPartial.Authority))
                 .TrimEnd('/');
         }
         sharedData.GetProperty("qr_url").GetString().Should().Be(

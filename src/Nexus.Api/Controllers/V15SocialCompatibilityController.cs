@@ -141,29 +141,92 @@ public class V15SocialCompatibilityController : ControllerBase
         var safeLimit = Math.Clamp(limit, 1, 100);
         var hidden = _db.HiddenPosts.Where(h => h.UserId == userId).Select(h => h.PostId);
         var muted = _db.MutedUsers.Where(m => m.UserId == userId).Select(m => m.MutedUserId);
-        var query = _db.FeedPosts.Where(p => !p.IsHidden && !hidden.Contains(p.Id) && !muted.Contains(p.UserId));
-        var total = await query.CountAsync();
-        var data = await query
+        var postQuery = _db.FeedPosts
+            .AsNoTracking()
+            .Where(p => !p.IsHidden && !hidden.Contains(p.Id) && !muted.Contains(p.UserId));
+        var activityQuery =
+            from activity in _db.FeedActivities.AsNoTracking()
+            join author in _db.Users.AsNoTracking()
+                on new { activity.TenantId, activity.UserId }
+                equals new { author.TenantId, UserId = author.Id }
+            where activity.SourceType != FeedActivitySourceTypes.Post
+                && activity.IsVisible
+                && !activity.IsHidden
+                && !muted.Contains(activity.UserId)
+            select new FeedPageCandidate
+            {
+                IsFeedPost = false,
+                SortId = activity.Id,
+                SourceId = activity.SourceId,
+                SourceType = activity.SourceType,
+                Title = activity.Title,
+                Content = activity.Content,
+                ImageUrl = activity.ImageUrl,
+                GroupId = activity.GroupId,
+                UserId = activity.UserId,
+                AuthorId = author.Id,
+                AuthorName = (author.FirstName + " " + author.LastName).Trim(),
+                AuthorAvatarUrl = author.AvatarUrl,
+                Metadata = activity.Metadata,
+                CreatedAt = activity.CreatedAt
+            };
+
+        var postTotal = await postQuery.CountAsync();
+        var activityTotal = await activityQuery.CountAsync();
+        var total = postTotal + activityTotal;
+        var pageOffset = (long)(safePage - 1) * safeLimit;
+        if (pageOffset >= total)
+        {
+            return Ok(new { data = Array.Empty<object>(), meta = PageMeta(safePage, safeLimit, total) });
+        }
+
+        // Pull only enough rows from each source to construct the requested
+        // merged page. A row below this prefix in either source cannot enter the
+        // same-sized prefix after the two ordered sequences are merged.
+        var fetchCount = (int)Math.Min(pageOffset + safeLimit, total);
+        var posts = await postQuery
             .OrderByDescending(p => p.IsPinned)
             .ThenByDescending(p => p.CreatedAt)
-            .Skip((safePage - 1) * safeLimit)
-            .Take(safeLimit)
-            .Select(p => new
+            .ThenByDescending(p => p.Id)
+            .Take(fetchCount)
+            .Select(p => new FeedPageCandidate
             {
-                id = p.Id,
-                type = "post",
-                content = p.Content,
-                image_url = p.ImageUrl,
-                group_id = p.GroupId,
-                user_id = p.UserId,
-                author = p.User == null ? null : new { id = p.User.Id, name = (p.User.FirstName + " " + p.User.LastName).Trim(), avatar_url = p.User.AvatarUrl },
-                likes_count = p.Likes.Count,
-                comments_count = p.Comments.Count,
-                is_liked = p.Likes.Any(l => l.UserId == userId),
-                created_at = p.CreatedAt,
-                updated_at = p.UpdatedAt
+                IsFeedPost = true,
+                IsPinned = p.IsPinned,
+                SortId = p.Id,
+                SourceId = p.Id,
+                SourceType = FeedActivitySourceTypes.Post,
+                Content = p.Content,
+                ImageUrl = p.ImageUrl,
+                GroupId = p.GroupId,
+                UserId = p.UserId,
+                AuthorId = p.User == null ? null : p.User.Id,
+                AuthorName = p.User == null ? null : (p.User.FirstName + " " + p.User.LastName).Trim(),
+                AuthorAvatarUrl = p.User == null ? null : p.User.AvatarUrl,
+                LikesCount = p.Likes.Count,
+                CommentsCount = p.Comments.Count,
+                IsLiked = p.Likes.Any(l => l.UserId == userId),
+                CreatedAt = p.CreatedAt,
+                UpdatedAt = p.UpdatedAt
             })
             .ToListAsync();
+
+        var activities = await activityQuery
+            .OrderByDescending(activity => activity.CreatedAt)
+            .ThenByDescending(activity => activity.SortId)
+            .Take(fetchCount)
+            .ToListAsync();
+
+        var data = posts
+            .Concat(activities)
+            .OrderByDescending(candidate => candidate.IsPinned)
+            .ThenByDescending(candidate => candidate.CreatedAt)
+            .ThenByDescending(candidate => candidate.SortId)
+            .ThenBy(candidate => candidate.SourceType, StringComparer.Ordinal)
+            .Skip((int)pageOffset)
+            .Take(safeLimit)
+            .Select(MapFeedPageCandidate)
+            .ToList();
 
         return Ok(new { data, meta = PageMeta(safePage, safeLimit, total) });
     }
@@ -3266,6 +3329,108 @@ public class V15SocialCompatibilityController : ControllerBase
         }
     }
 
+    private static object MapFeedPageCandidate(FeedPageCandidate candidate)
+    {
+        var author = candidate.AuthorId is int authorId
+            ? new
+            {
+                id = authorId,
+                name = candidate.AuthorName,
+                avatar_url = candidate.AuthorAvatarUrl
+            }
+            : null;
+
+        if (candidate.IsFeedPost)
+        {
+            // Keep the established ASP post payload byte-for-byte compatible at
+            // the property level while the canonical activity projection is
+            // introduced alongside it.
+            return new
+            {
+                id = candidate.SourceId,
+                type = FeedActivitySourceTypes.Post,
+                content = candidate.Content,
+                image_url = candidate.ImageUrl,
+                group_id = candidate.GroupId,
+                user_id = candidate.UserId,
+                author,
+                likes_count = candidate.LikesCount,
+                comments_count = candidate.CommentsCount,
+                is_liked = candidate.IsLiked,
+                created_at = candidate.CreatedAt,
+                updated_at = candidate.UpdatedAt
+            };
+        }
+
+        var volunteerMetadata = candidate.SourceType == FeedActivitySourceTypes.VolunteerHours
+            ? ReadVolunteerHoursFeedMetadata(candidate.Metadata)
+            : default;
+        return new
+        {
+            id = candidate.SourceId,
+            type = candidate.SourceType,
+            title = candidate.Title,
+            content = candidate.Content,
+            image_url = candidate.ImageUrl,
+            group_id = candidate.GroupId,
+            user_id = candidate.UserId,
+            author,
+            likes_count = 0,
+            comments_count = 0,
+            is_liked = false,
+            created_at = candidate.CreatedAt,
+            organization = volunteerMetadata.Organization,
+            hours = volunteerMetadata.Hours
+        };
+    }
+
+    private static VolunteerHoursFeedMetadata ReadVolunteerHoursFeedMetadata(string? metadata)
+    {
+        if (string.IsNullOrWhiteSpace(metadata))
+        {
+            return default;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(metadata);
+            if (document.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                return default;
+            }
+
+            decimal? hours = null;
+            if (document.RootElement.TryGetProperty("hours", out var hoursValue))
+            {
+                if (hoursValue.ValueKind == JsonValueKind.Number && hoursValue.TryGetDecimal(out var numericHours))
+                {
+                    hours = numericHours;
+                }
+                else if (hoursValue.ValueKind == JsonValueKind.String
+                    && decimal.TryParse(
+                        hoursValue.GetString(),
+                        NumberStyles.Number,
+                        CultureInfo.InvariantCulture,
+                        out numericHours))
+                {
+                    hours = numericHours;
+                }
+            }
+
+            var organization = document.RootElement.TryGetProperty("organization", out var organizationValue)
+                && organizationValue.ValueKind == JsonValueKind.String
+                    ? organizationValue.GetString()
+                    : null;
+            return new VolunteerHoursFeedMetadata(hours, organization);
+        }
+        catch (JsonException)
+        {
+            // A malformed historical metadata blob must not make the whole feed
+            // unavailable. Its display-only metadata is omitted instead.
+            return default;
+        }
+    }
+
     private static object PageMeta(int page, int limit, int total) => new { page, limit, total, pages = (int)Math.Ceiling(total / (double)limit) };
 
     private static int? DecodeFeedCursor(string? cursor)
@@ -3638,6 +3803,33 @@ public class V15SocialCompatibilityController : ControllerBase
         value = default;
         return false;
     }
+
+    private sealed class FeedPageCandidate
+    {
+        public bool IsFeedPost { get; set; }
+        public bool IsPinned { get; set; }
+        public long SortId { get; set; }
+        public int SourceId { get; set; }
+        public string SourceType { get; set; } = string.Empty;
+        public string? Title { get; set; }
+        public string? Content { get; set; }
+        public string? ImageUrl { get; set; }
+        public int? GroupId { get; set; }
+        public int UserId { get; set; }
+        public int? AuthorId { get; set; }
+        public string? AuthorName { get; set; }
+        public string? AuthorAvatarUrl { get; set; }
+        public int LikesCount { get; set; }
+        public int CommentsCount { get; set; }
+        public bool IsLiked { get; set; }
+        public string? Metadata { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime? UpdatedAt { get; set; }
+    }
+
+    private readonly record struct VolunteerHoursFeedMetadata(
+        decimal? Hours,
+        string? Organization);
 
     private sealed class SupportReportCompatRecord
     {

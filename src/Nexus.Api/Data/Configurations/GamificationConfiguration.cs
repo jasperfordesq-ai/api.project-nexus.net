@@ -93,6 +93,10 @@ public class GamificationConfiguration : TenantScopedConfiguration
             entity.HasIndex(e => e.UserId);
             entity.HasIndex(e => e.Source);
             entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => new { e.TenantId, e.Source, e.ReferenceId })
+                .IsUnique()
+                .HasFilter("\"Source\" = 'volunteer_hour' AND \"ReferenceId\" IS NOT NULL")
+                .HasDatabaseName("ux_xp_logs_volunteer_hour_reference");
 
             // Relationships
             entity.HasOne(e => e.Tenant)

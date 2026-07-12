@@ -70,6 +70,14 @@ public class Badge : ITenantEntity
         public const string FirstReview = "first_review";
         public const string FirstMessage = "first_message";
 
+        // Volunteering hour milestones (Laravel parity)
+        public const string Volunteer1Hour = "vol_1h";
+        public const string Volunteer10Hours = "vol_10h";
+        public const string Volunteer50Hours = "vol_50h";
+        public const string Volunteer100Hours = "vol_100h";
+        public const string Volunteer250Hours = "vol_250h";
+        public const string Volunteer500Hours = "vol_500h";
+
         // Listing milestones
         public const string Offer5 = "offer_5";
         public const string Offer10 = "offer_10";
@@ -139,4 +147,73 @@ public class Badge : ITenantEntity
         public const string PopularPost = "popular_post";
         public const string Veteran = "veteran";
     }
+
+    /// <summary>
+    /// Canonical Laravel volunteer-hour badge definitions. The existing
+    /// tenant-scoped <c>badges</c> table stores one copy per tenant.
+    /// </summary>
+    public static class VolunteerHours
+    {
+        public const int FirstStepsThreshold = 1;
+        public const int HelpingHandThreshold = 10;
+        public const int ChangeMakerThreshold = 50;
+        public const int TimeBankLegendThreshold = 100;
+        public const int VolunteerHeroThreshold = 250;
+        public const int VolunteerChampionThreshold = 500;
+
+        public static IReadOnlyList<VolunteerHourBadgeDefinition> Definitions { get; } =
+            Array.AsReadOnly(new[]
+            {
+                new VolunteerHourBadgeDefinition(
+                    Slugs.Volunteer1Hour,
+                    "First Steps",
+                    "Log your first volunteer hour",
+                    "\U0001F463",
+                    FirstStepsThreshold,
+                    0),
+                new VolunteerHourBadgeDefinition(
+                    Slugs.Volunteer10Hours,
+                    "Helping Hand",
+                    "Volunteer 10 hours",
+                    "\U0001F932",
+                    HelpingHandThreshold,
+                    1),
+                new VolunteerHourBadgeDefinition(
+                    Slugs.Volunteer50Hours,
+                    "Change Maker",
+                    "Volunteer 50 hours",
+                    "\U0001F30D",
+                    ChangeMakerThreshold,
+                    2),
+                new VolunteerHourBadgeDefinition(
+                    Slugs.Volunteer100Hours,
+                    "TimeBank Legend",
+                    "Volunteer 100 hours",
+                    "\U0001F451",
+                    TimeBankLegendThreshold,
+                    3),
+                new VolunteerHourBadgeDefinition(
+                    Slugs.Volunteer250Hours,
+                    "Volunteer Hero",
+                    "Volunteer 250 hours",
+                    "\U0001F9B8",
+                    VolunteerHeroThreshold,
+                    4),
+                new VolunteerHourBadgeDefinition(
+                    Slugs.Volunteer500Hours,
+                    "Volunteer Champion",
+                    "Volunteer 500 hours",
+                    "\U0001F3C5",
+                    VolunteerChampionThreshold,
+                    5)
+            });
+    }
+
+    public sealed record VolunteerHourBadgeDefinition(
+        string Slug,
+        string Name,
+        string Description,
+        string Icon,
+        int Threshold,
+        int SortOrder);
 }

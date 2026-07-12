@@ -40,13 +40,38 @@ public sealed class CaringCommunityWorkflowService
 
     private readonly NexusDbContext _db;
     private readonly CaringCommunityRolePresetService _rolePresets;
+    private readonly VolunteerHoursService _volunteerHours;
+    private readonly CaringRegionalPointService _regionalPoints;
 
     public CaringCommunityWorkflowService(
         NexusDbContext db,
         CaringCommunityRolePresetService rolePresets)
+        : this(
+            db,
+            rolePresets,
+            new VolunteerHoursService(db),
+            new CaringRegionalPointService(db))
+    {
+    }
+
+    public CaringCommunityWorkflowService(
+        NexusDbContext db,
+        CaringCommunityRolePresetService rolePresets,
+        VolunteerHoursService volunteerHours)
+        : this(db, rolePresets, volunteerHours, new CaringRegionalPointService(db))
+    {
+    }
+
+    public CaringCommunityWorkflowService(
+        NexusDbContext db,
+        CaringCommunityRolePresetService rolePresets,
+        VolunteerHoursService volunteerHours,
+        CaringRegionalPointService regionalPoints)
     {
         _db = db;
         _rolePresets = rolePresets;
+        _volunteerHours = volunteerHours;
+        _regionalPoints = regionalPoints;
     }
 
     public async Task<bool> IsFeatureEnabledAsync(int tenantId, CancellationToken ct)
@@ -143,30 +168,55 @@ public sealed class CaringCommunityWorkflowService
             return null;
         }
 
-        var log = await _db.VolunteerLogs
-            .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(item =>
-                item.TenantId == tenantId
-                && item.Id == logId
-                && item.Status == PendingStatus,
-                ct);
-
-        if (log is null || log.UserId == reviewerId)
+        var decision = await _volunteerHours.VerifyCaringAsync(
+            tenantId,
+            reviewerId,
+            logId,
+            action,
+            ct);
+        if (!decision.IsSuccess)
         {
+            if (decision.Error?.StatusCode >= StatusCodes.Status500InternalServerError)
+            {
+                throw new InvalidOperationException(
+                    $"Caring volunteer-hour decision failed for log {logId}: {decision.Error.Code}");
+            }
             return null;
         }
 
-        var status = action == "approve" ? ApprovedStatus : DeclinedStatus;
-        log.Status = status;
-        log.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync(ct);
+        RegionalPointHoursAwardResult? regionalPointsResult = null;
+        if (string.Equals(decision.Value!.Status, ApprovedStatus, StringComparison.Ordinal))
+        {
+            try
+            {
+                var approvedLog = await _db.VolunteerLogs
+                    .IgnoreQueryFilters()
+                    .AsNoTracking()
+                    .Where(log => log.TenantId == tenantId && log.Id == logId)
+                    .Select(log => new { log.UserId, log.Hours })
+                    .SingleAsync(ct);
+                regionalPointsResult = await _regionalPoints.AwardForApprovedHoursAsync(
+                    tenantId,
+                    approvedLog.UserId,
+                    logId,
+                    approvedLog.Hours,
+                    reviewerId,
+                    ct);
+            }
+            catch
+            {
+                // Regional points are an additive reward in Laravel. Approval,
+                // payment and XP remain committed if the award cannot be written.
+                regionalPointsResult = null;
+            }
+        }
 
         return new
         {
             id = logId,
-            status,
-            payment_result = (object?)null,
-            regional_points_result = (object?)null,
+            status = decision.Value.Status,
+            payment_result = decision.Value.PaymentOutcome,
+            regional_points_result = regionalPointsResult,
             summary = await SummaryAsync(tenantId, ct)
         };
     }

@@ -54,8 +54,8 @@ public sealed class CaringCommunityWarmthPassControllerUnitTests
         db.VolunteerLogs.AddRange(
             VolunteerLog(100, 42, 10, 7.5m, "approved"),
             VolunteerLog(101, 42, 10, 5m, "approved"),
-            VolunteerLog(102, 42, 10, 99m, "pending"),
-            VolunteerLog(103, 7, 10, 99m, "approved"));
+            VolunteerLog(102, 42, 10, 24m, "pending"),
+            VolunteerLog(103, 7, 90, 24m, "approved"));
         db.Reviews.AddRange(
             Review(200, 42, reviewerId: 11, targetUserId: 10),
             Review(201, 42, reviewerId: 12, targetUserId: 10),

@@ -336,6 +336,7 @@ public static class TestDataSeeder
                     'group_wiki_pages','group_media_items','group_invites',
                     'story_highlight_items','story_highlights','story_close_friends',
                     'story_reactions','story_views','stories',
+                    'feed_activity',
                     'employer_reviews','job_referrals','job_pipeline_rules',
                     'job_scorecards','job_offer_templates','job_offers',
                     'job_interview_slots','job_interviews',

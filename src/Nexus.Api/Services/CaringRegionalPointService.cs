@@ -3,10 +3,12 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Data;
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 
@@ -181,6 +183,206 @@ public sealed class CaringRegionalPointService
             : await DebitAsync(tenantId, userId, Math.Abs(pointsDelta), "admin_adjustment", description, actorId, ct);
     }
 
+    /// <summary>
+    /// Awards the tenant-configured regional points for one approved volunteer-hours log.
+    /// The volunteer-log reference is the idempotency key, matching Laravel's
+    /// <c>CaringRegionalPointService::awardForApprovedHours</c> contract.
+    /// </summary>
+    public async Task<RegionalPointHoursAwardResult?> AwardForApprovedHoursAsync(
+        int tenantId,
+        int userId,
+        int volLogId,
+        decimal hours,
+        int? actorId,
+        CancellationToken ct = default)
+    {
+        var config = await GetConfigAsync(tenantId, ct);
+        if (!await IsRegionalPointsEnabledAsync(tenantId, ct)
+            || !config.AutoIssueEnabled
+            || config.PointsPerApprovedHour <= 0m
+            || hours <= 0m
+            || volLogId <= 0)
+        {
+            return null;
+        }
+
+        var points = NormalizePoints(RoundPoints(hours * config.PointsPerApprovedHour));
+        await AssertTenantUserAsync(tenantId, userId, ct);
+
+        await using var ownedTransaction = await BeginOwnedRelationalTransactionAsync(ct);
+
+        await AcquireApprovedHoursReferenceLockAsync(tenantId, volLogId, ct);
+        var existing = await LockApprovedHoursAwardAsync(tenantId, volLogId, ct);
+        if (existing is not null)
+        {
+            if (ownedTransaction is not null)
+            {
+                await ownedTransaction.CommitAsync(ct);
+            }
+
+            return new RegionalPointHoursAwardResult(
+                TransactionId: existing.Id,
+                UserId: userId,
+                Points: RoundPoints(existing.Points),
+                Balance: RoundPoints(existing.BalanceAfter),
+                AlreadyAwarded: true);
+        }
+
+        var account = await LockAccountAsync(tenantId, userId, ct);
+        var roundedHours = RoundPoints(hours);
+        var now = DateTime.UtcNow;
+        var newBalance = RoundPoints(account.Balance + points);
+
+        account.Balance = newBalance;
+        account.LifetimeEarned = RoundPoints(account.LifetimeEarned + points);
+        account.UpdatedAt = now;
+
+        var transaction = new CaringRegionalPointTransaction
+        {
+            TenantId = tenantId,
+            AccountId = account.Id,
+            UserId = userId,
+            ActorUserId = actorId is > 0 ? actorId : null,
+            Type = "earned_for_hours",
+            Direction = "credit",
+            Points = points,
+            BalanceAfter = newBalance,
+            ReferenceType = "vol_log",
+            ReferenceId = volLogId,
+            Description = $"Regional points earned for {roundedHours.ToString("0.##", CultureInfo.InvariantCulture)} approved support hours.",
+            Metadata = JsonSerializer.Serialize(new { hours = roundedHours }),
+            CreatedAt = now
+        };
+
+        _db.CaringRegionalPointTransactions.Add(transaction);
+        await _db.SaveChangesAsync(ct);
+        if (ownedTransaction is not null)
+        {
+            await ownedTransaction.CommitAsync(ct);
+        }
+
+        return new RegionalPointHoursAwardResult(
+            TransactionId: transaction.Id,
+            UserId: userId,
+            Points: points,
+            Balance: newBalance,
+            AlreadyAwarded: false);
+    }
+
+    /// <summary>
+    /// Reverses every unreversed regional-point award for a volunteer log.
+    /// Reversal is intentionally allowed to take the account negative because
+    /// the member may already have spent the awarded points. The original
+    /// credit remains as immutable audit evidence and repeated calls are no-ops.
+    /// </summary>
+    public async Task<bool> ReverseFromVolLogAsync(
+        int tenantId,
+        int volLogId,
+        string reason,
+        CancellationToken ct = default)
+    {
+        if (tenantId <= 0 || volLogId <= 0)
+        {
+            return false;
+        }
+
+        await using var ownedTransaction = await BeginOwnedRelationalTransactionAsync(ct);
+        await AcquireApprovedHoursReferenceLockAsync(tenantId, volLogId, ct);
+
+        var originalIssues = await LockApprovedHoursAwardsAsync(tenantId, volLogId, ct);
+        if (originalIssues.Count == 0)
+        {
+            if (ownedTransaction is not null)
+            {
+                await ownedTransaction.CommitAsync(ct);
+            }
+
+            return false;
+        }
+
+        var reversalRows = await LockApprovedHoursReversalsAsync(tenantId, volLogId, ct);
+        var reversedIssueIds = reversalRows
+            .Select(row => ReadOriginalTransactionId(row.Metadata))
+            .Where(id => id.HasValue)
+            .Select(id => id!.Value)
+            .ToHashSet();
+        var issuesToReverse = originalIssues
+            .Where(issue => !reversedIssueIds.Contains(issue.Id)
+                && issue.UserId > 0
+                && RoundPoints(issue.Points) > 0m)
+            .OrderBy(issue => issue.Id)
+            .ToArray();
+
+        if (issuesToReverse.Length == 0)
+        {
+            if (ownedTransaction is not null)
+            {
+                await ownedTransaction.CommitAsync(ct);
+            }
+
+            return false;
+        }
+
+        var accounts = new Dictionary<int, CaringRegionalPointAccount>();
+        foreach (var userId in issuesToReverse.Select(issue => issue.UserId).Distinct().OrderBy(id => id))
+        {
+            accounts[userId] = await LockAccountAsync(tenantId, userId, ct);
+        }
+
+        var now = DateTime.UtcNow;
+        var normalizedReason = NormalizeDescription(reason) ?? string.Empty;
+        var description = NormalizeDescription($"Regional points reversed: {reason?.Trim()}");
+        var createdAny = false;
+
+        foreach (var issue in issuesToReverse)
+        {
+            if (!accounts.TryGetValue(issue.UserId, out var account))
+            {
+                continue;
+            }
+
+            var points = RoundPoints(issue.Points);
+            var newBalance = RoundPoints(account.Balance - points);
+            account.Balance = newBalance;
+            account.LifetimeEarned = Math.Max(0m, RoundPoints(account.LifetimeEarned - points));
+            account.UpdatedAt = now;
+
+            _db.CaringRegionalPointTransactions.Add(new CaringRegionalPointTransaction
+            {
+                TenantId = tenantId,
+                AccountId = account.Id,
+                UserId = issue.UserId,
+                ActorUserId = null,
+                Type = "reversal",
+                Direction = "debit",
+                Points = points,
+                BalanceAfter = newBalance,
+                ReferenceType = "vol_log_reversal",
+                ReferenceId = volLogId,
+                Description = description,
+                Metadata = JsonSerializer.Serialize(new
+                {
+                    original_transaction_id = issue.Id,
+                    reason = normalizedReason
+                }),
+                CreatedAt = now
+            });
+            createdAny = true;
+        }
+
+        if (createdAny)
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+
+        if (ownedTransaction is not null)
+        {
+            await ownedTransaction.CommitAsync(ct);
+        }
+
+        return createdAny;
+    }
+
     public async Task<RegionalPointMemberSummary> MemberSummaryAsync(
         int tenantId,
         int userId,
@@ -246,8 +448,15 @@ public sealed class CaringRegionalPointService
         await AssertTenantUserAsync(tenantId, senderId, ct);
         await AssertTenantUserAsync(tenantId, recipientId, ct);
 
-        var senderAccount = await EnsureAccountAsync(tenantId, senderId, ct);
-        var recipientAccount = await EnsureAccountAsync(tenantId, recipientId, ct);
+        await using var ownedTransaction = await BeginOwnedRelationalTransactionAsync(ct);
+        var lockedAccounts = new Dictionary<int, CaringRegionalPointAccount>();
+        foreach (var userId in new[] { senderId, recipientId }.OrderBy(id => id))
+        {
+            lockedAccounts[userId] = await LockAccountAsync(tenantId, userId, ct);
+        }
+
+        var senderAccount = lockedAccounts[senderId];
+        var recipientAccount = lockedAccounts[recipientId];
         if (senderAccount.Balance < points)
         {
             throw new RegionalPointOperationException("Not enough regional points.");
@@ -302,6 +511,10 @@ public sealed class CaringRegionalPointService
         debit.ReferenceId = credit.Id;
         credit.ReferenceId = debit.Id;
         await _db.SaveChangesAsync(ct);
+        if (ownedTransaction is not null)
+        {
+            await ownedTransaction.CommitAsync(ct);
+        }
 
         return new RegionalPointTransferResult(
             SenderTransactionId: debit.Id,
@@ -588,7 +801,8 @@ public sealed class CaringRegionalPointService
         await AssertRegionalPointsEnabledAsync(tenantId, ct);
         points = NormalizePoints(points);
         await AssertTenantUserAsync(tenantId, userId, ct);
-        var account = await EnsureAccountAsync(tenantId, userId, ct);
+        await using var ownedTransaction = await BeginOwnedRelationalTransactionAsync(ct);
+        var account = await LockAccountAsync(tenantId, userId, ct);
         var now = DateTime.UtcNow;
         var newBalance = RoundPoints(account.Balance + points);
 
@@ -610,6 +824,10 @@ public sealed class CaringRegionalPointService
         };
         _db.CaringRegionalPointTransactions.Add(transaction);
         await _db.SaveChangesAsync(ct);
+        if (ownedTransaction is not null)
+        {
+            await ownedTransaction.CommitAsync(ct);
+        }
 
         return new RegionalPointMutationResult(transaction.Id, userId, points, newBalance);
     }
@@ -626,7 +844,8 @@ public sealed class CaringRegionalPointService
         await AssertRegionalPointsEnabledAsync(tenantId, ct);
         points = NormalizePoints(points);
         await AssertTenantUserAsync(tenantId, userId, ct);
-        var account = await EnsureAccountAsync(tenantId, userId, ct);
+        await using var ownedTransaction = await BeginOwnedRelationalTransactionAsync(ct);
+        var account = await LockAccountAsync(tenantId, userId, ct);
         if (account.Balance < points)
         {
             throw new RegionalPointOperationException("Not enough regional points.");
@@ -652,6 +871,10 @@ public sealed class CaringRegionalPointService
         };
         _db.CaringRegionalPointTransactions.Add(transaction);
         await _db.SaveChangesAsync(ct);
+        if (ownedTransaction is not null)
+        {
+            await ownedTransaction.CommitAsync(ct);
+        }
 
         return new RegionalPointMutationResult(transaction.Id, userId, -points, newBalance);
     }
@@ -683,6 +906,199 @@ public sealed class CaringRegionalPointService
         await _db.SaveChangesAsync(ct);
 
         return account;
+    }
+
+    private async Task<CaringRegionalPointAccount> LockAccountAsync(
+        int tenantId,
+        int userId,
+        CancellationToken ct)
+    {
+        await AcquireRegionalPointAccountLockAsync(tenantId, userId, ct);
+        var account = await EnsureAccountAsync(tenantId, userId, ct);
+        if (!UsesPostgreSql())
+        {
+            return account;
+        }
+
+        // Laravel's lockAccount helper takes a row lock after ensuring that the
+        // unique tenant/user account exists. The advisory lock also serializes
+        // the first-account insert, for which no row exists to lock yet.
+        await _db.CaringRegionalPointAccounts
+            .FromSqlInterpolated(
+                $"SELECT * FROM caring_regional_point_accounts WHERE tenant_id = {tenantId} AND user_id = {userId} FOR UPDATE")
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .SingleAsync(ct);
+        await _db.Entry(account).ReloadAsync(ct);
+        return account;
+    }
+
+    private async Task<CaringRegionalPointTransaction?> LockApprovedHoursAwardAsync(
+        int tenantId,
+        int volLogId,
+        CancellationToken ct)
+    {
+        if (!UsesPostgreSql())
+        {
+            return await _db.CaringRegionalPointTransactions
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(transaction => transaction.TenantId == tenantId
+                    && transaction.ReferenceType == "vol_log"
+                    && transaction.ReferenceId == volLogId
+                    && transaction.Type == "earned_for_hours", ct);
+        }
+
+        return await _db.CaringRegionalPointTransactions
+            .FromSqlInterpolated(
+                $"SELECT * FROM caring_regional_point_transactions WHERE tenant_id = {tenantId} AND reference_type = 'vol_log' AND reference_id = {volLogId} AND type = 'earned_for_hours' FOR UPDATE")
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(ct);
+    }
+
+    private async Task<IReadOnlyList<CaringRegionalPointTransaction>> LockApprovedHoursAwardsAsync(
+        int tenantId,
+        int volLogId,
+        CancellationToken ct)
+    {
+        if (!UsesPostgreSql())
+        {
+            return await _db.CaringRegionalPointTransactions
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .Where(transaction => transaction.TenantId == tenantId
+                    && transaction.ReferenceType == "vol_log"
+                    && transaction.ReferenceId == volLogId
+                    && transaction.Type == "earned_for_hours"
+                    && transaction.Direction == "credit")
+                .OrderBy(transaction => transaction.Id)
+                .ToListAsync(ct);
+        }
+
+        return await _db.CaringRegionalPointTransactions
+            .FromSqlInterpolated(
+                $"SELECT * FROM caring_regional_point_transactions WHERE tenant_id = {tenantId} AND reference_type = 'vol_log' AND reference_id = {volLogId} AND type = 'earned_for_hours' AND direction = 'credit' ORDER BY id FOR UPDATE")
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .ToListAsync(ct);
+    }
+
+    private async Task<IReadOnlyList<CaringRegionalPointTransaction>> LockApprovedHoursReversalsAsync(
+        int tenantId,
+        int volLogId,
+        CancellationToken ct)
+    {
+        if (!UsesPostgreSql())
+        {
+            return await _db.CaringRegionalPointTransactions
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .Where(transaction => transaction.TenantId == tenantId
+                    && transaction.ReferenceType == "vol_log_reversal"
+                    && transaction.ReferenceId == volLogId)
+                .OrderBy(transaction => transaction.Id)
+                .ToListAsync(ct);
+        }
+
+        return await _db.CaringRegionalPointTransactions
+            .FromSqlInterpolated(
+                $"SELECT * FROM caring_regional_point_transactions WHERE tenant_id = {tenantId} AND reference_type = 'vol_log_reversal' AND reference_id = {volLogId} ORDER BY id FOR UPDATE")
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .ToListAsync(ct);
+    }
+
+    private Task AcquireApprovedHoursReferenceLockAsync(
+        int tenantId,
+        int volLogId,
+        CancellationToken ct)
+    {
+        return AcquireRegionalPointLockAsync(
+            lockNamespace: -17007,
+            lockKey: unchecked((tenantId * 397) ^ volLogId),
+            ct: ct);
+    }
+
+    private Task AcquireRegionalPointAccountLockAsync(
+        int tenantId,
+        int userId,
+        CancellationToken ct)
+    {
+        return AcquireRegionalPointLockAsync(
+            lockNamespace: -17008,
+            lockKey: unchecked((tenantId * 397) ^ userId),
+            ct: ct);
+    }
+
+    private async Task AcquireRegionalPointLockAsync(
+        int lockNamespace,
+        int lockKey,
+        CancellationToken ct)
+    {
+        if (!UsesPostgreSql())
+        {
+            return;
+        }
+
+        if (_db.Database.CurrentTransaction is null)
+        {
+            throw new InvalidOperationException("A database transaction is required before locking regional points.");
+        }
+
+        await _db.Database.ExecuteSqlRawAsync(
+            "SELECT pg_advisory_xact_lock({0}, {1})",
+            [lockNamespace, lockKey],
+            ct);
+    }
+
+    private bool UsesPostgreSql()
+    {
+        return string.Equals(
+            _db.Database.ProviderName,
+            "Npgsql.EntityFrameworkCore.PostgreSQL",
+            StringComparison.Ordinal);
+    }
+
+    private async Task<IDbContextTransaction?> BeginOwnedRelationalTransactionAsync(CancellationToken ct)
+    {
+        if (!_db.Database.IsRelational() || _db.Database.CurrentTransaction is not null)
+        {
+            return null;
+        }
+
+        return await _db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct);
+    }
+
+    private static long? ReadOriginalTransactionId(string? metadata)
+    {
+        if (string.IsNullOrWhiteSpace(metadata))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(metadata);
+            if (!document.RootElement.TryGetProperty("original_transaction_id", out var id))
+            {
+                return null;
+            }
+
+            if (id.ValueKind == JsonValueKind.Number && id.TryGetInt64(out var numericId))
+            {
+                return numericId;
+            }
+
+            return id.ValueKind == JsonValueKind.String
+                && long.TryParse(id.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var stringId)
+                    ? stringId
+                    : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private async Task AssertRegionalPointsEnabledAsync(int tenantId, CancellationToken ct)
@@ -1061,6 +1477,13 @@ public sealed record RegionalPointMutationResult(
     [property: JsonPropertyName("user_id")] int UserId,
     [property: JsonPropertyName("points")] decimal Points,
     [property: JsonPropertyName("balance")] decimal Balance);
+
+public sealed record RegionalPointHoursAwardResult(
+    [property: JsonPropertyName("transaction_id")] long TransactionId,
+    [property: JsonPropertyName("user_id")] int UserId,
+    [property: JsonPropertyName("points")] decimal Points,
+    [property: JsonPropertyName("balance")] decimal Balance,
+    [property: JsonPropertyName("already_awarded")] bool AlreadyAwarded);
 
 public sealed record RegionalPointSellerSettings(
     [property: JsonPropertyName("seller_user_id")] int SellerUserId,
