@@ -6,7 +6,7 @@
 const { test, expect } = require('@playwright/test');
 const AxeBuilder = require('@axe-core/playwright').default;
 const { resolveOptions } = require('../../scripts/laravel-runtime-smoke');
-const { callUserSettingsApi, deleteGroup, getGroup, getGroups, login } = require('../../src/lib/api');
+const { callUserSettingsApi, deleteGroup, deletePoll, getGroup, getGroups, getPolls, login } = require('../../src/lib/api');
 
 const smoke = resolveOptions({}, process.env);
 const mountPath = `/${encodeURIComponent(smoke.tenant)}/accessible`;
@@ -73,12 +73,15 @@ test('certifies a disposable private group and its owner-managed content through
   const updatedAnnouncementTitle = `${announcementTitle} updated`;
   const discussionTitle = `Disposable discussion ${runId}`;
   const discussionReply = `Disposable discussion reply ${runId}`;
+  const pollQuestion = `Disposable poll ${runId}?`;
   const auth = await login(smoke.email, smoke.password, smoke.tenant);
   const token = auth.access_token;
   let groupId = null;
   let deleted = false;
   let initialTheme = null;
   let themeChanged = false;
+  let pollId = null;
+  let pollDeleted = false;
 
   expect(token).toBeTruthy();
   console.log(`Disposable group fixture: ${createdName}`);
@@ -285,6 +288,33 @@ test('certifies a disposable private group and its owner-managed content through
     await expect(page.locator(`input[name="theme"][value="${initialTheme}"]`)).toBeChecked();
     themeChanged = false;
 
+    await page.goto(`${mountPath}/polls/parity/create`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
+    await expect(page.locator('h1')).toHaveText('Create a poll');
+    await page.locator('#poll-question').fill(pollQuestion);
+    await page.locator('#poll-description').fill('Disposable poll created by the Web UK Laravel lifecycle gate.');
+    await page.locator('#poll-option-1').fill('First disposable option');
+    await page.locator('#poll-option-2').fill('Second disposable option');
+    const pollCreateResponse = await submit(page, '/polls/parity/create', page.locator('form:has(#poll-question) button'));
+    expect(pollCreateResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    const createdPoll = rowsFrom(await getPolls(token, { mine: true, per_page: 100 }))
+      .find(poll => poll?.question === pollQuestion);
+    expect(createdPoll).toBeTruthy();
+    pollId = Number(createdPoll.id);
+    expect(pollId).toBeGreaterThan(0);
+
+    await page.goto(`${mountPath}/polls/parity/manage`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
+    const pollCard = page.locator(`#poll-${pollId}`);
+    await expect(pollCard).toContainText(pollQuestion);
+    await expectAccessibleReflow(page);
+    await pollCard.locator('summary').click();
+    const pollDeleteResponse = await submit(page, `/polls/${pollId}/delete`, pollCard.locator('form[action$="/delete"] button'));
+    expect(pollDeleteResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    await expect(page.locator(`#poll-${pollId}`)).toHaveCount(0);
+    expect(rowsFrom(await getPolls(token, { mine: true, per_page: 100 })).some(poll => Number(poll?.id) === pollId)).toBe(false);
+    pollDeleted = true;
+
     await page.goto(`${mountPath}/groups/${groupId}/edit`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
     await expectAccessibleReflow(page);
     await page.locator('#name').fill(updatedName);
@@ -311,9 +341,13 @@ test('certifies a disposable private group and its owner-managed content through
         await callUserSettingsApi(token, 'PUT', '/theme', { theme: initialTheme });
       }
     } finally {
-      if (!deleted) {
-        const existing = await findByName(token, updatedName) || await findByName(token, createdName);
-        if (existing) await deleteGroup(token, existing.id);
+      try {
+        if (pollId && !pollDeleted) await deletePoll(token, pollId);
+      } finally {
+        if (!deleted) {
+          const existing = await findByName(token, updatedName) || await findByName(token, createdName);
+          if (existing) await deleteGroup(token, existing.id);
+        }
       }
     }
   }

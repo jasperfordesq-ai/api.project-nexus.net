@@ -4988,6 +4988,19 @@ reflow, and serious/critical axe assertions; the shared user finished unchanged.
 Tenant-domain routing, localization, manual assistive-technology depth, and
 ASP.NET compatibility remain open.
 
+## 2026-07-12 Disposable Poll Lifecycle
+
+The guarded live gate now creates a uniquely named standard poll with two
+options through the default-English Web UK form, finds it through Laravel's
+mine collection, proves its owner-manage card, deletes it through the rendered
+warning action, and proves final API absence. Direct poll deletion is nested in
+`finally` ahead of group cleanup. The aggregate `1/1` run passed in `321.6`
+seconds at 320 CSS pixels with structural, reflow, and serious/critical axe
+assertions; theme restoration also completed and no poll or group fixture
+remained. Vote/rank/comment/like persistence, broader owner authorization,
+feature gates, manual assistive-technology depth, and ASP.NET compatibility
+remain open.
+
 ## Documents To Trust
 
 Read these in order:
