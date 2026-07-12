@@ -4906,6 +4906,18 @@ declared v2 contract, so live saved-search mutation certification is blocked
 until the read-only Laravel endpoint parses JSON through an available request
 helper; do not misreport the current mock coverage as persistence proof.
 
+## 2026-07-12 Group File Lifecycle Certification
+
+The disposable Laravel-backed Group lifecycle now uploads a uniquely named
+text file through Web UK, proves the listing, downloads it with exact byte
+equality, deletes it through Web UK, and proves the row absent before editing
+and deleting the parent group. The `1/1` run passed in `185.8` seconds and left
+no fixture. Its first attempt exposed page-level overflow at 320 CSS pixels;
+the five-column Blade-style file table is now contained in a labelled,
+keyboard-focusable horizontal scroll region, with source regression coverage.
+This certifies one real member/uploader path, not every role, tenant gate,
+manual assistive-technology behavior, or ASP.NET compatibility.
+
 ## Documents To Trust
 
 Read these in order:

@@ -67,6 +67,8 @@ test('creates, updates, and deletes a disposable private group through Web UK', 
   const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
   const createdName = `Codex disposable group ${runId}`;
   const updatedName = `${createdName} updated`;
+  const fileName = `codex-disposable-${runId}.txt`;
+  const fileBody = `Disposable group file ${runId}\n`;
   const auth = await login(smoke.email, smoke.password, smoke.tenant);
   const token = auth.access_token;
   let groupId = null;
@@ -118,6 +120,32 @@ test('creates, updates, and deletes a disposable private group through Web UK', 
     await expect(page.locator(`a[href$="/groups/${groupId}"]`)).toContainText(createdName);
     await expect(page.locator('#filter')).toHaveValue('joined');
     await expectAccessibleReflow(page);
+
+    await page.goto(`${mountPath}/groups/${groupId}/files`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
+    await page.locator('#file-input').setInputFiles({
+      name: fileName,
+      mimeType: 'text/plain',
+      buffer: Buffer.from(fileBody, 'utf8')
+    });
+    await page.locator('#file-folder').fill('Disposable fixtures');
+    await page.locator('#file-description').fill('Temporary upload/download/delete certification fixture.');
+    const fileUploadResponse = await submit(page, `/groups/${groupId}/files`, page.locator('form:has(#file-input) button[type="submit"]'));
+    expect(fileUploadResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    const fileRow = page.locator('tr', { hasText: fileName });
+    await expect(fileRow).toHaveCount(1);
+    await expectAccessibleReflow(page);
+
+    const downloadHref = await fileRow.locator('a[aria-label^="Download "]').getAttribute('href');
+    expect(downloadHref).toBeTruthy();
+    const downloadResponse = await page.context().request.get(downloadHref);
+    expect(downloadResponse.status()).toBe(200);
+    expect((await downloadResponse.body()).equals(Buffer.from(fileBody, 'utf8'))).toBe(true);
+
+    const fileDeleteResponse = await submit(page, '/delete', fileRow.locator('form[action$="/delete"] button[type="submit"]'));
+    expect(fileDeleteResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    await expect(page.getByText(fileName, { exact: true })).toHaveCount(0);
 
     await page.goto(`${mountPath}/groups/${groupId}/edit`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
     await expectAccessibleReflow(page);

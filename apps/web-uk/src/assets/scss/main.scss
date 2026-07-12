@@ -1873,3 +1873,13 @@ body.app-timeout-modal--open {
 .app-search-result__description {
   color: $govuk-secondary-text-colour;
 }
+.nexus-alpha-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+
+  &:focus {
+    outline: 3px solid govuk-colour("yellow");
+    outline-offset: 0;
+  }
+}
