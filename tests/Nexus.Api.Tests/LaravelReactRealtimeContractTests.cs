@@ -47,21 +47,20 @@ public sealed class LaravelReactRealtimeContractTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task MessageTyping_AcceptsLaravelReactToUserPayload()
+    public async Task MessageTyping_AcceptsLaravelReactRecipientPayload()
     {
         await AuthenticateAsMemberAsync();
 
         var response = await Client.PostAsJsonAsync("/api/v2/messages/typing", new
         {
-            to_user_id = TestData.AdminUser.Id,
+            recipient_id = TestData.AdminUser.Id,
             is_typing = true
         });
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var data = await ReadDataAsync(response);
         data.GetProperty("sent").GetBoolean().Should().BeTrue();
-        data.GetProperty("recipient_id").GetInt32().Should().Be(TestData.AdminUser.Id);
-        data.GetProperty("is_typing").GetBoolean().Should().BeTrue();
+        data.EnumerateObject().Select(property => property.Name).Should().Equal("sent");
     }
 
     [Fact]

@@ -88,6 +88,7 @@ public static class RateLimitingExtensions
     public const string MessagesRequestCoordinatorPolicy = "messages-request-coordinator";
     public const string MessagesReactionPolicy = "messages-reaction";
     public const string MessagesReactionBatchPolicy = "messages-reaction-batch";
+    public const string MessagesTypingPolicy = "messages-typing";
 
     public static IReadOnlyList<SafeguardingVettingRateLimitContract> SafeguardingVettingRateLimitContracts { get; } =
     [
@@ -252,6 +253,13 @@ public static class RateLimitingExtensions
                     factory: _ => FixedWindow(
                         config.GetValue("RateLimiting:Messages:ReactionBatchPermitLimit", 30),
                         TimeSpan.FromSeconds(config.GetValue("RateLimiting:Messages:ReactionBatchWindowSeconds", 60)))));
+
+            options.AddPolicy(MessagesTypingPolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:Messages:TypingPermitLimit", 60),
+                        TimeSpan.FromSeconds(config.GetValue("RateLimiting:Messages:TypingWindowSeconds", 60)))));
 
             // AI endpoints policy (more restrictive due to resource cost)
             options.AddPolicy(AiPolicy, context =>

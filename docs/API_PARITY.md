@@ -137,10 +137,20 @@ retries; every accepted request is audited and the route uses Laravel's
 independent 5-per-300-second bucket. Focused PostgreSQL coverage passed 16/16
 and route ownership passed 1/1.
 
-This checkpoint is not direct-message completion. P1 remains on durable
-allow-listed reactions and batch aggregation, full typing preflight plus the
-canonical Pusher channel/event, and exact read/unread envelopes and rate-limit
-behavior.
+Typing indicators are now a real first-contact workflow. `POST
+/api/v2/messages/typing` accepts React's `recipient_id/is_typing`, runs the same
+sender, tenant-recipient, messaging-restriction, bilateral-block, and
+safeguarding preflight as a message send, and creates no conversation or other
+database state. Allowed requests publish `typing` with exact
+`user_id/is_typing` data to
+`private-tenant.{tenantId}.user.{recipientId}` using a signed Pusher REST
+request; missing credentials or delivery failure remain best-effort like
+Laravel. The response is exactly `success/data.sent`, and the independent
+authenticated bucket is 60/minute. Seven endpoint/route tests and one
+transport-level request-signature test pass.
+
+This checkpoint is not direct-message completion. Exact read/unread envelopes
+and rate-limit behavior remain.
 
 The final deterministic direct-message state gate passed 39/39 with zero
 failed or skipped, covering migration/model contracts, edit/delete,

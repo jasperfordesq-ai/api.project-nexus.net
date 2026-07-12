@@ -160,9 +160,18 @@ toggles serialize, participant-only batch reads expose Laravel
 use independent 60/minute and 30/minute buckets. Focused PostgreSQL plus route
 ownership coverage passed 9/9.
 
-This is not complete direct-message parity. P1 remains on full typing preflight
-and canonical Pusher event delivery, plus exact read/unread envelopes and
-rate-limit behavior.
+Typing indicators are also complete. React's `recipient_id/is_typing` request
+now runs the full direct-message preflight before any event, works before a
+conversation exists without creating one, and sends exact `typing`
+`user_id/is_typing` data to the recipient's
+`private-tenant.{tenantId}.user.{recipientId}` Pusher channel. The publisher
+constructs and signs Pusher's REST event request; delivery remains best-effort
+when credentials or the provider are unavailable. The response contains only
+`data.sent`, and the route has its own 60/minute bucket. Focused endpoint/route
+coverage passed 7/7 and the signed transport test passed 1/1.
+
+This is not complete direct-message parity. Exact read/unread envelopes and
+rate-limit behavior remain.
 
 The final deterministic direct-message state gate passed 39/39 with zero
 failed or skipped, covering migration/model contracts, edit/delete,
@@ -285,7 +294,7 @@ failures still require independent triage.
 | Area | Verified completed behavior | Explicit remaining gap |
 | --- | --- | --- |
 | Safeguarding metadata and workflows | Five exact metadata-only Laravel tables, append-only event/rotation history, jurisdiction/policy services, onboarding save, member status/review/revoke, admin/broker vetting decisions, and protected option CRUD/reorder use one locked policy domain. Legacy vetting records do not authorize contact and sensitive certificate evidence is prohibited. | Dedicated permission-only roles beyond current broker/admin policy, queued email/provider depth, legacy evidence privacy disposition, non-v2 route-alias reconciliation, and frontend runtime smoke remain. |
-| Messaging safety | Live `messaging_disabled` lifecycle, direct-send policy/attachment/race/side-effect hardening, staff blocked-attempt alerting, transactional detected-audio voice writes, sender-only 24-hour edit, participant-scoped durable delete, partner-ID per-user archive/restore, restricted-only coordinator help, and durable policy-aware reaction toggle/batch are implemented. | P1 typing Pusher delivery and exact read/unread envelopes/rates remain; provider transcription also remains open. |
+| Messaging safety | Live `messaging_disabled` lifecycle, direct-send policy/attachment/race/side-effect hardening, staff blocked-attempt alerting, transactional detected-audio voice writes, sender-only 24-hour edit, participant-scoped durable delete, partner-ID per-user archive/restore, restricted-only coordinator help, durable policy-aware reactions, and full-preflight signed-Pusher typing are implemented. | Exact read/unread envelopes/rates remain; provider transcription also remains open. |
 | Roles | `CanonicalRoleSemantics` adds `is_admin`, `is_super_admin`, `is_tenant_super_admin`, and `is_god`; named policies read current DB state and reject inactive, deleted, role-drifted, or tenant-drifted users; v2 failures use canonical errors. Role-only `god` never satisfies `GodOnly`, and explicit-God targets cannot be deleted, suspended, banned, reset, or impersonated by lower privilege tiers. | Resource-level SuperPanel/hub rules, notifications, audit side effects, and full application-runtime proof remain. |
 | 2FA | Password login uses opaque 64-character challenges bound to user, tenant, and TOTP enrollment; `/api/totp/verify` supports TOTP and backup codes, limits attempts, consumes successful or drifted challenges, and rechecks account/tenant state. Canonical setup/verify/disable uses a real SVG QR code, atomic enabled-state/backup-code persistence, and password-confirmed disable. Unsupported forced first-login admin enrollment now fails startup when either legacy flag is enabled instead of emitting a lockout challenge. | Challenges are process-local; trusted-device lifecycle, security notifications, a TOTP-specific encryption key, multi-node proof, and a compatible first-login enrollment client remain open. |
 | Passkeys | `PasskeysController` solely owns all nine canonical `/api/webauthn/*` routes. Registration/authentication use real FIDO options; challenges expire after 120 seconds and are atomically consumed once per process; credential management uses opaque IDs scoped to the authenticated user and tenant. | Anonymous discovery can remain tenantless when no tenant resolves; challenge state is process-local; sign-counter concurrency, multi-instance behavior, and browser smoke remain open. |
@@ -592,8 +601,8 @@ Prioritize workflow-complete slices over raw endpoint count. Route declarations
 are mostly closed; the remaining work is contract correctness.
 
 1. Continue the audited direct-message residual after the completed P0 state,
-   coordinator-help, and reaction slices: implement typing preflight plus
-   Pusher delivery and exact read/unread envelopes/rates.
+   coordinator-help, reaction, and typing slices: implement exact read/unread
+   envelopes and rate limits.
    Replace shallow or false-oracle tests rather than accepting route success.
 2. Run the full ASP.NET suite and CI, then complete unchanged-frontend
    member/organisation/admin/Caring runtime smoke. The focused 53/53 and affected

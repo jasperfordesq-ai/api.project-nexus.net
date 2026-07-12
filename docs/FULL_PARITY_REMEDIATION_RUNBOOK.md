@@ -128,8 +128,10 @@ residual in this order:
    toggles, participant-scoped batch aggregation, and independent rate buckets
    passed focused PostgreSQL and route-owner coverage 9/9. Migration 116 blank
    replay and model-drift checks are green.
-2. **P1 typing:** full message preflight and a proven canonical Pusher
-   pair-channel `typing` event, including first-conversation behavior.
+2. **P1 typing completed 2026-07-12:** full message preflight, first-contact
+   behavior without persistence, exact private tenant-user Pusher channel and
+   `typing` payload, signed REST transport, best-effort delivery, exact response,
+   and independent 60/minute bucket pass endpoint/route 7/7 plus transport 1/1.
 3. **P1 read/unread:** reconcile exact envelopes and rate-limit behavior for
    mark-read, unread counts, and related list projections.
 
@@ -745,7 +747,7 @@ sites. Web UK is an additional consumer once Laravel-first conversion is green.
 1. **P0 completed 2026-07-12:** sender-only 24-hour edit, scoped participant
    delete, and partner-ID per-user archive/restore now persist durable state.
    Restricted-only coordinator help and durable policy-aware reactions/batch are
-   also complete. Continue with full typing preflight plus Pusher delivery and
+   and full-preflight signed-Pusher typing are also complete. Continue with
    exact read/unread envelopes/rates. Use two-user reload, tenant, policy,
    cleanup, and side-effect tests; remove false oracles.
 2. Run the full ASP.NET suite and CI, then complete unchanged-frontend

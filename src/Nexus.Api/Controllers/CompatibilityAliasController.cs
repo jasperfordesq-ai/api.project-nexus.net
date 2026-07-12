@@ -7,10 +7,12 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
+using Nexus.Api.Middleware;
 using Nexus.Api.Services;
 
 namespace Nexus.Api.Controllers;
@@ -47,6 +49,7 @@ public class CompatibilityAliasController : ControllerBase
     private readonly IRealTimeMessagingService _realTimeMessaging;
     private readonly AdminVolunteerApprovalService _volunteerApprovals;
     private readonly ILogger<CompatibilityAliasController> _logger;
+    private readonly DirectMessageTypingService _messageTyping;
 
     public CompatibilityAliasController(
         NexusDbContext db,
@@ -57,6 +60,7 @@ public class CompatibilityAliasController : ControllerBase
         FileUploadService fileService,
         IRealTimeMessagingService realTimeMessaging,
         AdminVolunteerApprovalService volunteerApprovals,
+        DirectMessageTypingService messageTyping,
         ILogger<CompatibilityAliasController> logger)
     {
         _db = db;
@@ -67,6 +71,7 @@ public class CompatibilityAliasController : ControllerBase
         _fileService = fileService;
         _realTimeMessaging = realTimeMessaging;
         _volunteerApprovals = volunteerApprovals;
+        _messageTyping = messageTyping;
         _logger = logger;
     }
 
@@ -438,49 +443,41 @@ public class CompatibilityAliasController : ControllerBase
     /// </summary>
     [HttpPost("api/messages/typing")]
     [HttpPost("api/v2/messages/typing")]
-    public async Task<IActionResult> SendTypingIndicator([FromBody] TypingIndicatorRequest? request = null)
+    [EnableRateLimiting(RateLimitingExtensions.MessagesTypingPolicy)]
+    public async Task<IActionResult> SendTypingIndicator(
+        [FromBody] TypingIndicatorRequest? request = null,
+        CancellationToken cancellationToken = default)
     {
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
 
         if (request?.RecipientId is > 0)
         {
-            var recipientExists = await _db.Users
-                .AsNoTracking()
-                .AnyAsync(u => u.Id == request.RecipientId.Value && u.TenantId == _tenantContext.GetTenantIdOrThrow());
-
-            if (!recipientExists)
+            var outcome = await _messageTyping.SendAsync(
+                _tenantContext.GetTenantIdOrThrow(),
+                userId.Value,
+                request.RecipientId.Value,
+                request.IsTyping ?? true,
+                cancellationToken);
+            if (!outcome.Succeeded)
             {
-                return NotFound(new { success = false, code = "NOT_FOUND", message = "Recipient not found." });
+                return StatusCode(outcome.Error!.Status, new
+                {
+                    success = false,
+                    errors = new[]
+                    {
+                        new
+                        {
+                            code = outcome.Error.Code,
+                            message = outcome.Error.Message,
+                            required_vetting_types = outcome.Error.Decision?.RequiredAttestationCodes ?? [],
+                            required_vetting_labels = outcome.Error.Decision?.RequiredAttestationLabels ?? [],
+                            can_request_coordinator = outcome.Error.Decision?.CanRequestCoordinator
+                        }
+                    }
+                });
             }
-
-            var conversationId = await _db.Conversations
-                .AsNoTracking()
-                .Where(c =>
-                    (c.Participant1Id == userId.Value && c.Participant2Id == request.RecipientId.Value) ||
-                    (c.Participant1Id == request.RecipientId.Value && c.Participant2Id == userId.Value))
-                .Select(c => (int?)c.Id)
-                .FirstOrDefaultAsync();
-
-            var recipientPayload = new
-            {
-                sent = true,
-                recipient_id = request.RecipientId.Value,
-                user_id = userId.Value,
-                is_typing = request.IsTyping ?? true,
-                timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
-                conversation_id = conversationId
-            };
-
-            if (conversationId.HasValue)
-            {
-                await _realTimeMessaging.BroadcastToConversationAsync(
-                    conversationId.Value,
-                    "TypingIndicator",
-                    recipientPayload);
-            }
-
-            return Ok(new { success = true, data = recipientPayload });
+            return Ok(new { success = true, data = new { sent = true } });
         }
 
         if (request?.ConversationId is not > 0)

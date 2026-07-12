@@ -150,6 +150,8 @@ public static class ServiceExtensions
         services.AddScoped<DirectMessageMutationService>();
         services.AddScoped<SafeguardingCoordinationService>();
         services.AddScoped<DirectMessageReactionService>();
+        services.AddScoped<DirectMessageTypingService>();
+        services.AddHttpClient<IPusherEventPublisher, PusherEventPublisher>();
         services.AddScoped<BrokerService>();
         services.AddScoped<EnterpriseService>();
         services.AddScoped<EventReminderService>();
