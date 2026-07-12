@@ -774,9 +774,15 @@ app.get('/volunteering', (req, res) => {
   const applicationsPromise = selectedTab === 'applications'
     ? callVolunteeringApi(token, 'GET', `/applications?${applicationsQuery.toString()}`)
     : Promise.resolve({ data: [], meta: {} });
+  const hoursSummaryPromise = token
+    ? callVolunteeringApi(token, 'GET', '/hours/summary').catch(() => ({ data: {} }))
+    : Promise.resolve({ data: {} });
+  const organisationsPromise = token
+    ? callVolunteeringApi(token, 'GET', '/my-organisations?per_page=5').catch(() => ({ data: [] }))
+    : Promise.resolve({ data: [] });
 
-  Promise.all([getVolunteeringOpportunities(filters, token), applicationsPromise])
-    .then(([result, applicationsResult]) => {
+  Promise.all([getVolunteeringOpportunities(filters, token), applicationsPromise, hoursSummaryPromise, organisationsPromise])
+    .then(([result, applicationsResult, hoursSummaryResult, organisationsResult]) => {
       const opportunities = Array.isArray(result?.data)
         ? result.data
         : (Array.isArray(result?.items) ? result.items : []);
@@ -798,6 +804,23 @@ app.get('/volunteering', (req, res) => {
       const applicationsMeta = applicationsResult?.meta && typeof applicationsResult.meta === 'object'
         ? applicationsResult.meta
         : {};
+      const hoursSummary = hoursSummaryResult?.data && typeof hoursSummaryResult.data === 'object'
+        ? hoursSummaryResult.data
+        : {};
+      const hoursSummaryLabels = {
+        approved: Number(hoursSummary.total_approved_hours ?? hoursSummary.approved_hours ?? 0).toFixed(1),
+        pending: Number(hoursSummary.pending_hours ?? 0).toFixed(1),
+        thisMonth: Number(hoursSummary.this_month_hours ?? 0).toFixed(1)
+      };
+      const organisations = Array.isArray(organisationsResult?.data) ? organisationsResult.data : [];
+      const manageableOrganisations = organisations.filter((organisation) => (
+        ['owner', 'admin'].includes(String(organisation?.member_role || 'member'))
+        && ['approved', 'active'].includes(String(organisation?.status || 'pending'))
+      ));
+      const pendingOwnedOrganisations = organisations.filter((organisation) => (
+        ['owner', 'admin'].includes(String(organisation?.member_role || 'member'))
+        && !['approved', 'active'].includes(String(organisation?.status || 'pending'))
+      ));
       const applicationsLoadMore = new URLSearchParams({ tab: 'applications' });
       if (applicationStatus) applicationsLoadMore.set('app_status', applicationStatus);
       if (applicationsMeta.cursor) applicationsLoadMore.set('app_cursor', applicationsMeta.cursor);
@@ -810,6 +833,10 @@ app.get('/volunteering', (req, res) => {
         applicationsMeta,
         applicationsLoadMoreHref: `/volunteering?${applicationsLoadMore.toString()}`,
         applicationStatus,
+        hoursSummary,
+        hoursSummaryLabels,
+        manageableOrganisations,
+        pendingOwnedOrganisations,
         selectedTab,
         status: typeof req.query.status === 'string' ? req.query.status : '',
         volunteeringQuery,
@@ -831,6 +858,10 @@ app.get('/volunteering', (req, res) => {
         applicationsMeta: {},
         applicationsLoadMoreHref: '',
         applicationStatus,
+        hoursSummary: {},
+        hoursSummaryLabels: { approved: '0.0', pending: '0.0', thisMonth: '0.0' },
+        manageableOrganisations: [],
+        pendingOwnedOrganisations: [],
         selectedTab,
         status: typeof req.query.status === 'string' ? req.query.status : '',
         volunteeringQuery,

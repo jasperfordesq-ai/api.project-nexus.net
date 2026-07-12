@@ -26502,7 +26502,9 @@ describe('shared accessible frontend shell', () => {
         organization: { id: 42, name: 'Community Club' }
       }],
       meta: { cursor: 'next-application', has_more: true }
-    });
+    }).mockResolvedValueOnce({
+      data: { total_approved_hours: 12.5, pending_hours: 2, this_month_hours: 4.5 }
+    }).mockResolvedValueOnce({ data: [] });
 
     const response = await request(app)
       .get('/volunteering?tab=applications&app_status=pending')
@@ -26514,6 +26516,8 @@ describe('shared accessible frontend shell', () => {
       'GET',
       '/applications?per_page=10&status=pending'
     );
+    expect(api.callVolunteeringApi).toHaveBeenCalledWith('test-token', 'GET', '/hours/summary');
+    expect(api.callVolunteeringApi).toHaveBeenCalledWith('test-token', 'GET', '/my-organisations?per_page=5');
     expect(response.status).toBe(200);
     expect(response.text).toContain('aria-current="page">Applications</a>');
     expect(response.text).toContain('Community Kitchen Helper');
@@ -26521,6 +26525,13 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Derry');
     expect(response.text).toContain('Pending');
     expect(response.text).toContain('4 March 2099');
+    expect(response.text).toContain('Your volunteering hours');
+    expect(response.text).toContain('12.5');
+    expect(response.text).toContain('2.0');
+    expect(response.text).toContain('4.5');
+    expect(response.text).toContain('Your volunteering tools');
+    expect(response.text).toContain('Run a volunteer organisation?');
+    expect(response.text).toContain('href="/organisations/register"');
     expect(response.text).toContain('method="post" action="/volunteering/applications/91/withdraw"');
     expect(response.text).toContain('Withdraw application');
     expect(response.text).toContain('href="/volunteering?tab=applications&amp;app_status=pending&amp;app_cursor=next-application"');

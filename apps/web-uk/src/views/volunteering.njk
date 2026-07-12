@@ -6,8 +6,8 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <span class="govuk-caption-xl">{{ tenantName }}</span>
-  <h1 class="govuk-heading-xl">Volunteering</h1>
+  <span class="govuk-caption-l">{{ t("volunteering.caption", { community: tenantName }) }}</span>
+  <h1 class="govuk-heading-xl">{{ t("volunteering.title") }}</h1>
   <p class="govuk-body-l">{{ t("volunteering.description") }}</p>
 
   <p class="govuk-body govuk-!-margin-bottom-6">
@@ -15,26 +15,75 @@
   </p>
 
   <div class="govuk-inset-text" role="note" aria-labelledby="how-it-works-heading">
-    <h2 class="govuk-heading-s govuk-!-margin-bottom-2" id="how-it-works-heading">How volunteering works</h2>
+    <h2 class="govuk-heading-s govuk-!-margin-bottom-2" id="how-it-works-heading">{{ t("vol_clarity.how_it_works_title") }}</h2>
     <ol class="govuk-list govuk-list--number govuk-!-margin-bottom-0">
-      <li>Find an opportunity that suits you.</li>
-      <li>Apply, and tell the organiser about yourself.</li>
-      <li>Once you are accepted, log the hours you give.</li>
-      <li>The organisation reviews and approves your hours.</li>
-      <li>You receive 1 time credit for every hour - added straight to your wallet.</li>
+      <li>{{ t("vol_clarity.how_step_find") }}</li>
+      <li>{{ t("vol_clarity.how_step_apply") }}</li>
+      <li>{{ t("vol_clarity.how_step_log") }}</li>
+      <li>{{ t("vol_clarity.how_step_approve") }}</li>
+      <li>{{ t("vol_clarity.how_step_credit") }}</li>
     </ol>
   </div>
 
   {% if authRequired %}
+    <section class="nexus-alpha-card govuk-!-margin-bottom-6" aria-labelledby="vol-org-door-title">
+      <span class="govuk-caption-m">{{ t("vol_org.door_eyebrow") }}</span>
+      <h2 class="govuk-heading-m govuk-!-margin-bottom-2" id="vol-org-door-title">{{ t("vol_org.door_register_title") }}</h2>
+      <p class="govuk-body">{{ t("vol_org.door_guest_desc") }}</p>
+      <a class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" href="{{ urlFor('/login?status=auth-required') }}">{{ t("nav.login") }}</a>
+    </section>
+  {% elseif manageableOrganisations.length %}
+    {% set soleOrganisation = manageableOrganisations[0] if manageableOrganisations.length == 1 else null %}
+    <section class="nexus-alpha-card govuk-!-margin-bottom-6" aria-labelledby="vol-org-door-title">
+      <span class="govuk-caption-m">{{ t("vol_org.door_eyebrow") }}</span>
+      <h2 class="govuk-heading-m govuk-!-margin-bottom-2" id="vol-org-door-title">{% if soleOrganisation %}{{ t("vol_org.door_heading_one", { name: soleOrganisation.name }) }}{% else %}{{ t("vol_org.door_heading_many", { count: manageableOrganisations.length }) }}{% endif %}</h2>
+      <p class="govuk-body">{{ t("vol_org.door_desc") }}</p>
+      <div class="govuk-button-group govuk-!-margin-bottom-0">
+        <a class="govuk-button" href="{{ urlFor('/volunteering/opportunities/create') }}">{{ t("govuk_alpha_volunteering.create_opp.submit_button") }}</a>
+        <a class="govuk-button govuk-button--secondary" href="{{ urlFor('/volunteering/' ~ ('organisations/' ~ soleOrganisation.id ~ '/dashboard' if soleOrganisation else 'my-organisations')) }}">{{ t("vol_org.manage_link") }}</a>
+      </div>
+    </section>
+  {% elseif pendingOwnedOrganisations.length %}
+    <div class="govuk-notification-banner govuk-!-margin-bottom-6" data-module="govuk-notification-banner" role="region" aria-labelledby="vol-org-pending-title">
+      <div class="govuk-notification-banner__header"><h2 class="govuk-notification-banner__title" id="vol-org-pending-title">{{ t("vol_org.door_eyebrow") }}</h2></div>
+      <div class="govuk-notification-banner__content"><p class="govuk-notification-banner__heading">{{ t("vol_org.awaiting_approval") }}</p><p class="govuk-body">{{ t("vol_org.awaiting_approval_hint") }}</p>{% if pendingOwnedOrganisations[0].name %}<p class="govuk-body govuk-!-margin-bottom-0">{{ pendingOwnedOrganisations[0].name }}</p>{% endif %}</div>
+    </div>
+  {% else %}
+    <section class="nexus-alpha-card govuk-!-margin-bottom-6" aria-labelledby="vol-org-door-title">
+      <span class="govuk-caption-m">{{ t("vol_org.door_eyebrow") }}</span>
+      <h2 class="govuk-heading-m govuk-!-margin-bottom-2" id="vol-org-door-title">{{ t("vol_org.door_register_title") }}</h2>
+      <p class="govuk-body">{{ t("vol_org.door_register_desc") }}</p>
+      <a class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" href="{{ urlFor('/organisations/register') }}">{{ t("govuk_alpha_volunteering.create_opp.register_link") }}</a>
+    </section>
+  {% endif %}
+
+  {% if authRequired %}
     <div class="govuk-notification-banner" data-module="govuk-notification-banner" role="region" aria-labelledby="volunteering-auth-title">
       <div class="govuk-notification-banner__header">
-        <h2 class="govuk-notification-banner__title" id="volunteering-auth-title">Sign in required</h2>
+        <h2 class="govuk-notification-banner__title" id="volunteering-auth-title">{{ t("states.auth_required") }}</h2>
       </div>
       <div class="govuk-notification-banner__content">
         <p class="govuk-body">{{ t("volunteering.auth_required_detail") }}</p>
       </div>
     </div>
   {% else %}
+    <h2 class="govuk-heading-l">{{ t("volunteering.hours_summary_title") }}</h2>
+    <dl class="nexus-alpha-stat-grid">
+      <div class="nexus-alpha-stat"><dt>{{ t("volunteering.approved_hours") }}</dt><dd>{{ hoursSummaryLabels.approved }}</dd></div>
+      <div class="nexus-alpha-stat"><dt>{{ t("volunteering.pending_hours") }}</dt><dd>{{ hoursSummaryLabels.pending }}</dd></div>
+      <div class="nexus-alpha-stat"><dt>{{ t("volunteering.this_month_hours") }}</dt><dd>{{ hoursSummaryLabels.thisMonth }}</dd></div>
+    </dl>
+    <h2 class="govuk-heading-m govuk-!-margin-top-6 govuk-!-margin-bottom-2">{{ t("vol_org.tools_title") }}</h2>
+    <ul class="govuk-list govuk-list--inline govuk-!-margin-bottom-4">
+      <li><a class="govuk-link" href="{{ urlFor('/volunteering/hours') }}">{{ t("volunteering.log_hours_title") }}</a></li>
+      <li><a class="govuk-link" href="{{ urlFor('/volunteering/accessibility') }}">{{ t("volunteering.accessibility_link") }}</a></li>
+      <li><a class="govuk-link" href="{{ urlFor('/volunteering/certificates') }}">{{ t("vol_depth.certificates_link") }}</a></li>
+      <li><a class="govuk-link" href="{{ urlFor('/volunteering/waitlist') }}">{{ t("vol_depth.waitlist_link") }}</a></li>
+      <li><a class="govuk-link" href="{{ urlFor('/volunteering/swaps') }}">{{ t("vol_depth.swaps_link") }}</a></li>
+      <li><a class="govuk-link" href="{{ urlFor('/volunteering/group-signups') }}">{{ t("govuk_alpha_volunteering.group_signups.nav_link") }}</a></li>
+      <li><a class="govuk-link" href="{{ urlFor('/volunteering/expenses') }}">{{ t("govuk_alpha_volunteering.expenses.nav_link") }}</a></li>
+      <li><a class="govuk-link" href="{{ urlFor('/volunteering/donations') }}">{{ t("govuk_alpha_volunteering.donations.nav_link") }}</a></li>
+    </ul>
     <nav class="govuk-!-margin-top-6 govuk-!-margin-bottom-4" aria-label="{{ t('volunteering.tabs_title') }}">
       <ul class="govuk-list govuk-list--inline">
         <li><a class="govuk-link" href="{{ urlFor('/volunteering') }}"{% if selectedTab == 'opportunities' %} aria-current="page"{% endif %}>{{ t("volunteering.tabs.opportunities") }}</a></li>
