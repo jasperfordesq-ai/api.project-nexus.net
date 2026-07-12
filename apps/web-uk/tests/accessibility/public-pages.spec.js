@@ -60,6 +60,7 @@ const AUTHENTICATED_ROUTES = [
   { name: 'messages', path: '/messages' },
   { name: 'notifications', path: '/notifications' },
   { name: 'groups', path: '/groups' },
+  { name: 'organisation volunteer roster', path: '/volunteering/organisations/636/volunteers' },
   { name: 'search empty state', path: '/search?q=missing&type=events' },
   { name: 'appreciation wall', path: '/users/77/appreciations' }
 ];

@@ -352,6 +352,13 @@ function dateLabel(value) {
   }).format(date);
 }
 
+function isoDateTime(value) {
+  const text = trimmed(value);
+  if (!text) return '';
+  const date = new Date(text);
+  return Number.isNaN(date.getTime()) ? '' : date.toISOString();
+}
+
 function dateTimeLabel(value) {
   const text = trimmed(value);
   if (!text) return '';
@@ -1339,15 +1346,18 @@ function normalizeOrgPendingHour(row) {
   };
 }
 
-function normalizeOrgVolunteer(row) {
+function normalizeOrgVolunteer(row, t = null) {
   const volunteer = row && typeof row === 'object' ? row : {};
+  const totalHours = Number(volunteer.total_hours ?? volunteer.totalHours);
+  const appliedAt = volunteer.applied_at ?? volunteer.appliedAt;
   return {
     id: positiveInteger(volunteer.id),
-    name: trimmed(volunteer.name) || 'Volunteer',
+    name: trimmed(volunteer.name) || (typeof t === 'function' ? t('members.unknown_member') : 'Unknown member'),
     email: trimmed(volunteer.email),
-    totalHoursLabel: hoursLabel(volunteer.total_hours ?? volunteer.totalHours),
+    totalHoursLabel: Number.isFinite(totalHours) ? totalHours.toFixed(2) : '0.00',
     applicationsCount: Number(volunteer.applications_count ?? volunteer.applicationsCount) || 0,
-    appliedAtLabel: dateLabel(volunteer.applied_at ?? volunteer.appliedAt)
+    appliedAtLabel: dateLabel(appliedAt),
+    appliedAtIso: isoDateTime(appliedAt)
   };
 }
 
@@ -2077,7 +2087,9 @@ router.get('/organisations/:id(\\d+)/volunteers', asyncRoute(async (req, res) =>
   try {
     dashboard = normalizeOrgStats(await callApi(token, 'GET', `/organisations/${id}/stats`));
     const result = await callApi(token, 'GET', `/organisations/${id}/volunteers?${params.toString()}`);
-    volunteers = collectionFrom(result).map(normalizeOrgVolunteer).filter((volunteer) => volunteer.id);
+    volunteers = collectionFrom(result)
+      .map((volunteer) => normalizeOrgVolunteer(volunteer, res.locals.t))
+      .filter((volunteer) => volunteer.id);
     nextHref = orgVolunteersNextHref(id, collectionMetaFrom(result));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
@@ -2085,10 +2097,10 @@ router.get('/organisations/:id(\\d+)/volunteers', asyncRoute(async (req, res) =>
   }
 
   return res.render('volunteering/org-volunteers', {
-    title: 'Volunteers roster',
+    title: res.locals.t('govuk_alpha_volunteering.org_volunteers.title'),
     activeNav: 'volunteering',
     orgId: id,
-    orgName: dashboard.orgName,
+    orgName: dashboard.orgName || res.locals.tenantName,
     volunteers,
     nextHref,
     loadError

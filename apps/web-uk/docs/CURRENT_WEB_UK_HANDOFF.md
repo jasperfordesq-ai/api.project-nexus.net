@@ -5232,6 +5232,22 @@ zero-match audit passed. A signed read-only Laravel page check rendered
 globally red only because its independent anonymous Laravel API preflight still
 receives the known `401`.
 
+## 2026-07-12 Default-English Organisation Volunteer Roster
+
+The owner roster now matches Blade's catalog-backed back link, XL organisation
+caption, description and empty guidance, exact Name/Email/Total hours/Roles/
+Joined columns, two-decimal hour formatting, semantic joined date, localized
+unknown-member fallback, and load-more copy. The existing Laravel API paths and
+read-only owner workflow are unchanged.
+
+Focused owner-page proof passed; full Jest remained `45/45` suites and
+`1,456/1,456` tests with green lint and zero template-localization matches. A
+signed Laravel-backed roster passed a focused default-English 320-pixel browser
+gate (`1/1` in `26.5` seconds) with valid structure, no document overflow, and
+no serious/critical axe findings. It is a focused case, not a new full-browser
+aggregate claim. Live owner-role variations, the remaining owner pages, manual
+assistive-technology review, and ASP.NET compatibility remain open.
+
 ## Final Handoff Checklist
 
 Before leaving this job for another agent, write a short note containing:

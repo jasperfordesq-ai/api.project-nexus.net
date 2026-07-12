@@ -27583,13 +27583,20 @@ describe('shared accessible frontend shell', () => {
     expect(volunteersResponse.status).toBe(200);
     expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(6, 'test-token', 'GET', '/organisations/42/stats');
     expect(api.callVolunteeringApi).toHaveBeenNthCalledWith(7, 'test-token', 'GET', '/organisations/42/volunteers?per_page=20&cursor=88');
+    expect(volunteersResponse.text).toContain('Back to organisation dashboard');
     expect(volunteersResponse.text).toContain('Volunteers roster');
+    expect(volunteersResponse.text).toContain('Approved volunteers who have joined your opportunities.');
+    expect(volunteersResponse.text).toContain('Total hours');
+    expect(volunteersResponse.text).toContain('Roles');
+    expect(volunteersResponse.text).toContain('Joined');
     expect(volunteersResponse.text).toContain('Alex Applicant');
     expect(volunteersResponse.text).toContain('alex@example.org');
-    expect(volunteersResponse.text).toContain('12.5');
+    expect(volunteersResponse.text).toContain('12.50');
     expect(volunteersResponse.text).toContain('3');
-    expect(volunteersResponse.text).toContain('20 June 2026');
+    expect(volunteersResponse.text).toContain('<time datetime="2026-06-20T09:00:00.000Z">20 June 2026</time>');
     expect(volunteersResponse.text).toContain('href="/volunteering/organisations/42/volunteers?cursor=55"');
+    expect(volunteersResponse.text).toContain('Load more volunteers');
+    expect(volunteersResponse.text).not.toContain('Back to dashboard</a>');
     expect(volunteersResponse.text).not.toContain('shared accessible frontend preparation page');
 
     const walletResponse = await request(app)

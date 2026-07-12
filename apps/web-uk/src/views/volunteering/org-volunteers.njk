@@ -5,11 +5,11 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="{{ urlFor('/volunteering/organisations/' ~ orgId ~ '/dashboard') }}">Back to dashboard</a>
+  <a class="govuk-back-link" href="{{ urlFor('/volunteering/organisations/' ~ orgId ~ '/dashboard') }}">{{ t("govuk_alpha_volunteering.org_volunteers.back_link") }}</a>
 
-  <span class="govuk-caption-l">{{ orgName }}</span>
-  <h1 class="govuk-heading-xl">Volunteers roster</h1>
-  <p class="govuk-body-l">Approved volunteers who have joined your opportunities.</p>
+  <span class="govuk-caption-xl">{{ orgName }}</span>
+  <h1 class="govuk-heading-xl">{{ t("govuk_alpha_volunteering.org_volunteers.title") }}</h1>
+  <p class="govuk-body-l">{{ t("govuk_alpha_volunteering.org_volunteers.description") }}</p>
 
   {% if loadError %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
@@ -20,19 +20,19 @@
     </div>
   {% elif not volunteers.length %}
     <div class="govuk-inset-text">
-      <p class="govuk-body">There are no approved volunteers for this organisation yet.</p>
-      <p class="govuk-body govuk-!-margin-bottom-0">Volunteers appear here after an application is approved.</p>
+      <p class="govuk-body">{{ t("govuk_alpha_volunteering.org_volunteers.empty") }}</p>
+      <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-0">{{ t("govuk_alpha_volunteering.org_volunteers.empty_hint") }}</p>
     </div>
   {% else %}
     <table class="govuk-table">
-      <caption class="govuk-table__caption govuk-table__caption--m govuk-visually-hidden">Volunteers roster</caption>
+      <caption class="govuk-table__caption govuk-table__caption--m govuk-visually-hidden">{{ t("govuk_alpha_volunteering.org_volunteers.title") }}</caption>
       <thead class="govuk-table__head">
         <tr class="govuk-table__row">
-          <th scope="col" class="govuk-table__header">Name</th>
-          <th scope="col" class="govuk-table__header">{{ t("profile.email_label") }}</th>
-          <th scope="col" class="govuk-table__header govuk-table__header--numeric">Hours</th>
-          <th scope="col" class="govuk-table__header govuk-table__header--numeric">Applications</th>
-          <th scope="col" class="govuk-table__header">Applied date</th>
+          <th scope="col" class="govuk-table__header">{{ t("govuk_alpha_volunteering.org_volunteers.table_name") }}</th>
+          <th scope="col" class="govuk-table__header">{{ t("govuk_alpha_volunteering.org_volunteers.table_email") }}</th>
+          <th scope="col" class="govuk-table__header govuk-table__header--numeric">{{ t("govuk_alpha_volunteering.org_volunteers.table_hours") }}</th>
+          <th scope="col" class="govuk-table__header govuk-table__header--numeric">{{ t("govuk_alpha_volunteering.org_volunteers.table_applications") }}</th>
+          <th scope="col" class="govuk-table__header">{{ t("govuk_alpha_volunteering.org_volunteers.table_applied_date") }}</th>
         </tr>
       </thead>
       <tbody class="govuk-table__body">
@@ -52,7 +52,7 @@
             </td>
             <td class="govuk-table__cell govuk-table__cell--numeric">{{ volunteer.totalHoursLabel }}</td>
             <td class="govuk-table__cell govuk-table__cell--numeric">{{ volunteer.applicationsCount }}</td>
-            <td class="govuk-table__cell">{{ volunteer.appliedAtLabel }}</td>
+            <td class="govuk-table__cell">{% if volunteer.appliedAtLabel %}<time datetime="{{ volunteer.appliedAtIso }}">{{ volunteer.appliedAtLabel }}</time>{% endif %}</td>
           </tr>
         {% endfor %}
       </tbody>
@@ -60,7 +60,7 @@
 
     {% if nextHref %}
       <p class="govuk-body govuk-!-margin-top-4">
-        <a class="govuk-link" href="{{ urlFor(nextHref) }}">Load more volunteers</a>
+        <a class="govuk-link" href="{{ urlFor(nextHref) }}">{{ t("govuk_alpha_volunteering.org_volunteers.load_more") }}</a>
       </p>
     {% endif %}
   {% endif %}
