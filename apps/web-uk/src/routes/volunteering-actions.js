@@ -2392,12 +2392,19 @@ router.get('/hours', asyncRoute(async (req, res) => {
   }
 
   const nextGoal = summary.approvedTotal > 0 ? Math.ceil(summary.approvedTotal / 50) * 50 : 0;
+  const nextGoalLabel = nextGoal
+    ? res.locals.t('govuk_alpha.volunteering.hours_of_goal', {
+      hours: summary.approvedHoursLabel,
+      goal: nextGoal
+    })
+    : '';
 
   return res.render('volunteering/hours', {
     title: res.locals.t('govuk_alpha.volunteering.hours_title'),
     activeNav: 'volunteering',
     summary,
     nextGoal,
+    nextGoalLabel,
     logs,
     applications,
     organizations,

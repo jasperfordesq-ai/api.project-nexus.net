@@ -26865,6 +26865,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('When an organisation approves your hours, the time credits are added to your wallet automatically');
     expect(response.text).toContain('Approved hours');
     expect(response.text).toContain('12.5');
+    expect(response.text).toContain('12.5 of 50 hours');
     expect(response.text).toContain('Pending hours');
     expect(response.text).toContain('3.0');
     expect(response.text).toContain('This month');
