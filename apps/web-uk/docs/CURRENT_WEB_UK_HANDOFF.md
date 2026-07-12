@@ -5262,6 +5262,18 @@ The full aggregate passed `45/45` suites and `1,456/1,456` tests; lint and the
 fixtures, manual assistive-technology review, and ASP.NET compatibility remain
 open.
 
+## 2026-07-12 Default-English Organisation Dashboard Parity
+
+The volunteering organisation dashboard now matches Blade's catalog-backed
+summary copy, pending-approval warning, six activity figures, wallet
+reconciliation note, and management-link labels. The older Web UK-only
+auto-pay badge was removed from this page. The existing signed-manager test
+passes across dashboard, manage, settings, roster, and wallet.
+
+Full Jest remains `45/45` suites and `1,456/1,456` tests; lint and the
+285-template zero-match localization audit passed. Live owner-role variations,
+manual assistive-technology review, and ASP.NET compatibility remain open.
+
 ## Final Handoff Checklist
 
 Before leaving this job for another agent, write a short note containing:

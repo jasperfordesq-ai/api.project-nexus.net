@@ -27415,7 +27415,7 @@ describe('shared accessible frontend shell', () => {
       .mockResolvedValueOnce({
         data: {
           org_name: 'Food Share',
-          status: 'approved',
+          status: 'pending',
           active_opportunities: 2,
           pending_applications: 1,
           pending_hours: 3,
@@ -27538,12 +27538,22 @@ describe('shared accessible frontend shell', () => {
     expect(dashboardResponse.text).toContain('href="/volunteering/my-organisations"');
     expect(dashboardResponse.text).toContain('Organisation dashboard');
     expect(dashboardResponse.text).toContain('Food Share');
+    expect(dashboardResponse.text).toContain('A summary of your organisation activity, with quick links to manage applications, hours, settings and the wallet.');
+    expect(dashboardResponse.text).toContain('This organisation is awaiting approval. Some actions are unavailable until it is approved.');
+    expect(dashboardResponse.text).toContain('At a glance');
     expect(dashboardResponse.text).toContain('Active opportunities');
     expect(dashboardResponse.text).toContain('Pending applications');
-    expect(dashboardResponse.text).toContain('Total approved hours');
+    expect(dashboardResponse.text).toContain('Hours awaiting review');
+    expect(dashboardResponse.text).toContain('Active volunteers');
+    expect(dashboardResponse.text).toContain('Approved hours');
     expect(dashboardResponse.text).toContain('45.5');
     expect(dashboardResponse.text).toContain('18.3');
-    expect(dashboardResponse.text).toContain('Auto-pay enabled');
+    expect(dashboardResponse.text).toContain('Volunteers are automatically credited for approved whole hours.');
+    expect(dashboardResponse.text).toContain('Manage your organisation');
+    expect(dashboardResponse.text).toContain('Volunteers roster');
+    expect(dashboardResponse.text).toContain('Post a new opportunity');
+    expect(dashboardResponse.text).toContain('Wallet and time credits');
+    expect(dashboardResponse.text).not.toContain('Auto-pay enabled');
     expect(dashboardResponse.text).toContain('href="/volunteering/organisations/42/manage"');
     expect(dashboardResponse.text).toContain('href="/volunteering/opportunities/create"');
     expect(dashboardResponse.text).not.toContain('shared accessible frontend preparation page');
