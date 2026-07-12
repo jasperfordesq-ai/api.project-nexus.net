@@ -5349,8 +5349,44 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('North Timebank');
     expect(response.text).toContain('1 unread');
     expect(response.text).toContain('Can we confirm tools for Saturday?');
+    expect(response.text).toContain('2 July 2026');
     expect(response.text).toContain('href="/federation/messages/conversation/77?tenant_id=12"');
     expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('matches Blade Federation messaging permission and load-failure states', async () => {
+    const api = require('../src/lib/api');
+    let messagingEnabled = false;
+    let messageError = new api.ApiError('Forbidden', 403);
+    api.callFederationApi.mockImplementation(async (token, method, pathValue) => {
+      if (pathValue === '/settings') {
+        return { data: { enabled: true, settings: { federation_optin: true, messaging_enabled_federated: messagingEnabled } } };
+      }
+      if (pathValue === '/messages') throw messageError;
+      return { data: [] };
+    });
+
+    const optInRequired = await request(app)
+      .get('/federation/messages')
+      .set('Cookie', signedCookieHeader());
+    expect(optInRequired.status).toBe(200);
+    expect(optInRequired.text).toContain('Opt in to send federated messages');
+    expect(optInRequired.text).not.toContain('id="q" name="q"');
+
+    messagingEnabled = true;
+    const featureDisabled = await request(app)
+      .get('/federation/messages')
+      .set('Cookie', signedCookieHeader());
+    expect(featureDisabled.text).toContain('Federated messaging is not available for this community right now.');
+    expect(featureDisabled.text).not.toContain('id="q" name="q"');
+
+    messageError = new api.ApiError('Unavailable', 503);
+    const unavailable = await request(app)
+      .get('/federation/messages')
+      .set('Cookie', signedCookieHeader());
+    expect(unavailable.status).toBe(200);
+    expect(unavailable.text).toContain('id="messages-list"');
+    expect(unavailable.text).toContain('There is a problem');
   });
 
   it('renders the Laravel-backed Federation conversation page', async () => {

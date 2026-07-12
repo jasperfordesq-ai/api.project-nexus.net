@@ -333,10 +333,10 @@ function listingMemberHref(listing) {
   return authorId ? `/federation/members/${encodeURIComponent(authorId)}${query}` : '';
 }
 
-function participantName(participant) {
+function participantName(participant, t = (key) => key) {
   return trimmed(participant && participant.name)
     || trimmed(`${trimmed(participant && participant.first_name)} ${trimmed(participant && participant.last_name)}`)
-    || 'A member';
+    || t('fed2.messages.someone');
 }
 
 function threadHref(thread) {
@@ -346,7 +346,9 @@ function threadHref(thread) {
   return id ? `/federation/messages/conversation/${encodeURIComponent(id)}${query}` : '/federation/messages';
 }
 
-function normalizeMessageThreads(messages, query = '') {
+function normalizeMessageThreads(messages, query = '', options = {}) {
+  const t = typeof options.t === 'function' ? options.t : (key) => key;
+  const formatDate = typeof options.formatDate === 'function' ? options.formatDate : (value) => value;
   const byThread = new Map();
 
   asList(messages).forEach((message) => {
@@ -363,11 +365,14 @@ function normalizeMessageThreads(messages, query = '') {
       byThread.set(key, {
         partnerUserId,
         partnerTenantId,
-        partnerName: participantName(partner),
+        partnerName: participantName(partner, t),
         partnerTenantName: trimmed(partner.tenant_name || partner.tenantName),
         lastSubject: trimmed(message && message.subject),
         lastPreview: body,
         lastCreatedAt: message && message.created_at ? message.created_at : '',
+        lastCreatedAtLabel: message && message.created_at
+          ? formatDate(message.created_at, { day: 'numeric', month: 'long', year: 'numeric' })
+          : '',
         lastOutbound: outbound,
         unreadCount: 0
       });
@@ -723,20 +728,18 @@ function connectionStatusBanner(status, t = (key) => key) {
   } : null;
 }
 
-function messagesStatusBanner(status) {
-  const banners = {
-    'message-sent': { type: 'success', message: 'Your message has been sent.' },
-    'message-empty': { type: 'error', message: 'Enter a message before sending.' },
-    'message-too-long': { type: 'error', message: 'Your message is too long.' },
-    'message-failed': { type: 'error', message: 'We could not send your message. Please try again.' },
-    'message-not-enabled': { type: 'error', message: 'Turn on federated messaging in your settings to send messages.' },
-    'message-recipient-unavailable': { type: 'error', message: 'This member is not accepting federated messages.' },
-    'message-unavailable': { type: 'error', message: 'Federated messaging is not available right now.' },
-    'translate-unavailable': { type: 'error', message: 'Translation is not available right now.' },
-    'translate-failed': { type: 'error', message: 'We could not translate that message. Please try again.' }
-  };
-
-  return banners[trimmed(status)] || null;
+function messagesStatusBanner(status, t = (key) => key) {
+  const normalized = trimmed(status);
+  const allowed = new Set([
+    'message-sent', 'message-empty', 'message-too-long', 'message-failed',
+    'message-not-enabled', 'message-recipient-unavailable', 'message-unavailable',
+    'message-safeguarding-restricted', 'message-safeguarding-unavailable',
+    'translate-unavailable', 'translate-failed'
+  ]);
+  return allowed.has(normalized) ? {
+    type: normalized === 'message-sent' ? 'success' : 'error',
+    message: t(`fed2.messages.status.${normalized}`)
+  } : null;
 }
 
 function renderFederationError(error, res) {
@@ -1339,29 +1342,57 @@ router.get('/messages', asyncRoute(async (req, res) => {
   }
 
   let settingsResult;
-  let messagesResult;
+  let messagesResult = { data: [] };
   try {
     settingsResult = await callFederationApi(token, 'GET', '/settings');
-    messagesResult = await callFederationApi(token, 'GET', '/messages');
   } catch (error) {
     if (renderFederationError(error, res)) return undefined;
     throw error;
   }
 
+  let allowed = true;
+  let loadError = false;
+  try {
+    messagesResult = await callFederationApi(token, 'GET', '/messages');
+  } catch (error) {
+    const errorCodes = error instanceof ApiError && Array.isArray(error.data && error.data.errors)
+      ? error.data.errors.map((item) => trimmed(item && item.code)).filter(Boolean)
+      : [];
+    if (error instanceof ApiError && error.status === 403 && errorCodes.includes('FEDERATION_NOT_ENABLED')) {
+      return redirectTo(res, '/federation/opt-in');
+    }
+    if (error instanceof ApiError && error.status === 401) {
+      return redirectTo(res, '/login?status=auth-required');
+    }
+    if (error instanceof ApiError && error.status === 403) {
+      allowed = false;
+    } else if (error instanceof ApiError || error instanceof ApiOfflineError) {
+      loadError = true;
+    } else {
+      throw error;
+    }
+  }
+
   const settingsData = asObject(dataFrom(settingsResult));
   const settings = asObject(settingsData.settings);
   const query = trimmed(req.query.q);
-  const threads = normalizeMessageThreads(dataFrom(messagesResult), query);
+  const threads = normalizeMessageThreads(dataFrom(messagesResult), query, {
+    t: res.locals.t,
+    formatDate: res.locals.formatLocaleDate
+  });
   const optedIn = bool(settings.federation_optin) || bool(settingsData.enabled);
 
   return res.render('federation/messages', {
-    title: 'Federated messages',
+    title: res.locals.t('fed2.messages.title'),
     activeNav: 'explore',
     federationActiveTab: 'messages',
     query,
     threads,
+    allowed,
+    loadError,
+    viewerOptedIn: optedIn,
     viewerCanMessage: optedIn && bool(settings.messaging_enabled_federated),
-    statusBanner: messagesStatusBanner(req.query.status)
+    statusBanner: messagesStatusBanner(req.query.status, res.locals.t)
   });
 }));
 
@@ -1413,7 +1444,7 @@ router.get('/messages/conversation/:partnerId', asyncRoute(async (req, res) => {
     conversation,
     canReply: optedIn && bool(settings.messaging_enabled_federated),
     translateEnabled: tenantFeatureEnabled(req, 'message_translation', true),
-    statusBanner: messagesStatusBanner(req.query.status)
+    statusBanner: messagesStatusBanner(req.query.status, res.locals.t)
   });
 }));
 

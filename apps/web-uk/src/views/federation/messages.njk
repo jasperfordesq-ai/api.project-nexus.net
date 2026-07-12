@@ -6,9 +6,9 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a href="{{ urlFor('/federation') }}" class="govuk-back-link">Back to federation</a>
+  <a href="{{ urlFor('/federation') }}" class="govuk-back-link">{{ t("fed2.messages.back") }}</a>
 
-  <span class="govuk-caption-xl">{{ tenantName }}</span>
+  <span class="govuk-caption-xl">{{ t("fed2.messages.caption", { community: tenantName }) }}</span>
   <h1 class="govuk-heading-xl">{{ t("fed2.messages.title") }}</h1>
   <p class="govuk-body-l">{{ t("fed2.messages.description") }}</p>
 
@@ -39,33 +39,46 @@
     {% endif %}
   {% endif %}
 
-  {% if not viewerCanMessage %}
+  {% if not allowed %}
+    {% if not viewerCanMessage %}
     <div class="govuk-inset-text">
-      <h2 class="govuk-heading-s govuk-!-margin-bottom-1">Opt in to send federated messages</h2>
-      <p class="govuk-body">You need to opt in to federation and turn on federated messaging before you can message members in other communities.</p>
+      <h2 class="govuk-heading-s govuk-!-margin-bottom-1">{{ t("fed2.messages.optin_required") }}</h2>
+      <p class="govuk-body">{{ t("fed2.messages.optin_required_description") }}</p>
     </div>
-    <a href="{{ urlFor('/federation/opt-in') }}" class="govuk-button govuk-button--secondary" data-module="govuk-button">Opt in to federation</a>
-  {% endif %}
+    <a href="{{ urlFor('/federation/opt-in') }}" class="govuk-button" data-module="govuk-button">{{ t("fed2.messages.optin_cta") }}</a>
+    {% else %}
+      <div class="govuk-inset-text"><p class="govuk-body">{{ t("fed2.messages.feature_not_enabled") }}</p></div>
+    {% endif %}
+  {% else %}
+    {% if not viewerCanMessage %}
+      <div class="govuk-inset-text">
+        <h2 class="govuk-heading-s govuk-!-margin-bottom-1">{{ t("fed2.messages.optin_required") }}</h2>
+        <p class="govuk-body">{{ t("fed2.messages.optin_required_description") }}</p>
+      </div>
+      <a href="{{ urlFor('/federation/opt-in') }}" class="govuk-button govuk-button--secondary" data-module="govuk-button">{{ t("fed2.messages.optin_cta") }}</a>
+    {% endif %}
 
   <form method="get" action="{{ urlFor('/federation/messages') }}" class="govuk-!-margin-bottom-4">
     <div class="govuk-form-group govuk-!-margin-bottom-2">
-      <label class="govuk-label" for="q">Search conversations</label>
-      <input class="govuk-input govuk-input--width-20" id="q" name="q" type="text" value="{{ query }}" placeholder="Search by name or community">
+      <label class="govuk-label" for="q">{{ t("fed2.messages.search_label") }}</label>
+      <input class="govuk-input govuk-input--width-20" id="q" name="q" type="text" value="{{ query }}" placeholder="{{ t('fed2.messages.search_placeholder') }}">
     </div>
-    <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">Search</button>
+    <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">{{ t("actions.search") }}</button>
   </form>
 
   <p class="govuk-body">
-    <a class="govuk-link" href="{{ urlFor('/federation/members') }}">Browse federated members</a>
+    <a class="govuk-link" href="{{ urlFor('/federation/members') }}">{{ t("fed2.messages.compose_link") }}</a>
   </p>
-  <p class="govuk-hint">To start a new conversation, message a member from the federated members directory.</p>
+  <p class="govuk-hint">{{ t("fed2.messages.compose_hint") }}</p>
 
-  <h2 class="govuk-heading-m">Conversations</h2>
+  <h2 class="govuk-heading-m">{{ t("fed2.messages.conversations_heading") }}</h2>
 
   <div id="messages-list">
-    {% if threads.length == 0 %}
+    {% if loadError %}
+      <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1"><div role="alert"><h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2></div></div>
+    {% elif threads.length == 0 %}
       {% if query %}
-        <div class="govuk-inset-text"><p class="govuk-body">No conversations match your search.</p></div>
+        <div class="govuk-inset-text"><p class="govuk-body">{{ t("fed2.messages.no_conversations_match") }}</p></div>
       {% else %}
         <div class="govuk-inset-text"><p class="govuk-body">{{ t("fed2.messages.empty") }}</p></div>
       {% endif %}
@@ -74,24 +87,25 @@
         {% for thread in threads %}
           <article class="nexus-alpha-card">
             <h3 class="govuk-heading-s govuk-!-margin-bottom-1">
-              <a class="govuk-link" href="{{ urlFor(thread.href) }}" title="Open conversation">{{ thread.partnerName }}</a>
+              <a class="govuk-link" href="{{ urlFor(thread.href) }}" title="{{ t('fed2.messages.open_conversation') }}">{{ thread.partnerName }}</a>
             </h3>
             <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">
               <strong class="govuk-tag govuk-tag--grey">{{ thread.partnerTenantName }}</strong>
               {% if thread.unreadCount > 0 %}
-                <strong class="govuk-tag govuk-tag--blue">{{ thread.unreadCount }} unread</strong>
-                <span class="govuk-visually-hidden">{{ thread.unreadCount }} unread messages</span>
+                <strong class="govuk-tag govuk-tag--blue">{{ t("fed2.messages.unread_count", { count: thread.unreadCount }) }}</strong>
+                <span class="govuk-visually-hidden">{{ tc("fed2.messages.unread_aria", thread.unreadCount, { count: thread.unreadCount }) }}</span>
               {% endif %}
             </p>
             {% if thread.lastPreview %}
-              <p class="govuk-body-s govuk-!-margin-bottom-1">{% if thread.lastOutbound %}You: {% endif %}{{ thread.lastPreview }}</p>
+              <p class="govuk-body-s govuk-!-margin-bottom-1">{% if thread.lastOutbound %}{{ t("fed2.messages.you_prefix") }}{% endif %}{{ thread.lastPreview }}</p>
             {% endif %}
-            {% if thread.lastCreatedAt %}
-              <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-0">{{ thread.lastCreatedAt | date }}</p>
+            {% if thread.lastCreatedAtLabel %}
+              <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-0">{{ thread.lastCreatedAtLabel }}</p>
             {% endif %}
           </article>
         {% endfor %}
       </div>
     {% endif %}
   </div>
+  {% endif %}
 {% endblock %}
