@@ -12837,6 +12837,36 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('renders Blade-aligned reaction controls and status on a signed hashtag detail page', async () => {
+    const api = require('../src/lib/api');
+    api.getFeedHashtagPosts.mockResolvedValueOnce({
+      data: [{
+        id: 42,
+        type: 'post',
+        content: 'Repair cafe is open.',
+        author: { name: 'Ada Lovelace' },
+        likes_count: 2,
+        comments_count: 1,
+        is_liked: true,
+        reactions: { counts: { celebrate: 3 }, user_reaction: 'celebrate' }
+      }],
+      meta: { total_items: 1, has_more: false }
+    });
+
+    const response = await request(app)
+      .get('/feed/hashtag/repair?status=reaction-added')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Your reaction has been added.');
+    expect(response.text).toContain('action="/feed/items/post/42/like"');
+    expect(response.text).toContain('Remove like');
+    expect(response.text).toContain('action="/feed/posts/42/react"');
+    expect(response.text).toContain('name="emoji" value="celebrate"');
+    expect(response.text).toContain('nexus-alpha-reaction--active');
+    expect(response.text).toContain('Celebrate (3)');
+  });
+
   it('renders the public Laravel feed post permalink page', async () => {
     const api = require('../src/lib/api');
 

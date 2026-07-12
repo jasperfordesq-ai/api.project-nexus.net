@@ -257,19 +257,6 @@ function feedNextHref(meta, perPage, selectedType, selectedMode, selectedSubtype
   return `/feed?${query.toString()}`;
 }
 
-function feedStatusMessage(status) {
-  const messages = {
-    'reaction-added': { type: 'success', text: 'Your reaction has been added.' },
-    'reaction-removed': { type: 'success', text: 'Your reaction has been removed.' },
-    'reaction-failed': { type: 'error', text: 'Sorry, we could not save your reaction. Try again later.' },
-    'not-interested': { type: 'success', text: 'Thank you. We will show you less like this.' },
-    'not-interested-failed': { type: 'error', text: 'Sorry, we could not record your feedback. Try again later.' },
-    'like-failed': { type: 'error', text: 'Sorry, we could not save your reaction. Try again later.' },
-    'auth-required': { type: 'error', text: 'Sign in to take part in the feed.' }
-  };
-  return messages[status] || null;
-}
-
 function feedIndexStatusMessage(status, t) {
   const keys = {
     'post-created': 'states.post-created',
@@ -329,9 +316,10 @@ function feedItemStatusMessage(status, t) {
     'reaction-failed': 'govuk_alpha_feed.states.reaction_failed',
     'not-interested': 'govuk_alpha_feed.states.not_interested',
     'not-interested-failed': 'govuk_alpha_feed.states.not_interested_failed',
-    'comment-created': 'govuk_alpha_feed.states.success_title'
+    'comment-created': 'govuk_alpha_feed.states.success_title',
+    'auth-required': 'govuk_alpha_feed.states.auth_required'
   };
-  const errorStatuses = new Set(['reaction-failed', 'not-interested-failed']);
+  const errorStatuses = new Set(['reaction-failed', 'not-interested-failed', 'auth-required']);
   const key = keys[status];
   if (!key || typeof t !== 'function') return null;
   return { type: errorStatuses.has(status) ? 'error' : 'success', text: t(key) };
@@ -350,7 +338,7 @@ router.get('/hashtags', asyncRoute(async (req, res) => {
       : { limit: 50, days: 7 });
     hashtags = hashtagRows(result);
   } catch {
-    errorMessage = 'Sorry, there is a problem with this page. Try again later.';
+    errorMessage = (req.t || res.locals.t)('govuk_alpha_feed.states.error');
   }
 
   res.render('feed/hashtags', {
@@ -463,7 +451,7 @@ router.get('/hashtag/:tag([A-Za-z0-9_]{1,100})', asyncRoute(async (req, res) => 
     hasMore = !!meta.has_more;
     nextCursor = trimmed(meta.cursor, 500);
   } catch {
-    errorMessage = 'Sorry, there is a problem with this page. Try again later.';
+    errorMessage = (req.t || res.locals.t)('govuk_alpha_feed.states.error');
   }
 
   res.render('feed/hashtag', {
@@ -474,14 +462,14 @@ router.get('/hashtag/:tag([A-Za-z0-9_]{1,100})', asyncRoute(async (req, res) => 
     tag,
     items,
     totalCount,
-    totalCountLabel: pluralLabel(totalCount, 'post', 'posts', 'No posts'),
     hasMore,
     nextCursor,
     perPage,
     nextHref: hasMore && nextCursor ? `/feed/hashtag/${encodeURIComponent(tag)}?cursor=${encodeURIComponent(nextCursor)}&per_page=${perPage}` : '',
     requiresAuth: !tokenFrom(req),
-    statusMessage: feedStatusMessage(trimmed(req.query.status)),
-    errorMessage
+    statusMessage: feedItemStatusMessage(trimmed(req.query.status), req.t || res.locals.t),
+    errorMessage,
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }));
 
