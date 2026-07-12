@@ -24,3 +24,25 @@ Limitations and open evidence:
 - The in-app browser's keyboard-injection path did not dispatch Tab or Enter during this inspection. This entry therefore does **not** count as a manual keyboard-only pass. The repository's Playwright accessibility gate separately exercises cookie-control order, the skip link, summary focus, and error-link focus with keyboard input.
 - No screen reader, magnifier, speech input, switch control, or representative disabled user was involved. Those checks remain open.
 - Browser-engine/version diversity, 200% and 400% zoom, and operating-system high-contrast behavior remain open manual checks.
+
+## 2026-07-12 - English accessibility statement and skip-link presentation
+
+- Page: `http://localhost:5350/hour-timebank/accessible/accessibility`
+- Build: Web UK commit `e5bdb73e`, using an isolated local listener and Laravel at `http://127.0.0.1:8088`
+- Browser: Codex in-app browser; Chromium engine/version was not exposed by the inspection surface
+- Assistive technology: none
+- Input: browser-assisted focus and responsive-layout inspection
+- Viewports: default browser viewport and `320 x 800`
+
+Observed outcomes:
+
+- The default-English page exposed the accessibility statement as one main landmark with the expected heading hierarchy, legal back link, feedback link, service navigation, and footer navigation.
+- At the narrow viewport, the skip link was the first focusable element in document order. Its target existed as `<main id="main-content" tabindex="-1">`.
+- Focus inspection exposed the skip link at the top of the viewport with a 40 CSS-pixel height, yellow background and outline (`rgb(255, 221, 0)`), and near-black text (`rgb(11, 12, 12)`).
+- At 320 CSS pixels, the document had no horizontal overflow (`scrollWidth 305`, `clientWidth 305`), while the responsive menu and statement content remained visible.
+
+Limitations and open evidence:
+
+- The in-app browser's keyboard-injection path again did not advance focus with Tab or activate the focused link with Enter. This entry therefore does **not** count as a manual keyboard-only pass. The repository's Playwright gate remains the keyboard automation evidence for the skip-link journey.
+- No screen reader, magnifier, speech input, switch control, or representative disabled user was involved. Assistive-technology certification remains open.
+- Browser-engine/version diversity, zoom, forced-colour, and operating-system high-contrast checks remain open.
