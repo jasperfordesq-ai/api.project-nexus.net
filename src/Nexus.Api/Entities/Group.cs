@@ -50,6 +50,7 @@ public class Group : ITenantEntity
     public bool IsActive { get; set; } = true;
     public string Status { get; set; } = "active";
     public bool HasChildren { get; set; }
+    public int CachedMemberCount { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }

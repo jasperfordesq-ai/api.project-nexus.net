@@ -7,25 +7,24 @@ Laravel source of truth: `C:\platforms\htdocs\staging\database\migrations` and
 
 ## Current Source Counts
 
-The base static schema-table counts were generated with
-`scripts/compare-laravel-schema-parity.ps1` on 2026-07-12. The five-table
-safeguarding delta and direct-message migration inventory below are applied
-from runtime-verified migration source; regenerate the ignored comparator
-artifact before using the counts for a new implementation slice.
+The static schema-table counts were regenerated with
+`scripts/compare-laravel-schema-parity.ps1` on 2026-07-12 after the group
+invite/export lifecycle slice. Runtime migration counts come from a separate
+blank PostgreSQL replay.
 
 | Source | Count | Notes |
 | --- | ---: | --- |
-| Laravel migrations | 333 | PHP migration files under `database/migrations`. |
-| ASP.NET migration source files | 117 | Main migration `.cs` files excluding designers and the model snapshot. |
-| ASP.NET runtime migrations | 115 | Blank replay applied every recorded EF migration through latest `20260712060051_DirectMessageStateParity`; `has-pending-model-changes` is green. |
-| Laravel created tables | 220 | Unique `Schema::create(...)` table names. |
-| Laravel touched tables | 105 | Unique `Schema::table(...)` table names. |
-| Laravel explicit model tables | 199 | Unique `protected/public $table = ...` model declarations. |
-| Laravel source tables | 368 | Union of migration-created, migration-touched, and explicit model tables. |
-| ASP.NET tables | 336 | Prior static union plus the five exact safeguarding metadata tables added in migration 112. |
-| Exact matched tables | 142 | Static name matches plus the five exact Laravel safeguarding metadata table names. |
-| Missing Laravel tables | 226 | Prior missing-name inventory minus the five newly represented safeguarding tables. |
-| Extra ASP.NET tables | 194 | .NET table names with no exact Laravel table name. |
+| Laravel migrations | 373 | PHP migration files under `database/migrations`. |
+| ASP.NET migration source files | 121 | Main migration `.cs` files excluding designers and the model snapshot. |
+| ASP.NET runtime migrations | 119 | Blank replay applied every recorded EF migration through `20260712163203_GroupInviteAndExportLifecycleParity`; `has-pending-model-changes` is green. |
+| Laravel created tables | 298 | Unique `Schema::create(...)` table names. |
+| Laravel touched tables | 128 | Unique `Schema::table(...)` table names. |
+| Laravel explicit model tables | 267 | Unique `protected/public $table = ...` model declarations. |
+| Laravel source tables | 455 | Union of migration-created, migration-touched, and explicit model tables. |
+| ASP.NET tables | 340 | Static table union after adding `group_data_exports`. |
+| Exact matched tables | 149 | Current exact table-name matches. |
+| Missing Laravel tables | 306 | Laravel source names not represented exactly in ASP.NET. |
+| Extra ASP.NET tables | 191 | .NET table names with no exact Laravel table name. |
 
 These counts are not a parity score. Static table-name matching will overstate
 some gaps where .NET intentionally renamed tables, for example Laravel `vol_*`
@@ -34,8 +33,25 @@ triage and compatibility decisions before any table can be marked equivalent.
 
 ## 2026-07-12 Runtime Migration, Direct-Message, And Safeguarding Evidence Status
 
-`20260712060051_DirectMessageStateParity` is the current latest migration and
-runtime ID 115. It adds durable edit, participant-scoped deletion, per-user
+`20260712163203_GroupInviteAndExportLifecycleParity` is the current latest
+migration and runtime ID 119. It adds durable invite type, acceptance identity
+and timestamps, active membership status, cached group member counts, and the
+Laravel-named `group_data_exports` queue with requester and expiry indexes.
+Existing memberships are preserved as active, invite type is derived from the
+existing email value, update time is initialized from creation time, and cached
+counts are rebuilt from active memberships. All 119 migrations applied to a
+blank disposable PostgreSQL 16 database and EF reports no pending model
+changes. Focused invite/export HTTP and generation proof passed 3/3; the
+combined affected group gate passed 6/6. No production resource was touched.
+
+The preceding `20260712152645_GroupFormLifecycleParity`,
+`20260712145614_GroupQaLifecycleParity`, and
+`20260712104503_DurableMessageReactions` migrations are runtime IDs 118, 117,
+and 116 respectively.
+
+`20260712060051_DirectMessageStateParity` was the latest migration at the
+direct-message checkpoint and remains runtime ID 115. It adds durable edit,
+participant-scoped deletion, per-user
 archive, and nullable deletion-audit state to messages. New boolean state
 defaults to `false`; optional timestamps and audit identity default to null.
 The audit user relationship uses `ON DELETE SET NULL`. Blank 115 and populated

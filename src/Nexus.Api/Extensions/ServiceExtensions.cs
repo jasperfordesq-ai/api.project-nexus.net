@@ -120,6 +120,8 @@ public static class ServiceExtensions
         services.AddScoped<AuthenticationConfigurationService>();
         services.AddScoped<GroupQaMutationService>();
         services.AddScoped<GroupFormService>();
+        services.AddScoped<GroupInviteLifecycleService>();
+        services.AddScoped<GroupDataExportService>();
         services.AddSingleton<TwoFactorChallengeManager>();
         services.AddScoped<FileUploadService>();
 
@@ -319,6 +321,7 @@ public static class ServiceExtensions
 
         // Background services
         services.AddHostedService<SavedSearchAlertService>();
+        services.AddHostedService<GroupDataExportWorker>();
 
         // Phase 73 — singleton registry that hosted services write to so the
         // /api/admin/system/diagnostics endpoint can show ops staff which jobs

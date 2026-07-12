@@ -13,9 +13,31 @@ public class GroupInvite : ITenantEntity
     public int InvitedByUserId { get; set; }
     public string Token { get; set; } = string.Empty;
     public string? Email { get; set; }
+    public string InviteType { get; set; } = "link";
     public string Status { get; set; } = "pending";
+    public int? AcceptedByUserId { get; set; }
+    public DateTime? AcceptedAt { get; set; }
     public DateTime? ExpiresAt { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+
+public class GroupDataExport : ITenantEntity
+{
+    public Guid Id { get; set; }
+    public int TenantId { get; set; }
+    public int GroupId { get; set; }
+    public int RequestedByUserId { get; set; }
+    public string Status { get; set; } = "queued";
+    public string? StoragePath { get; set; }
+    public long? ByteSize { get; set; }
+    public string? ErrorCode { get; set; }
+    public short Attempts { get; set; }
+    public DateTime? ProcessingStartedAt { get; set; }
+    public DateTime? CompletedAt { get; set; }
+    public DateTime ExpiresAt { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
 
 public class GroupMediaItem : ITenantEntity

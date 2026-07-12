@@ -126,6 +126,7 @@ public class NexusDbContext : DbContext
     public DbSet<GroupDiscussion> GroupDiscussions => Set<GroupDiscussion>();
     public DbSet<GroupDiscussionReply> GroupDiscussionReplies => Set<GroupDiscussionReply>();
     public DbSet<GroupInvite> GroupInvites => Set<GroupInvite>();
+    public DbSet<GroupDataExport> GroupDataExports => Set<GroupDataExport>();
     public DbSet<GroupMediaItem> GroupMediaItems => Set<GroupMediaItem>();
     public DbSet<GroupWikiPage> GroupWikiPages => Set<GroupWikiPage>();
     public DbSet<GroupWikiRevision> GroupWikiRevisions => Set<GroupWikiRevision>();
@@ -849,7 +850,24 @@ public class NexusDbContext : DbContext
 
     private static void ConfigureGroupsParity(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<GroupInvite>(entity => { entity.ToTable("group_invites"); entity.HasIndex(e => new { e.TenantId, e.Token }).IsUnique(); });
+        modelBuilder.Entity<GroupInvite>(entity =>
+        {
+            entity.ToTable("group_invites");
+            entity.Property(e => e.InviteType).HasMaxLength(20);
+            entity.Property(e => e.Status).HasMaxLength(20);
+            entity.HasIndex(e => new { e.TenantId, e.Token }).IsUnique();
+        });
+        modelBuilder.Entity<GroupDataExport>(entity =>
+        {
+            entity.ToTable("group_data_exports");
+            entity.Property(e => e.Status).HasMaxLength(20);
+            entity.Property(e => e.StoragePath).HasMaxLength(500);
+            entity.Property(e => e.ErrorCode).HasMaxLength(100);
+            entity.HasIndex(e => new { e.TenantId, e.GroupId, e.RequestedByUserId, e.CreatedAt })
+                .HasDatabaseName("idx_group_exports_requester");
+            entity.HasIndex(e => new { e.Status, e.ExpiresAt })
+                .HasDatabaseName("idx_group_exports_expiry");
+        });
         modelBuilder.Entity<GroupMediaItem>().ToTable("group_media_items");
         modelBuilder.Entity<GroupWikiPage>(entity => { entity.ToTable("group_wiki_pages"); entity.HasIndex(e => new { e.TenantId, e.GroupId, e.Slug }).IsUnique(); });
         modelBuilder.Entity<GroupWikiRevision>().ToTable("group_wiki_revisions");

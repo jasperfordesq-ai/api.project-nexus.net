@@ -31,12 +31,14 @@ public class GroupsParityController : ControllerBase
     private readonly NexusDbContext _db;
     private readonly TenantContext _tenantContext;
     private readonly GroupQaMutationService _qaMutations;
+    private readonly GroupInviteLifecycleService _invites;
 
-    public GroupsParityController(NexusDbContext db, TenantContext tenantContext, GroupQaMutationService qaMutations)
+    public GroupsParityController(NexusDbContext db, TenantContext tenantContext, GroupQaMutationService qaMutations, GroupInviteLifecycleService invites)
     {
         _db = db;
         _tenantContext = tenantContext;
         _qaMutations = qaMutations;
+        _invites = invites;
     }
 
     [HttpGet("recommendations")]
@@ -139,7 +141,11 @@ public class GroupsParityController : ControllerBase
     }
 
     [HttpGet("{groupId:int}/export")]
-    public async Task<IActionResult> ExportGroup(int groupId) => Ok(new { data = new { analytics = await AnalyticsData(groupId), members = await _db.GroupMembers.CountAsync(m => m.GroupId == groupId) } });
+    [HttpGet("/api/v2/groups/{groupId:int}/export")]
+    public IActionResult ExportGroup(int groupId) => StatusCode(StatusCodes.Status410Gone, new
+    {
+        error = new { code = "CAPABILITY_RETIRED", message = "Use the queued group export endpoint" }
+    });
 
     [HttpGet("{groupId:int}/invites")]
     public async Task<IActionResult> Invites(int groupId)
@@ -177,16 +183,20 @@ public class GroupsParityController : ControllerBase
         return NoContent();
     }
 
-    [HttpPost("invite/{token}/accept")]
-    public async Task<IActionResult> AcceptInvite(string token)
+    [HttpGet("invite/{token}")]
+    [HttpGet("/api/v2/groups/invite/{token}")]
+    public async Task<IActionResult> PreviewInvite(string token, CancellationToken ct)
     {
-        var invite = await _db.GroupInvites.FirstOrDefaultAsync(i => i.TenantId == TenantId() && i.Token == token && i.Status == "pending");
-        if (invite == null) return NotFound(new { error = "Invite not found" });
-        if (!await _db.GroupMembers.AnyAsync(m => m.GroupId == invite.GroupId && m.UserId == UserId()))
-            _db.GroupMembers.Add(new GroupMember { GroupId = invite.GroupId, UserId = UserId(), Role = Group.Roles.Member });
-        invite.Status = "accepted";
-        await _db.SaveChangesAsync();
-        return Ok(new { success = true, group_id = invite.GroupId });
+        var result = await _invites.PreviewAsync(TenantId(), UserId(), token, ct);
+        return InviteResult(result);
+    }
+
+    [HttpPost("invite/{token}/accept")]
+    [HttpPost("/api/v2/groups/invite/{token}/accept")]
+    public async Task<IActionResult> AcceptInvite(string token, CancellationToken ct)
+    {
+        var result = await _invites.AcceptAsync(TenantId(), UserId(), token, ct);
+        return InviteResult(result);
     }
 
     [HttpGet("{groupId:int}/media")]
@@ -885,7 +895,11 @@ public class GroupsParityController : ControllerBase
         };
     }
 
-    private GroupInvite NewInvite(int groupId, string? email) => new() { TenantId = TenantId(), GroupId = groupId, InvitedByUserId = UserId(), Email = email, Token = Token(), ExpiresAt = DateTime.UtcNow.AddDays(14) };
+    private GroupInvite NewInvite(int groupId, string? email) => new()
+    {
+        TenantId = TenantId(), GroupId = groupId, InvitedByUserId = UserId(), Email = email,
+        InviteType = email is null ? "link" : "email", Token = Token(), ExpiresAt = DateTime.UtcNow.AddDays(14)
+    };
 
     private async Task AddRevision(GroupWikiPage page)
     {
@@ -915,6 +929,10 @@ public class GroupsParityController : ControllerBase
 
     private int TenantId() => _tenantContext.TenantId ?? throw new InvalidOperationException("Tenant context not resolved");
     private int UserId() => User.GetUserId() ?? throw new UnauthorizedAccessException("Invalid token");
+
+    private IActionResult InviteResult(GroupInviteResult result) => result.Succeeded
+        ? Ok(new { data = result.Data })
+        : StatusCode(result.Error!.Status, new { error = new { code = result.Error.Code, message = result.Error.Message } });
 
     private async Task<bool> IsGroupMemberOrCreator(int groupId)
     {

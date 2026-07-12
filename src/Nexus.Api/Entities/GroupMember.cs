@@ -20,6 +20,7 @@ public class GroupMember : ITenantEntity
     /// Role within the group: member, admin, or owner.
     /// </summary>
     public string Role { get; set; } = Group.Roles.Member;
+    public string Status { get; set; } = "active";
 
     /// <summary>
     /// When the user joined the group.

@@ -446,8 +446,8 @@ Earlier published slice evidence retained for context:
 - earlier volunteering-chain proof reached
   `20260711031959_NullableTransactionLedgerLegs`; the current migration proof
   is recorded above;
-- API route comparator: 2,439/2,583 current Laravel/supplemental operations
-  matched, 144 route-shape gaps after the expanded event/security inventory;
+- API route comparator: 2,453/2,583 current Laravel/supplemental operations
+  matched, 130 route-shape gaps after the expanded event/security inventory;
 - historical schema comparator: 134/361 Laravel tables matched, 227 missing, 194
   ASP.NET-only; the current result above supersedes it and remains a global red
   gate.
