@@ -5005,16 +5005,15 @@ assistive-technology depth, and ASP.NET compatibility remain open.
 ## 2026-07-12 Disposable Podcast Draft Lifecycle
 
 The guarded gate creates and updates a uniquely named private draft show,
-proves Laravel `/mine` persistence, uploads a tiny valid WAV episode through
-the rendered multipart form, proves its manage row and real ID, deletes the
-episode and proves row absence, then deletes the show and proves final `/mine`
-absence. Direct show DELETE is nested in `finally` independently of Poll and
-Group cleanup. The expanded `1/1` run passed in `332.7` seconds at 320 CSS
-pixels with structural, reflow, and serious/critical axe assertions; no
-Podcast, Poll, or Group fixture remained and the shared theme was restored.
-Audio download/stream bytes, publish/moderation, subscribe behavior,
-author-role depth, manual assistive-technology review, and ASP.NET
-compatibility remain open.
+uploads a tiny valid WAV episode, proves its manage row and real ID, fetches
+Laravel's returned audio URL with bearer auth, and proves exact byte equality.
+It then deletes the episode and proves row absence, deletes the show, and proves
+final `/mine` absence. Direct show DELETE is nested in `finally` independently
+of Poll and Group cleanup. The expanded `1/1` run passed in `324.2` seconds at
+320 CSS pixels with structural, reflow, and serious/critical axe assertions;
+no Podcast, Poll, or Group fixture remained and the shared theme was restored.
+Publish/moderation, subscribe behavior, author-role depth, manual
+assistive-technology review, and ASP.NET compatibility remain open.
 
 ## Documents To Trust
 

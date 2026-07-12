@@ -78,6 +78,7 @@ test('certifies a disposable private group and its owner-managed content through
   const podcastTitle = `Disposable podcast ${runId}`;
   const updatedPodcastTitle = `${podcastTitle} updated`;
   const episodeTitle = `Disposable episode ${runId}`;
+  const episodeAudio = Buffer.from('UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQIAAACAgA==', 'base64');
   const auth = await login(smoke.email, smoke.password, smoke.tenant);
   const token = auth.access_token;
   let groupId = null;
@@ -372,7 +373,7 @@ test('certifies a disposable private group and its owner-managed content through
     await page.locator('#audio').setInputFiles({
       name: 'disposable-episode.wav',
       mimeType: 'audio/wav',
-      buffer: Buffer.from('UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQIAAACAgA==', 'base64')
+      buffer: episodeAudio
     });
     const episodeCreateResponse = await submit(page, `/podcasts/studio/${podcastId}/episodes`, page.locator('form:has(#episode_title) button'));
     expect(episodeCreateResponse.status()).toBe(302);
@@ -385,6 +386,19 @@ test('certifies a disposable private group and its owner-managed content through
     expect(episodeDeleteAction).toBeTruthy();
     const episodeId = Number(episodeDeleteAction.match(/\/episodes\/(\d+)\/delete$/)?.[1]);
     expect(episodeId).toBeGreaterThan(0);
+    const showsWithEpisode = rowsFrom(await callPodcastApi(token, 'GET', '/mine'));
+    const persistedShow = showsWithEpisode.find(show => Number(show?.id) === podcastId);
+    const persistedEpisodes = rowsFrom(persistedShow?.episodes || persistedShow?.podcast_episodes || []);
+    const persistedEpisode = persistedEpisodes.find(episode => Number(episode?.id) === episodeId);
+    expect(persistedEpisode).toBeTruthy();
+    const audioUrl = persistedEpisode.audio_url || persistedEpisode.audioUrl;
+    expect(audioUrl).toBeTruthy();
+    const audioResponse = await page.context().request.get(new URL(audioUrl, smoke.apiBaseUrl).toString(), {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    expect(audioResponse.status()).toBe(200);
+    expect((await audioResponse.body()).equals(episodeAudio)).toBe(true);
+
     const episodeDeleteResponse = await submit(page, `/podcasts/studio/${podcastId}/episodes/${episodeId}/delete`, episodeCard.locator('form[action$="/delete"] button'));
     expect(episodeDeleteResponse.status()).toBe(302);
     await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
