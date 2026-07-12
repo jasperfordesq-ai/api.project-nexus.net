@@ -7487,6 +7487,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Average score');
     expect(response.text).toContain('Listings');
     expect(response.text).toContain('Repair a bicycle');
+    expect(response.text).not.toContain('A practical repair request');
     expect(response.text).toContain('87% match');
     expect(response.text).toContain('Shared repair skills');
     expect(response.text).toContain('action="/matches/77/dismiss"');
@@ -7496,6 +7497,7 @@ describe('shared accessible frontend shell', () => {
     const api = require('../src/lib/api');
     const cookieSignature = require('cookie-signature');
     const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const longDescription = 'A detailed practical repair request '.repeat(8).trim();
 
     api.callMatchesApi.mockResolvedValueOnce({
       data: {
@@ -7505,7 +7507,7 @@ describe('shared accessible frontend shell', () => {
             listing_id: 77,
             module: 'listing',
             title: 'Repair a bicycle',
-            description: 'A practical repair request',
+            description: longDescription,
             type: 'request',
             category_name: 'Transport',
             user_name: 'Avery Morgan',
@@ -7543,6 +7545,8 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Listings (1)');
     expect(response.text).toContain('Groups (1)');
     expect(response.text).toContain('Repair a bicycle');
+    expect(response.text).toContain(`${longDescription.slice(0, 157)}...`);
+    expect(response.text).not.toContain(longDescription);
     expect(response.text).toContain('87% match');
     expect(response.text).toContain('+1 more');
     expect(response.text).toContain('action="/matches/board/77/dismiss"');
@@ -7689,7 +7693,7 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(200);
-    expect(response.text).toContain('Sorry, there is a problem loading your matches. Please try again.');
+    expect(response.text).toContain('Try again later.');
     expect(response.text).toContain('data-module="govuk-error-summary" tabindex="-1"');
     expect(response.text).not.toContain('We have no matches for you yet.');
   });

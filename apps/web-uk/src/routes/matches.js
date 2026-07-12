@@ -71,6 +71,11 @@ function trimmed(value, fallback = '') {
   return text || fallback;
 }
 
+function truncated(value, limit) {
+  const text = trimmed(value);
+  return text.length > limit ? `${text.slice(0, Math.max(0, limit - 3))}...` : text;
+}
+
 function normalizeReasons(value) {
   return Array.isArray(value)
     ? value.map((reason) => trimmed(reason)).filter(Boolean)
@@ -107,7 +112,7 @@ function normalizeMatch(match = {}, t, board = false) {
     organizationId,
     href,
     title: trimmed(match.title, t(board ? 'govuk_alpha_connections.matches.view_match' : 'matches.view_listing')),
-    description: trimmed(match.description),
+    description: board ? truncated(match.description, 160) : '',
     type: match.type === 'request' ? 'request' : 'offer',
     typeLabel: t(board
       ? `govuk_alpha_connections.matches.type_${match.type === 'request' ? 'request' : 'offer'}`
@@ -187,7 +192,7 @@ router.get('/', requireAuth, asyncRoute(async (req, res) => {
     matchMeta = payload.meta;
   } catch (error) {
     if (isAuthError(error)) throw error;
-    errorMessage = 'Sorry, there is a problem loading your matches. Please try again.';
+    errorMessage = res.locals.t('error_pages.503_body');
   }
   const stats = statsFor(matches);
 
@@ -217,7 +222,7 @@ router.get('/board', requireAuth, asyncRoute(async (req, res) => {
     matchMeta = payload.meta;
   } catch (error) {
     if (isAuthError(error)) throw error;
-    errorMessage = 'Sorry, there is a problem loading your matches. Please try again.';
+    errorMessage = res.locals.t('error_pages.503_body');
   }
   const stats = statsFor(matches);
   const filteredMatches = visibleMatches(matches, activeSource);
