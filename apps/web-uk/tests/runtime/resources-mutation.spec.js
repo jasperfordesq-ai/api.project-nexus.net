@@ -140,6 +140,8 @@ test('uploads, downloads, and deletes a disposable resource through Web UK', asy
       timeout: 300_000
     });
     const celebrateForm = page.locator('form:has(input[name="emoji"][value="celebrate"])');
+    await expect(celebrateForm.locator('button')).toContainText('🎉');
+    await expect(celebrateForm.locator('button')).toContainText('Celebrate');
     const reactionResponse = await submitPost(page, celebrateForm.locator('button'), `/resources/${resourceId}/react`);
     expect(reactionResponse.status()).toBe(302);
     await page.goto(`${mountPath}/resources/${resourceId}/comments`, { waitUntil: 'domcontentloaded', timeout: 300_000 });

@@ -69,6 +69,7 @@
                 <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                 <input type="hidden" name="emoji" value="{{ reactionType }}">
                 <button class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0{% if reactions.userReaction == reactionType %} nexus-alpha-reaction--active{% endif %}" data-module="govuk-button" aria-pressed="{% if reactions.userReaction == reactionType %}true{% else %}false{% endif %}">
+                  <span aria-hidden="true">{{ reactionEmoji[reactionType] }}</span>
                   {{ reactionLabel }}{% if typeCount > 0 %} ({{ formatLocaleNumber(typeCount) }}){% endif %}
                   <span class="govuk-visually-hidden"> {{ t("govuk_alpha_resources.social.reaction_for_resource") }}</span>
                 </button>

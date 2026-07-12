@@ -25,6 +25,14 @@ const { getRequestProfile } = require('../lib/request-profile');
 
 const router = express.Router();
 const RESOURCE_REACTIONS = new Set(['like', 'love', 'laugh', 'wow', 'sad', 'celebrate']);
+const RESOURCE_REACTION_EMOJI = {
+  like: '\u{1F44D}',
+  love: '\u2764\uFE0F',
+  laugh: '\u{1F602}',
+  wow: '\u{1F62E}',
+  sad: '\u{1F622}',
+  celebrate: '\u{1F389}'
+};
 const DOWNLOAD_HEADER_NAMES = [
   'content-type',
   'content-disposition',
@@ -649,6 +657,7 @@ router.get('/:id(\\d+)/comments', asyncRoute(async (req, res) => {
       type,
       res.locals.t(`govuk_alpha_resources.social.reaction_types.${type}`)
     ])),
+    reactionEmoji: RESOURCE_REACTION_EMOJI,
     status: commentsStatusMessage(trimmed(req.query && req.query.status), res.locals.t)
   });
 }, { redirectOn401: '/login?status=auth-required', notFoundTitle: 'Resource comments' }));

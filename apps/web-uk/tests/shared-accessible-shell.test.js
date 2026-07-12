@@ -11596,6 +11596,12 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Your reply was posted.');
     expect(response.text).toContain('Reactions');
     expect(response.text).toContain('3 reactions');
+    expect(response.text).toContain('<span aria-hidden="true">👍</span>');
+    expect(response.text).toContain('<span aria-hidden="true">❤️</span>');
+    expect(response.text).toContain('<span aria-hidden="true">😂</span>');
+    expect(response.text).toContain('<span aria-hidden="true">😮</span>');
+    expect(response.text).toContain('<span aria-hidden="true">😢</span>');
+    expect(response.text).toContain('<span aria-hidden="true">🎉</span>');
     expect(response.text).toContain('Like (2)');
     expect(response.text).toContain('Love (1)');
     expect(response.text).toContain('aria-pressed="true"');
