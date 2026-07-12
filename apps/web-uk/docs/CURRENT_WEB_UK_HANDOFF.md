@@ -5107,6 +5107,19 @@ cleanup covers failures before or after editing. The `1/1` run passed in
 coupon depth, merchant profile-image uploads, manual assistive-technology
 review, and ASP.NET compatibility remain open.
 
+## 2026-07-12 Disposable Event Cover Lifecycle
+
+The default-English event gate now uploads a real PNG while creating its
+unique event, verifies Laravel's persisted cover, fetches the image
+successfully, proves rendered visibility, then continues through edit,
+320-pixel structure/reflow/axe, delete, and final absence. The first run exposed
+backend-relative `/uploads/...` covers being requested from Web UK's origin;
+event list/detail/edit now resolve them only against the configured backend
+origin. The corrected `1/1` run passed in `55.0` seconds and retained no
+fixture. Cover removal remains blocked because Laravel exposes upload but no
+removal endpoint; polls/waitlist/series/attendee/check-in depth, manual review,
+tenant gates, and ASP.NET compatibility remain open.
+
 ## Known Remaining Work
 
 Prioritize visual/manual Blade parity, page-level feature-disabled behavior, and

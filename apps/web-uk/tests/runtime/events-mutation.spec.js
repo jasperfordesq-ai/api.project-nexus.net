@@ -6,10 +6,14 @@
 const { test, expect } = require('@playwright/test');
 const AxeBuilder = require('@axe-core/playwright').default;
 const { resolveOptions } = require('../../scripts/laravel-runtime-smoke');
-const { deleteEvent, getEvents, login } = require('../../src/lib/api');
+const { deleteEvent, getEvent, getEvents, login } = require('../../src/lib/api');
 
 const smoke = resolveOptions({}, process.env);
 const mountPath = `/${encodeURIComponent(smoke.tenant)}/accessible`;
+const png = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+  'base64'
+);
 
 function rowsFrom(result) {
   if (Array.isArray(result)) return result;
@@ -18,6 +22,10 @@ function rowsFrom(result) {
   if (Array.isArray(result?.data?.items)) return result.data.items;
   if (Array.isArray(result?.items)) return result.items;
   return [];
+}
+
+function dataFrom(result) {
+  return result && typeof result === 'object' && result.data !== undefined ? result.data : result;
 }
 
 function localDateTime(date) {
@@ -87,6 +95,11 @@ test('creates, updates, and deletes a disposable event through Web UK', async ({
     await page.locator('#location').fill('Disposable test location');
     await page.locator('#start_time').fill(localDateTime(start));
     await page.locator('#end_time').fill(localDateTime(end));
+    await page.locator('#image').setInputFiles({
+      name: `codex-event-${runId}.png`,
+      mimeType: 'image/png',
+      buffer: png
+    });
 
     const createResponse = await submit(page, '/events/new', page.locator('form:has(#title) button[type="submit"]').last());
     expect(createResponse.status()).toBe(302);
@@ -96,8 +109,19 @@ test('creates, updates, and deletes a disposable event through Web UK', async ({
     expect(created).toBeTruthy();
     eventId = Number(created.id);
     expect(eventId).toBeGreaterThan(0);
+    const createdDetail = dataFrom(await getEvent(token, eventId));
+    const coverImage = createdDetail?.cover_image || createdDetail?.coverImage;
+    expect(String(coverImage)).toBeTruthy();
+    const resolvedCoverImage = new URL(String(coverImage), `${smoke.laravelBaseUrl}/`).href;
     expect(new URL(page.url()).pathname).toBe(`${mountPath}/events/${eventId}`);
     await expect(page.locator('h1')).toContainText(createdTitle);
+    await expect(page.locator(`main img[src="${resolvedCoverImage}"]`).first()).toBeVisible();
+    const coverResponse = await page.request.get(resolvedCoverImage, {
+      timeout: 300_000
+    });
+    expect(coverResponse.status()).toBe(200);
+    expect(coverResponse.headers()['content-type']).toContain('image/');
+    expect((await coverResponse.body()).length).toBeGreaterThan(0);
     await expect(page.locator('.govuk-caption-l')).toHaveText('Event details');
     await expect(page.getByRole('heading', { name: 'Description', exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Event information', exact: true })).toBeVisible();

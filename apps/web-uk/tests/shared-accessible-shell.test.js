@@ -14,6 +14,7 @@ const fs = require('fs');
 const path = require('path');
 const request = require('supertest');
 const { createChoiceTranslator, createTranslator } = require('../src/lib/localization');
+const { getApiBaseUrl } = require('../src/lib/backend-contract');
 const englishForbiddenTitle = createTranslator('en')('error_pages.403_title');
 const englishNotFoundTitle = createTranslator('en')('error_pages.404_title');
 
@@ -20994,7 +20995,7 @@ describe('shared accessible frontend shell', () => {
     const csrfMatch = page.text.match(/name="_csrf" value="([^"]+)"/);
 
     expect(page.status).toBe(200);
-    expect(page.text).toContain('/uploads/events/garden.webp');
+    expect(page.text).toContain(`src="${getApiBaseUrl()}/uploads/events/garden.webp"`);
     expect(page.text).toContain('Current cover image for Community garden day');
     expect(csrfMatch).not.toBeNull();
   });
@@ -21023,7 +21024,7 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(200);
-    expect(response.text).toContain('/uploads/events/garden.webp');
+    expect(response.text).toContain(`src="${getApiBaseUrl()}/uploads/events/garden.webp"`);
     expect(response.text).toContain('Photo for Community garden day');
   });
 
@@ -21229,7 +21230,7 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(200);
-    expect(response.text).toContain('/uploads/events/garden.webp');
+    expect(response.text).toContain(`src="${getApiBaseUrl()}/uploads/events/garden.webp"`);
     expect(response.text).toContain('Photo for Community garden day');
   });
 

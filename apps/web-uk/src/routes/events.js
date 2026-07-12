@@ -26,7 +26,7 @@ const {
 const { requireAuth } = require('../middleware/auth');
 const { asyncRoute } = require('../lib/routeHelpers');
 const { audit } = require('../lib/auditLogger');
-const { localeOptions } = require('../lib/accessible-shell');
+const { localeOptions, resolveBackendAssetUrl } = require('../lib/accessible-shell');
 const { getRequestProfile } = require('../lib/request-profile');
 
 const router = express.Router();
@@ -161,9 +161,19 @@ function eventCategoryFrom(item) {
 function eventFrom(result) {
   const data = dataFrom(result);
   if (data && typeof data === 'object' && !Array.isArray(data)) {
-    return data.event || data;
+    return eventWithAssetUrls(data.event || data);
   }
   return {};
+}
+
+function eventWithAssetUrls(value) {
+  const event = value && typeof value === 'object' ? value : {};
+  const coverImage = resolveBackendAssetUrl(event.cover_image || event.coverImage);
+  return {
+    ...event,
+    cover_image: coverImage,
+    coverImage
+  };
 }
 
 function apiErrorsFrom(error) {
@@ -676,7 +686,7 @@ router.get('/', asyncRoute(async (req, res) => {
     })
   ]);
 
-  const events = collectionFrom(result);
+  const events = collectionFrom(result).map(eventWithAssetUrls);
   const categories = collectionFrom(categoriesResult);
   const meta = result?.meta || {};
   const loadError = result?.loadError === true;
