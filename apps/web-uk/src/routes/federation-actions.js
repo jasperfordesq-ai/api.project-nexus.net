@@ -374,14 +374,18 @@ router.post('/members/:id(\\d+)/transfer', asyncRoute(async (req, res) => {
     return redirectTo(res, transferRedirect(receiverId, receiverTenantId, 'transfer-description-required'));
   }
 
+  const idempotencyKey = trimmed(req.body.idempotency_key, 64);
+  const payload = {
+    receiver_id: receiverId,
+    receiver_tenant_id: receiverTenantId,
+    amount,
+    description
+  };
+  if (idempotencyKey !== '') payload.idempotency_key = idempotencyKey;
+
   let status = 'transfer-sent';
   try {
-    await callFederation(token, 'POST', '/transactions', {
-      receiver_id: receiverId,
-      receiver_tenant_id: receiverTenantId,
-      amount,
-      description
-    });
+    await callFederation(token, 'POST', '/transactions', payload);
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
     status = 'transfer-failed';

@@ -4567,22 +4567,23 @@ describe('shared accessible frontend shell', () => {
     expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'GET', '/settings');
     expect(api.getBalance).toHaveBeenCalledWith('test-token');
     expect(response.text).toContain('href="/federation/members/77?tenant_id=12"');
-    expect(response.text).toContain('Federation transfer');
-    expect(response.text).toContain('Transfer time credits');
-    expect(response.text).toContain('Send time credits to a member in a partner community.');
-    expect(response.text).toContain('Enter a transfer description');
+    expect(response.text).toContain('Federated transfer');
+    expect(response.text).toContain('Send time credits');
+    expect(response.text).toContain('Send time credits to a member of a partner community.');
+    expect(response.text).toContain('Add a short description for this transfer.');
     expect(response.text).toContain('Recipient');
     expect(response.text).toContain('Avery Stone');
     expect(response.text).toContain('Community');
     expect(response.text).toContain('North Timebank');
-    expect(response.text).toContain('Balance');
-    expect(response.text).toContain('6 hours available');
-    expect(response.text).toContain('This transfer moves time credits to a member in another community.');
+    expect(response.text).toContain('Your balance');
+    expect(response.text).toContain('6 credits');
+    expect(response.text).toContain('Time credits are transferred immediately and cannot be reversed automatically.');
     expect(response.text).toContain('action="/federation/members/77/transfer"');
     expect(response.text).toContain('name="receiver_tenant_id" value="12"');
+    expect(response.text).toMatch(/name="idempotency_key" value="[0-9a-f-]{36}"/i);
     expect(response.text).toContain('id="amount" name="amount"');
     expect(response.text).toContain('id="description" name="description"');
-    expect(response.text).toContain('Send transfer');
+    expect(response.text).toContain('Send time credits');
     expect(response.text).not.toContain('Laravel Blade route');
   });
 
@@ -24673,14 +24674,16 @@ describe('shared accessible frontend shell', () => {
     const transferResponse = await post('/federation/members/77/transfer', {
       receiver_tenant_id: '12',
       amount: '3',
-      description: ' Thanks for the workshop '
+      description: ' Thanks for the workshop ',
+      idempotency_key: '4b92b923-8fc7-4b39-b8e5-116448454405'
     });
     expect(transferResponse.headers.location).toBe('/federation/members/77?tenant_id=12&status=transfer-sent');
     expect(api.callFederationApi).toHaveBeenLastCalledWith('test-token', 'POST', '/transactions', {
       receiver_id: 77,
       receiver_tenant_id: 12,
       amount: 3,
-      description: 'Thanks for the workshop'
+      description: 'Thanks for the workshop',
+      idempotency_key: '4b92b923-8fc7-4b39-b8e5-116448454405'
     });
 
     const onboardingResponse = await post('/federation/onboarding', {

@@ -8,13 +8,13 @@
 {% set backHref = "/federation/members/" + member.id + "?tenant_id=" + member.tenantId %}
 
 {% block mainContent %}
-  <a href="{{ urlFor(backHref) }}" class="govuk-back-link">Back to federation member</a>
+  <a href="{{ urlFor(backHref) }}" class="govuk-back-link">{{ t("fed2.transfer.back") }}</a>
 
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
-      <span class="govuk-caption-xl">Federation transfer</span>
-      <h1 class="govuk-heading-xl">Transfer time credits</h1>
-      <p class="govuk-body-l">Send time credits to a member in a partner community.</p>
+      <span class="govuk-caption-xl">{{ t("fed2.transfer.caption") }}</span>
+      <h1 class="govuk-heading-xl">{{ t("fed2.transfer.title") }}</h1>
+      <p class="govuk-body-l">{{ t("fed2.transfer.description") }}</p>
 
       {% include "federation/_nav.njk" %}
 
@@ -48,46 +48,47 @@
           <dd class="govuk-summary-list__value">{{ member.name }}</dd>
         </div>
         <div class="govuk-summary-list__row">
-          <dt class="govuk-summary-list__key">Community</dt>
+          <dt class="govuk-summary-list__key">{{ t("fed2.transfer.community_label") }}</dt>
           <dd class="govuk-summary-list__value">{{ member.tenantName }}</dd>
         </div>
         <div class="govuk-summary-list__row">
-          <dt class="govuk-summary-list__key">Balance</dt>
-          <dd class="govuk-summary-list__value">{{ balance }} hours available</dd>
+          <dt class="govuk-summary-list__key">{{ t("fed2.transfer.balance_label") }}</dt>
+          <dd class="govuk-summary-list__value">{{ t("fed2.transfer.balance_value", { amount: balance }) }}</dd>
         </div>
       </dl>
 
       {% if not viewerEnabled %}
-        <div class="govuk-inset-text"><p class="govuk-body">Federation transfers are not enabled for your account.</p></div>
-        <a class="govuk-link" href="{{ urlFor('/federation/settings') }}">Change federation settings</a>
+        <div class="govuk-inset-text"><p class="govuk-body">{{ t("fed2.transfer.not_enabled") }}</p></div>
+        <a class="govuk-link" href="{{ urlFor('/federation/settings') }}">{{ t("fed2.transfer.optin_link") }}</a>
       {% else %}
         <div class="govuk-warning-text">
           <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
           <strong class="govuk-warning-text__text">
-            <span class="govuk-visually-hidden">Warning</span>
-            This transfer moves time credits to a member in another community.
+            <span class="govuk-visually-hidden">{{ t("states.warning") }}</span>
+            {{ t("fed2.transfer.warning") }}
           </strong>
         </div>
 
         <form method="post" action="{{ urlFor('/federation/members/' + (member.id | string) + '/transfer') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           <input type="hidden" name="receiver_tenant_id" value="{{ member.tenantId }}">
+          <input type="hidden" name="idempotency_key" value="{{ transferIdempotencyKey }}">
 
           <div class="govuk-form-group">
-            <label class="govuk-label govuk-label--m" for="amount">Amount</label>
-            <div id="amount-hint" class="govuk-hint">Enter a whole number of hours from 1 to 100.</div>
+            <label class="govuk-label govuk-label--m" for="amount">{{ t("fed2.transfer.amount_label") }}</label>
+            <div id="amount-hint" class="govuk-hint">{{ t("fed2.transfer.amount_hint") }}</div>
             <input class="govuk-input govuk-input--width-5" id="amount" name="amount" type="number" inputmode="numeric" min="1" max="100" step="1" aria-describedby="amount-hint">
           </div>
 
           <div class="govuk-form-group">
-            <label class="govuk-label govuk-label--m" for="description">Description</label>
-            <div id="description-hint" class="govuk-hint">Briefly explain what the transfer is for.</div>
+            <label class="govuk-label govuk-label--m" for="description">{{ t("fed2.transfer.description_field_label") }}</label>
+            <div id="description-hint" class="govuk-hint">{{ t("fed2.transfer.description_field_hint") }}</div>
             <input class="govuk-input govuk-!-width-two-thirds" id="description" name="description" type="text" maxlength="500" aria-describedby="description-hint">
           </div>
 
           <div class="govuk-button-group">
-            <button type="submit" class="govuk-button govuk-button--warning" data-module="govuk-button">Send transfer</button>
-            <a class="govuk-link" href="{{ urlFor(backHref) }}">{{ t("polish_federation.transfer_cancel") }}</a>
+            <button type="submit" class="govuk-button govuk-button--warning" data-module="govuk-button">{{ t("fed2.transfer.submit") }}</button>
+            <a class="govuk-link" href="{{ urlFor(backHref) }}">{{ t("fed2.transfer.cancel") }}</a>
           </div>
         </form>
       {% endif %}

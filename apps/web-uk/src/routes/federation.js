@@ -4,6 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 const express = require('express');
+const { randomUUID } = require('crypto');
 const {
   ApiError,
   ApiOfflineError,
@@ -582,20 +583,19 @@ function memberStatusBanner(status) {
   return banners[trimmed(status)] || null;
 }
 
-function transferStatusBanner(status) {
-  const banners = {
-    'transfer-sent': { type: 'success', message: 'Transfer sent' },
-    'transfer-not-enabled': { type: 'error', message: 'Federation transfers are not enabled' },
-    'transfer-amount-invalid': { type: 'error', message: 'Enter a transfer amount from 1 to 100' },
-    'transfer-description-required': { type: 'error', message: 'Enter a transfer description' },
-    'transfer-description-too-long': { type: 'error', message: 'Transfer description is too long' },
-    'transfer-recipient-unavailable': { type: 'error', message: 'This member cannot receive a federation transfer' },
-    'transfer-self': { type: 'error', message: 'You cannot transfer time credits to yourself' },
-    'transfer-insufficient': { type: 'error', message: 'You do not have enough time credits' },
-    'transfer-failed': { type: 'error', message: 'Transfer could not be sent' }
-  };
+function transferStatusBanner(status, t = (key) => key) {
+  const allowed = new Set([
+    'transfer-sent', 'transfer-not-enabled', 'transfer-amount-invalid',
+    'transfer-description-required', 'transfer-description-too-long',
+    'transfer-recipient-unavailable', 'transfer-self', 'transfer-insufficient',
+    'transfer-failed', 'transfer-safeguarding-restricted', 'transfer-safeguarding-unavailable'
+  ]);
+  const normalized = trimmed(status);
 
-  return banners[trimmed(status)] || null;
+  return allowed.has(normalized) ? {
+    type: normalized === 'transfer-sent' ? 'success' : 'error',
+    message: t(`fed2.transfer.status.${normalized}`)
+  } : null;
 }
 
 function settingsStatusBanner(status) {
@@ -1425,13 +1425,14 @@ router.get('/members/:id/transfer', asyncRoute(async (req, res) => {
   const balance = numberOrZero(balanceObject.balance !== undefined ? balanceObject.balance : balanceData);
 
   return res.render('federation/transfer', {
-    title: 'Transfer time credits',
+    title: res.locals.t('fed2.transfer.title'),
     activeNav: 'explore',
     federationActiveTab: 'members',
     member,
     balance,
+    transferIdempotencyKey: randomUUID(),
     viewerEnabled: (bool(settings.federation_optin) || bool(settingsData.enabled)) && bool(settings.transactions_enabled_federated),
-    statusBanner: transferStatusBanner(req.query.status)
+    statusBanner: transferStatusBanner(req.query.status, res.locals.t)
   });
 }));
 
