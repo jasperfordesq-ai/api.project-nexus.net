@@ -5175,6 +5175,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Upcoming events only');
     expect(response.text).toContain('Tool repair meetup');
     expect(response.text).toContain('Bring a small item and learn repair skills with neighbours.');
+    expect(response.text).toContain('15 August 2026 at 11:30');
     expect(response.text).toContain('Organiser: Avery Stone');
     expect(response.text).toContain('Location');
     expect(response.text).toContain('North Hall');
@@ -5250,7 +5251,7 @@ describe('shared accessible frontend shell', () => {
     });
     api.callFederationApi.mockRejectedValue(error);
 
-    for (const pathValue of ['/federation/connections', '/federation/messages', '/federation/members/351']) {
+    for (const pathValue of ['/federation/connections', '/federation/events', '/federation/messages', '/federation/members/351']) {
       const response = await request(app)
         .get(pathValue)
         .set('Cookie', signedCookieHeader());
@@ -5360,6 +5361,30 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('2 July 2026');
     expect(response.text).toContain('href="/federation/messages/conversation/77?tenant_id=12"');
     expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('renders Blade-aligned Federation events permission and recoverable failure states', async () => {
+    const api = require('../src/lib/api');
+    api.callFederationApi.mockRejectedValueOnce(new api.ApiError('Events are not enabled.', 403));
+
+    const unavailable = await request(app)
+      .get('/federation/events')
+      .set('Cookie', signedCookieHeader());
+
+    expect(unavailable.status).toBe(200);
+    expect(unavailable.text).toContain('Browsing federated events is not available for this community right now.');
+    expect(unavailable.text).not.toContain('Filter events');
+
+    api.callFederationApi.mockRejectedValueOnce(new api.ApiOfflineError());
+
+    const loadFailure = await request(app)
+      .get('/federation/events')
+      .set('Cookie', signedCookieHeader());
+
+    expect(loadFailure.status).toBe(200);
+    expect(loadFailure.text).toContain('We could not load federated events.');
+    expect(loadFailure.text).toContain('href="/federation/events">Try again</a>');
+    expect(loadFailure.text).not.toContain('Service temporarily unavailable');
   });
 
   it('matches Blade Federation messaging permission and load-failure states', async () => {

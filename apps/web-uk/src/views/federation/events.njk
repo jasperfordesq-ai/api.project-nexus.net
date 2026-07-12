@@ -6,9 +6,9 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a href="{{ urlFor('/federation') }}" class="govuk-back-link">Back to federation</a>
+  <a href="{{ urlFor('/federation') }}" class="govuk-back-link">{{ t("federation.events_browse.back") }}</a>
 
-  <span class="govuk-caption-xl">This community</span>
+  <span class="govuk-caption-xl">{{ t("federation.events_browse.caption", { community: tenantName }) }}</span>
   <h1 class="govuk-heading-xl">{{ t("federation.events_browse.title") }}</h1>
   <p class="govuk-body-l">{{ t("federation.events_browse.description") }}</p>
 
@@ -20,18 +20,18 @@
   {% else %}
     <form method="get" action="{{ urlFor('/federation/events') }}" class="govuk-!-margin-bottom-6">
       <fieldset class="govuk-fieldset">
-        <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">Filter events</legend>
+        <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">{{ t("federation.events_browse.filters_legend") }}</legend>
 
         <div class="govuk-form-group">
-          <label class="govuk-label" for="q">Search federated events</label>
-          <div id="q-hint" class="govuk-hint">Search by title or description.</div>
+          <label class="govuk-label" for="q">{{ t("federation.events_browse.search_label") }}</label>
+          <div id="q-hint" class="govuk-hint">{{ t("federation.events_browse.search_hint") }}</div>
           <input class="govuk-input govuk-!-width-two-thirds" id="q" name="q" type="search" value="{{ filters.q }}" aria-describedby="q-hint">
         </div>
 
         <div class="govuk-form-group">
-          <label class="govuk-label" for="partner_id">Community</label>
+          <label class="govuk-label" for="partner_id">{{ t("federation.events_browse.filter_by_community") }}</label>
           <select class="govuk-select" id="partner_id" name="partner_id">
-            <option value=""{% if not filters.partnerId %} selected{% endif %}>All communities</option>
+            <option value=""{% if not filters.partnerId %} selected{% endif %}>{{ t("federation.events_browse.all_communities") }}</option>
             {% for partner in partnerOptions %}
               <option value="{{ partner.id }}"{% if filters.partnerId == partner.id %} selected{% endif %}>{{ partner.name }}</option>
             {% endfor %}
@@ -43,31 +43,31 @@
             <input type="hidden" name="upcoming" value="false">
             <div class="govuk-checkboxes__item">
               <input class="govuk-checkboxes__input" id="upcoming" name="upcoming" type="checkbox" value="1"{% if filters.upcoming %} checked{% endif %}>
-              <label class="govuk-label govuk-checkboxes__label" for="upcoming">Upcoming events only</label>
+              <label class="govuk-label govuk-checkboxes__label" for="upcoming">{{ t("federation.events_browse.upcoming_only") }}</label>
             </div>
           </div>
         </div>
 
-        <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">Apply filters</button>
+        <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">{{ t("federation.events_browse.apply_filters") }}</button>
       </fieldset>
     </form>
 
     {% if loadError %}
       <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
         <div role="alert">
-          <h2 class="govuk-error-summary__title">We could not load federated events.</h2>
+          <h2 class="govuk-error-summary__title">{{ t("federation.events_browse.unable_to_load") }}</h2>
           <div class="govuk-error-summary__body">
             <ul class="govuk-list govuk-error-summary__list">
-              <li><a href="{{ urlFor('/federation/events') }}">Try again</a></li>
+              <li><a href="{{ urlFor('/federation/events') }}">{{ t("federation.events_browse.try_again") }}</a></li>
             </ul>
           </div>
         </div>
       </div>
     {% elif not events.length %}
       {% if filters.upcoming %}
-        <div class="govuk-inset-text"><p class="govuk-body">No upcoming events in partner communities.</p></div>
+        <div class="govuk-inset-text"><p class="govuk-body">{{ t("federation.events_browse.empty_upcoming") }}</p></div>
       {% else %}
-        <div class="govuk-inset-text"><p class="govuk-body">No events available in partner communities.</p></div>
+        <div class="govuk-inset-text"><p class="govuk-body">{{ t("federation.events_browse.empty_general") }}</p></div>
       {% endif %}
     {% else %}
       <div class="nexus-alpha-card-list">
@@ -80,19 +80,19 @@
             <div class="nexus-alpha-module-row">
               <h2 class="govuk-heading-s govuk-!-margin-bottom-1">{{ event.title }}</h2>
               {% if event.isPast %}
-                <strong class="govuk-tag govuk-tag--grey">Past</strong>
+                <strong class="govuk-tag govuk-tag--grey">{{ t("federation.events_browse.past_label") }}</strong>
               {% endif %}
               {% if event.isOnline %}
-                <strong class="govuk-tag govuk-tag--turquoise">Online</strong>
+                <strong class="govuk-tag govuk-tag--turquoise">{{ t("federation.events_browse.online_label") }}</strong>
               {% endif %}
             </div>
 
             {% if event.startDate %}
-              <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">{{ event.startDate | date }}</p>
+              <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">{{ event.startDateLabel }}</p>
             {% endif %}
 
             {% if event.organiserName %}
-              <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">Organiser: {{ event.organiserName }}</p>
+              <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">{{ t("federation.events_browse.organiser_label") }}: {{ event.organiserName }}</p>
             {% endif %}
 
             {% if event.tenantName %}
@@ -108,13 +108,13 @@
             <dl class="nexus-alpha-inline-list">
               {% if event.location and not event.isOnline %}
                 <div>
-                  <dt>Location</dt>
+                  <dt>{{ t("federation.location_label") }}</dt>
                   <dd>{{ event.location }}</dd>
                 </div>
               {% endif %}
               <div>
-                <dt>Going</dt>
-                <dd>{{ event.attendeesCount }} going</dd>
+                <dt>{{ t("federation.events_browse.attendees_label") }}</dt>
+                <dd>{{ event.attendeesCountLabel }}</dd>
               </div>
             </dl>
           </article>

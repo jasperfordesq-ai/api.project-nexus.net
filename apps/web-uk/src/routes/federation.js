@@ -260,16 +260,19 @@ function normalizeGroup(group) {
   };
 }
 
-function normalizeEvent(event, upcoming = true) {
+function normalizeEvent(event, upcoming = true, options = {}) {
+  const t = typeof options.t === 'function' ? options.t : (key) => key;
+  const formatDate = typeof options.formatDate === 'function' ? options.formatDate : (value) => value;
+  const formatNumber = typeof options.formatNumber === 'function' ? options.formatNumber : (value) => String(value);
   const timebank = asObject(event && event.timebank);
   const organizer = asObject(event && (event.organizer || event.organiser));
   const tenantId = event && event.tenant_id !== undefined ? event.tenant_id : timebank.id;
   const startDate = event && (event.start_date || event.startDate || event.created_at) ? (event.start_date || event.startDate || event.created_at) : '';
   const timestamp = startDate ? Date.parse(startDate) : Number.NaN;
 
-  return {
+  const normalized = {
     id: event && event.id,
-    title: trimmed(event && event.title) || 'Federated event',
+    title: trimmed(event && event.title) || t('federation.events_browse.title'),
     description: trimmed(event && event.description, 160),
     startDate,
     endDate: event && (event.end_date || event.endDate) ? (event.end_date || event.endDate) : '',
@@ -287,6 +290,11 @@ function normalizeEvent(event, upcoming = true) {
     tenantName: trimmed((event && event.tenant_name) || timebank.name),
     isPast: !upcoming && Number.isFinite(timestamp) && timestamp < Date.now()
   };
+  normalized.startDateLabel = startDate
+    ? formatDate(startDate, { day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+    : '';
+  normalized.attendeesCountLabel = t('federation.events_browse.attendees_count', { count: formatNumber(normalized.attendeesCount) });
+  return normalized;
 }
 
 function listingHref(listing) {
@@ -1108,41 +1116,53 @@ router.get('/events', asyncRoute(async (req, res) => {
   const filters = eventsFilters(req);
   let eventsResult;
   let partnersResult;
+  let allowed = true;
+  let loadError = false;
   try {
     eventsResult = await callFederationApi(token, 'GET', `/events${eventsApiQuery(filters)}`);
     partnersResult = await callFederationApi(token, 'GET', '/partners');
   } catch (error) {
-    if (error instanceof ApiError && error.status === 403) {
-      return res.render('federation/events', {
-        title: 'Federated events',
-        activeNav: 'explore',
-        federationActiveTab: 'events',
-        allowed: false,
-        events: [],
-        partnerOptions: [],
-        filters,
-        loadError: false,
-        loadMoreHref: ''
-      });
+    const errorCodes = error instanceof ApiError && Array.isArray(error.data && error.data.errors)
+      ? error.data.errors.map((item) => trimmed(item && item.code)).filter(Boolean)
+      : [];
+    if (error instanceof ApiError && error.status === 403 && errorCodes.includes('FEDERATION_NOT_ENABLED')) {
+      return redirectTo(res, '/federation/opt-in');
     }
-    if (renderFederationError(error, res)) return undefined;
-    throw error;
+    if (error instanceof ApiError && error.status === 401) {
+      return redirectTo(res, '/login?status=auth-required');
+    }
+    if (error instanceof ApiError && error.status === 403) {
+      allowed = false;
+    } else if (error instanceof ApiError || error instanceof ApiOfflineError) {
+      loadError = true;
+    } else {
+      throw error;
+    }
+    eventsResult = { data: [] };
+    partnersResult = { data: [] };
   }
 
-  const events = asList(dataFrom(eventsResult)).map((event) => normalizeEvent(event, filters.upcoming));
-  const partnerOptions = asList(dataFrom(partnersResult)).map(normalizePartner).filter(isInternalPartner);
+  const events = asList(dataFrom(eventsResult)).map((event) => normalizeEvent(event, filters.upcoming, {
+    t: res.locals.t,
+    formatDate: res.locals.formatLocaleDate,
+    formatNumber: res.locals.formatLocaleNumber
+  }));
+  const partnerOptions = asList(dataFrom(partnersResult)).map((partner) => normalizePartner(partner, {
+    t: res.locals.t,
+    formatNumber: res.locals.formatLocaleNumber
+  })).filter(isInternalPartner);
   const meta = metaFrom(eventsResult);
   const nextCursor = trimmed(meta.cursor || meta.next_cursor);
 
   return res.render('federation/events', {
-    title: 'Federated events',
+    title: res.locals.t('federation.events_browse.title'),
     activeNav: 'explore',
     federationActiveTab: 'events',
-    allowed: true,
+    allowed,
     events,
     partnerOptions,
     filters,
-    loadError: false,
+    loadError,
     loadMoreHref: nextCursor ? eventsLoadMoreHref(filters, nextCursor) : ''
   });
 }));
