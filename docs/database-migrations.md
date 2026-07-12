@@ -10,8 +10,8 @@ All database schema changes go through a single canonical workflow. This prevent
 
 ## Current Runtime Chain And Replay Evidence
 
-EF currently discovers 114 migration IDs. The latest is
-`20260712023810_SafeguardingPreferenceDependencyParity`. The runtime inventory was
+EF currently discovers 115 migration IDs. The latest is
+`20260712060051_DirectMessageStateParity`. The runtime inventory was
 repaired by restoring explicit `[Migration]` and `[DbContext]` metadata to 27
 essential designer-less migrations, including
 `20260303120000_AddAiMessageTenantId`. A `.Designer.cs` file is not itself the
@@ -27,24 +27,45 @@ would attempt to add the same column again.
 
 Current non-production evidence is:
 
-- the recorded runtime inventory contains 114 discovered IDs from
+- the recorded runtime inventory contains 115 discovered IDs from
   `20260202085043_InitialCreate` through
-  `20260712023810_SafeguardingPreferenceDependencyParity`;
-- the final blank replay applied all 114 migrations and directly verified the
-  five safeguarding metadata tables, the `messaging_disabled` adapter column,
-  the exact safeguarding catalog containment, and the required preference
-  uniqueness/dependency shape;
-- a valid populated 113-to-114 replay preserved all preference rows, widened
-  `SelectedValue`, and losslessly filled null `ConsentGivenAt` from `CreatedAt`;
+  `20260712060051_DirectMessageStateParity`;
+- the final blank replay applied all 115 migrations and directly verified the
+  new message state defaults and deletion-audit relationship as well as the
+  preceding safeguarding metadata, catalog, and preference shape;
+- a populated 114-to-115 replay preserved existing message content and read
+  timestamps, initialized boolean state to `false`, left optional timestamps
+  and audit identity null, and installed the audit foreign key with
+  `ON DELETE SET NULL`;
+- retained valid populated 113-to-114 evidence preserves all safeguarding
+  preference rows, widens `SelectedValue`, and losslessly fills null
+  `ConsentGivenAt` from `CreatedAt`;
 - a duplicate tenant/user/option fixture raised PostgreSQL `P0001` before DDL
   or data mutation, leaving history at 113 and no partial migration-114 schema;
 - retained 110-to-111 evidence proves the volunteer-hours migration preserved
   and linked existing evidence without minting transaction, payment, or XP
   value, while its invalid fixture left history at 110 and no partial
   migration-111 DDL;
+- the final deterministic direct-message state gate passed 39/39 with zero
+  failed or skipped; the broader exact regression completed 57/58 with its sole existing
+  first-writer race subsequently green in isolation, while a separate class
+  aggregate completed 12/13 before disposable PostgreSQL was OOM-killed with
+  `exit 137` and the race again passed in isolation; neither interrupted
+  aggregate is a fully green result;
 - `has-pending-model-changes` is green, and disposable Docker container,
   network, and anonymous-volume cleanup left zero matching resources; and
 - no production database or container was touched.
+
+`20260712060051_DirectMessageStateParity` adds durable message edit metadata,
+participant-scoped deletion state, per-user archive state, and a nullable
+deletion-audit user relationship. New boolean state defaults to `false`; edit,
+delete, and archive timestamps plus audit identity default to null. Its blank 115 and populated
+114-to-115 PostgreSQL replays are green and the populated replay preserves
+message content and read timestamps. The audit relationship uses
+`ON DELETE SET NULL` so deleting an auditor principal does not delete message
+history. The migration is intentionally forward-only: downgrade would discard
+visibility, edit, deletion, and audit history. Use a verified pre-migration
+backup or a reviewed forward remediation instead of forcing `Down()`.
 
 `20260712023810_SafeguardingPreferenceDependencyParity` makes
 `user_safeguarding_preferences.SelectedValue` 255 characters, requires
@@ -197,7 +218,7 @@ Migration discovery must continue to fail closed if a new source migration is
 invisible to EF, a deliberately excluded overlapping migration becomes
 discoverable, or an intended migration ID no longer matches its type. Once
 run against the final migration source, the green blank replay certifies all
-114 IDs that EF discovers. Discovery does not
+115 IDs that EF discovers. Discovery does not
 authorize replaying either intentionally excluded duplicate.
 
 ## Read-Only Legacy Financial Audit
@@ -205,7 +226,7 @@ authorize replaying either intentionally excluded duplicate.
 The following PostgreSQL report is deliberately read-only and is intended for
 an operator working on a database upgraded at least through
 `20260711192124_VolunteerHoursLedgerParity`; the current recorded chain ends at
-`20260712023810_SafeguardingPreferenceDependencyParity`. It identifies candidates;
+`20260712060051_DirectMessageStateParity`. It identifies candidates;
 it does not decide their meaning. Do not auto-fix, relink, delete, cancel, or
 recreate any returned row. Each row needs a documented manual disposition that
 states the intended business event, the existing sender/receiver balance

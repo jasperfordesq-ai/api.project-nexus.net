@@ -1140,11 +1140,8 @@ public class V15MemberParityController : ControllerBase
     [HttpPost("api/v2/conversations/{id:int}/participants")]
     [HttpDelete("api/v2/conversations/{id:int}/participants/{userId:int}")]
     [HttpPatch("api/v2/conversations/{id:int}/group")]
-    [HttpPost("api/v2/messages/conversations/{id:int}/restore")]
     public IActionResult V2ConversationLightweight(int id) => Ok(new { success = true, conversation_id = id });
 
-    [HttpDelete("api/v2/conversations/{id:int}")]
-    [HttpDelete("api/v2/messages/conversations/{id:int}")]
     [HttpDelete("api/ai/conversations/{id:int}")]
     public async Task<IActionResult> V2DeleteConversation(int id)
     {

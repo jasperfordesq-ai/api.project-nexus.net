@@ -11,8 +11,8 @@ Canonical source: `C:\platforms\htdocs\staging` (read-only).
 | Controllers | 309 | 225 |
 | Services | 483 | 188 |
 | Models/entities | 200 Laravel models | 191 EF entity files |
-| Migrations | 333 | 116 main EF migration source files; 114 EF-discovered/applicable runtime IDs |
-| OpenAPI operations | 891 | 4,316 static controller operations from parity script |
+| Migrations | 333 | 117 main EF migration source files; 115 EF-discovered/applicable runtime IDs |
+| OpenAPI operations | 891 | 4,314 static controller operations from parity script |
 | Schema tables | 368 Laravel source tables | 336 .NET static table names after the five exact safeguarding tables |
 | Frontend routes | 589 React / 607 accessible in the historical comparator; current Web UK matrix separately reports 608 Laravel accessible declarations | 462 legacy React routes; current `apps/web-uk` matrix reports 612 local declarations, 608 matched Laravel accessible routes, 0 missing, 2 extra exchange workflow routes, and 3 ignored infrastructure routes |
 | Localization | 11 locales / 605 locale namespaces | 7 locales / 280 locale namespaces |
@@ -23,8 +23,9 @@ These counts are directional. They are not a parity score.
 
 `scripts/compare-laravel-api-parity.ps1` generated
 `artifacts/parity/api/api-parity.json` on 2026-07-12 after its fixture passed,
-with 2,449 Laravel source operations after supplemental API route parsing and
-de-duplication, 2,438 static matches, and 11 missing operations. The exact
+with 4,314 ASP.NET controller operations, 2,449 Laravel source operations after
+supplemental API route parsing and de-duplication, 2,438 static matches, and 11
+missing operations. The exact
 delta is the seven document-era admin vetting writes (`POST` root, `PUT|DELETE`
 record, `POST` upload/verify/reject, and `POST` bulk), plus
 `GET /api/pwa/manifest`, `POST /api/admin/prerender/reset-all`,
@@ -37,13 +38,11 @@ planning.
 
 `scripts/compare-laravel-schema-parity.ps1` generated
 `artifacts/parity/schema/schema-parity.json` on 2026-07-12 after its fixture
-passed, with 333 Laravel migrations, 113 ASP.NET migration source files, 368
-Laravel source tables, 331 .NET table names, 137 exact matches, 231 missing
-Laravel-side names, and 194 .NET-only names. The artifact is ignored by git; regenerate it
-before using the numbers for schema implementation planning. Its 113/331/137/
-231 migration/table counts predate the safeguarding slice; the maintained
-current inventory is 116 source migrations, 114 runtime IDs, 336 .NET table
-names, 142 exact table-name matches, and 226 missing Laravel names.
+passed. The current live inventory is 333 Laravel migrations, 117 ASP.NET
+migration source files, 115 runtime IDs, 368 Laravel source tables, 336 .NET
+table names, 142 exact matches, 226 missing Laravel-side names, and 194 .NET-
+only names. The artifact is ignored by git; regenerate it before using the
+numbers for schema implementation planning.
 
 `scripts/compare-laravel-frontend-parity.ps1` generated
 `artifacts/parity/frontend/frontend-parity.json` on 2026-07-04 with 589 Laravel
@@ -119,14 +118,18 @@ The artifact is ignored by git; `docs/PARITY_BACKLOG.md` is the curated rollup.
 > test suite, CI, and unchanged-frontend proof remain open.
 
 > **2026-07-12 safeguarding/messaging checkpoint:** The runtime chain now ends
-> at ID 114, `20260712023810_SafeguardingPreferenceDependencyParity`.
+> at ID 115, `20260712060051_DirectMessageStateParity`.
 > Migration 112 creates the five exact metadata-only Laravel safeguarding
 > tables; migration 113 adds the `messaging_disabled` monitoring adapter; and
 > migration 114 installs required consent time, a unique tenant/user/option
-> selection, wider selected values, and tenant/option cascades. Blank 114,
-> valid populated 113-to-114, invalid duplicate `P0001`/no-partial-schema,
-> catalog-containment, and model-drift gates are green. Legacy vetting evidence
-> does not authorize contact, and no frontend source was changed.
+> selection, wider selected values, and tenant/option cascades. Migration 115
+> adds durable edit/delete/archive state, false/null defaults, and a nullable
+> deletion-audit user relationship with `SET NULL`. Blank 115 and populated
+> 114-to-115 replays are green and preserve message content/read timestamps;
+> migration 114's invalid duplicate `P0001`/no-partial-schema and catalog-
+> containment proof remains retained. Model drift is green, migration 115 is
+> forward-only, legacy vetting evidence does not authorize contact, and no
+> frontend source was changed.
 >
 > Onboarding, member, admin/broker vetting, policy rotation, and protected
 > option CRUD/reorder now use the locked metadata-only policy domain with exact
@@ -134,17 +137,20 @@ The artifact is ignored by git; `docs/PARITY_BACKLOG.md` is the curated rollup.
 > transactional detected-audio voice send, and the Laravel group-exchange
 > caller/role/lifecycle/ledger cutover are implemented with focused contracts.
 > Provider transcription, notification depth, and unchanged-frontend smoke
-> remain open. Direct messaging is still incomplete: P0 edit/scoped-delete/
-> partner-ID archive-restore behavior and P1 durable reactions, full typing
-> preflight/Pusher delivery, and coordinator-help delivery/dedupe/audit remain.
-> The consolidated affected suite selected and passed 323/323 with zero failed
-> or skipped in 20m47s; this is not a full-suite, CI, runtime-frontend, or
-> 1000/1000 claim.
+> remain open. P0 sender-only 24-hour edit, participant-scoped durable delete,
+> and partner-ID per-user archive/restore are implemented. P1 durable reactions,
+> full typing preflight/Pusher delivery, coordinator-help delivery/dedupe/audit,
+> and exact read/unread envelopes/rates remain. The final deterministic direct-
+> message state gate passed 39/39 with zero failed or skipped. The broader exact regression completed
+> 57/58 with its sole existing race green in isolation; a separate class
+> aggregate completed 12/13 before disposable PostgreSQL OOM `exit 137`, with
+> the race also green in isolation. Neither aggregate is fully green, and this
+> is not a full-suite, CI, runtime-frontend, or 1000/1000 claim.
 
 | Area | Laravel evidence | .NET evidence | Current gap |
 | --- | --- | --- | --- |
 | Safeguarding metadata and policy | Laravel metadata-only attestation/jurisdiction/policy services, onboarding/member/admin controllers, safeguarding option workflows, and canonical React onboarding/messages consumers | `AdminSafeguardingVettingController`, `SafeguardingVettingMemberController`, `OnboardingSafeguardingController`, `AdminSafeguardingController`, the locked safeguarding services, five exact tables in migration 112, messaging adapter migration 113, preference dependency migration 114, and focused schema/domain/access/controller/rate/replay tests | Dedicated custom permission roles beyond current broker/admin authorization, queued email/provider fidelity, controlled legacy evidence disposition, non-v2 alias reconciliation, frontend runtime smoke, full suite, and CI remain open. |
-| Direct messaging safety | Laravel `MessagesController`, `MessageService`, audio uploader, safeguarding interaction policy, canonical React `MessagesPage`/`ConversationPage` | Live restriction lifecycle; hardened text send/thread/attachments/side effects; POST-only staff blocked-attempt alerting; corrected partner/attachment projection; and transactional detected-audio voice send with cleanup and regression coverage | P0 sender-only 24-hour edit, participant-safe scoped delete, and partner-ID archive/restore/archived-inbox/unread semantics remain. P1 real reaction storage/batch/policy, typing preflight plus Pusher event, and coordinator-help restricted-only delivery/dedupe/audit remain. Provider transcription and exact Laravel message-column storage remain. |
+| Direct messaging safety | Laravel `MessagesController`, `MessageService`, audio uploader, safeguarding interaction policy, canonical React `MessagesPage`/`ConversationPage` | Live restriction lifecycle; hardened text send/thread/attachments/side effects; POST-only staff blocked-attempt alerting; corrected partner/attachment projection; transactional detected-audio voice send; migration-115 durable state; sender-only 24-hour edit; participant-safe `self|everyone` delete; and partner-ID per-user archive/restore with active/archived inbox and unread filtering | P1 real reaction storage/batch/policy, typing preflight plus Pusher event, coordinator-help restricted-only delivery/dedupe/audit, and exact read/unread envelopes/rates remain. Provider transcription remains open. The final deterministic focused gate is 39/39 with zero failed/skipped, but the earlier 57/58 and 12/13 aggregates were not fully green for the qualified race/OOM reasons above. |
 | Group exchange policy/ledger | Laravel group exchange controller/service and canonical React group-exchange pages | `GroupExchangeController`, `GroupExchangeService`, and focused lifecycle/policy/conservation/race tests now enforce caller/role identity, create/add authorization order, deterministic locking, caller-order policy evaluation, lifecycle state, canonical provider transaction rows, and hidden ledger adapters | Notification fidelity and frontend runtime smoke remain; legacy one-to-one `Exchange` is a separate fail-closed workflow. |
 | Volunteer hours ledger | Laravel volunteering hours member, organisation, and administrator controllers/services; Caring support relationship hour logging; canonical React hours consumers | `VolunteerHoursController`, `VolunteerHoursService`, `VolunteerHoursLedgerParity`, and focused hours/badge/email/regional-points tests; the eight Laravel method/path pairs share strict request/action parsing, tenant/feature/policy gates, separate rate buckets, locked approval/decline transitions, exact-once whole-hour personal and organisation settlement, volunteer-hour XP/badge evidence, normal non-Caring reviewed-decision bell/push, forced-immediate approved-decision email, immediate declined-decision email only for an explicit global `instant` frequency, represented-family post-approval badge sweep, explicit no-decision-notification behavior for reviewed Caring, sub-hour no-ledger behavior, raw fractional Caring semantics, and regional-points convergence | Current focused proof is one 53/53 disposable-Linux run: all 51 `VolunteerHoursParityTests` and both `V15FeedActivityCompatibilityTests`, with 3,007 tests discovered. Debug API/test builds and the solution-wide Release build have zero errors and only the same four pre-existing `xUnit1031` warnings; the Release build took 4m36s. Final blank/populated/invalid migration-111 replay and `has-pending-model-changes` gates are green, with zero disposable Docker resources left. The clean affected rerun selected and passed 243/243 with zero failed/skipped in 418.639s. The full 3,007-test suite, CI, exact permission-table fidelity, tenant-default notification-frequency fallback, daily/monthly notification-queue delivery, recipient locale/provider breadth, Laravel-only badge families, realtime badge broadcast, and unchanged-frontend runtime certification remain open; this is not a 1000/1000 claim. |
 | Admin users | `AdminUsersController.php`, `AdminSuperController.php`, Laravel React `admin/api/adminApi.ts`, `admin/modules/users/UserList.tsx`, super-admin user pages/tests | `AdminController.cs`, `AdminCompatibilityController.cs`, `AdminCompatibility3Controller.cs`, `AdminExplicitParityController.cs`, `NexusUserAccessAuthorization.cs`, `CanonicalRoleSemantics`, and focused role/writer/hidden-route tests | V2 list/detail/create/update/import, single/bulk actions, badges, consents, password helpers, impersonation, and tenant/global privilege toggles expose Laravel React envelopes with tenant scoping. Dedicated `is_admin`, `is_super_admin`, `is_tenant_super_admin`, and `is_god` columns now back DB-rehydrated policies; role-only `god` cannot cross `GodOnly`, explicit-God targets are protected, and stale role/tenant tokens fail. Manual cron execution now runs `ListingExpiry`, `JobVacancyExpiry`, `VolunteerGuardianConsentExpiry`, or `VolunteerRecurringShiftGeneration`, while the other 38 definitions are disabled/501 rather than fabricated successes. Remaining gaps include resource-level SuperPanel/hub rules, related-table user movement, notifications/audits, provider-backed email side effects, distributed scheduler locking, and the wider catch-all/scheduled workflow backlog. |

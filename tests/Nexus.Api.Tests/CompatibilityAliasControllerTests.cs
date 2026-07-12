@@ -7,6 +7,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
@@ -289,46 +290,81 @@ public class CompatibilityAliasControllerTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task ConversationArchiveAliases_PersistPerUserArchiveState()
+    public async Task ConversationArchiveAliases_UsePartnerIdAndPersistPerMessageState()
     {
         int conversationId;
+        int memberSentMessageId;
+        int adminSentMessageId;
         using (var scope = Factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
             var conversation = new Conversation
             {
                 TenantId = TestData.Tenant1.Id,
-                Participant1Id = TestData.MemberUser.Id,
-                Participant2Id = TestData.AdminUser.Id,
+                Participant1Id = Math.Min(TestData.MemberUser.Id, TestData.AdminUser.Id),
+                Participant2Id = Math.Max(TestData.MemberUser.Id, TestData.AdminUser.Id),
                 CreatedAt = DateTime.UtcNow
             };
             db.Conversations.Add(conversation);
             await db.SaveChangesAsync();
             conversationId = conversation.Id;
+
+            var memberSentMessage = new Message
+            {
+                TenantId = TestData.Tenant1.Id,
+                ConversationId = conversation.Id,
+                SenderId = TestData.MemberUser.Id,
+                Content = "Member message retained by archive",
+                CreatedAt = DateTime.UtcNow.AddMinutes(-1)
+            };
+            var adminSentMessage = new Message
+            {
+                TenantId = TestData.Tenant1.Id,
+                ConversationId = conversation.Id,
+                SenderId = TestData.AdminUser.Id,
+                Content = "Admin message retained by archive",
+                CreatedAt = DateTime.UtcNow
+            };
+            db.Messages.AddRange(memberSentMessage, adminSentMessage);
+            await db.SaveChangesAsync();
+            memberSentMessageId = memberSentMessage.Id;
+            adminSentMessageId = adminSentMessage.Id;
         }
 
         await AuthenticateAsMemberAsync();
 
-        var archive = await Client.DeleteAsync($"/api/messages/conversations/{conversationId}");
+        var archive = await Client.DeleteAsync($"/api/messages/conversations/{TestData.AdminUser.Id}");
         archive.StatusCode.Should().Be(HttpStatusCode.OK);
 
         using (var scope = Factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
-            var stored = db.TenantConfigs.Single(c =>
-                c.Key == $"compat:conv-archive:{conversationId}:{TestData.MemberUser.Id}");
-            stored.Value.Should().Contain("\"archived\":true");
+            var messages = await db.Messages.IgnoreQueryFilters()
+                .Where(message => message.ConversationId == conversationId)
+                .ToListAsync();
+            messages.Should().HaveCount(2, "archiving must not hard-delete conversation history");
+            messages.Single(message => message.Id == memberSentMessageId)
+                .ArchivedBySender.Should().NotBeNull();
+            messages.Single(message => message.Id == adminSentMessageId)
+                .ArchivedByReceiver.Should().NotBeNull();
         }
 
-        var restore = await Client.PostAsync($"/api/messages/conversations/{conversationId}/restore", null);
+        var restore = await Client.PostAsync(
+            $"/api/messages/conversations/{TestData.AdminUser.Id}/restore",
+            null);
         restore.StatusCode.Should().Be(HttpStatusCode.OK);
 
         using (var scope = Factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
-            var stored = db.TenantConfigs.Single(c =>
-                c.Key == $"compat:conv-archive:{conversationId}:{TestData.MemberUser.Id}");
-            stored.Value.Should().Contain("\"archived\":false");
+            var messages = await db.Messages.IgnoreQueryFilters()
+                .Where(message => message.ConversationId == conversationId)
+                .ToListAsync();
+            messages.Should().HaveCount(2, "restoring must not replace or delete conversation history");
+            messages.Single(message => message.Id == memberSentMessageId)
+                .ArchivedBySender.Should().BeNull();
+            messages.Single(message => message.Id == adminSentMessageId)
+                .ArchivedByReceiver.Should().BeNull();
         }
 
         (await Client.DeleteAsync($"/api/chatrooms/{conversationId}"))

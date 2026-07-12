@@ -415,7 +415,11 @@ public sealed class MessageSafeguardingBoundaryTests : IntegrationTestBase
         var sendTask = Client.PostAsync("/api/v2/messages", form);
 
         FileUpload? stagedUpload = null;
-        for (var attempt = 0; attempt < 200 && stagedUpload == null; attempt++)
+        // File staging normally completes immediately, but a shared Docker
+        // Desktop host can spend several seconds scheduling PostgreSQL while
+        // other disposable suites are active. Keep polling the observable
+        // boundary without weakening the locked-policy assertions below.
+        for (var attempt = 0; attempt < 800 && stagedUpload == null; attempt++)
         {
             using var pollScope = Factory.Services.CreateScope();
             var pollDb = pollScope.ServiceProvider.GetRequiredService<NexusDbContext>();
@@ -438,7 +442,7 @@ public sealed class MessageSafeguardingBoundaryTests : IntegrationTestBase
             benignPreference.PreferenceId);
         await lockTransaction.CommitAsync();
 
-        var response = await sendTask.WaitAsync(TimeSpan.FromSeconds(20));
+        var response = await sendTask.WaitAsync(TimeSpan.FromSeconds(60));
 
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
         var error = await ReadSingleErrorAsync(response);

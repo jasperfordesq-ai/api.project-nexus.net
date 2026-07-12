@@ -9,16 +9,15 @@ Laravel source of truth: `C:\platforms\htdocs\staging\database\migrations` and
 
 The base static schema-table counts were generated with
 `scripts/compare-laravel-schema-parity.ps1` on 2026-07-12. The five-table
-safeguarding delta below is applied directly from the runtime-verified migration
-source; regenerate the ignored comparator artifact before using the counts for a
-new implementation slice. The EF migration inventory was runtime-verified on
-the same date.
+safeguarding delta and direct-message migration inventory below are applied
+from runtime-verified migration source; regenerate the ignored comparator
+artifact before using the counts for a new implementation slice.
 
 | Source | Count | Notes |
 | --- | ---: | --- |
 | Laravel migrations | 333 | PHP migration files under `database/migrations`. |
-| ASP.NET migration source files | 116 | Main migration `.cs` files excluding designers and the model snapshot. |
-| ASP.NET runtime migrations | 114 | Blank replay applied every recorded EF migration through latest `20260712023810_SafeguardingPreferenceDependencyParity`; `has-pending-model-changes` is green. |
+| ASP.NET migration source files | 117 | Main migration `.cs` files excluding designers and the model snapshot. |
+| ASP.NET runtime migrations | 115 | Blank replay applied every recorded EF migration through latest `20260712060051_DirectMessageStateParity`; `has-pending-model-changes` is green. |
 | Laravel created tables | 220 | Unique `Schema::create(...)` table names. |
 | Laravel touched tables | 105 | Unique `Schema::table(...)` table names. |
 | Laravel explicit model tables | 199 | Unique `protected/public $table = ...` model declarations. |
@@ -33,10 +32,21 @@ some gaps where .NET intentionally renamed tables, for example Laravel `vol_*`
 tables versus .NET `volunteer_*` tables. Those aliases still need explicit
 triage and compatibility decisions before any table can be marked equivalent.
 
-## 2026-07-12 Runtime Migration And Safeguarding Evidence Status
+## 2026-07-12 Runtime Migration, Direct-Message, And Safeguarding Evidence Status
 
-`20260712023810_SafeguardingPreferenceDependencyParity` is the current latest
-migration and runtime ID 114. The preceding two IDs are
+`20260712060051_DirectMessageStateParity` is the current latest migration and
+runtime ID 115. It adds durable edit, participant-scoped deletion, per-user
+archive, and nullable deletion-audit state to messages. New boolean state
+defaults to `false`; optional timestamps and audit identity default to null.
+The audit user relationship uses `ON DELETE SET NULL`. Blank 115 and populated
+114-to-115 PostgreSQL replays are green, existing content and read timestamps
+were preserved, and `has-pending-model-changes` is green. The migration is
+forward-only because downgrade would discard message visibility and audit
+history.
+
+The preceding safeguarding checkpoint ended at
+`20260712023810_SafeguardingPreferenceDependencyParity`, runtime ID 114. Its
+preceding two IDs are
 `20260712020049_SafeguardingVettingAttestationParity` and
 `20260712022243_MessagingDisabledRestrictionParity`. Together they add the five
 exact Laravel tables `tenant_safeguarding_settings`,
@@ -53,15 +63,23 @@ sensitive evidence. Legacy `vetting_records` are marked for controlled
 redaction but never authorize the new contact policy. Direct attestation deletion
 is rejected outside an explicit user/tenant cascade.
 
-Final non-production certification applied all 114 migrations to a blank
+Final non-production certification applied all 115 migrations to a blank
 PostgreSQL database and asserted the five tables, messaging flag, catalog
 containment, unique tenant/user/option preference, required consent time, and
-tenant/option cascade relationships. A valid populated 113-to-114 upgrade
+tenant/option cascade relationships plus the new message defaults/audit FK. A
+valid populated 114-to-115 upgrade preserved message content and read
+timestamps and initialized the new fields to false/null. Retained valid
+populated 113-to-114 evidence
 preserved rows, widened `SelectedValue`, and filled null `ConsentGivenAt` from
 the row's `CreatedAt`. A duplicate tenant/user/option fixture raised PostgreSQL
 `P0001` before DDL or data change: history remained at 113 and no migration-114
-schema was left behind. `has-pending-model-changes` is green. No production
-database or container was touched.
+schema was left behind. The final deterministic direct-message state gate
+passed 39/39 with zero failed or skipped, covering migration/model contracts,
+behavior, concurrency, and route ownership. The broader exact regression completed
+57/58; its sole existing first-writer race subsequently passed in isolation. A
+separate class aggregate completed 12/13 before disposable PostgreSQL was OOM-
+killed with `exit 137`; the race was green in isolation. Neither interrupted
+aggregate is fully green. No production database or container was touched.
 
 The physical monitoring table is intentionally documented as an adapter for
 Laravel's `user_messaging_restrictions`; matching the workflow and constraints
@@ -195,10 +213,11 @@ passes a clean 7/7 PostgreSQL-backed regression. Recurring-shift math,
 idempotence, concurrency, tenant sweep, and scheduled-run persistence pass a
 clean 13/13 PostgreSQL-backed regression.
 
-The recorded runtime inventory is 114 EF-discovered/applicable migrations
-through `20260712023810_SafeguardingPreferenceDependencyParity`. Blank, valid
-populated, invalid atomic-abort, catalog-containment, and model-drift gates are
-green as described above. The preceding discovery repair
+The recorded runtime inventory is 115 EF-discovered/applicable migrations
+through `20260712060051_DirectMessageStateParity`. Blank 115, populated
+114-to-115, and model-drift gates are green as described above; migration 114's
+invalid atomic-abort and catalog-containment evidence remains retained. The
+preceding discovery repair
 restored explicit discovery metadata to 27 essential designer-less migrations,
 including `20260303120000_AddAiMessageTenantId`. The overlapping
 `20260307181700_FederationCoreExpansion` class remains intentionally outside
@@ -225,8 +244,9 @@ cancelled after its completed Integration Tests job reported 51 failures out of
 `bfeafb2e` backend slice was nested transaction handling, now fixed and green
 locally; the other CI failures remain open for independent triage.
 
-Migration 114's final runtime replay and model-drift gates are green as
-described above; migration 111's no-mint replay remains retained evidence. The
+Migration 115's blank/populated replay and model-drift gates are green as
+described above; migration 114's safeguarding replay and migration 111's no-mint
+replay remain retained evidence. The
 preceding QR migration has a populated 109-to-110 backfill and
 duplicate/cross-tenant atomic-abort proof. No production database or container
 was inspected or changed.
@@ -264,6 +284,9 @@ downgrade mutation: removing append-only attestation/policy evidence,
 `messaging_disabled`, or canonical consent dependencies would lose evidence or
 weaken safety. Recover from a verified backup or apply a reviewed forward
 remediation.
+`DirectMessageStateParity.Down()` also throws before changing schema because a
+downgrade would discard durable edit, visibility, archive, and deletion-audit
+history. Restore a verified backup or use a reviewed forward remediation.
 `RecurringShiftGenerationParity.Down()` removes the two new indexes and
 restores the former simple tenant index; no application data is deleted.
 
@@ -293,7 +316,7 @@ of semantic absence. It highlights the domains that need table-by-table review:
 | Prefix/family | Missing source tables | Parity implication |
 | --- | ---: | --- |
 | `caring_*` | 0 | Caring Community and KISS exact-name `caring_*` schema gaps are currently cleared in the static schema comparator; `caring_emergency_alerts`, `caring_federation_peers`, `caring_sub_regions`, `caring_care_providers`, `caring_caregiver_links`, `caring_cover_requests`, `caring_support_categories`, `caring_support_relationships`, `caring_tandem_suggestion_log`, `caring_help_requests`, `caring_project_announcements`, `caring_project_updates`, `caring_project_subscriptions`, `caring_smart_nudges`, `caring_paper_onboarding_intakes`, `caring_favours`, `caring_municipality_feedback`, `caring_trust_tier_config`, `municipality_surveys`, `municipality_survey_questions`, `municipality_survey_responses`, `caring_hour_estates`, `caring_hour_transfers`, `caring_hour_gifts`, `caring_kiss_treffen`, `caring_invite_codes`, `caring_kpi_baselines`, `caring_loyalty_redemptions`, `caring_regional_point_accounts`, `caring_regional_point_transactions`, `caring_research_partners`, `caring_research_consents`, and `caring_research_dataset_exports` are now represented in .NET. Laravel's `municipal_report_templates`, `municipal_verifications`, shared `categories.substitution_coefficient`, `users.trust_tier`, `safeguarding_reports`, `safeguarding_report_actions`, and member-facing `user_safeguarding_preferences` are also represented. Success stories intentionally use tenant-config key `caring.success_stories` to mirror Laravel's tenant-setting storage. |
-| `vol_*` | 17 | The 114-ID runtime inventory retains canonical `vol_logs` with tenant-composite user/organisation/opportunity/reviewer/Caring provenance, hours/status checks, active natural-key uniqueness, personal transaction links, organisation-payment links, and volunteer-hour XP evidence. Migration 111 never inserts legacy value: evidence-free approved whole-hour organisation rows become `pending`, while approved Caring sub-hour rows remain valid. The eight member/organisation/admin hour routes and Caring relationship logging share the same locked workflow; direct Caring input retains raw fractional semantics for whole-hour flooring/regional points before rounded storage. QR attendance separately has migration-backed token/status/coordinator evidence and remains deliberately free of credit/XP side effects. The current live count reports 17 exact-name gaps because other Laravel `vol_*` tables/aliases remain; broader workflow semantics, the full 3,007-test suite, CI, and unchanged-frontend certification still require reconciliation. |
+| `vol_*` | 17 | The 115-ID runtime inventory retains canonical `vol_logs` with tenant-composite user/organisation/opportunity/reviewer/Caring provenance, hours/status checks, active natural-key uniqueness, personal transaction links, organisation-payment links, and volunteer-hour XP evidence. Migration 111 never inserts legacy value: evidence-free approved whole-hour organisation rows become `pending`, while approved Caring sub-hour rows remain valid. The eight member/organisation/admin hour routes and Caring relationship logging share the same locked workflow; direct Caring input retains raw fractional semantics for whole-hour flooring/regional points before rounded storage. QR attendance separately has migration-backed token/status/coordinator evidence and remains deliberately free of credit/XP side effects. The current live count reports 17 exact-name gaps because other Laravel `vol_*` tables/aliases remain; broader workflow semantics, the full 3,007-test suite, CI, and unchanged-frontend certification still require reconciliation. |
 | `federation_*` | 17 | Receiver-scoped partnership decisions now persist native status/audit state, but exact federation-level permission columns, rejection actor/time/reason metadata, initial-sync/outbox state, and broader partner/network schema still need reconciliation. |
 | `course_*` | 15 | Course module has no clear .NET implementation surface. |
 | `job_*` | 13 | Job schema is partially present but not exact-name complete. |

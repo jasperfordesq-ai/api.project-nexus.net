@@ -1017,16 +1017,6 @@ public class MemberParityController : ControllerBase
         });
     }
 
-    [HttpPut("messages/{messageId:int}")]
-    public async Task<IActionResult> UpdateMessage(int messageId, [FromBody] JsonElement body)
-    {
-        var message = await _db.Messages.FirstOrDefaultAsync(m => m.Id == messageId);
-        if (message == null) return NotFound(new { error = "Message not found" });
-        message.Content = Str(body, "content") ?? Str(body, "message") ?? message.Content;
-        await _db.SaveChangesAsync();
-        return Ok(new { data = message });
-    }
-
     [HttpPost("messages/{messageId:int}/reactions")]
     public async Task<IActionResult> MessageReactions(int messageId, [FromBody] JsonElement body)
     {

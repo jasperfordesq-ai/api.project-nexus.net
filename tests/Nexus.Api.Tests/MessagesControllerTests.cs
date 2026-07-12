@@ -62,7 +62,10 @@ public class MessagesControllerTests : IntegrationTestBase
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
         var content = await response.Content.ReadFromJsonAsync<JsonElement>();
-        content.GetProperty("success").GetBoolean().Should().BeTrue();
+        content.TryGetProperty("success", out _).Should().BeFalse(
+            "Laravel respondWithData returns a plain data/meta envelope");
+        content.GetProperty("meta").GetProperty("base_url").GetString()
+            .Should().NotBeNullOrWhiteSpace();
         var data = content.GetProperty("data");
         data.GetProperty("id").GetInt32().Should().BeGreaterThan(0);
         data.GetProperty("conversation_id").GetInt32().Should().BeGreaterThan(0);

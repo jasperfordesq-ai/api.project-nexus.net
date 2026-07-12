@@ -6,14 +6,15 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
+using Nexus.Api.Middleware;
 using Nexus.Api.Services;
 
 namespace Nexus.Api.Controllers;
@@ -27,10 +28,6 @@ namespace Nexus.Api.Controllers;
 [Authorize]
 public class MessagesController : ControllerBase
 {
-    private static readonly Regex HtmlTagPattern = new(
-        "<[^>]*>",
-        RegexOptions.Compiled | RegexOptions.CultureInvariant);
-
     private readonly NexusDbContext _db;
     private readonly TenantContext _tenantContext;
     private readonly ILogger<MessagesController> _logger;
@@ -65,7 +62,8 @@ public class MessagesController : ControllerBase
     public async Task<IActionResult> GetConversations(
         [FromQuery] int page = 1,
         [FromQuery] int limit = 20,
-        [FromQuery(Name = "per_page")] int? perPage = null)
+        [FromQuery(Name = "per_page")] int? perPage = null,
+        [FromQuery] bool archived = false)
     {
         var userId = GetCurrentUserId();
         if (userId == null)
@@ -82,13 +80,31 @@ public class MessagesController : ControllerBase
         if (limit < 1) limit = 1;
         if (limit > 100) limit = 100;
 
-        // Get conversations where user is a participant
+        var currentUserId = userId.Value;
+
+        // Laravel's inbox is a per-user view over message rows. A normalized
+        // conversation appears only when it has a message whose archive marker
+        // matches the requested active/archived tab for the current user.
         var query = _db.Conversations
             .Include(c => c.Participant1)
             .Include(c => c.Participant2)
-            .Include(c => c.Messages.OrderByDescending(m => m.CreatedAt).Take(1))
-            .Where(c => c.Participant1Id == userId.Value || c.Participant2Id == userId.Value)
-            .OrderByDescending(c => c.UpdatedAt ?? c.CreatedAt);
+            .Where(c => c.Participant1Id == currentUserId || c.Participant2Id == currentUserId)
+            .Where(c => c.Messages.Any(message => archived
+                ? (message.SenderId == currentUserId
+                    ? message.ArchivedBySender != null
+                    : message.ArchivedByReceiver != null)
+                : (message.SenderId == currentUserId
+                    ? message.ArchivedBySender == null
+                    : message.ArchivedByReceiver == null)))
+            .OrderByDescending(c => c.Messages
+                .Where(message => archived
+                    ? (message.SenderId == currentUserId
+                        ? message.ArchivedBySender != null
+                        : message.ArchivedByReceiver != null)
+                    : (message.SenderId == currentUserId
+                        ? message.ArchivedBySender == null
+                        : message.ArchivedByReceiver == null))
+                .Max(message => (int?)message.Id));
 
         var total = await query.CountAsync();
         var totalPages = (int)Math.Ceiling(total / (double)limit);
@@ -98,20 +114,43 @@ public class MessagesController : ControllerBase
             .Take(limit)
             .ToListAsync();
 
-        // Get unread counts for each conversation
+        // Resolve the latest message in the selected per-user view without
+        // loading every historical row in each normalized conversation.
         var conversationIds = conversations.Select(c => c.Id).ToList();
+        var visibleMessages = _db.Messages.Where(message =>
+            conversationIds.Contains(message.ConversationId)
+            && (archived
+                ? (message.SenderId == currentUserId
+                    ? message.ArchivedBySender != null
+                    : message.ArchivedByReceiver != null)
+                : (message.SenderId == currentUserId
+                    ? message.ArchivedBySender == null
+                    : message.ArchivedByReceiver == null)));
+        var latestMessageIds = await visibleMessages
+            .GroupBy(message => message.ConversationId)
+            .Select(group => group.Max(message => message.Id))
+            .ToArrayAsync();
+        var lastMessages = await _db.Messages
+            .Where(message => latestMessageIds.Contains(message.Id))
+            .ToDictionaryAsync(message => message.ConversationId);
+
+        // Archived or receiver-hidden messages do not contribute to unread
+        // badges, even when the caller is currently viewing the archive tab.
         var unreadCounts = await _db.Messages
             .Where(m => conversationIds.Contains(m.ConversationId)
-                && m.SenderId != userId.Value
-                && !m.IsRead)
+                && m.SenderId != currentUserId
+                && !m.IsRead
+                && m.ArchivedByReceiver == null
+                && !m.IsDeletedReceiver
+                && !m.IsDeleted)
             .GroupBy(m => m.ConversationId)
             .Select(g => new { ConversationId = g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.ConversationId, x => x.Count);
 
         var result = conversations.Select(c =>
         {
-            var otherParticipant = c.Participant1Id == userId.Value ? c.Participant2 : c.Participant1;
-            var lastMessage = c.Messages.FirstOrDefault();
+            var otherParticipant = c.Participant1Id == currentUserId ? c.Participant2 : c.Participant1;
+            lastMessages.TryGetValue(c.Id, out var lastMessage);
             unreadCounts.TryGetValue(c.Id, out var unreadCount);
 
             var otherUser = new
@@ -324,7 +363,9 @@ public class MessagesController : ControllerBase
             .Include(m => m.Sender);
         var messageQuery = conversation == null
             ? baseMessageQuery.Where(m => false)
-            : baseMessageQuery.Where(m => m.ConversationId == conversation.Id);
+            : baseMessageQuery.Where(m => m.ConversationId == conversation.Id
+                && !(m.SenderId == currentUserId && m.IsDeletedSender)
+                && !(m.SenderId != currentUserId && m.IsDeletedReceiver));
 
         if (cursorId.HasValue)
         {
@@ -359,6 +400,17 @@ public class MessagesController : ControllerBase
                 .GroupBy(attachment => attachment.MessageId)
                 .ToDictionary(group => group.Key, group => group.ToArray());
 
+        // Laravel reports the unread state observed when the thread is opened,
+        // before the same request marks those messages as read.
+        var unreadCount = conversation == null
+            ? 0
+            : await _db.Messages.CountAsync(m => m.ConversationId == conversation.Id
+                && m.SenderId == otherUserId
+                && !m.IsRead
+                && m.ArchivedByReceiver == null
+                && !m.IsDeletedReceiver
+                && !m.IsDeleted);
+
         if (conversation != null && (normalizedDirection != "newer" || cursorId == null))
         {
             var now = DateTime.UtcNow;
@@ -374,12 +426,6 @@ public class MessagesController : ControllerBase
         var messageCount = conversation == null
             ? 0
             : await _db.Messages.CountAsync(m => m.ConversationId == conversation.Id);
-        var unreadCount = conversation == null
-            ? 0
-            : await _db.Messages.CountAsync(m => m.ConversationId == conversation.Id
-                && m.SenderId == otherUserId
-                && !m.IsRead);
-
         // This is intentionally a pure projection. Opening a conversation may
         // explain why the composer is unavailable, but must never record a
         // contact attempt or otherwise mutate safeguarding state.
@@ -451,6 +497,10 @@ public class MessagesController : ControllerBase
                 .Select(attachment => MapLaravelReactAttachment(attachment, attachment.FileUpload!))
                 .ToArray(),
             is_read = message.IsRead,
+            is_edited = message.IsEdited,
+            edited_at = message.EditedAt,
+            is_deleted = message.IsDeleted,
+            deleted_at = message.DeletedAt,
             created_at = message.CreatedAt,
             read_at = message.ReadAt
         };
@@ -498,7 +548,10 @@ public class MessagesController : ControllerBase
         var unreadCount = await _db.Messages
             .Where(m => conversationIds.Contains(m.ConversationId)
                 && m.SenderId != userId.Value
-                && !m.IsRead)
+                && !m.IsRead
+                && m.ArchivedByReceiver == null
+                && !m.IsDeletedReceiver
+                && !m.IsDeleted)
             .CountAsync();
 
         if (IsLaravelV2Request())
@@ -518,6 +571,313 @@ public class MessagesController : ControllerBase
             unread_count = unreadCount
         });
     }
+
+    /// <summary>
+    /// Archive the direct conversation with another tenant user. The route id
+    /// is the partner user id, matching Laravel, rather than the normalized
+    /// Conversation primary key used internally by this service.
+    /// </summary>
+    [HttpDelete("conversations/{otherUserId:int}")]
+    [EnableRateLimiting(RateLimitingExtensions.MessagesArchivePolicy)]
+    public async Task<IActionResult> ArchiveConversation(
+        int otherUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var currentUserId = GetCurrentUserId();
+        if (currentUserId == null)
+        {
+            return Unauthorized(new { error = "Invalid token" });
+        }
+
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        if (!await TenantPartnerExistsAsync(otherUserId, tenantId, cancellationToken))
+        {
+            return ConversationNotFound();
+        }
+
+        var scope = await ResolveArchiveScopeAsync(cancellationToken);
+        await ArchiveConversationAsync(
+            currentUserId.Value,
+            otherUserId,
+            tenantId,
+            scope,
+            cancellationToken);
+
+        // Archiving is idempotent. Laravel returns success even when every
+        // matching row already carries the requested archive marker.
+        return Ok(new
+        {
+            data = new
+            {
+                success = true,
+                message = "Conversation deleted"
+            },
+            meta = new
+            {
+                base_url = $"{Request.Scheme}://{Request.Host}{Request.PathBase}"
+            }
+        });
+    }
+
+    /// <summary>
+    /// Laravel's compact conversation-delete alias always performs a
+    /// current-user-only archive and responds with 204 No Content.
+    /// </summary>
+    [HttpDelete("/api/v2/conversations/{otherUserId:int}")]
+    [EnableRateLimiting(RateLimitingExtensions.MessagesArchivePolicy)]
+    public async Task<IActionResult> ArchiveConversationAlias(
+        int otherUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var currentUserId = GetCurrentUserId();
+        if (currentUserId == null)
+        {
+            return Unauthorized(new { error = "Invalid token" });
+        }
+
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        if (!await TenantPartnerExistsAsync(otherUserId, tenantId, cancellationToken))
+        {
+            return ConversationNotFound();
+        }
+
+        await ArchiveConversationAsync(
+            currentUserId.Value,
+            otherUserId,
+            tenantId,
+            "self",
+            cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Restore only the current user's archive markers. The other
+    /// participant's independent archive state is deliberately preserved.
+    /// </summary>
+    [HttpPost("conversations/{otherUserId:int}/restore")]
+    [EnableRateLimiting(RateLimitingExtensions.MessagesRestorePolicy)]
+    public async Task<IActionResult> RestoreConversation(
+        int otherUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var currentUserId = GetCurrentUserId();
+        if (currentUserId == null)
+        {
+            return Unauthorized(new { error = "Invalid token" });
+        }
+
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+        var restoredCount = await RestoreConversationAsync(
+            currentUserId.Value,
+            otherUserId,
+            tenantId,
+            cancellationToken);
+        if (restoredCount == 0)
+        {
+            return NotFound(new
+            {
+                errors = new[]
+                {
+                    new
+                    {
+                        code = "NOT_FOUND",
+                        message = "No archived conversation found"
+                    }
+                }
+            });
+        }
+
+        return Ok(new
+        {
+            data = new
+            {
+                success = true,
+                message = "Conversation restored",
+                restored_count = restoredCount
+            },
+            meta = new
+            {
+                base_url = $"{Request.Scheme}://{Request.Host}{Request.PathBase}"
+            }
+        });
+    }
+
+    private async Task<bool> TenantPartnerExistsAsync(
+        int otherUserId,
+        int tenantId,
+        CancellationToken cancellationToken) =>
+        await _db.Users
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .AnyAsync(
+                user => user.Id == otherUserId && user.TenantId == tenantId,
+                cancellationToken);
+
+    private async Task<int?> FindDirectConversationIdAsync(
+        int currentUserId,
+        int otherUserId,
+        int tenantId,
+        CancellationToken cancellationToken)
+    {
+        var participant1Id = Math.Min(currentUserId, otherUserId);
+        var participant2Id = Math.Max(currentUserId, otherUserId);
+        return await _db.Conversations
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(conversation => conversation.TenantId == tenantId
+                && conversation.Participant1Id == participant1Id
+                && conversation.Participant2Id == participant2Id)
+            .Select(conversation => (int?)conversation.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    private async Task<int> ArchiveConversationAsync(
+        int currentUserId,
+        int otherUserId,
+        int tenantId,
+        string scope,
+        CancellationToken cancellationToken)
+    {
+        var conversationId = await FindDirectConversationIdAsync(
+            currentUserId,
+            otherUserId,
+            tenantId,
+            cancellationToken);
+        if (!conversationId.HasValue)
+        {
+            return 0;
+        }
+
+        var now = DateTime.UtcNow;
+        var messages = _db.Messages
+            .IgnoreQueryFilters()
+            .Where(message => message.TenantId == tenantId
+                && message.ConversationId == conversationId.Value);
+
+        if (string.Equals(scope, "everyone", StringComparison.Ordinal))
+        {
+            return await messages.ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(message => message.ArchivedBySender, now)
+                    .SetProperty(message => message.ArchivedByReceiver, now),
+                cancellationToken);
+        }
+
+        return await messages
+            .Where(message => (message.SenderId == currentUserId
+                    && message.ArchivedBySender == null)
+                || (message.SenderId == otherUserId
+                    && message.ArchivedByReceiver == null))
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(
+                        message => message.ArchivedBySender,
+                        message => message.SenderId == currentUserId
+                            ? (DateTime?)now
+                            : message.ArchivedBySender)
+                    .SetProperty(
+                        message => message.ArchivedByReceiver,
+                        message => message.SenderId == otherUserId
+                            ? (DateTime?)now
+                            : message.ArchivedByReceiver),
+                cancellationToken);
+    }
+
+    private async Task<int> RestoreConversationAsync(
+        int currentUserId,
+        int otherUserId,
+        int tenantId,
+        CancellationToken cancellationToken)
+    {
+        var conversationId = await FindDirectConversationIdAsync(
+            currentUserId,
+            otherUserId,
+            tenantId,
+            cancellationToken);
+        if (!conversationId.HasValue)
+        {
+            return 0;
+        }
+
+        var messages = _db.Messages
+            .IgnoreQueryFilters()
+            .Where(message => message.TenantId == tenantId
+                && message.ConversationId == conversationId.Value);
+        return await messages
+            .Where(message => (message.SenderId == currentUserId
+                    && message.ArchivedBySender != null)
+                || (message.SenderId == otherUserId
+                    && message.ArchivedByReceiver != null))
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(
+                        message => message.ArchivedBySender,
+                        message => message.SenderId == currentUserId
+                            ? (DateTime?)null
+                            : message.ArchivedBySender)
+                    .SetProperty(
+                        message => message.ArchivedByReceiver,
+                        message => message.SenderId == otherUserId
+                            ? (DateTime?)null
+                            : message.ArchivedByReceiver),
+                cancellationToken);
+    }
+
+    private async Task<string> ResolveArchiveScopeAsync(CancellationToken cancellationToken)
+    {
+        var queryScope = NormalizeArchiveScope(Request.Query["scope"].FirstOrDefault());
+
+        // Laravel merges body input over query input. An absent key, empty
+        // body, or malformed JSON therefore leaves the query fallback in
+        // control; a present body key (even an invalid value) takes precedence.
+        if (Request.ContentLength == null
+            && !Request.Headers.ContainsKey("Transfer-Encoding"))
+        {
+            return queryScope;
+        }
+
+        if (Request.ContentLength == 0)
+        {
+            return queryScope;
+        }
+
+        try
+        {
+            using var document = await JsonDocument.ParseAsync(
+                Request.Body,
+                cancellationToken: cancellationToken);
+            if (document.RootElement.ValueKind != JsonValueKind.Object
+                || !document.RootElement.TryGetProperty("scope", out var scopeElement))
+            {
+                return queryScope;
+            }
+
+            return scopeElement.ValueKind == JsonValueKind.String
+                ? NormalizeArchiveScope(scopeElement.GetString())
+                : "self";
+        }
+        catch (JsonException)
+        {
+            return queryScope;
+        }
+    }
+
+    private static string NormalizeArchiveScope(string? scope) =>
+        string.Equals(scope, "everyone", StringComparison.Ordinal)
+            ? "everyone"
+            : "self";
+
+    private NotFoundObjectResult ConversationNotFound() => NotFound(new
+    {
+        errors = new[]
+        {
+            new
+            {
+                code = "NOT_FOUND",
+                message = "Conversation not found"
+            }
+        }
+    });
 
     /// <summary>
     /// Send a message to another user.
@@ -1478,7 +1838,7 @@ public class MessagesController : ControllerBase
         }
     }
 
-    private static string StripAllHtml(string content) => HtmlTagPattern.Replace(content, string.Empty);
+    private static string StripAllHtml(string content) => PhpTextSanitizer.StripTags(content);
 
     private static bool IsLaravelEmptyString(string content)
         => string.IsNullOrEmpty(content) || content == "0";

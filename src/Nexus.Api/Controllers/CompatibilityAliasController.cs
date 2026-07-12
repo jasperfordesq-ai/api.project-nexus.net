@@ -566,36 +566,6 @@ public class CompatibilityAliasController : ControllerBase
         return Ok(new { success = true, message = "Message deleted" });
     }
 
-    /// <summary>
-    /// POST /api/messages/conversations/{id}/restore — Restore archived conversation.
-    /// </summary>
-    [HttpPost("api/messages/conversations/{id:int}/restore")]
-    public async Task<IActionResult> RestoreConversation(int id) => await SetConversationArchiveState(id, false);
-
-    /// <summary>
-    /// DELETE /api/messages/conversations/{id} — Archive a conversation.
-    /// </summary>
-    [HttpDelete("api/messages/conversations/{id:int}")]
-    public async Task<IActionResult> ArchiveConversation(int id) => await SetConversationArchiveState(id, true);
-
-    /// <summary>
-    /// DELETE /api/messages/{id} — Delete a message (alias).
-    /// </summary>
-    [HttpDelete("api/messages/{id:int}")]
-    public async Task<IActionResult> DeleteMessage(int id)
-    {
-        var userId = User.GetUserId();
-        if (userId == null) return Unauthorized(new { error = "Invalid token" });
-
-        var msg = await _db.Messages.FirstOrDefaultAsync(m => m.Id == id && m.SenderId == userId.Value);
-        if (msg == null) return NotFound(new { error = "Message not found" });
-
-        _db.Messages.Remove(msg);
-        await _db.SaveChangesAsync();
-
-        return NoContent();
-    }
-
     // ──────────────────────────────────────────────
     // Image/File Uploads
     // ──────────────────────────────────────────────

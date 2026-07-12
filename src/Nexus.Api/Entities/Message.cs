@@ -20,8 +20,46 @@ public class Message : ITenantEntity
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? ReadAt { get; set; }
 
+    /// <summary>
+    /// Laravel-compatible edit metadata. The original creation timestamp remains
+    /// unchanged so the 24-hour edit window and message history stay auditable.
+    /// </summary>
+    public bool IsEdited { get; set; }
+    public DateTime? EditedAt { get; set; }
+
+    /// <summary>
+    /// Global soft deletion shown to both participants. Per-user deletion uses
+    /// the sender/receiver flags below and never removes the persisted message.
+    /// </summary>
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+
+    /// <summary>
+    /// .NET audit extension recording the participant who performed the most
+    /// recent delete mutation. Laravel records the timestamp and visibility
+    /// scope but does not retain the actor as a foreign key.
+    /// </summary>
+    public int? DeletedByUserId { get; set; }
+
+    /// <summary>
+    /// Laravel-compatible per-participant visibility flags. The sender and
+    /// receiver roles are relative to each persisted message, not conversation
+    /// participant ordering.
+    /// </summary>
+    public bool IsDeletedSender { get; set; }
+    public bool IsDeletedReceiver { get; set; }
+
+    /// <summary>
+    /// Laravel-compatible per-user conversation archive timestamps. Clearing
+    /// only the current participant's timestamp restores their view without
+    /// changing the other participant's archive state.
+    /// </summary>
+    public DateTime? ArchivedBySender { get; set; }
+    public DateTime? ArchivedByReceiver { get; set; }
+
     // Navigation properties
     public Tenant? Tenant { get; set; }
     public Conversation? Conversation { get; set; }
     public User? Sender { get; set; }
+    public User? DeletedByUser { get; set; }
 }

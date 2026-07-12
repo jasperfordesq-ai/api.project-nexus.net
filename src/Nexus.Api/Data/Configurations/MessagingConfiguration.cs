@@ -56,6 +56,15 @@ public class MessagingConfiguration : TenantScopedConfiguration
             entity.ToTable("messages");
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Content).HasColumnType("text").IsRequired();
+            entity.Property(e => e.IsEdited).HasColumnName("is_edited").HasDefaultValue(false);
+            entity.Property(e => e.EditedAt).HasColumnName("edited_at");
+            entity.Property(e => e.IsDeleted).HasColumnName("is_deleted").HasDefaultValue(false);
+            entity.Property(e => e.DeletedAt).HasColumnName("deleted_at");
+            entity.Property(e => e.DeletedByUserId).HasColumnName("deleted_by_user_id");
+            entity.Property(e => e.IsDeletedSender).HasColumnName("is_deleted_sender").HasDefaultValue(false);
+            entity.Property(e => e.IsDeletedReceiver).HasColumnName("is_deleted_receiver").HasDefaultValue(false);
+            entity.Property(e => e.ArchivedBySender).HasColumnName("archived_by_sender");
+            entity.Property(e => e.ArchivedByReceiver).HasColumnName("archived_by_receiver");
 
             // Indexes
             entity.HasIndex(e => e.TenantId);
@@ -63,6 +72,19 @@ public class MessagingConfiguration : TenantScopedConfiguration
             entity.HasIndex(e => e.SenderId);
             entity.HasIndex(e => e.CreatedAt);
             entity.HasIndex(e => new { e.ConversationId, e.IsRead });
+            entity.HasIndex(e => e.IsDeleted)
+                .HasDatabaseName("idx_messages_deleted");
+            entity.HasIndex(e => new { e.SenderId, e.ArchivedBySender })
+                .HasDatabaseName("idx_messages_sender_archived");
+            // ASP.NET stores the receiver through Conversation rather than duplicating
+            // Laravel's receiver_id on every message. ConversationId is therefore the
+            // documented receiver-side lookup equivalent for archive filtering.
+            entity.HasIndex(e => new { e.ConversationId, e.ArchivedByReceiver })
+                .HasDatabaseName("idx_messages_conversation_receiver_archived");
+            entity.HasIndex(e => new { e.TenantId, e.SenderId, e.IsDeletedSender })
+                .HasDatabaseName("idx_messages_is_deleted_sender");
+            entity.HasIndex(e => new { e.TenantId, e.ConversationId, e.IsDeletedReceiver })
+                .HasDatabaseName("idx_messages_is_deleted_receiver");
 
             // Relationships
             entity.HasOne(e => e.Tenant)
@@ -79,6 +101,11 @@ public class MessagingConfiguration : TenantScopedConfiguration
                 .WithMany()
                 .HasForeignKey(e => e.SenderId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.DeletedByUser)
+                .WithMany()
+                .HasForeignKey(e => e.DeletedByUserId)
+                .OnDelete(DeleteBehavior.SetNull);
 
             // CRITICAL: Global query filter for tenant isolation
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);

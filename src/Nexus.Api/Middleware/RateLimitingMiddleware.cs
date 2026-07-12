@@ -81,6 +81,10 @@ public static class RateLimitingExtensions
     public const string SafeguardingOnboardingMutationPolicy = "safeguarding-onboarding-mutation";
     public const string SafeguardingOptionMutationPolicy = "safeguarding-option-mutation";
     public const string MessagesRestrictionStatusPolicy = "messages-restriction-status";
+    public const string MessagesEditPolicy = "messages-edit";
+    public const string MessagesDeletePolicy = "messages-delete";
+    public const string MessagesArchivePolicy = "messages-archive";
+    public const string MessagesRestorePolicy = "messages-restore";
 
     public static IReadOnlyList<SafeguardingVettingRateLimitContract> SafeguardingVettingRateLimitContracts { get; } =
     [
@@ -185,6 +189,42 @@ public static class RateLimitingExtensions
                         config.GetValue("RateLimiting:Messages:RestrictionStatusPermitLimit", 30),
                         TimeSpan.FromSeconds(config.GetValue(
                             "RateLimiting:Messages:RestrictionStatusWindowSeconds",
+                            60)))));
+
+            options.AddPolicy(MessagesEditPolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:Messages:EditPermitLimit", 30),
+                        TimeSpan.FromSeconds(config.GetValue(
+                            "RateLimiting:Messages:EditWindowSeconds",
+                            60)))));
+
+            options.AddPolicy(MessagesDeletePolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:Messages:DeletePermitLimit", 20),
+                        TimeSpan.FromSeconds(config.GetValue(
+                            "RateLimiting:Messages:DeleteWindowSeconds",
+                            60)))));
+
+            options.AddPolicy(MessagesArchivePolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:Messages:ArchivePermitLimit", 10),
+                        TimeSpan.FromSeconds(config.GetValue(
+                            "RateLimiting:Messages:ArchiveWindowSeconds",
+                            60)))));
+
+            options.AddPolicy(MessagesRestorePolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:Messages:RestorePermitLimit", 20),
+                        TimeSpan.FromSeconds(config.GetValue(
+                            "RateLimiting:Messages:RestoreWindowSeconds",
                             60)))));
 
             // AI endpoints policy (more restrictive due to resource cost)
@@ -633,6 +673,18 @@ public static class RateLimitingExtensions
                             normalizedPath,
                             "/api/v2/messages/restriction-status",
                             StringComparison.OrdinalIgnoreCase));
+                var isMessageEditPath =
+                    HttpMethods.IsPut(context.HttpContext.Request.Method)
+                    && IsDirectMessageItemPath(normalizedPath);
+                var isMessageDeletePath =
+                    HttpMethods.IsDelete(context.HttpContext.Request.Method)
+                    && IsDirectMessageItemPath(normalizedPath);
+                var isMessageArchivePath =
+                    HttpMethods.IsDelete(context.HttpContext.Request.Method)
+                    && IsDirectConversationArchivePath(normalizedPath);
+                var isMessageRestorePath =
+                    HttpMethods.IsPost(context.HttpContext.Request.Method)
+                    && IsDirectConversationRestorePath(normalizedPath);
                 var isSafeguardingVettingMutationPath =
                     isSafeguardingVettingPolicyUpdatePath
                     || isSafeguardingVettingPolicyRotationPath
@@ -698,6 +750,14 @@ public static class RateLimitingExtensions
                     ? config.GetValue("RateLimiting:PersonalWallet:TransferPermitLimit", 10)
                     : isMessageRestrictionStatusPath
                     ? config.GetValue("RateLimiting:Messages:RestrictionStatusPermitLimit", 30)
+                    : isMessageEditPath
+                    ? config.GetValue("RateLimiting:Messages:EditPermitLimit", 30)
+                    : isMessageDeletePath
+                    ? config.GetValue("RateLimiting:Messages:DeletePermitLimit", 20)
+                    : isMessageArchivePath
+                    ? config.GetValue("RateLimiting:Messages:ArchivePermitLimit", 10)
+                    : isMessageRestorePath
+                    ? config.GetValue("RateLimiting:Messages:RestorePermitLimit", 20)
                     : isVolunteerHoursPath
                     ? HttpMethods.IsPost(context.HttpContext.Request.Method)
                         ? config.GetValue("RateLimiting:VolunteerHours:LogPermitLimit", 20)
@@ -790,6 +850,65 @@ public static class RateLimitingExtensions
 
         return services;
     }
+
+    private static bool IsDirectMessageItemPath(string? normalizedPath)
+    {
+        var segments = SplitPath(normalizedPath);
+        return (segments.Length == 3
+                && SegmentEquals(segments[0], "api")
+                && SegmentEquals(segments[1], "messages")
+                && int.TryParse(segments[2], out _))
+            || (segments.Length == 4
+                && SegmentEquals(segments[0], "api")
+                && SegmentEquals(segments[1], "v2")
+                && SegmentEquals(segments[2], "messages")
+                && int.TryParse(segments[3], out _));
+    }
+
+    private static bool IsDirectConversationArchivePath(string? normalizedPath)
+    {
+        var segments = SplitPath(normalizedPath);
+        return (segments.Length == 4
+                && SegmentEquals(segments[0], "api")
+                && SegmentEquals(segments[1], "messages")
+                && SegmentEquals(segments[2], "conversations")
+                && int.TryParse(segments[3], out _))
+            || (segments.Length == 5
+                && SegmentEquals(segments[0], "api")
+                && SegmentEquals(segments[1], "v2")
+                && SegmentEquals(segments[2], "messages")
+                && SegmentEquals(segments[3], "conversations")
+                && int.TryParse(segments[4], out _))
+            || (segments.Length == 4
+                && SegmentEquals(segments[0], "api")
+                && SegmentEquals(segments[1], "v2")
+                && SegmentEquals(segments[2], "conversations")
+                && int.TryParse(segments[3], out _));
+    }
+
+    private static bool IsDirectConversationRestorePath(string? normalizedPath)
+    {
+        var segments = SplitPath(normalizedPath);
+        return (segments.Length == 5
+                && SegmentEquals(segments[0], "api")
+                && SegmentEquals(segments[1], "messages")
+                && SegmentEquals(segments[2], "conversations")
+                && int.TryParse(segments[3], out _)
+                && SegmentEquals(segments[4], "restore"))
+            || (segments.Length == 6
+                && SegmentEquals(segments[0], "api")
+                && SegmentEquals(segments[1], "v2")
+                && SegmentEquals(segments[2], "messages")
+                && SegmentEquals(segments[3], "conversations")
+                && int.TryParse(segments[4], out _)
+                && SegmentEquals(segments[5], "restore"));
+    }
+
+    private static string[] SplitPath(string? path) =>
+        path?.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [];
+
+    private static bool SegmentEquals(string value, string expected) =>
+        string.Equals(value, expected, StringComparison.OrdinalIgnoreCase);
 
     private static FixedWindowRateLimiterOptions FixedWindow(int permitLimit, TimeSpan window) => new()
     {
