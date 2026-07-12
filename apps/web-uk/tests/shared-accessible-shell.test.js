@@ -15160,7 +15160,7 @@ describe('shared accessible frontend shell', () => {
       category_id: '3',
       is_remote: true,
       per_page: 20
-    });
+    }, '');
     expect(response.status).toBe(200);
     expect(response.text).toContain('Project NEXUS Accessible');
     expect(response.text).toContain('Volunteering');
@@ -26488,6 +26488,42 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('method="post" action="/volunteering/credentials/44/delete"');
     expect(response.text).toContain('Delete the First aid credential');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
+  it('renders the signed Blade-style volunteering applications tab with a withdraw action', async () => {
+    const api = require('../src/lib/api');
+    api.getVolunteeringOpportunities.mockResolvedValueOnce({ data: [], meta: {} });
+    api.callVolunteeringApi.mockResolvedValueOnce({
+      data: [{
+        id: 91,
+        status: 'pending',
+        created_at: '2099-03-04T12:00:00Z',
+        opportunity: { id: 77, title: 'Community Kitchen Helper', location: 'Derry' },
+        organization: { id: 42, name: 'Community Club' }
+      }],
+      meta: { cursor: 'next-application', has_more: true }
+    });
+
+    const response = await request(app)
+      .get('/volunteering?tab=applications&app_status=pending')
+      .set('Cookie', signedCookieHeader());
+
+    expect(api.getVolunteeringOpportunities).toHaveBeenCalledWith({ per_page: 20 }, 'test-token');
+    expect(api.callVolunteeringApi).toHaveBeenCalledWith(
+      'test-token',
+      'GET',
+      '/applications?per_page=10&status=pending'
+    );
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('aria-current="page">Applications</a>');
+    expect(response.text).toContain('Community Kitchen Helper');
+    expect(response.text).toContain('Community Club');
+    expect(response.text).toContain('Derry');
+    expect(response.text).toContain('Pending');
+    expect(response.text).toContain('4 March 2099');
+    expect(response.text).toContain('method="post" action="/volunteering/applications/91/withdraw"');
+    expect(response.text).toContain('Withdraw application');
+    expect(response.text).toContain('href="/volunteering?tab=applications&amp;app_status=pending&amp;app_cursor=next-application"');
   });
 
   it('streams an owned Laravel credential download and preserves safe response headers', async () => {

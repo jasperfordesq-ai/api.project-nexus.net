@@ -708,7 +708,13 @@ app.get('/account', async (req, res) => {
 app.use('/explore', exploreRoutes);
 
 app.get('/volunteering', (req, res) => {
-  const { getVolunteeringOpportunities } = require('./lib/api');
+  const { callVolunteeringApi, getVolunteeringOpportunities } = require('./lib/api');
+  const token = req.signedCookies.token || '';
+  const selectedTab = token && req.query.tab === 'applications' ? 'applications' : 'opportunities';
+  const applicationStatus = ['pending', 'approved', 'declined', 'withdrawn'].includes(req.query.app_status)
+    ? req.query.app_status
+    : '';
+  const applicationCursor = typeof req.query.app_cursor === 'string' ? req.query.app_cursor.trim() : '';
   const volunteeringQuery = typeof req.query.q === 'string' ? req.query.q.trim() : '';
   const categoryId = typeof req.query.category_id === 'string' ? req.query.category_id.trim() : '';
   const cursor = typeof req.query.cursor === 'string' ? req.query.cursor.trim() : '';
@@ -762,39 +768,79 @@ app.get('/volunteering', (req, res) => {
     return queryString ? `/volunteering?${queryString}` : '';
   };
 
-  getVolunteeringOpportunities(filters)
-    .then((result) => {
+  const applicationsQuery = new URLSearchParams({ per_page: '10' });
+  if (applicationStatus) applicationsQuery.set('status', applicationStatus);
+  if (applicationCursor) applicationsQuery.set('cursor', applicationCursor);
+  const applicationsPromise = selectedTab === 'applications'
+    ? callVolunteeringApi(token, 'GET', `/applications?${applicationsQuery.toString()}`)
+    : Promise.resolve({ data: [], meta: {} });
+
+  Promise.all([getVolunteeringOpportunities(filters, token), applicationsPromise])
+    .then(([result, applicationsResult]) => {
       const opportunities = Array.isArray(result?.data)
         ? result.data
         : (Array.isArray(result?.items) ? result.items : []);
       const meta = result?.meta && typeof result.meta === 'object' ? result.meta : {};
       const nextCursor = typeof meta.cursor === 'string' ? meta.cursor : '';
+      const applications = Array.isArray(applicationsResult?.data)
+        ? applicationsResult.data
+        : (Array.isArray(applicationsResult?.items) ? applicationsResult.items : []);
+      const normalizedApplications = applications.map((application) => ({
+        ...application,
+        appliedOnLabel: application?.created_at
+          ? formatLocaleDate(new Date(application.created_at), getRequestLocale() || 'en', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+          })
+          : ''
+      }));
+      const applicationsMeta = applicationsResult?.meta && typeof applicationsResult.meta === 'object'
+        ? applicationsResult.meta
+        : {};
+      const applicationsLoadMore = new URLSearchParams({ tab: 'applications' });
+      if (applicationStatus) applicationsLoadMore.set('app_status', applicationStatus);
+      if (applicationsMeta.cursor) applicationsLoadMore.set('app_cursor', applicationsMeta.cursor);
 
       res.render('volunteering', {
-        title: 'Volunteering',
+        title: res.locals.t('volunteering.title'),
         activeNav: 'volunteering',
         opportunities: opportunities.map(normalizeOpportunity),
+        applications: normalizedApplications,
+        applicationsMeta,
+        applicationsLoadMoreHref: `/volunteering?${applicationsLoadMore.toString()}`,
+        applicationStatus,
+        selectedTab,
+        status: typeof req.query.status === 'string' ? req.query.status : '',
         volunteeringQuery,
         categoryId,
         isRemote,
         error: false,
         hasMore: !!meta.has_more && !!nextCursor,
         loadMoreHref: buildLoadMoreHref(nextCursor),
-        authRequired: !req.signedCookies.token
+        authRequired: !token,
+        csrfToken: req.csrfToken ? req.csrfToken() : ''
       });
     })
     .catch(() => {
       res.render('volunteering', {
-        title: 'Volunteering',
+        title: res.locals.t('volunteering.title'),
         activeNav: 'volunteering',
         opportunities: [],
+        applications: [],
+        applicationsMeta: {},
+        applicationsLoadMoreHref: '',
+        applicationStatus,
+        selectedTab,
+        status: typeof req.query.status === 'string' ? req.query.status : '',
         volunteeringQuery,
         categoryId,
         isRemote,
         error: true,
         hasMore: false,
         loadMoreHref: '',
-        authRequired: !req.signedCookies.token
+        authRequired: !token,
+        csrfToken: req.csrfToken ? req.csrfToken() : ''
       });
     });
 });

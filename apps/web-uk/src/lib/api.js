@@ -670,7 +670,7 @@ async function getClubs(params = {}) {
   return request(endpoint);
 }
 
-async function getVolunteeringOpportunities(params = {}) {
+async function getVolunteeringOpportunities(params = {}, token = '') {
   const query = new URLSearchParams();
   if (params.search) query.set('search', params.search);
   if (params.category_id) query.set('category_id', params.category_id);
@@ -681,7 +681,9 @@ async function getVolunteeringOpportunities(params = {}) {
   const queryString = query.toString();
   const endpoint = `/api/v2/volunteering/opportunities${queryString ? `?${queryString}` : ''}`;
 
-  return request(endpoint);
+  return request(endpoint, token ? {
+    headers: { Authorization: `Bearer ${token}` }
+  } : {});
 }
 
 async function getVolunteerOrganisation(id) {

@@ -152,3 +152,18 @@ test('uploads, downloads and deletes a disposable volunteering credential', asyn
     }
   }
 });
+
+test('renders the signed Laravel-backed volunteering applications tab', async ({ page }) => {
+  await authenticate(page);
+  await page.setViewportSize({ width: 320, height: 640 });
+  await page.goto(`${mountPath}/volunteering?tab=applications`, {
+    waitUntil: 'domcontentloaded',
+    timeout: 300_000
+  });
+
+  await expect(page.getByRole('heading', { level: 2, name: 'Your applications', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Applications', exact: true })).toHaveAttribute('aria-current', 'page');
+  await expect(page.locator('#app_status')).toHaveCount(1);
+  await expect(page.getByText('You have not applied for any opportunities yet.', { exact: true })).toBeVisible();
+  await expectAccessibleReflow(page);
+});
