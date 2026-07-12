@@ -5414,6 +5414,18 @@ Focused render/action proof passed. Full Jest remains `45/45` suites and
 live claim was submitted because Laravel exposes no residue-free claim deletion
 path; existing records were not mutated.
 
+## 2026-07-12 Default-English Safeguarding Records Parity
+
+Safeguarding training and incidents now use Laravel's catalog across both tabs,
+forms, linked validation states, types, severities, statuses, confidentiality
+notice, and record tables. Unknown states fail to Blade's pending/low/open
+defaults and missing dates use the source em dash.
+
+Focused render/action proof passed. Full Jest remains `45/45` suites and
+`1,456/1,456` tests with green lint and the 285-template zero-match audit. No
+live training or incident record was created because Laravel exposes no
+residue-free deletion path for either personal record.
+
 ## Final Handoff Checklist
 
 Before leaving this job for another agent, write a short note containing:

@@ -531,51 +531,22 @@ function groupSignupStatus(status, t = null) {
   return { ...config, message: translated !== config.key ? translated : (config.fallback || translated) };
 }
 
-function safeguardingStatus(status) {
+function safeguardingStatus(status, t = null) {
   const messages = {
-    'training-added': {
-      type: 'success',
-      message: 'Your training record has been logged and is awaiting verification.'
-    },
-    'incident-reported': {
-      type: 'success',
-      message: 'Your report has been submitted. A designated person will review it confidentially.'
-    },
-    'training-type-required': {
-      type: 'error',
-      message: 'Select a training type',
-      field: 'training_type'
-    },
-    'training-name-required': {
-      type: 'error',
-      message: 'Enter the name of the course or programme',
-      field: 'training_name'
-    },
-    'training-date-required': {
-      type: 'error',
-      message: 'Enter the date you completed the training',
-      field: 'completed_at'
-    },
-    'training-failed': {
-      type: 'error',
-      message: 'Your training record could not be saved. Please try again.'
-    },
-    'incident-title-required': {
-      type: 'error',
-      message: 'Enter a brief title for the incident',
-      field: 'title'
-    },
-    'incident-description-too-short': {
-      type: 'error',
-      message: 'Describe what happened in at least 20 characters',
-      field: 'description'
-    },
-    'incident-failed': {
-      type: 'error',
-      message: 'Your report could not be submitted. Please try again.'
-    }
+    'training-added': { type: 'success', key: 'success_training_added' },
+    'incident-reported': { type: 'success', key: 'success_incident_reported' },
+    'training-type-required': { type: 'error', key: 'error_training_type_required', field: 'training_type' },
+    'training-name-required': { type: 'error', key: 'error_training_name_required', field: 'training_name' },
+    'training-date-required': { type: 'error', key: 'error_training_date_required', field: 'completed_at' },
+    'training-failed': { type: 'error', key: 'error_training_failed' },
+    'incident-title-required': { type: 'error', key: 'error_incident_title_required', field: 'title' },
+    'incident-description-too-short': { type: 'error', key: 'error_incident_description_short', field: 'description' },
+    'incident-failed': { type: 'error', key: 'error_incident_failed' }
   };
-  return messages[status] || null;
+  const config = messages[status] || null;
+  return config
+    ? { ...config, message: t ? t(`govuk_alpha_volunteering.safeguarding.${config.key}`) : config.key }
+    : null;
 }
 
 function waitlistStatus(status, t = null) {
@@ -1168,48 +1139,56 @@ function safeguardingRowsFrom(result, keys = []) {
   return [];
 }
 
-function normalizeSafeguardingTraining(row) {
+function normalizeSafeguardingTraining(row, t = null) {
   const training = row && typeof row === 'object' ? row : {};
   const type = trimmed(training.training_type ?? training.trainingType);
+  const rawStatus = trimmed(training.status);
+  const statusValue = Object.hasOwn(SAFEGUARDING_TRAINING_STATUS_LABELS, rawStatus) ? rawStatus : 'pending';
   return {
     id: positiveInteger(training.id),
-    trainingName: trimmed(training.training_name ?? training.trainingName) || 'Training record',
+    trainingName: trimmed(training.training_name ?? training.trainingName),
     provider: trimmed(training.provider),
     type: {
       value: type,
-      label: SAFEGUARDING_TRAINING_TYPE_LABELS[type] || headline(type)
+      label: Object.hasOwn(SAFEGUARDING_TRAINING_TYPE_LABELS, type) && t
+        ? t(`govuk_alpha_volunteering.safeguarding.training_type_${type}`)
+        : (SAFEGUARDING_TRAINING_TYPE_LABELS[type] || headline(type))
     },
     completedAtLabel: dateLabel(training.completed_at ?? training.completedAt),
     expiresAtLabel: dateLabel(training.expires_at ?? training.expiresAt),
-    status: statusPresentation(
-      training.status,
-      SAFEGUARDING_TRAINING_STATUS_LABELS,
-      SAFEGUARDING_TRAINING_STATUS_CLASSES,
-      'pending'
-    )
+    status: {
+      ...statusPresentation(statusValue, SAFEGUARDING_TRAINING_STATUS_LABELS, SAFEGUARDING_TRAINING_STATUS_CLASSES, 'pending'),
+      label: t
+        ? t(`govuk_alpha_volunteering.safeguarding.status_${statusValue}`)
+        : SAFEGUARDING_TRAINING_STATUS_LABELS[statusValue]
+    }
   };
 }
 
-function normalizeSafeguardingIncident(row) {
+function normalizeSafeguardingIncident(row, t = null) {
   const incident = row && typeof row === 'object' ? row : {};
   const description = trimmed(incident.description);
+  const rawSeverity = trimmed(incident.severity);
+  const severityValue = Object.hasOwn(SAFEGUARDING_SEVERITY_LABELS, rawSeverity) ? rawSeverity : 'low';
+  const rawStatus = trimmed(incident.status);
+  const statusValue = Object.hasOwn(SAFEGUARDING_INCIDENT_STATUS_LABELS, rawStatus) ? rawStatus : 'open';
   return {
     id: positiveInteger(incident.id),
-    title: trimmed(incident.title) || 'Safeguarding report',
+    title: trimmed(incident.title),
     description,
     descriptionExcerpt: description.length > 100 ? `${description.slice(0, 97)}...` : description,
-    severity: statusPresentation(
-      incident.severity,
-      SAFEGUARDING_SEVERITY_LABELS,
-      SAFEGUARDING_SEVERITY_CLASSES,
-      'low'
-    ),
-    status: statusPresentation(
-      incident.status,
-      SAFEGUARDING_INCIDENT_STATUS_LABELS,
-      SAFEGUARDING_INCIDENT_STATUS_CLASSES,
-      'open'
-    ),
+    severity: {
+      ...statusPresentation(severityValue, SAFEGUARDING_SEVERITY_LABELS, SAFEGUARDING_SEVERITY_CLASSES, 'low'),
+      label: t
+        ? t(`govuk_alpha_volunteering.safeguarding.severity_${severityValue}`)
+        : SAFEGUARDING_SEVERITY_LABELS[severityValue]
+    },
+    status: {
+      ...statusPresentation(statusValue, SAFEGUARDING_INCIDENT_STATUS_LABELS, SAFEGUARDING_INCIDENT_STATUS_CLASSES, 'open'),
+      label: t
+        ? t(`govuk_alpha_volunteering.safeguarding.incident_status_${statusValue}`)
+        : SAFEGUARDING_INCIDENT_STATUS_LABELS[statusValue]
+    },
     category: trimmed(incident.category),
     createdAtLabel: dateLabel(incident.created_at ?? incident.createdAt)
   };
@@ -1908,26 +1887,32 @@ async function renderSafeguarding(req, res) {
     trainings = safeguardingRowsFrom(
       await callApi(token, 'GET', '/training'),
       ['training', 'trainings']
-    ).map(normalizeSafeguardingTraining);
+    ).map((training) => normalizeSafeguardingTraining(training, res.locals.t));
     incidents = safeguardingRowsFrom(
       await callApi(token, 'GET', '/incidents'),
       ['incidents']
-    ).map(normalizeSafeguardingIncident);
+    ).map((incident) => normalizeSafeguardingIncident(incident, res.locals.t));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
     loadError = 'We could not load your safeguarding records. Please try again.';
   }
 
   return res.render('volunteering/safeguarding', {
-    title: 'Safeguarding',
+    title: res.locals.t('govuk_alpha_volunteering.safeguarding.title'),
     activeNav: 'volunteering',
     subView,
     trainings,
     incidents,
-    trainingTypes: SAFEGUARDING_TRAINING_TYPES,
-    severities: Object.entries(SAFEGUARDING_SEVERITY_LABELS).map(([value, label]) => ({ value, label })),
+    trainingTypes: SAFEGUARDING_TRAINING_TYPES.map((type) => ({
+      ...type,
+      label: res.locals.t(`govuk_alpha_volunteering.safeguarding.training_type_${type.value}`)
+    })),
+    severities: Object.keys(SAFEGUARDING_SEVERITY_LABELS).map((value) => ({
+      value,
+      label: res.locals.t(`govuk_alpha_volunteering.safeguarding.severity_${value}`)
+    })),
     loadError,
-    status: safeguardingStatus(trimmed(req.query.status)),
+    status: safeguardingStatus(trimmed(req.query.status), res.locals.t),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }
