@@ -5315,6 +5315,20 @@ suites and `1,456/1,456` tests with green lint and the 285-template zero-match
 audit. No live approval or decline was submitted because there is no disposable
 pending application/hour fixture.
 
+## 2026-07-12 Authenticated Owner Accessibility Sample
+
+The default-English authenticated browser gate now includes organisation
+dashboard, review queue, settings, wallet, and roster. A fresh current-checkout
+Laravel-backed run passed `5/5` in `2.3` minutes: all pages returned `200` and
+had valid landmarks/headings, no duplicate IDs, no 320px document overflow,
+and no serious/critical axe findings. This is focused automated evidence, not
+manual screen-reader certification.
+
+The route matrix remains `610/610`. ASP.NET port `5080` is a stale July 6
+WSL/container runtime and fails public slug discovery despite the July 11 source
+fix; two scoped integration attempts timed out silently, so current ASP.NET
+runtime switching remains uncertified.
+
 ## Final Handoff Checklist
 
 Before leaving this job for another agent, write a short note containing:
