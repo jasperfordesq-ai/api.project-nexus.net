@@ -15,7 +15,7 @@
             <h2 class="govuk-notification-banner__title" id="blocked-status-title">{{ t("states.success_title") }}</h2>
           </div>
           <div class="govuk-notification-banner__content">
-            <p class="govuk-notification-banner__heading">The member has been unblocked.</p>
+            <p class="govuk-notification-banner__heading">{{ t("profile.block.status_member_blocked") if status == "member-blocked" else t("blocked_users.unblocked") }}</p>
           </div>
         </div>
       {% endif %}

@@ -2497,6 +2497,14 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
 
     api.callProfileApi.mockResolvedValueOnce({ data: [] });
+    const blockedSuccess = await request(app)
+      .get('/profile/blocked?status=member-blocked')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(blockedSuccess.status).toBe(200);
+    expect(blockedSuccess.text).toContain('The member has been blocked.');
+
+    api.callProfileApi.mockResolvedValueOnce({ data: [] });
     const empty = await request(app)
       .get('/profile/blocked')
       .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
@@ -11172,7 +11180,7 @@ describe('shared accessible frontend shell', () => {
       });
 
     expect(response.status).toBe(302);
-    expect(response.headers.location).toBe('/members/77?status=member-blocked');
+    expect(response.headers.location).toBe('/profile/blocked?status=member-blocked');
     expect(api.blockMember).toHaveBeenCalledWith('test-token', 77, 'Spam');
   });
 

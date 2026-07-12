@@ -603,7 +603,9 @@ router.post('/:id(\\d+)/block', asyncRoute(async (req, res) => {
     status = error instanceof ApiError && error.status === 400 ? 'block-self' : 'block-failed';
   }
 
-  return redirectTo(res, memberUrl(id, status));
+  return redirectTo(res, status === 'member-blocked'
+    ? '/profile/blocked?status=member-blocked'
+    : memberUrl(id, status));
 }));
 
 router.post('/:id(\\d+)/unblock', asyncRoute(async (req, res) => {

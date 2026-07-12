@@ -1616,7 +1616,7 @@ router.get('/blocked', asyncRoute(async (req, res) => {
     title: 'Blocked members',
     activeNav: 'profile',
     status,
-    successStatus: status === 'member-unblocked',
+    successStatus: ['member-blocked', 'member-unblocked'].includes(status),
     blocked,
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });

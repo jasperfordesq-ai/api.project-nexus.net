@@ -36,6 +36,7 @@
     "smoke:laravel:blog-mutation": "npm run build:css && node scripts/blog-mutation-local-server.js",
     "smoke:laravel:reviews-mutation": "npm run build:css && node scripts/reviews-mutation-local-server.js",
     "smoke:laravel:ideation-campaign-mutation": "npm run build:css && node scripts/ideation-campaign-mutation-local-server.js",
+    "smoke:laravel:member-block-mutation": "npm run build:css && node scripts/member-block-mutation-local-server.js",
     "smoke:laravel:tenant-module-gates": "npm run build:css && node scripts/tenant-module-gates-local-server.js",
     "audit:aspnet:readiness": "node scripts/aspnet-readiness-audit.js",
     "locales:sync": "php scripts/sync-laravel-locales.php",
