@@ -2907,6 +2907,8 @@
                         "message-not-enabled": "Schakel gefedereerde berichten in uw instellingen in om berichten te verzenden.",
                         "message-recipient-unavailable": "Dit lid accepteert geen gefedereerde berichten.",
                         "message-unavailable": "Federated messaging is not available right now.",
+                        "message-safeguarding-restricted": "This message cannot be sent under the recipient community safeguarding policy. Contact a community coordinator if you need help.",
+                        "message-safeguarding-unavailable": "This message cannot be sent because the recipient community safeguarding policy could not be checked. Try again later or contact a coordinator.",
                         "translate-unavailable": "Translation is not available right now.",
                         "translate-failed": "We could not translate that message. Please try again."
                     }
@@ -2939,7 +2941,9 @@
                         "transfer-not-enabled": "Schakel gefedereerde tijdkredieten in uw instellingen in om overdrachten te verzenden.",
                         "transfer-recipient-unavailable": "Dit lid accepteert geen gefedereerde tijdkredieten.",
                         "transfer-self": "U kunt geen tijdkredieten naar uzelf sturen.",
-                        "transfer-failed": "We konden de overdracht niet voltooien. Probeer het opnieuw."
+                        "transfer-failed": "We konden de overdracht niet voltooien. Probeer het opnieuw.",
+                        "transfer-safeguarding-restricted": "Het veiligheidsbeleid van de gemeenschap van de ontvanger staat deze directe overdracht niet toe. Vraag een coördinator om hulp.",
+                        "transfer-safeguarding-unavailable": "We kunnen het veiligheidsbeleid nu niet controleren. Er is niets overgedragen. Probeer het opnieuw."
                     }
                 }
             },
@@ -3248,6 +3252,27 @@
                     "revoke_button": "Intrekken",
                     "revoked": "Uw veiligheidsvoorkeur is ingetrokken.",
                     "failed": "We konden uw veiligheidsvoorkeur niet bijwerken. Probeer het opnieuw.",
+                    "policy_review_title": "Controleer uw veiligheidsvoorkeuren",
+                    "policy_review_body": "Uw gemeenschap heeft haar veiligheidsjurisdictie gewijzigd. Uw bescherming blijft actief. Controleer de bijgewerkte tekst en bevestig uw keuze.",
+                    "policy_review_confirm": "Mijn voorkeuren bevestigen",
+                    "policy_review_confirmed": "Veiligheidsvoorkeuren bevestigd.",
+                    "policy_review_error": "De controle kon niet worden bevestigd. Probeer het opnieuw.",
+                    "vetting": {
+                        "title": "Uw privéstatus voor gemeenschapscontrole",
+                        "status_unavailable": "Uw controlestatus kon niet worden geladen.",
+                        "status_not_confirmed": "Niet bevestigd",
+                        "status_revoked": "Ingetrokken",
+                        "status_review_requested": "Beoordeling aangevraagd",
+                        "confirmed_on": "Uw gemeenschap heeft bevestigd dat u op :date aan deze beschermde contactvereiste voldoet.",
+                        "review_pending_body": "Uw bemiddelaar is gevraagd uw gemeenschapsbevestiging te controleren.",
+                        "not_confirmed_body": "Uw gemeenschap heeft niet bevestigd dat u aan deze vereiste voor veilig contact voldoet.",
+                        "policy_unavailable_body": "Deze gemeenschap heeft voor haar rechtsgebied geen ondersteund contactbeschermingsbeleid geconfigureerd.",
+                        "no_documents": "Upload of verzend geen DBS-, politiecontrole-, Garda-vetting-, AccessNI- of PVG-document via NEXUS. Uw gemeenschap regelt eventuele wettige controles buiten het platform.",
+                        "request_review_button": "Beoordeling door bemiddelaar aanvragen",
+                        "review_requested_button": "Beoordeling aangevraagd",
+                        "review_requested_toast": "Beoordeling door bemiddelaar aangevraagd.",
+                        "review_error": "De beoordeling door de bemiddelaar kon niet worden aangevraagd. Probeer het opnieuw."
+                    },
                     "activations": {
                         "restricts_messaging": "Beperkt wie u berichten kan sturen",
                         "restricts_matching": "Beperkt met wie u wordt gematcht",
@@ -3671,6 +3696,17 @@
                 "safeguarding_title": "Meld een beveiligingsprobleem",
                 "safeguarding_body": "Als u zich zorgen maakt over een lid, een uitwisseling of iets dat u op het platform hebt gezien, kunt u ons dit laten weten. Op beveiligingsmeldingen reageren wij binnen één werkdag.",
                 "sections": {
+                    "vetting_attestation": {
+                        "heading": "Community safeguarding vetting confirmations",
+                        "intro": "Some community contact policies require a vetting confirmation.",
+                        "items": [
+                            "The community carries out any lawful checking outside Project NEXUS.",
+                            "An authorised broker records only a private, metadata-only decision for the specific contact policy.",
+                            "Project NEXUS does not ask for or retain DBS, Garda Vetting, AccessNI, PVG or equivalent certificates, references, dates, results, criminal-record details, identity documents or free-text evidence.",
+                            "A contact-policy confirmation does not mean that a person is universally safe or cleared for every role.",
+                            "Do not ask another member to send a vetting certificate through messages. Contact the community coordinator if you need help."
+                        ]
+                    },
                     "how_exchanges": {
                         "heading": "Hoe uitwisselingen werken",
                         "intro": "Tussen de leden worden uitwisselingen georganiseerd. Hier is de gebruikelijke stroom.",
@@ -7956,6 +7992,7 @@
                 "success_title": "Success",
                 "error_title": "There is a problem",
                 "optional": "(optional)",
+                "warning": "Warning",
                 "none_yet": "None yet"
             },
             "my_orgs": {
@@ -8124,16 +8161,19 @@
             },
             "credentials": {
                 "title": "My credentials",
-                "description": "Upload checks and certificates so organisations can verify you. Files are private and only shared with administrators.",
+                "description": "Upload role credentials such as first aid or food hygiene certificates so organisations can review them.",
                 "upload_title": "Upload a credential",
                 "type_label": "Credential type",
-                "type_hint": "For example: police check, first aid, safeguarding.",
+                "type_hint": "For example: first aid, safeguarding training or food hygiene. Do not upload police-check or vetting documents.",
                 "type_select": "Select a credential type",
                 "type_police_check": "Police / background check",
                 "type_first_aid": "First aid",
                 "type_safeguarding": "Safeguarding",
+                "type_manual_handling": "Manual handling",
+                "type_food_hygiene": "Food hygiene",
                 "type_dbs": "DBS check",
                 "type_driving_licence": "Driving licence",
+                "type_professional_registration": "Professional registration",
                 "type_other": "Other",
                 "file_label": "Upload a file",
                 "file_hint": "PDF, JPG, PNG or WEBP. Maximum size 10MB.",
@@ -8151,7 +8191,16 @@
                 "status_verified": "Verified",
                 "status_rejected": "Rejected",
                 "status_expired": "Expired",
+                "status_retired": "Removal required",
+                "status_manual_review": "Handmatige beoordeling vereist",
                 "no_expiry": "No expiry",
+                "not_applicable": "Not applicable",
+                "vetting_documents_notice": "Do not upload or send a DBS, Garda vetting, AccessNI, PVG, police-check or equivalent document through Project NEXUS. Any role-specific checking must be arranged lawfully outside the platform.",
+                "vetting_prohibited": "Police-check and vetting documents cannot be uploaded here.",
+                "retired_vetting_label": "Retired vetting document",
+                "retired_vetting_warning": "The document details are hidden. Delete this historical upload; it is not used for access or role clearance.",
+                "manual_review_warning": "Dit historische type kwalificatie wordt niet ondersteund. De documentgegevens zijn verborgen en het wordt niet beschouwd als geverifieerd of als bewijs van een antecedentenonderzoek. U kunt het verwijderen.",
+                "delete_vetting_evidence_button": "Delete historical document",
                 "delete_button": "Delete",
                 "delete_for": "Delete the :type credential",
                 "delete_warning": "Deleting a credential cannot be undone. You will need to upload it again.",

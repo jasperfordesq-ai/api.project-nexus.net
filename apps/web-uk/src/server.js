@@ -1350,6 +1350,11 @@ app.use(
   parseMultipartForm({ maxFileSize: 10 * 1024 * 1024 }),
   multipartStatusErrorRedirect('/profile/settings', 'avatar-invalid', 'avatar-invalid')
 );
+app.use(
+  ['/profile/safeguarding/vetting-review', '/profile/safeguarding/policy-review'],
+  parseMultipartForm({ maxFileSize: 1024 }),
+  safeguardingEmptyMultipartErrorRedirect
+);
 app.use('/feed/posts', parseMultipartForm({ maxFileSize: 5 * 1024 * 1024 }));
 app.use('/marketplace/create', parseMultipartForm({ maxFileSize: 5 * 1024 * 1024 }));
 app.use(/^\/marketplace\/\d+\/update$/, parseMultipartForm({ maxFileSize: 5 * 1024 * 1024 }));
@@ -1455,6 +1460,13 @@ function multipartStatusErrorRedirect(pathname, sizeStatus, invalidStatus) {
     const status = isSizeError ? sizeStatus : invalidStatus;
     return redirectTo(res, `${pathname}?status=${encodeURIComponent(status)}`);
   };
+}
+
+function safeguardingEmptyMultipartErrorRedirect(error, req, res, next) { // eslint-disable-line no-unused-vars
+  const status = String(req.originalUrl || req.url || '').includes('/vetting-review')
+    ? 'vetting-review-evidence-prohibited'
+    : 'safeguarding-policy-review-failed';
+  return redirectTo(res, `/profile/settings?status=${status}#safeguarding`);
 }
 
 function redirectTo(res, pathname) {

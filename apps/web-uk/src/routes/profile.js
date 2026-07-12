@@ -178,6 +178,28 @@ const PROFILE_STATUS_MESSAGES = {
     type: 'error',
     message: 'The safeguarding preference could not be updated.',
     anchor: 'safeguarding'
+  },
+  'vetting-review-requested': { type: 'success', message: 'Broker review requested.' },
+  'vetting-review-evidence-prohibited': {
+    type: 'error',
+    message: 'Do not upload or send vetting evidence through NEXUS.',
+    anchor: 'vetting-status'
+  },
+  'vetting-review-unavailable': {
+    type: 'error',
+    message: 'This community does not have an available safeguarding contact policy.',
+    anchor: 'vetting-status'
+  },
+  'vetting-review-failed': {
+    type: 'error',
+    message: 'The broker review could not be requested. Please try again.',
+    anchor: 'vetting-status'
+  },
+  'safeguarding-policy-reviewed': { type: 'success', message: 'Safeguarding preferences confirmed.' },
+  'safeguarding-policy-review-failed': {
+    type: 'error',
+    message: 'The review could not be confirmed. Please try again.',
+    anchor: 'safeguarding-policy-review'
   }
 };
 // Keep this map limited to semantically exact Laravel catalog entries. Unmapped
@@ -217,7 +239,13 @@ const PROFILE_STATUS_MESSAGE_KEYS = Object.freeze({
   'skill-name-required': 'profile_settings.skills.name_required',
   'skill-failed': 'profile_settings.skills.failed',
   'safeguarding-revoked': 'profile_settings.safeguarding.revoked',
-  'safeguarding-failed': 'profile_settings.safeguarding.failed'
+  'safeguarding-failed': 'profile_settings.safeguarding.failed',
+  'vetting-review-requested': 'profile_settings.safeguarding.vetting.review_requested_toast',
+  'vetting-review-evidence-prohibited': 'profile_settings.safeguarding.vetting.no_documents',
+  'vetting-review-unavailable': 'profile_settings.safeguarding.vetting.policy_unavailable_body',
+  'vetting-review-failed': 'profile_settings.safeguarding.vetting.review_error',
+  'safeguarding-policy-reviewed': 'profile_settings.safeguarding.policy_review_confirmed',
+  'safeguarding-policy-review-failed': 'profile_settings.safeguarding.policy_review_error'
 });
 const PROFILE_NOTIFICATION_KEYS = [
   'email_messages',
@@ -309,6 +337,25 @@ function checked(value) {
 function uploadedFile(req, fieldName) {
   const file = req.files && req.files[fieldName];
   return file && typeof file === 'object' ? file : null;
+}
+
+function uploadedFiles(req) {
+  if (!req.files || typeof req.files !== 'object') return [];
+  return Object.values(req.files).flatMap((file) => (Array.isArray(file) ? file : [file])).filter(Boolean);
+}
+
+async function removeUploadedFiles(req) {
+  await Promise.all(uploadedFiles(req).map((file) => removeUploadedFile(file)));
+}
+
+function hasUnexpectedEmptyWorkflowInput(req) {
+  const inputKeys = Object.keys(req.body || {}).filter((key) => key !== '_csrf');
+  return inputKeys.length > 0 || uploadedFiles(req).length > 0;
+}
+
+function apiErrorCode(error) {
+  const firstError = Array.isArray(error?.data?.errors) ? error.data.errors[0] : null;
+  return String(firstError?.code || error?.data?.code || '').trim().toUpperCase();
 }
 
 async function removeUploadedFile(file) {
@@ -712,6 +759,7 @@ function normalizeSafeguarding(payload) {
       option_id: option.option_id || option.id || '',
       label: option.label || option.name || 'Safeguarding preference',
       description: option.description || '',
+      policy_review_required: checked(option.policy_review_required),
       activations
     };
   });
@@ -755,6 +803,16 @@ function buildProfileSettingsViewModel(req, data) {
   );
   const status = typeof req.query.status === 'string' ? req.query.status : '';
   const statusConfig = profileStatusConfig(req, status);
+  const vettingStatus = data.vettingStatus && typeof data.vettingStatus === 'object'
+    ? data.vettingStatus
+    : null;
+  const vettingPolicy = vettingStatus?.policy && typeof vettingStatus.policy === 'object'
+    ? vettingStatus.policy
+    : {};
+  const vettingDecision = String(vettingStatus?.decision || 'not_confirmed');
+  const vettingReviewPending = String(vettingStatus?.review_status || '') === 'pending';
+  const vettingPolicyAvailable = Boolean(vettingPolicy.configured && vettingPolicy.contact_policy_available);
+  const attestationCode = String(vettingPolicy.attestation_code || '');
 
   return {
     title: 'Edit your profile',
@@ -841,6 +899,29 @@ function buildProfileSettingsViewModel(req, data) {
     passkeys: data.passkeys,
     sessions: data.sessions,
     safeguarding: data.safeguarding,
+    safeguardingPolicyReviewRequired: data.safeguarding.some((option) => option.policy_review_required),
+    vetting: {
+      available: vettingStatus !== null,
+      decision: vettingDecision,
+      reviewPending: vettingReviewPending,
+      policyAvailable: vettingPolicyAvailable,
+      attestationLabel: attestationCode
+        ? translateStatusMessage(req, `safeguarding.attestations.${attestationCode}`, attestationCode)
+        : '',
+      statusLabel: vettingReviewPending
+        ? translateStatusMessage(req, 'profile_settings.safeguarding.vetting.status_review_requested', 'Review requested')
+        : translateStatusMessage(
+          req,
+          vettingDecision === 'confirmed'
+            ? 'govuk_alpha.exchanges.confirmed'
+            : `profile_settings.safeguarding.vetting.status_${vettingDecision === 'revoked' ? 'revoked' : 'not_confirmed'}`,
+          vettingDecision === 'confirmed' ? 'Confirmed' : (vettingDecision === 'revoked' ? 'Revoked' : 'Not confirmed')
+        ),
+      tagClass: vettingReviewPending
+        ? 'govuk-tag--yellow'
+        : ({ confirmed: 'govuk-tag--green', revoked: 'govuk-tag--red' }[vettingDecision] || 'govuk-tag--grey'),
+      confirmedDate: formatProfileDate(vettingStatus?.confirmed_at)
+    },
     settingsLinks: [
       {
         href: '/settings/linked-accounts',
@@ -990,6 +1071,7 @@ router.get('/settings', asyncRoute(async (req, res) => {
     passkeys: [],
     sessions: [],
     safeguarding: [],
+    vettingStatus: null,
     marketingConsent: undefined
   };
 
@@ -1049,6 +1131,12 @@ router.get('/settings', asyncRoute(async (req, res) => {
     data.safeguarding = normalizeSafeguarding(
       payloadFrom(await callProfile(token, 'GET', '/safeguarding/my-preferences'))
     );
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+  }
+
+  try {
+    data.vettingStatus = payloadFrom(await callProfile(token, 'GET', '/safeguarding/my-vetting-status'));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
   }
@@ -1365,6 +1453,55 @@ router.post('/safeguarding/revoke', asyncRoute(async (req, res) => {
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
     status = 'safeguarding-failed';
+  }
+
+  return redirectTo(res, profileSettingsRedirect(status, '#safeguarding'));
+}));
+
+router.post('/safeguarding/vetting-review', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    await removeUploadedFiles(req);
+    return redirectTo(res, loginRedirect());
+  }
+
+  if (hasUnexpectedEmptyWorkflowInput(req)) {
+    await removeUploadedFiles(req);
+    return redirectTo(res, profileSettingsRedirect('vetting-review-evidence-prohibited', '#safeguarding'));
+  }
+
+  let status = 'vetting-review-requested';
+  try {
+    await callProfile(token, 'POST', '/safeguarding/vetting-review-request');
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    const code = apiErrorCode(error);
+    status = error?.status === 409
+      ? 'vetting-review-unavailable'
+      : (code === 'VETTING_EVIDENCE_PROHIBITED' ? 'vetting-review-evidence-prohibited' : 'vetting-review-failed');
+  }
+
+  return redirectTo(res, profileSettingsRedirect(status, '#safeguarding'));
+}));
+
+router.post('/safeguarding/policy-review', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    await removeUploadedFiles(req);
+    return redirectTo(res, loginRedirect());
+  }
+
+  if (hasUnexpectedEmptyWorkflowInput(req)) {
+    await removeUploadedFiles(req);
+    return redirectTo(res, profileSettingsRedirect('safeguarding-policy-review-failed', '#safeguarding'));
+  }
+
+  let status = 'safeguarding-policy-reviewed';
+  try {
+    await callProfile(token, 'POST', '/safeguarding/confirm-policy-review');
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    status = 'safeguarding-policy-review-failed';
   }
 
   return redirectTo(res, profileSettingsRedirect(status, '#safeguarding'));

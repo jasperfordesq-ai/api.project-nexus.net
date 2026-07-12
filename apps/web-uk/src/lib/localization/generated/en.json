@@ -2907,6 +2907,8 @@
                         "message-not-enabled": "Turn on federated messaging in your settings to send messages.",
                         "message-recipient-unavailable": "This member is not accepting federated messages.",
                         "message-unavailable": "Federated messaging is not available right now.",
+                        "message-safeguarding-restricted": "This message cannot be sent under the recipient community safeguarding policy. Contact a community coordinator if you need help.",
+                        "message-safeguarding-unavailable": "This message cannot be sent because the recipient community safeguarding policy could not be checked. Try again later or contact a coordinator.",
                         "translate-unavailable": "Translation is not available right now.",
                         "translate-failed": "We could not translate that message. Please try again."
                     }
@@ -2939,7 +2941,9 @@
                         "transfer-not-enabled": "Turn on federated time credits in your settings to send transfers.",
                         "transfer-recipient-unavailable": "This member is not accepting federated time credits.",
                         "transfer-self": "You cannot send time credits to yourself.",
-                        "transfer-failed": "We could not complete the transfer. Please try again."
+                        "transfer-failed": "We could not complete the transfer. Please try again.",
+                        "transfer-safeguarding-restricted": "The recipient’s community safeguarding policy does not allow this direct transfer. Ask a coordinator for help.",
+                        "transfer-safeguarding-unavailable": "We cannot check the community safeguarding policy right now. No transfer was made. Please try again."
                     }
                 }
             },
@@ -3248,6 +3252,27 @@
                     "revoke_button": "Withdraw",
                     "revoked": "Your safeguarding preference has been withdrawn.",
                     "failed": "We could not update your safeguarding preference. Please try again.",
+                    "policy_review_title": "Review your safeguarding preferences",
+                    "policy_review_body": "Your community changed its safeguarding jurisdiction. Your protections remain active. Check the updated wording below, then confirm it still reflects what you want.",
+                    "policy_review_confirm": "Confirm my preferences",
+                    "policy_review_confirmed": "Safeguarding preferences confirmed.",
+                    "policy_review_error": "The review could not be confirmed. Please try again.",
+                    "vetting": {
+                        "title": "Your private community vetting status",
+                        "status_unavailable": "Your vetting status could not be loaded.",
+                        "status_not_confirmed": "Not confirmed",
+                        "status_revoked": "Revoked",
+                        "status_review_requested": "Review requested",
+                        "confirmed_on": "Your community confirmed that you meet this safeguarding contact requirement on :date.",
+                        "review_pending_body": "Your broker has been asked to review your community confirmation.",
+                        "not_confirmed_body": "Your community has not confirmed that you meet this safeguarding contact requirement.",
+                        "policy_unavailable_body": "This community has not configured a supported safeguarding contact policy for its jurisdiction.",
+                        "no_documents": "Do not upload or send a DBS, police-check, Garda vetting, AccessNI, or PVG document through NEXUS. Your community will arrange any lawful checking outside the platform.",
+                        "request_review_button": "Request broker review",
+                        "review_requested_button": "Review requested",
+                        "review_requested_toast": "Broker review requested.",
+                        "review_error": "The broker review could not be requested. Please try again."
+                    },
                     "activations": {
                         "restricts_messaging": "Limits who can message you",
                         "restricts_matching": "Limits who you are matched with",
@@ -3671,6 +3696,17 @@
                 "safeguarding_title": "Report a safeguarding concern",
                 "safeguarding_body": "If you are worried about a member, an exchange, or something you have seen on the platform, please tell us. We respond to safeguarding reports within one working day.",
                 "sections": {
+                    "vetting_attestation": {
+                        "heading": "Community safeguarding vetting confirmations",
+                        "intro": "Some community contact policies require a vetting confirmation.",
+                        "items": [
+                            "The community carries out any lawful checking outside Project NEXUS.",
+                            "An authorised broker records only a private, metadata-only decision for the specific contact policy.",
+                            "Project NEXUS does not ask for or retain DBS, Garda Vetting, AccessNI, PVG or equivalent certificates, references, dates, results, criminal-record details, identity documents or free-text evidence.",
+                            "A contact-policy confirmation does not mean that a person is universally safe or cleared for every role.",
+                            "Do not ask another member to send a vetting certificate through messages. Contact the community coordinator if you need help."
+                        ]
+                    },
                     "how_exchanges": {
                         "heading": "How exchanges work",
                         "intro": "Exchanges are arranged between members. Here is the usual flow.",
@@ -7956,6 +7992,7 @@
                 "success_title": "Success",
                 "error_title": "There is a problem",
                 "optional": "(optional)",
+                "warning": "Warning",
                 "none_yet": "None yet"
             },
             "my_orgs": {
@@ -8124,16 +8161,19 @@
             },
             "credentials": {
                 "title": "My credentials",
-                "description": "Upload checks and certificates so organisations can verify you. Files are private and only shared with administrators.",
+                "description": "Upload role credentials such as first aid or food hygiene certificates so organisations can review them.",
                 "upload_title": "Upload a credential",
                 "type_label": "Credential type",
-                "type_hint": "For example: police check, first aid, safeguarding.",
+                "type_hint": "For example: first aid, safeguarding training or food hygiene. Do not upload police-check or vetting documents.",
                 "type_select": "Select a credential type",
                 "type_police_check": "Police / background check",
                 "type_first_aid": "First aid",
                 "type_safeguarding": "Safeguarding",
+                "type_manual_handling": "Manual handling",
+                "type_food_hygiene": "Food hygiene",
                 "type_dbs": "DBS check",
                 "type_driving_licence": "Driving licence",
+                "type_professional_registration": "Professional registration",
                 "type_other": "Other",
                 "file_label": "Upload a file",
                 "file_hint": "PDF, JPG, PNG or WEBP. Maximum size 10MB.",
@@ -8151,7 +8191,16 @@
                 "status_verified": "Verified",
                 "status_rejected": "Rejected",
                 "status_expired": "Expired",
+                "status_retired": "Removal required",
+                "status_manual_review": "Manual review required",
                 "no_expiry": "No expiry",
+                "not_applicable": "Not applicable",
+                "vetting_documents_notice": "Do not upload or send a DBS, Garda vetting, AccessNI, PVG, police-check or equivalent document through Project NEXUS. Any role-specific checking must be arranged lawfully outside the platform.",
+                "vetting_prohibited": "Police-check and vetting documents cannot be uploaded here.",
+                "retired_vetting_label": "Retired vetting document",
+                "retired_vetting_warning": "The document details are hidden. Delete this historical upload; it is not used for access or role clearance.",
+                "manual_review_warning": "This historical credential type is not supported. Its document details are hidden, and it is not treated as verified or as vetting evidence. You can delete it.",
+                "delete_vetting_evidence_button": "Delete historical document",
                 "delete_button": "Delete",
                 "delete_for": "Delete the :type credential",
                 "delete_warning": "Deleting a credential cannot be undone. You will need to upload it again.",

@@ -474,6 +474,44 @@
       <section id="safeguarding" aria-labelledby="safeguarding-heading">
         <h2 class="govuk-heading-l" id="safeguarding-heading">{{ t("profile_settings.safeguarding.title") }}</h2>
         <p class="govuk-body">{{ t("profile_settings.safeguarding.description") }}</p>
+        {% if safeguardingPolicyReviewRequired %}
+          <div class="govuk-notification-banner" data-module="govuk-notification-banner" role="region" aria-labelledby="safeguarding-policy-review-banner-title" id="safeguarding-policy-review">
+            <div class="govuk-notification-banner__header"><h3 class="govuk-notification-banner__title" id="safeguarding-policy-review-banner-title">{{ t("states.important") }}</h3></div>
+            <div class="govuk-notification-banner__content">
+              <h3 class="govuk-notification-banner__heading">{{ t("profile_settings.safeguarding.policy_review_title") }}</h3>
+              <p class="govuk-body">{{ t("profile_settings.safeguarding.policy_review_body") }}</p>
+              <form method="post" action="{{ urlFor('/profile/safeguarding/policy-review') }}">
+                <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                <button class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button" type="submit">{{ t("profile_settings.safeguarding.policy_review_confirm") }}</button>
+              </form>
+            </div>
+          </div>
+        {% endif %}
+
+        <div class="nexus-alpha-card govuk-!-margin-bottom-6" id="vetting-status">
+          <h3 class="govuk-heading-m govuk-!-margin-bottom-2">{{ t("profile_settings.safeguarding.vetting.title") }}</h3>
+          {% if not vetting.available %}
+            <p class="govuk-body">{{ t("profile_settings.safeguarding.vetting.status_unavailable") }}</p>
+          {% else %}
+            <p class="govuk-body govuk-!-margin-bottom-2"><strong class="govuk-tag {{ vetting.tagClass }}">{{ vetting.statusLabel }}</strong>{% if vetting.attestationLabel %}<span class="govuk-!-margin-left-2">{{ vetting.attestationLabel }}</span>{% endif %}</p>
+            {% if vetting.decision == "confirmed" and vetting.confirmedDate %}
+              <p class="govuk-body">{{ t("profile_settings.safeguarding.vetting.confirmed_on", { date: vetting.confirmedDate }) }}</p>
+            {% elif vetting.reviewPending %}
+              <p class="govuk-body">{{ t("profile_settings.safeguarding.vetting.review_pending_body") }}</p>
+            {% elif vetting.policyAvailable %}
+              <p class="govuk-body">{{ t("profile_settings.safeguarding.vetting.not_confirmed_body") }}</p>
+            {% else %}
+              <p class="govuk-body">{{ t("profile_settings.safeguarding.vetting.policy_unavailable_body") }}</p>
+            {% endif %}
+          {% endif %}
+          <div class="govuk-inset-text">{{ t("profile_settings.safeguarding.vetting.no_documents") }}</div>
+          {% if vetting.available and vetting.decision != "confirmed" and vetting.policyAvailable %}
+            <form method="post" action="{{ urlFor('/profile/safeguarding/vetting-review') }}">
+              <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+              <button class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button" type="submit"{% if vetting.reviewPending %} disabled{% endif %}>{{ t("profile_settings.safeguarding.vetting." ~ ("review_requested_button" if vetting.reviewPending else "request_review_button")) }}</button>
+            </form>
+          {% endif %}
+        </div>
         {% if safeguarding.length %}
           {% for option in safeguarding %}
               <div class="nexus-alpha-card govuk-!-margin-bottom-4">

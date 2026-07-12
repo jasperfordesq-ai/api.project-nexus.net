@@ -5213,6 +5213,25 @@ Laravel API reachability preflight still receives the known `401`. The latest
 route regeneration found `608` matches and two newly added, unrelated Profile
 safeguarding POST routes still missing from Web UK; no 610/610 claim is made.
 
+## 2026-07-12 Safeguarding Profile Route Reconciliation
+
+Laravel added two Profile safeguarding POST routes after the preceding slice.
+Web UK now renders the matching policy-review and private vetting-status controls
+and forwards only empty requests to Laravel's dedicated v2 confirmation and
+broker-review endpoints. Unexpected fields and multipart evidence are rejected
+before Laravel; policy-unavailable `409` responses map to the exact settings
+state. No live POST was made because review requests notify decision-makers and
+policy confirmation changes active preference state.
+
+Focused render/action/error/evidence proof passed `3/3`. The route matrix is
+again `610/610` with zero missing or extra parity routes and zero generated prep
+pages. Full Jest passed `45/45` suites and `1,456/1,456` tests; lint, catalog
+structure (`11` locales, `24` namespaces, `7,402` keys), and the 285-template
+zero-match audit passed. A signed read-only Laravel page check rendered
+`/profile/settings` with `200` and the new vetting heading. The smoke remained
+globally red only because its independent anonymous Laravel API preflight still
+receives the known `401`.
+
 ## Final Handoff Checklist
 
 Before leaving this job for another agent, write a short note containing:

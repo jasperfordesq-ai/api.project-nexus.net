@@ -2184,9 +2184,24 @@ describe('shared accessible frontend shell', () => {
               option_id: 9,
               label: 'Broker approval',
               description: 'A broker reviews new exchanges.',
-              requires_broker_approval: true
+              requires_broker_approval: true,
+              policy_review_required: true
             }
           ]
+        };
+      }
+      if (method === 'GET' && pathValue === '/safeguarding/my-vetting-status') {
+        return {
+          data: {
+            policy: {
+              configured: true,
+              contact_policy_available: true,
+              attestation_code: 'garda_vetting'
+            },
+            decision: 'not_confirmed',
+            review_status: null,
+            confirmed_at: null
+          }
         };
       }
       return { data: { id: 42 } };
@@ -2291,6 +2306,13 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('Safeguarding');
     expect(signed.text).toContain('Broker approval');
     expect(signed.text).toContain('Exchanges need broker approval');
+    expect(signed.text).toContain('Review your safeguarding preferences');
+    expect(signed.text).toContain('action="/profile/safeguarding/policy-review"');
+    expect(signed.text).toContain('Your private community vetting status');
+    expect(signed.text).toContain('Not confirmed');
+    expect(signed.text).toContain('Request broker review');
+    expect(signed.text).toContain('action="/profile/safeguarding/vetting-review"');
+    expect(signed.text).toContain('Do not upload or send a DBS, police-check, Garda vetting, AccessNI, or PVG document through NEXUS.');
     expect(signed.text).toContain('class="govuk-body-s nexus-alpha-meta"');
     expect(signed.text).toContain('govuk-button--warning govuk-!-margin-bottom-0');
     expect(signed.text).toContain('id="location" name="location" type="text" value="London" autocomplete="address-level2"');
@@ -24079,6 +24101,26 @@ describe('shared accessible frontend shell', () => {
       option_id: 9
     });
 
+    const vettingReviewResponse = await post('/profile/safeguarding/vetting-review');
+    expect(vettingReviewResponse.headers.location).toBe('/profile/settings?status=vetting-review-requested#safeguarding');
+    expect(api.callProfileApi).toHaveBeenLastCalledWith('test-token', 'POST', '/safeguarding/vetting-review-request');
+    const callsAfterVettingReview = api.callProfileApi.mock.calls.length;
+
+    const prohibitedVettingResponse = await post('/profile/safeguarding/vetting-review', {
+      evidence: 'must not be accepted'
+    });
+    expect(prohibitedVettingResponse.headers.location).toBe('/profile/settings?status=vetting-review-evidence-prohibited#safeguarding');
+    expect(api.callProfileApi).toHaveBeenCalledTimes(callsAfterVettingReview);
+
+    const policyReviewResponse = await post('/profile/safeguarding/policy-review');
+    expect(policyReviewResponse.headers.location).toBe('/profile/settings?status=safeguarding-policy-reviewed#safeguarding');
+    expect(api.callProfileApi).toHaveBeenLastCalledWith('test-token', 'POST', '/safeguarding/confirm-policy-review');
+    const callsAfterPolicyReview = api.callProfileApi.mock.calls.length;
+
+    const invalidPolicyReviewResponse = await post('/profile/safeguarding/policy-review', { note: 'not accepted' });
+    expect(invalidPolicyReviewResponse.headers.location).toBe('/profile/settings?status=safeguarding-policy-review-failed#safeguarding');
+    expect(api.callProfileApi).toHaveBeenCalledTimes(callsAfterPolicyReview);
+
     const dataExportResponse = await post('/profile/data-export');
     expect(dataExportResponse.headers.location).toBe('/profile/settings?status=data-export-requested');
     expect(api.callUserSettingsApi).toHaveBeenLastCalledWith('test-token', 'POST', '/gdpr-request', {
@@ -24138,6 +24180,46 @@ describe('shared accessible frontend shell', () => {
     expect(api.callUserSettingsApi).not.toHaveBeenCalled();
     expect(api.callProfileApi).not.toHaveBeenCalled();
     expect(api.callWebAuthnApi).not.toHaveBeenCalled();
+  });
+
+  it('maps safeguarding review policy failures and rejects uploaded evidence before Laravel', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrf = first.text.match(/name="_csrf" value="([^"]+)"/)[1];
+
+    api.callProfileApi.mockRejectedValueOnce(new api.ApiError(
+      'Safeguarding policy unavailable',
+      409,
+      { errors: [{ code: 'SAFEGUARDING_POLICY_UNAVAILABLE' }] }
+    ));
+    const unavailable = await agent
+      .post('/profile/safeguarding/vetting-review')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrf });
+
+    expect(unavailable.status).toBe(302);
+    expect(unavailable.headers.location).toBe('/profile/settings?status=vetting-review-unavailable#safeguarding');
+    expect(api.callProfileApi).toHaveBeenCalledTimes(1);
+
+    api.callProfileApi.mockClear();
+    const prohibited = await agent
+      .post('/profile/safeguarding/vetting-review')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .field('_csrf', csrf)
+      .attach('evidence', Buffer.from('private vetting evidence'), {
+        filename: 'vetting.pdf',
+        contentType: 'application/pdf'
+      });
+
+    expect(prohibited.status).toBe(302);
+    expect(prohibited.headers.location).toBe('/profile/settings?status=vetting-review-evidence-prohibited#safeguarding');
+    expect(api.callProfileApi).not.toHaveBeenCalled();
   });
 
   it('submits Laravel goal action aliases and redirects signed-out visitors', async () => {

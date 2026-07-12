@@ -2907,6 +2907,8 @@
                         "message-not-enabled": "Włącz wiadomości federacyjne w swoich ustawieniach, aby wysyłać wiadomości.",
                         "message-recipient-unavailable": "Ten członek nie przyjmuje wiadomości federacyjnych.",
                         "message-unavailable": "Federated messaging is not available right now.",
+                        "message-safeguarding-restricted": "This message cannot be sent under the recipient community safeguarding policy. Contact a community coordinator if you need help.",
+                        "message-safeguarding-unavailable": "This message cannot be sent because the recipient community safeguarding policy could not be checked. Try again later or contact a coordinator.",
                         "translate-unavailable": "Translation is not available right now.",
                         "translate-failed": "We could not translate that message. Please try again."
                     }
@@ -2939,7 +2941,9 @@
                         "transfer-not-enabled": "Włącz federacyjne kredyty czasowe w swoich ustawieniach, aby wysyłać transfery.",
                         "transfer-recipient-unavailable": "Ten członek nie przyjmuje federacyjnych kredytów czasowych.",
                         "transfer-self": "Nie możesz wysłać kredytów czasowych do siebie.",
-                        "transfer-failed": "Nie udało się zrealizować transferu. Spróbuj ponownie."
+                        "transfer-failed": "Nie udało się zrealizować transferu. Spróbuj ponownie.",
+                        "transfer-safeguarding-restricted": "Polityka ochrony społeczności odbiorcy nie zezwala na ten bezpośredni transfer. Poproś koordynatora o pomoc.",
+                        "transfer-safeguarding-unavailable": "Nie możemy teraz sprawdzić polityki ochrony. Transfer nie został wykonany. Spróbuj ponownie."
                     }
                 }
             },
@@ -3248,6 +3252,27 @@
                     "revoke_button": "Wycofaj",
                     "revoked": "Twoja preferencja ochrony została wycofana.",
                     "failed": "Nie udało się zaktualizować preferencji ochrony. Spróbuj ponownie.",
+                    "policy_review_title": "Sprawdź preferencje ochrony",
+                    "policy_review_body": "Twoja społeczność zmieniła jurysdykcję ochrony. Ochrona pozostaje aktywna. Sprawdź zaktualizowane brzmienie i potwierdź swój wybór.",
+                    "policy_review_confirm": "Potwierdź moje preferencje",
+                    "policy_review_confirmed": "Preferencje ochrony potwierdzone.",
+                    "policy_review_error": "Nie udało się potwierdzić przeglądu. Spróbuj ponownie.",
+                    "vetting": {
+                        "title": "Twój prywatny status weryfikacji społeczności",
+                        "status_unavailable": "Nie można wczytać Twojego statusu weryfikacji.",
+                        "status_not_confirmed": "Niepotwierdzone",
+                        "status_revoked": "Cofnięte",
+                        "status_review_requested": "Zażądano przeglądu",
+                        "confirmed_on": "Twoja społeczność potwierdziła, że spełniasz wymagania dotyczące chronionego kontaktu w dniu :date.",
+                        "review_pending_body": "Twój broker został poproszony o sprawdzenie potwierdzenia Twojej społeczności.",
+                        "not_confirmed_body": "Twoja społeczność nie potwierdziła, że spełniasz ten wymóg dotyczący chronionego kontaktu.",
+                        "policy_unavailable_body": "Ta społeczność nie skonfigurowała obsługiwanej polityki kontaktów ochronnych dla swojej jurysdykcji.",
+                        "no_documents": "Nie przesyłaj ani nie wysyłaj dokumentów DBS, kontroli policyjnej, weryfikacji Garda, AccessNI lub PVG za pośrednictwem NEXUS. Twoja społeczność zorganizuje wszelkie zgodne z prawem sprawdzenie poza platformą.",
+                        "request_review_button": "Poproś brokera o przegląd",
+                        "review_requested_button": "Zażądano przeglądu",
+                        "review_requested_toast": "Poproszono brokera o przegląd.",
+                        "review_error": "Nie można było poprosić brokera o przegląd. Spróbuj ponownie."
+                    },
                     "activations": {
                         "restricts_messaging": "Ogranicza, kto może wysyłać Ci wiadomości",
                         "restricts_matching": "Ogranicza dobór osób, z którymi jesteś dopasowywany(-a)",
@@ -3671,6 +3696,17 @@
                 "safeguarding_title": "Zgłoś problem dotyczący bezpieczeństwa",
                 "safeguarding_body": "Jeśli martwisz się o członka, giełdę lub coś, co widziałeś na platformie, powiedz nam. Na zgłoszenia zabezpieczające odpowiadamy w ciągu jednego dnia roboczego.",
                 "sections": {
+                    "vetting_attestation": {
+                        "heading": "Community safeguarding vetting confirmations",
+                        "intro": "Some community contact policies require a vetting confirmation.",
+                        "items": [
+                            "The community carries out any lawful checking outside Project NEXUS.",
+                            "An authorised broker records only a private, metadata-only decision for the specific contact policy.",
+                            "Project NEXUS does not ask for or retain DBS, Garda Vetting, AccessNI, PVG or equivalent certificates, references, dates, results, criminal-record details, identity documents or free-text evidence.",
+                            "A contact-policy confirmation does not mean that a person is universally safe or cleared for every role.",
+                            "Do not ask another member to send a vetting certificate through messages. Contact the community coordinator if you need help."
+                        ]
+                    },
                     "how_exchanges": {
                         "heading": "Jak działają wymiany",
                         "intro": "Wymiany organizowane są pomiędzy członkami. Oto zwykły przepływ.",
@@ -7956,6 +7992,7 @@
                 "success_title": "Success",
                 "error_title": "There is a problem",
                 "optional": "(optional)",
+                "warning": "Warning",
                 "none_yet": "None yet"
             },
             "my_orgs": {
@@ -8124,16 +8161,19 @@
             },
             "credentials": {
                 "title": "My credentials",
-                "description": "Upload checks and certificates so organisations can verify you. Files are private and only shared with administrators.",
+                "description": "Upload role credentials such as first aid or food hygiene certificates so organisations can review them.",
                 "upload_title": "Upload a credential",
                 "type_label": "Credential type",
-                "type_hint": "For example: police check, first aid, safeguarding.",
+                "type_hint": "For example: first aid, safeguarding training or food hygiene. Do not upload police-check or vetting documents.",
                 "type_select": "Select a credential type",
                 "type_police_check": "Police / background check",
                 "type_first_aid": "First aid",
                 "type_safeguarding": "Safeguarding",
+                "type_manual_handling": "Manual handling",
+                "type_food_hygiene": "Food hygiene",
                 "type_dbs": "DBS check",
                 "type_driving_licence": "Driving licence",
+                "type_professional_registration": "Professional registration",
                 "type_other": "Other",
                 "file_label": "Upload a file",
                 "file_hint": "PDF, JPG, PNG or WEBP. Maximum size 10MB.",
@@ -8151,7 +8191,16 @@
                 "status_verified": "Verified",
                 "status_rejected": "Rejected",
                 "status_expired": "Expired",
+                "status_retired": "Removal required",
+                "status_manual_review": "Wymagana ręczna weryfikacja",
                 "no_expiry": "No expiry",
+                "not_applicable": "Not applicable",
+                "vetting_documents_notice": "Do not upload or send a DBS, Garda vetting, AccessNI, PVG, police-check or equivalent document through Project NEXUS. Any role-specific checking must be arranged lawfully outside the platform.",
+                "vetting_prohibited": "Police-check and vetting documents cannot be uploaded here.",
+                "retired_vetting_label": "Retired vetting document",
+                "retired_vetting_warning": "The document details are hidden. Delete this historical upload; it is not used for access or role clearance.",
+                "manual_review_warning": "Ten historyczny typ poświadczenia nie jest obsługiwany. Szczegóły dokumentu są ukryte i nie jest on traktowany jako zweryfikowany ani jako dowód sprawdzenia przeszłości. Możesz go usunąć.",
+                "delete_vetting_evidence_button": "Delete historical document",
                 "delete_button": "Delete",
                 "delete_for": "Delete the :type credential",
                 "delete_warning": "Deleting a credential cannot be undone. You will need to upload it again.",
