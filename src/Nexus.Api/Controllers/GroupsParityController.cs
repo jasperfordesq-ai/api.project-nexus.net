@@ -12,6 +12,7 @@ using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
+using Nexus.Api.Services;
 
 namespace Nexus.Api.Controllers;
 
@@ -29,11 +30,13 @@ public class GroupsParityController : ControllerBase
 
     private readonly NexusDbContext _db;
     private readonly TenantContext _tenantContext;
+    private readonly GroupQaMutationService _qaMutations;
 
-    public GroupsParityController(NexusDbContext db, TenantContext tenantContext)
+    public GroupsParityController(NexusDbContext db, TenantContext tenantContext, GroupQaMutationService qaMutations)
     {
         _db = db;
         _tenantContext = tenantContext;
+        _qaMutations = qaMutations;
     }
 
     [HttpGet("recommendations")]
@@ -270,32 +273,60 @@ public class GroupsParityController : ControllerBase
     [HttpPost("{groupId:int}/questions")]
     public async Task<IActionResult> CreateQuestion(int groupId, [FromBody] JsonElement body)
     {
-        var q = new GroupQuestion { TenantId = TenantId(), GroupId = groupId, AuthorUserId = UserId(), Title = Required(Str(body, "title"), "title"), Body = Str(body, "body") ?? Str(body, "content") ?? string.Empty };
-        _db.GroupQuestions.Add(q);
-        await _db.SaveChangesAsync();
-        return Ok(new { data = q });
+        return QaMutationResponse(await _qaMutations.CreateQuestionAsync(
+            TenantId(), groupId, UserId(), Str(body, "title") ?? string.Empty,
+            Str(body, "body") ?? Str(body, "content") ?? string.Empty));
     }
 
     [HttpPost("{groupId:int}/questions/{questionId:int}/answers")]
     public async Task<IActionResult> CreateAnswer(int groupId, int questionId, [FromBody] JsonElement body)
     {
-        var answer = new GroupAnswer { TenantId = TenantId(), QuestionId = questionId, AuthorUserId = UserId(), Body = Required(Str(body, "body") ?? Str(body, "content"), "body") };
-        _db.GroupAnswers.Add(answer);
-        await _db.SaveChangesAsync();
-        return Ok(new { data = answer });
+        return QaMutationResponse(await _qaMutations.CreateAnswerAsync(
+            TenantId(), groupId, questionId, UserId(),
+            Str(body, "body") ?? Str(body, "content") ?? string.Empty));
     }
+
+    [HttpPut("{groupId:int}/questions/{questionId:int}")]
+    public async Task<IActionResult> UpdateQuestion(int groupId, int questionId, [FromBody] JsonElement body, CancellationToken cancellationToken)
+    {
+        var result = await _qaMutations.UpdateQuestionAsync(
+            TenantId(), groupId, questionId, UserId(), Str(body, "title") ?? string.Empty,
+            Str(body, "body") ?? string.Empty, cancellationToken);
+        return QaMutationResponse(result);
+    }
+
+    [HttpDelete("{groupId:int}/questions/{questionId:int}")]
+    public async Task<IActionResult> DeleteQuestion(int groupId, int questionId, CancellationToken cancellationToken) =>
+        QaMutationResponse(await _qaMutations.DeleteQuestionAsync(
+            TenantId(), groupId, questionId, UserId(), cancellationToken));
+
+    [HttpPut("{groupId:int}/answers/{answerId:int}")]
+    public async Task<IActionResult> UpdateAnswer(int groupId, int answerId, [FromBody] JsonElement body, CancellationToken cancellationToken)
+    {
+        var result = await _qaMutations.UpdateAnswerAsync(
+            TenantId(), groupId, answerId, UserId(), Str(body, "body") ?? string.Empty, cancellationToken);
+        return QaMutationResponse(result);
+    }
+
+    [HttpDelete("{groupId:int}/answers/{answerId:int}")]
+    public async Task<IActionResult> DeleteAnswer(int groupId, int answerId, CancellationToken cancellationToken) =>
+        QaMutationResponse(await _qaMutations.DeleteAnswerAsync(
+            TenantId(), groupId, answerId, UserId(), cancellationToken));
 
     [HttpPost("{groupId:int}/answers/{answerId:int}/accept")]
     public async Task<IActionResult> AcceptAnswer(int groupId, int answerId)
     {
-        var answer = await _db.GroupAnswers.FirstOrDefaultAsync(a => a.TenantId == TenantId() && a.Id == answerId);
-        if (answer == null) return NotFound(new { error = "Answer not found" });
-        var question = await _db.GroupQuestions.FirstOrDefaultAsync(q => q.TenantId == TenantId() && q.Id == answer.QuestionId && q.GroupId == groupId);
-        if (question == null) return NotFound(new { error = "Question not found" });
-        question.AcceptedAnswerId = answerId;
-        await _db.SaveChangesAsync();
-        return Ok(new { data = question });
+        return QaMutationResponse(await _qaMutations.AcceptAnswerAsync(
+            TenantId(), groupId, answerId, UserId()));
     }
+
+    private IActionResult QaMutationResponse(GroupQaMutationResult result) => result.Succeeded
+        ? Ok(new { data = result.Data })
+        : StatusCode(result.Error!.Status, new
+        {
+            success = false,
+            errors = new[] { new { code = result.Error.Code, message = result.Error.Message, field = (string?)null } }
+        });
 
     [HttpPost("{groupId:int}/qa/vote")]
     public async Task<IActionResult> Vote(int groupId, [FromBody] JsonElement body)

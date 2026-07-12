@@ -118,6 +118,7 @@ public static class ServiceExtensions
         services.AddSingleton<TokenService>();
         services.AddScoped<TotpService>();
         services.AddScoped<AuthenticationConfigurationService>();
+        services.AddScoped<GroupQaMutationService>();
         services.AddSingleton<TwoFactorChallengeManager>();
         services.AddScoped<FileUploadService>();
 

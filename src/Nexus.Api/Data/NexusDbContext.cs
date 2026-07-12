@@ -851,8 +851,19 @@ public class NexusDbContext : DbContext
         modelBuilder.Entity<GroupMediaItem>().ToTable("group_media_items");
         modelBuilder.Entity<GroupWikiPage>(entity => { entity.ToTable("group_wiki_pages"); entity.HasIndex(e => new { e.TenantId, e.GroupId, e.Slug }).IsUnique(); });
         modelBuilder.Entity<GroupWikiRevision>().ToTable("group_wiki_revisions");
-        modelBuilder.Entity<GroupQuestion>().ToTable("group_questions");
-        modelBuilder.Entity<GroupAnswer>().ToTable("group_answers");
+        modelBuilder.Entity<GroupQuestion>(entity =>
+        {
+            entity.ToTable("group_questions");
+            entity.Property(row => row.Title).HasMaxLength(500);
+            entity.HasIndex(row => new { row.GroupId, row.TenantId });
+            entity.HasIndex(row => new { row.GroupId, row.VoteCount });
+        });
+        modelBuilder.Entity<GroupAnswer>(entity =>
+        {
+            entity.ToTable("group_answers");
+            entity.HasIndex(row => row.QuestionId);
+            entity.HasIndex(row => new { row.QuestionId, row.VoteCount });
+        });
         modelBuilder.Entity<GroupQaVote>(entity => { entity.ToTable("group_qa_votes"); entity.HasIndex(e => new { e.TenantId, e.UserId, e.TargetType, e.TargetId }).IsUnique(); });
         modelBuilder.Entity<GroupChallenge>().ToTable("group_challenges");
         modelBuilder.Entity<GroupScheduledPost>().ToTable("group_scheduled_posts");

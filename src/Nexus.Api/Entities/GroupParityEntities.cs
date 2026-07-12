@@ -65,7 +65,12 @@ public class GroupQuestion : ITenantEntity
     public string Title { get; set; } = string.Empty;
     public string Body { get; set; } = string.Empty;
     public int? AcceptedAnswerId { get; set; }
+    public bool IsClosed { get; set; }
+    public int ViewCount { get; set; }
+    public int VoteCount { get; set; }
+    public int AnswerCount { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
 
 public class GroupAnswer : ITenantEntity
@@ -75,8 +80,10 @@ public class GroupAnswer : ITenantEntity
     public int QuestionId { get; set; }
     public int AuthorUserId { get; set; }
     public string Body { get; set; } = string.Empty;
-    public int Score { get; set; }
+    public bool IsAccepted { get; set; }
+    public int VoteCount { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
 
 public class GroupQaVote : ITenantEntity

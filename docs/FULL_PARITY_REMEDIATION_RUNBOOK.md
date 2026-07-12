@@ -441,7 +441,7 @@ route coverage is not a completion score.
 
 | Surface | Score | Meaning |
 | --- | ---: | --- |
-| ASP.NET static API method/path inventory | 946/1000 | 2,442 of 2,583 current Laravel operations matched, with 141 route-shape gaps after the expanded supplemental inventory; this is route-shape coverage, not behavioral parity |
+| ASP.NET static API method/path inventory | 947/1000 | 2,446 of 2,583 current Laravel operations matched, with 137 route-shape gaps after the expanded supplemental inventory; this is route-shape coverage, not behavioral parity |
 | ASP.NET implementation parity | 640/1000 | Broad implementation with material workflow, schema, integration, and localization gaps |
 | ASP.NET certification confidence | 420/1000 | Current full-suite and frontend-on-ASP proof is insufficient |
 | Web UK Laravel-first implementation | 910/1000 | Route conversion is advanced; several source and presentation gaps remain |
@@ -452,18 +452,18 @@ route coverage is not a completion score.
 
 | Check | Current result or retained historical evidence |
 | --- | --- |
-| ASP.NET static operations | 4,321 |
+| ASP.NET static operations | 4,325 |
 | Laravel source operations | 2,583 |
-| Static method/path matches | 2,442 matched, 141 missing |
+| Static method/path matches | 2,446 matched, 137 missing |
 | Explicit admin compatibility behavior | At least 196 of 329 `AdminExplicitParityController` route declarations reached generic fallbacks at audit time |
-| Schema inventory | Live: 333 Laravel migration files, 117 ASP.NET migration source files, 115 runtime migrations, 368 Laravel source tables, 336 ASP.NET tables, 142 exact matches, 226 missing names, and 194 ASP.NET-only names |
+| Schema inventory | Live: 373 Laravel migration files, 119 ASP.NET migration source files, 455 Laravel source tables, 337 ASP.NET tables, 147 exact matches, 308 missing Laravel names, and 190 ASP.NET-only names. EF applied 117 migrations in the latest blank replay. |
 | ASP.NET backend localization comparator | 7/11 locales, 49/605 namespaces, 157 comparable English keys matched, 5,018 missing |
 | Web UK authoritative locale catalogs | 11/11 locales, 24 namespaces, and 7,337 string keys per locale with zero missing or extra keys relative to English |
 | Web UK translation depth | Each non-English Laravel catalog still has 3,903-3,951 English-identical values (53.2%-53.9%); 16 namespaces are wholly English-identical in the read-only source |
 | Web UK conservative template localization | 1,595 safe static substitutions across 257 templates; the post-write audit reports 290 templates and zero remaining conservative matches, which is not a contextual-copy completion claim |
 | ASP.NET API/test builds | Debug API/test and required solution-wide Release builds passed with zero errors; the only warnings are the same four pre-existing `xUnit1031` warnings, and the latest Release build took 4m22s. |
 | Transactional volunteering regression | Prior core 61/61; guardian lifecycle 7/7; recurring-pattern CRUD 13/13 plus route ownership 1/1; recurring-shift generation/scheduler 13/13; volunteer-organisation relationship/lifecycle 13/13; wallet integration 6/6; QR attendance 32/32 plus persistence-failure 1/1; shift-swap assignment/member/admin/concurrency 12/12; affected-module gate 90/90; route/auth 5/5; ambient-transaction regression green. Current focused proof is one 53/53 disposable-Linux run: all 51 `VolunteerHoursParityTests` plus both `V15FeedActivityCompatibilityTests`, with 3,007 tests discovered. The clean affected rerun selected and passed 243/243 with zero failed/skipped in 418.639s. The full 3,007-test suite remains open. |
-| Migration runtime chain | Recorded inventory is 116 EF-discovered/applicable migrations through `20260712104503_DurableMessageReactions`. Blank 116 is green with exact snake_case reaction columns/indexes/unique key and no model drift; blank/populated migration-115 state proof and retained migration-114 atomic-abort/catalog evidence remain. No production resource was touched. |
+| Migration runtime chain | EF applied all 117 migrations through `20260712145614_GroupQaLifecycleParity` to blank disposable PostgreSQL. The Q&A migration preserved answer scores as vote counts, backfilled update timestamps from creation timestamps, and installed lifecycle columns/indexes. Prior populated and invalid-migration evidence remains retained. No production resource was touched. |
 | Web UK route matrix | 608/608 matched, 0 missing, 0 extra application routes, 3 infrastructure routes ignored |
 | Web UK Jest | 31/31 suites and 1,021/1,021 tests passed after the localization/RTL, tenant-boundary, contextual identity/auth/accessibility, Explore, and profile-status slices |
 | Web UK lint and CSS build | Passed |
