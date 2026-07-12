@@ -6,100 +6,92 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <span class="govuk-caption-xl">Organisations in {{ tenantName }}</span>
-  <h1 class="govuk-heading-xl">{{ t("vol_org.browse_link") }}</h1>
-  <p class="govuk-body-l">Find volunteer organisations in your community and the opportunities they offer.</p>
+  <span class="govuk-caption-xl">{{ t("govuk_alpha_organisations.common.caption", { community: tenantName }) }}</span>
+  <h1 class="govuk-heading-xl">{{ t("govuk_alpha_organisations.browse.title") }}</h1>
+  <p class="govuk-body-l">{{ t("govuk_alpha_organisations.browse.description") }}</p>
 
   {% if error %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
       <div role="alert">
-        <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
+        <h2 class="govuk-error-summary__title">{{ t("govuk_alpha_organisations.common.error_title") }}</h2>
         <div class="govuk-error-summary__body">
           <ul class="govuk-list govuk-error-summary__list">
-            <li><a href="#q">We could not load the organisations. Please try again.</a></li>
+            <li><a href="#q">{{ t("govuk_alpha_organisations.common.load_error") }}</a></li>
           </ul>
         </div>
       </div>
     </div>
   {% endif %}
 
-  <div class="govuk-button-group">
+  <div class="nexus-alpha-actions govuk-!-margin-bottom-4">
     {% if manageableCount > 0 %}
-      <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="{{ urlFor('/organisations/manage') }}">Manage my organisations</a>
+      <a class="govuk-link" href="{{ urlFor('/organisations/manage') }}">{{ t("govuk_alpha_organisations.browse.manage_link") }}</a>
     {% endif %}
-    <a class="govuk-button" data-module="govuk-button" href="{{ urlFor('/organisations/register') }}">{{ t("organisations.register_title") }}</a>
+    <a class="govuk-link" href="{{ urlFor('/organisations/register') }}">{{ t("govuk_alpha_organisations.browse.register_link") }}</a>
   </div>
 
-  <form method="get" action="{{ urlFor('/organisations/browse') }}" class="govuk-!-margin-bottom-7">
+  <form method="get" action="{{ urlFor('/organisations/browse') }}" class="govuk-!-margin-bottom-6">
     <div class="govuk-form-group">
-      <label class="govuk-label" for="q">Search organisations</label>
-      <div id="q-hint" class="govuk-hint">Search by name or description.</div>
+      <label class="govuk-label" for="q">{{ t("govuk_alpha_organisations.browse.search_label") }}</label>
+      <div id="q-hint" class="govuk-hint">{{ t("govuk_alpha_organisations.browse.search_hint") }}</div>
       <input class="govuk-input govuk-!-width-two-thirds" id="q" name="q" type="search" value="{{ organisationsQuery }}" aria-describedby="q-hint">
     </div>
-    <button class="govuk-button govuk-button--secondary" data-module="govuk-button" type="submit">Search</button>
+    <button class="govuk-button govuk-button--secondary" data-module="govuk-button" type="submit">{{ t("govuk_alpha_organisations.browse.search_submit") }}</button>
   </form>
 
   {% if organisations and organisations.length %}
-    <p class="govuk-body">
-      {% if organisations.length == 1 %}
-        1 organisation
-      {% else %}
-        {{ organisations.length }} organisations
-      {% endif %}
-    </p>
+    <p class="govuk-body">{{ tc("govuk_alpha_organisations.browse.count", organisations.length, { count: formatLocaleNumber(organisations.length) }) }}</p>
 
-    <div class="nexus-alpha-card-list govuk-!-margin-bottom-7">
+    <div class="nexus-alpha-card-list">
       {% for organisation in organisations %}
         <article class="nexus-alpha-card">
-          <h2 class="govuk-heading-m govuk-!-margin-bottom-2">
-            <a class="govuk-link" href="{{ urlFor('/organisations/' + (organisation.id | string)) }}">{{ organisation.name }}</a>
+          <h2 class="govuk-heading-s govuk-!-margin-bottom-1">
+            <a class="govuk-link" href="{{ urlFor('/organisations/' + (organisation.id | string)) }}">{{ organisation.name or t("govuk_alpha_organisations.browse.title") }}</a>
           </h2>
 
           {% if organisation.summary %}
-            <p class="govuk-body">{{ organisation.summary }}</p>
+            <p class="govuk-body govuk-!-margin-bottom-2">{{ organisation.summary }}</p>
           {% endif %}
 
-          <ul class="govuk-list govuk-list--spaced govuk-!-margin-bottom-4">
-            <li>
-              {% if organisation.opportunityCount == 0 %}
-                No opportunities
-              {% elseif organisation.opportunityCount == 1 %}
-                1 opportunity
-              {% else %}
-                {{ organisation.opportunityCount }} opportunities
-              {% endif %}
-            </li>
+          <dl class="nexus-alpha-inline-list nexus-alpha-meta">
+            <div>
+              <dt class="govuk-visually-hidden">{{ t("govuk_alpha_organisations.browse.term_opportunities") }}</dt>
+              <dd>{{ tc("govuk_alpha_organisations.browse.stat_opportunities", organisation.opportunityCount, { count: formatLocaleNumber(organisation.opportunityCount) }) }}</dd>
+            </div>
             {% if organisation.volunteerCount > 0 %}
-              <li>{{ organisation.volunteerCount }} volunteers</li>
+              <div><dt class="govuk-visually-hidden">{{ t("govuk_alpha_organisations.browse.term_volunteers") }}</dt><dd>{{ tc("govuk_alpha_organisations.browse.stat_volunteers", organisation.volunteerCount, { count: formatLocaleNumber(organisation.volunteerCount) }) }}</dd></div>
             {% endif %}
             {% if organisation.totalHours > 0 %}
-              <li>{{ organisation.totalHours }} hours logged</li>
+              <div><dt class="govuk-visually-hidden">{{ t("govuk_alpha_organisations.browse.term_hours") }}</dt><dd>{{ t("govuk_alpha_organisations.browse.stat_hours", { count: organisation.totalHoursLabel }) }}</dd></div>
             {% endif %}
             {% if organisation.averageRating > 0 %}
-              <li>{{ organisation.averageRating }} out of 5</li>
+              <div>
+                <dt class="govuk-visually-hidden">{{ t("govuk_alpha_organisations.browse.term_rating") }}</dt>
+                <dd><progress max="5" value="{{ organisation.averageRating }}" aria-label="{{ t('govuk_alpha_organisations.browse.stat_rating', { rating: organisation.averageRatingLabel }) }}">{{ t("govuk_alpha_organisations.browse.stat_rating", { rating: organisation.averageRatingLabel }) }}</progress><span class="govuk-!-margin-left-2">{{ organisation.averageRatingLabel }}</span></dd>
+              </div>
             {% endif %}
             {% if organisation.hasWebsite %}
-              <li>Has a website</li>
+              <div><dt class="govuk-visually-hidden">{{ t("govuk_alpha_organisations.browse.term_website") }}</dt><dd>{{ t("govuk_alpha_organisations.browse.has_website") }}</dd></div>
             {% endif %}
-          </ul>
+          </dl>
 
-          <a class="govuk-link" href="{{ urlFor('/organisations/' + (organisation.id | string)) }}">{{ t("organisations.view") }}</a>
+          <div class="nexus-alpha-actions"><a class="govuk-link" href="{{ urlFor('/organisations/' + (organisation.id | string)) }}">{{ t("govuk_alpha_organisations.common.view_organisation") }}</a></div>
         </article>
       {% endfor %}
     </div>
 
     {% if hasMore and loadMoreHref %}
-      <p class="govuk-body">
-        <a class="govuk-link" href="{{ urlFor(loadMoreHref) }}">Load more organisations</a>
-      </p>
+      <nav class="govuk-pagination govuk-pagination--block govuk-!-margin-top-6" aria-label="{{ t('govuk_alpha_organisations.browse.load_more') }}">
+        <div class="govuk-pagination__next"><a class="govuk-link govuk-pagination__link" rel="next" href="{{ urlFor(loadMoreHref) }}"><span class="govuk-pagination__link-title">{{ t("govuk_alpha_organisations.browse.load_more") }}</span></a></div>
+      </nav>
     {% endif %}
   {% else %}
     <div class="govuk-inset-text">
-      <h2 class="govuk-heading-m">No organisations found</h2>
+      <h2 class="govuk-heading-m govuk-!-margin-bottom-2">{{ t("govuk_alpha_organisations.browse.empty_title") }}</h2>
       {% if organisationsQuery %}
-        <p class="govuk-body">No organisations match your search. Try a different word or clear the search.</p>
+        <p class="govuk-body govuk-!-margin-bottom-0">{{ t("govuk_alpha_organisations.browse.empty_no_results") }}</p>
       {% else %}
-        <p class="govuk-body">No organisations have been listed yet.</p>
+        <p class="govuk-body govuk-!-margin-bottom-0">{{ t("govuk_alpha_organisations.browse.empty_none") }}</p>
       {% endif %}
     </div>
   {% endif %}

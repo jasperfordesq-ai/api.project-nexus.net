@@ -15061,7 +15061,6 @@ describe('shared accessible frontend shell', () => {
       ],
       meta: { cursor: 'next-cursor', per_page: 20, has_more: true }
     });
-
     const response = await request(app).get('/volunteering?q=kitchen&category_id=3&is_remote=1');
 
     expect(staticPageRoutes.pages['/volunteering']).toBeUndefined();
@@ -15132,18 +15131,24 @@ describe('shared accessible frontend shell', () => {
       ],
       meta: { cursor: 'next-cursor', per_page: 20, has_more: true }
     });
+    api.getMyVolunteerOrganisations.mockResolvedValueOnce({
+      data: [{ id: 9, status: 'active', member_role: 'owner' }]
+    });
 
     const response = await request(app)
       .get('/organisations/browse?q=club&cursor=abc')
       .set('Cookie', signedCookieHeader());
 
     expect(api.getVolunteerOrganisations).toHaveBeenCalledWith({ search: 'club', per_page: 20, cursor: 'abc' });
+    expect(api.getMyVolunteerOrganisations).toHaveBeenCalledWith('test-token', { per_page: 50 });
     expect(response.status).toBe(200);
     expect(response.text).toContain('Organisations in Project NEXUS Accessible');
     expect(response.text).toContain('Browse organisations');
     expect(response.text).toContain('Find volunteer organisations in your community and the opportunities they offer.');
     expect(response.text).toContain('href="/organisations/register"');
     expect(response.text).toContain('Register an organisation');
+    expect(response.text).toContain('href="/organisations/manage"');
+    expect(response.text).toContain('Manage my organisations');
     expect(response.text).toContain('action="/organisations/browse"');
     expect(response.text).toContain('Search organisations');
     expect(response.text).toContain('value="club"');
@@ -15153,9 +15158,41 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('2 opportunities');
     expect(response.text).toContain('5 volunteers');
     expect(response.text).toContain('17.5 hours logged');
+    expect(response.text).toContain('Rating 4.5 out of 5');
     expect(response.text).toContain('Has a website');
     expect(response.text).toContain('href="/organisations/browse?q=club&amp;cursor=next-cursor"');
     expect(response.text).toContain('Load more organisations');
+    expect(response.text).toContain('class="govuk-pagination govuk-pagination--block govuk-!-margin-top-6"');
+    expect(response.text).not.toContain('class="govuk-button" data-module="govuk-button" href="/organisations/register"');
+  });
+
+  it('keeps the organisations browse directory usable across empty and partial API failures', async () => {
+    const api = require('../src/lib/api');
+    api.getVolunteerOrganisations
+      .mockResolvedValueOnce({ data: [], meta: { has_more: false } })
+      .mockRejectedValueOnce(new api.ApiOfflineError());
+    api.getMyVolunteerOrganisations
+      .mockRejectedValueOnce(new api.ApiOfflineError())
+      .mockResolvedValueOnce({ data: [] });
+
+    const emptyResponse = await request(app)
+      .get('/organisations/browse?q=missing')
+      .set('Cookie', signedCookieHeader());
+
+    expect(emptyResponse.status).toBe(200);
+    expect(emptyResponse.text).toContain('No organisations found');
+    expect(emptyResponse.text).toContain('No organisations match your search. Try a different word or clear the search.');
+    expect(emptyResponse.text).not.toContain('href="/organisations/manage"');
+    expect(emptyResponse.text).not.toContain('We could not load the organisations. Please try again.');
+
+    const errorResponse = await request(app)
+      .get('/organisations/browse?q=missing')
+      .set('Cookie', signedCookieHeader());
+
+    expect(errorResponse.status).toBe(200);
+    expect(errorResponse.text).toContain('There is a problem');
+    expect(errorResponse.text).toContain('href="#q">We could not load the organisations. Please try again.</a>');
+    expect(errorResponse.text).toContain('No organisations match your search. Try a different word or clear the search.');
   });
 
   it('renders the Blade-style organisation register form as a non-persistent preparation page', async () => {

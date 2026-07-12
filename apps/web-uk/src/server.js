@@ -891,7 +891,8 @@ app.get('/organisations', requireOrganisationAuth, (req, res) => {
 app.get('/organisations/browse', requireOrganisationAuth, (req, res) => {
   const organisationsQuery = typeof req.query.q === 'string' ? req.query.q : '';
   const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : '';
-  const { getVolunteerOrganisations } = require('./lib/api');
+  const token = req.signedCookies.token;
+  const { getMyVolunteerOrganisations, getVolunteerOrganisations } = require('./lib/api');
   const filters = { per_page: 20 };
 
   if (organisationsQuery.trim()) {
@@ -902,11 +903,28 @@ app.get('/organisations/browse', requireOrganisationAuth, (req, res) => {
     filters.cursor = cursor.trim();
   }
 
-  getVolunteerOrganisations(filters)
-    .then((result) => {
+  Promise.allSettled([
+    getVolunteerOrganisations(filters),
+    getMyVolunteerOrganisations(token, { per_page: 50 })
+  ])
+    .then(([directoryResult, mineResult]) => {
+      if (directoryResult.status === 'rejected') {
+        throw directoryResult.reason;
+      }
+
+      const result = directoryResult.value;
       const organisations = Array.isArray(result?.data) ? result.data : [];
       const meta = result?.meta && typeof result.meta === 'object' ? result.meta : {};
       const nextCursor = typeof meta.cursor === 'string' ? meta.cursor : '';
+      const minePayload = mineResult.status === 'fulfilled' ? mineResult.value : {};
+      const mine = Array.isArray(minePayload?.items)
+        ? minePayload.items
+        : (Array.isArray(minePayload?.data) ? minePayload.data : []);
+      const manageableCount = mine.filter((organisation) => {
+        const status = String(organisation.status || '');
+        const role = String(organisation.member_role || organisation.role || '');
+        return ['approved', 'active'].includes(status) && ['owner', 'admin'].includes(role);
+      }).length;
       const loadMoreParams = new URLSearchParams();
 
       if (organisationsQuery.trim()) {
@@ -920,7 +938,7 @@ app.get('/organisations/browse', requireOrganisationAuth, (req, res) => {
       const loadMoreQuery = loadMoreParams.toString();
 
       res.render('organisations-browse', {
-        title: 'Browse organisations',
+        title: res.locals.t('govuk_alpha_organisations.browse.title'),
         activeNav: 'explore',
         organisations: organisations.map((organisation) => {
           const publicContract = organisation.public_contract && typeof organisation.public_contract === 'object'
@@ -930,6 +948,8 @@ app.get('/organisations/browse', requireOrganisationAuth, (req, res) => {
             ? publicContract.stats
             : (organisation.stats && typeof organisation.stats === 'object' ? organisation.stats : {});
           const description = organisation.description || organisation.excerpt || '';
+          const totalHours = Number(stats.total_hours || organisation.total_hours || 0);
+          const averageRating = Number(stats.average_rating || organisation.average_rating || 0);
 
           return {
             ...organisation,
@@ -937,21 +957,29 @@ app.get('/organisations/browse', requireOrganisationAuth, (req, res) => {
             summary: description.length > 160 ? `${description.slice(0, 157)}...` : description,
             opportunityCount: stats.opportunity_count || organisation.opportunity_count || 0,
             volunteerCount: stats.volunteer_count || organisation.volunteer_count || 0,
-            totalHours: stats.total_hours || organisation.total_hours || 0,
-            averageRating: stats.average_rating || organisation.average_rating || 0,
+            totalHours,
+            totalHoursLabel: res.locals.formatLocaleNumber(totalHours, {
+              minimumFractionDigits: Number.isInteger(totalHours) ? 0 : 1,
+              maximumFractionDigits: 1
+            }),
+            averageRating,
+            averageRatingLabel: res.locals.formatLocaleNumber(averageRating, {
+              minimumFractionDigits: 1,
+              maximumFractionDigits: 1
+            }),
             hasWebsite: !!organisation.website
           };
         }),
         organisationsQuery,
         error: false,
-        manageableCount: 0,
+        manageableCount,
         hasMore: !!meta.has_more && !!nextCursor,
         loadMoreHref: loadMoreQuery ? `/organisations/browse?${loadMoreQuery}` : ''
       });
     })
     .catch(() => {
       res.render('organisations-browse', {
-        title: 'Browse organisations',
+        title: res.locals.t('govuk_alpha_organisations.browse.title'),
         activeNav: 'explore',
         organisations: [],
         organisationsQuery,

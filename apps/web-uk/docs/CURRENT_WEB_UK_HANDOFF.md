@@ -5194,6 +5194,25 @@ authenticated/error/upload/destructive browser coverage, manual
 accessibility/RTL review, and ASP.NET switching proof keep the completion gate
 open.
 
+## 2026-07-12 Default-English Organisations Browse Parity
+
+Organisations browse now follows the Laravel Blade source instead of its older
+Web UK presentation: catalog-backed default-English copy, plain action links,
+the source search spacing, small card headings, semantic inline statistics,
+rating progress, exact empty/error states, and block cursor pagination. The
+Manage link is derived from active/approved owner/admin rows returned by
+Laravel's signed `my-organisations` contract; failure of that secondary read
+does not hide otherwise available directory results.
+
+Focused success, empty-search, directory-failure, and partial-manage-failure
+proof passed `2/2`. Full Jest passed `45/45` suites and `1,455/1,455` tests;
+lint and the 285-template zero-match localization audit passed. A scoped signed
+Laravel page check rendered `/organisations/browse` with `200` and the expected
+heading. The overall smoke result was not green because its separate anonymous
+Laravel API reachability preflight still receives the known `401`. The latest
+route regeneration found `608` matches and two newly added, unrelated Profile
+safeguarding POST routes still missing from Web UK; no 610/610 claim is made.
+
 ## Final Handoff Checklist
 
 Before leaving this job for another agent, write a short note containing:
