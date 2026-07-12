@@ -246,6 +246,59 @@ describe('Laravel account and settings contract parity', () => {
     ].map((permission) => t(`govuk_alpha_settings.linked.permissions.${permission}`)));
   });
 
+  it('normalizes insurance certificates and labels from the exact Laravel catalog', async () => {
+    api.callUserSettingsApi.mockImplementation((token, method, requestPath) => {
+      if (method === 'GET' && requestPath === '/insurance') {
+        return Promise.resolve({
+          data: {
+            insurance_certificates: [{
+              insurance_type: 'professional_indemnity',
+              provider_name: '',
+              expiry_date: '',
+              status: 'verified'
+            }, {
+              insurance_type: 'unexpected_type',
+              status: 'under_review'
+            }]
+          }
+        });
+      }
+      return Promise.resolve({ data: {} });
+    });
+    const response = await request(settingsApp()).get('/settings/insurance?status=insurance-uploaded');
+    const t = createTranslator('en');
+
+    expect(response.status).toBe(200);
+    expect(response.body.locals.title).toBe(t('govuk_alpha_settings.insurance.title'));
+    expect(response.body.locals.statusMessage).toBe(t('govuk_alpha_settings.states.insurance-uploaded'));
+    expect(response.body.locals.certificates).toEqual([
+      expect.objectContaining({
+        insuranceType: 'professional_indemnity',
+        insuranceTypeLabel: t('govuk_alpha_settings.insurance.types.professional_indemnity'),
+        providerName: '',
+        expiryLabel: '',
+        status: 'verified',
+        statusLabel: t('govuk_alpha_settings.insurance.statuses.verified'),
+        statusTagClass: 'govuk-tag--green'
+      }),
+      expect.objectContaining({
+        insuranceType: 'other',
+        insuranceTypeLabel: t('govuk_alpha_settings.insurance.types.other'),
+        status: 'under_review',
+        statusLabel: 'Under Review',
+        statusTagClass: 'govuk-tag--grey'
+      })
+    ]);
+    expect(response.body.locals.insuranceTypes.map(({ label }) => label)).toEqual([
+      'public_liability',
+      'professional_indemnity',
+      'employers_liability',
+      'product_liability',
+      'personal_accident',
+      'other'
+    ].map((type) => t(`govuk_alpha_settings.insurance.types.${type}`)));
+  });
+
   it('uses exact session, safeguarding, and consent reads and normalizes their v2 envelopes', async () => {
     const response = await request(profileApp({ insuranceEnabled: false })).get('/profile/settings');
 

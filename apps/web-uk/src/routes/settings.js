@@ -65,22 +65,6 @@ const SETTINGS_STATUS_MESSAGES = {
 };
 const SETTINGS_AVAILABILITY_DISPLAY_DAYS = [1, 2, 3, 4, 5, 6, 0];
 const SETTINGS_AVAILABILITY_SLOTS_PER_DAY = 3;
-const SETTINGS_INSURANCE_TYPE_LABELS = {
-  public_liability: 'Public liability',
-  professional_indemnity: 'Professional indemnity',
-  employers_liability: 'Employers liability',
-  product_liability: 'Product liability',
-  personal_accident: 'Personal accident',
-  other: 'Other'
-};
-const SETTINGS_INSURANCE_STATUS_LABELS = {
-  pending: 'Pending',
-  submitted: 'Submitted',
-  verified: 'Verified',
-  expired: 'Expired',
-  rejected: 'Rejected',
-  revoked: 'Revoked'
-};
 const SETTINGS_INSURANCE_STATUS_TAGS = {
   verified: 'govuk-tag--green',
   submitted: 'govuk-tag--yellow',
@@ -285,23 +269,25 @@ function insuranceRowsFromPayload(payload) {
   return [];
 }
 
-function normalizeInsuranceCertificate(row) {
+function normalizeInsuranceCertificate(row, t) {
   const type = allowedValue(row && row.insurance_type, SETTINGS_INSURANCE_TYPES, 'other');
   const status = trimmed(row && row.status) || 'pending';
 
   return {
     insuranceType: type,
-    insuranceTypeLabel: SETTINGS_INSURANCE_TYPE_LABELS[type],
+    insuranceTypeLabel: t(`govuk_alpha_settings.insurance.types.${type}`),
     providerName: trimmed(row && row.provider_name),
     expiryLabel: formatInsuranceDate(row && row.expiry_date),
     status,
-    statusLabel: SETTINGS_INSURANCE_STATUS_LABELS[status] || humanizeStatus(status) || SETTINGS_INSURANCE_STATUS_LABELS.pending,
+    statusLabel: Object.prototype.hasOwnProperty.call(SETTINGS_INSURANCE_STATUS_TAGS, status)
+      ? t(`govuk_alpha_settings.insurance.statuses.${status}`)
+      : humanizeStatus(status) || t('govuk_alpha_settings.insurance.statuses.pending'),
     statusTagClass: SETTINGS_INSURANCE_STATUS_TAGS[status] || 'govuk-tag--grey'
   };
 }
 
-function normalizeInsuranceCertificates(payload) {
-  return insuranceRowsFromPayload(payload).map(normalizeInsuranceCertificate);
+function normalizeInsuranceCertificates(payload, t) {
+  return insuranceRowsFromPayload(payload).map((row) => normalizeInsuranceCertificate(row, t));
 }
 
 function themeFromSettingsData(data) {
@@ -634,7 +620,10 @@ router.get('/insurance', asyncRoute(async (req, res) => {
 
   let certificates = [];
   try {
-    certificates = normalizeInsuranceCertificates(payloadFrom(await callSettings(token, 'GET', '/insurance')));
+    certificates = normalizeInsuranceCertificates(
+      payloadFrom(await callSettings(token, 'GET', '/insurance')),
+      res.locals.t
+    );
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
   }
@@ -642,10 +631,12 @@ router.get('/insurance', asyncRoute(async (req, res) => {
   const status = typeof req.query.status === 'string' ? req.query.status : '';
 
   return res.render('settings/insurance', {
-    title: 'Insurance certificates',
+    title: res.locals.t('govuk_alpha_settings.insurance.title'),
     activeNav: 'account',
     status,
-    statusMessage: SETTINGS_STATUS_MESSAGES[status] || '',
+    statusMessage: SETTINGS_STATUS_MESSAGES[status]
+      ? res.locals.t(`govuk_alpha_settings.states.${status}`)
+      : '',
     successStatus: status === 'insurance-uploaded',
     errorStatus: [
       'insurance-type-invalid',
@@ -658,7 +649,7 @@ router.get('/insurance', asyncRoute(async (req, res) => {
     certificates,
     insuranceTypes: SETTINGS_INSURANCE_TYPES.map((type) => ({
       value: type,
-      label: SETTINGS_INSURANCE_TYPE_LABELS[type]
+      label: res.locals.t(`govuk_alpha_settings.insurance.types.${type}`)
     }))
   });
 }));
