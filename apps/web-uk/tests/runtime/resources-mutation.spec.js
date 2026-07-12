@@ -4,6 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 const { test, expect } = require('@playwright/test');
+const AxeBuilder = require('@axe-core/playwright').default;
 const { resolveOptions } = require('../../scripts/laravel-runtime-smoke');
 const {
   deleteResource,
@@ -59,10 +60,28 @@ async function findByTitle(token, title) {
   return rowsFrom(result).find((resource) => resource?.title === title) || null;
 }
 
+async function expectAccessibleReflow(page) {
+  await expect(page.locator('main')).toHaveCount(1);
+  await expect(page.locator('h1')).toHaveCount(1);
+  const duplicateIds = await page.locator('[id]').evaluateAll((elements) => {
+    const ids = elements.map(element => element.id).filter(Boolean);
+    return [...new Set(ids.filter((id, index) => ids.indexOf(id) !== index))];
+  });
+  expect(duplicateIds).toEqual([]);
+  const dimensions = await page.evaluate(() => ({
+    viewport: document.documentElement.clientWidth,
+    content: document.documentElement.scrollWidth
+  }));
+  expect(dimensions.content).toBeLessThanOrEqual(dimensions.viewport);
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(results.violations.filter(({ impact }) => impact === 'serious' || impact === 'critical')).toEqual([]);
+}
+
 test('uploads, downloads, and deletes a disposable resource through Web UK', async ({ page }) => {
   const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
   const title = `Codex disposable resource ${runId}`;
   const contents = `Disposable Laravel resource fixture ${runId}\n`;
+  const comment = `Disposable resource comment ${runId}`;
   const auth = await login(smoke.email, smoke.password, smoke.tenant);
   const token = auth.access_token;
   let resourceId = null;
@@ -114,6 +133,44 @@ test('uploads, downloads, and deletes a disposable resource through Web UK', asy
     expect(downloadResponse.status()).toBe(200);
     expect(downloadResponse.headers()['content-disposition']).toContain('attachment');
     expect((await downloadResponse.body()).toString('utf8')).toBe(contents);
+
+    await page.setViewportSize({ width: 320, height: 640 });
+    await page.goto(`${mountPath}/resources/${resourceId}/comments`, {
+      waitUntil: 'domcontentloaded',
+      timeout: 300_000
+    });
+    const celebrateForm = page.locator('form:has(input[name="emoji"][value="celebrate"])');
+    const reactionResponse = await submitPost(page, celebrateForm.locator('button'), `/resources/${resourceId}/react`);
+    expect(reactionResponse.status()).toBe(302);
+    await page.goto(`${mountPath}/resources/${resourceId}/comments`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
+    await expect(page.locator('form:has(input[name="emoji"][value="celebrate"]) button')).toHaveAttribute('aria-pressed', 'true');
+
+    await page.locator('#body').fill(comment);
+    const commentResponse = await submitPost(page, page.locator('form:has(#body) button[type="submit"]'), `/resources/${resourceId}/comments/add`);
+    expect(commentResponse.status()).toBe(302);
+    await page.goto(`${mountPath}/resources/${resourceId}/comments`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
+    const commentRow = page.locator('li.nexus-alpha-comment', { hasText: comment });
+    await expect(commentRow).toHaveCount(1);
+    await expectAccessibleReflow(page);
+
+    const commentDeleteButton = commentRow.locator('form[action$="/delete"] button');
+    const commentDeleteAction = await commentRow.locator('form[action$="/delete"]').getAttribute('action');
+    expect(commentDeleteAction).toBeTruthy();
+    const commentId = Number(commentDeleteAction.match(/\/comments\/(\d+)\/delete$/)?.[1]);
+    expect(commentId).toBeGreaterThan(0);
+    const commentDeleteResponse = await submitPost(page, commentDeleteButton, `/resources/${resourceId}/comments/${commentId}/delete`);
+    expect(commentDeleteResponse.status()).toBe(302);
+    await page.goto(`${mountPath}/resources/${resourceId}/comments`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
+    await expect(page.getByText(comment, { exact: true })).toHaveCount(0);
+
+    const reactionRemoveResponse = await submitPost(
+      page,
+      page.locator('form:has(input[name="emoji"][value="celebrate"]) button'),
+      `/resources/${resourceId}/react`
+    );
+    expect(reactionRemoveResponse.status()).toBe(302);
+    await page.goto(`${mountPath}/resources/${resourceId}/comments`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
+    await expect(page.locator('form:has(input[name="emoji"][value="celebrate"]) button')).toHaveAttribute('aria-pressed', 'false');
 
     await page.goto(`${mountPath}/resources/${resourceId}/delete`, {
       waitUntil: 'domcontentloaded',
