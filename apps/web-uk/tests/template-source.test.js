@@ -2323,3 +2323,33 @@ describe('Laravel-first Commerce and Ideation sub-navigation source contract', (
     expect(source).not.toMatch(/>Ideation<|>Campaigns<|>Outcomes</);
   });
 });
+
+describe('Laravel-first Federation sub-navigation source contract', () => {
+  it('uses one exact nine-link partial across every Laravel Federation surface', () => {
+    const viewsRoot = path.join(__dirname, '..', 'src', 'views', 'federation');
+    const nav = fs.readFileSync(path.join(viewsRoot, '_nav.njk'), 'utf8');
+    const surfaces = [
+      'index.njk', 'partners.njk', 'partner.njk', 'onboarding.njk', 'opt-in.njk',
+      'opt-out.njk', 'settings.njk', 'members.njk', 'member.njk', 'listings.njk',
+      'listing-show.njk', 'events.njk', 'connections.njk', 'messages.njk',
+      'conversation.njk', 'transfer.njk', 'groups.njk'
+    ];
+
+    expect(nav).toContain('t("govuk_alpha.federation.nav.label")');
+    expect(nav).toContain('t("govuk_alpha.federation.title")');
+    for (const key of [
+      'overview', 'partners', 'members', 'listings', 'events', 'groups',
+      'connections', 'messages', 'settings'
+    ]) {
+      expect(nav).toContain(`t("govuk_alpha.federation.nav.${key}")`);
+    }
+    expect(nav).toContain('aria-current="page"');
+
+    for (const file of surfaces) {
+      const source = fs.readFileSync(path.join(viewsRoot, file), 'utf8');
+      expect(source).toContain('{% include "federation/_nav.njk" %}');
+      expect(source).not.toContain('govuk-service-navigation');
+      expect(source).not.toContain('aria-label="Federation"');
+    }
+  });
+});
