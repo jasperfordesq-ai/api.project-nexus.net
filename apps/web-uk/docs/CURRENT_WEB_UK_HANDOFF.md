@@ -5095,6 +5095,18 @@ place. Together with flat BookmarkService removal, the expanded gate passed
 depth, manual assistive-technology review, and ASP.NET compatibility remain
 open.
 
+## 2026-07-12 Disposable Marketplace Listing Lifecycle
+
+The dedicated default-English Laravel gate creates a uniquely named free
+marketplace listing with a real PNG, verifies Laravel's image row and the
+rendered image, edits and re-reads its title, checks the detail at 320 CSS
+pixels for structure, reflow, and serious/critical axe findings, deletes the
+listing through Web UK, and proves final Laravel absence. Independent API
+cleanup covers failures before or after editing. The `1/1` run passed in
+`138.8` seconds and retained no fixture. Hosted checkout, offer/order/pickup/
+coupon depth, merchant profile-image uploads, manual assistive-technology
+review, and ASP.NET compatibility remain open.
+
 ## Known Remaining Work
 
 Prioritize visual/manual Blade parity, page-level feature-disabled behavior, and
