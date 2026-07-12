@@ -29,8 +29,8 @@
     {% endif %}
   {% endif %}
 
-  <span class="govuk-caption-l">Volunteering</span>
-  <h1 class="govuk-heading-xl">{{ t("vol_depth.swaps_link") }}</h1>
+  <span class="govuk-caption-l">{{ t("volunteering.title") }}</span>
+  <h1 class="govuk-heading-xl">{{ t("vol_depth.swaps_title") }}</h1>
   <p class="govuk-body-l">{{ t("vol_depth.swaps_description") }}</p>
 
   <h2 class="govuk-heading-l">{{ t("vol_depth.swap_request_title") }}</h2>
@@ -60,7 +60,7 @@
         <input class="govuk-input govuk-input--width-10" id="to_user_id" name="to_user_id" type="text" inputmode="numeric" pattern="[0-9]*" aria-describedby="to_user_id-hint" required>
       </div>
       <div class="govuk-form-group">
-        <label class="govuk-label" for="message">Message (optional)</label>
+        <label class="govuk-label" for="message">{{ t("vol_depth.swap_message_label") }}</label>
         <div id="message-hint" class="govuk-hint">{{ t("vol_depth.swap_message_hint") }}</div>
         <textarea class="govuk-textarea" id="message" name="message" rows="3" aria-describedby="message-hint" maxlength="500"></textarea>
       </div>
@@ -89,9 +89,9 @@
             <strong class="govuk-tag {{ swap.status.className }}">{{ swap.status.label }}</strong>
           </p>
           {% if swap.direction == "sent" and swap.recipientName %}
-            <p class="govuk-body-s govuk-!-margin-bottom-3">To {{ swap.recipientName }}</p>
+            <p class="govuk-body-s govuk-!-margin-bottom-3">{{ t("vol_depth.swap_to", { name: swap.recipientName }) }}</p>
           {% elif swap.direction == "received" and swap.requesterName %}
-            <p class="govuk-body-s govuk-!-margin-bottom-3">From {{ swap.requesterName }}</p>
+            <p class="govuk-body-s govuk-!-margin-bottom-3">{{ t("vol_depth.swap_from", { name: swap.requesterName }) }}</p>
           {% endif %}
 
           <div class="govuk-grid-row">
@@ -125,14 +125,14 @@
             <form method="post" action="{{ urlFor('/volunteering/swaps/' ~ swap.id ~ '/respond') }}">
               <input type="hidden" name="_csrf" value="{{ csrfToken }}">
               <div class="govuk-button-group">
-                <button class="govuk-button govuk-!-margin-bottom-0" name="action" value="accept" data-module="govuk-button">Accept</button>
-                <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" name="action" value="reject" data-module="govuk-button">Decline</button>
+                <button class="govuk-button govuk-!-margin-bottom-0" name="action" value="accept" data-module="govuk-button">{{ t("vol_depth.swap_accept") }}</button>
+                <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" name="action" value="reject" data-module="govuk-button">{{ t("vol_depth.swap_reject") }}</button>
               </div>
             </form>
           {% elif swap.direction == "sent" and (swap.status.value == "pending" or swap.status.value == "admin_pending") %}
             <form method="post" action="{{ urlFor('/volunteering/swaps/' ~ swap.id ~ '/cancel') }}">
               <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-              <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">Cancel request</button>
+              <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">{{ t("vol_depth.swap_cancel") }}</button>
             </form>
           {% endif %}
         </article>

@@ -27798,6 +27798,16 @@ describe('shared accessible frontend shell', () => {
       message: 'Could swap?'
     });
 
+    api.callVolunteeringApi.mockRejectedValueOnce(new api.ApiError('Safeguarding restricted', 403, {
+      code: 'SAFEGUARDING_CONTACT_RESTRICTED'
+    }));
+    const restrictedSwapResponse = await agent
+      .post('/volunteering/swaps')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], from_shift_id: '501', to_shift_id: '502', to_user_id: '77' });
+    expect(restrictedSwapResponse.headers.location).toBe('/volunteering/swaps?status=swap-safeguarding-restricted');
+
     const swapRespondResponse = await agent
       .post('/volunteering/swaps/12/respond')
       .set('Cookie', `token=${encodeURIComponent(signedToken)}`)

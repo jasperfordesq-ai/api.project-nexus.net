@@ -5355,6 +5355,19 @@ Focused waitlist/swaps proof passed. Full Jest remains `45/45` suites and
 live leave was submitted because the available entries are shared signups, not
 disposable fixtures.
 
+## 2026-07-12 Default-English Shift Swaps Parity
+
+Shift swaps now use Laravel's catalog-backed title, copy, direction/status
+labels, member context, action labels, and success/error states. Shift option
+labels use the Blade em dash, unknown statuses fall back safely to pending, and
+safeguarding policy/restriction failures no longer collapse into generic swap
+errors.
+
+Focused action proof passed. Full Jest remains `45/45` suites and
+`1,456/1,456` tests with green lint and the 285-template zero-match audit. No
+live swap mutation was submitted because the available shifts are shared
+records rather than disposable fixtures.
+
 ## Final Handoff Checklist
 
 Before leaving this job for another agent, write a short note containing:

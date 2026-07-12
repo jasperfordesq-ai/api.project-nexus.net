@@ -592,42 +592,29 @@ function waitlistStatus(status, t = null) {
   return config ? { ...config, message: t ? t(config.key) : config.key } : null;
 }
 
-function swapPageStatus(status) {
+function swapPageStatus(status, t = null) {
   const messages = {
-    'swap-requested': {
-      type: 'success',
-      message: 'Your swap request has been sent.'
+    'swap-requested': { type: 'success', key: 'govuk_alpha.vol_depth.swap_requested_success' },
+    'swap-accepted': { type: 'success', key: 'govuk_alpha.vol_depth.swap_accepted_success' },
+    'swap-rejected': { type: 'success', key: 'govuk_alpha.vol_depth.swap_rejected_success' },
+    'swap-cancelled': { type: 'success', key: 'govuk_alpha.vol_depth.swap_cancelled_success' },
+    'swap-invalid': { type: 'error', key: 'govuk_alpha.vol_depth.swap_invalid' },
+    'swap-request-failed': { type: 'error', key: 'govuk_alpha.vol_depth.swap_request_failed' },
+    'swap-respond-failed': { type: 'error', key: 'govuk_alpha.vol_depth.swap_respond_failed' },
+    'swap-cancel-failed': { type: 'error', key: 'govuk_alpha.vol_depth.swap_cancel_failed' },
+    'swap-safeguarding-restricted': {
+      type: 'error', key: 'safeguarding.errors.interaction_not_allowed',
+      fallback: 'The recipient’s community safeguarding policy does not allow this direct interaction. Ask a coordinator for help.'
     },
-    'swap-accepted': {
-      type: 'success',
-      message: 'You have accepted the swap request.'
-    },
-    'swap-rejected': {
-      type: 'success',
-      message: 'You have declined the swap request.'
-    },
-    'swap-cancelled': {
-      type: 'success',
-      message: 'Your swap request has been cancelled.'
-    },
-    'swap-invalid': {
-      type: 'error',
-      message: 'Please complete all the required fields.'
-    },
-    'swap-request-failed': {
-      type: 'error',
-      message: 'We could not send your swap request. Check the shift and member numbers and try again.'
-    },
-    'swap-respond-failed': {
-      type: 'error',
-      message: 'We could not process your response to this swap request.'
-    },
-    'swap-cancel-failed': {
-      type: 'error',
-      message: 'We could not cancel this swap request.'
+    'swap-safeguarding-unavailable': {
+      type: 'error', key: 'safeguarding.errors.policy_unavailable',
+      fallback: 'We cannot confirm the community safeguarding policy right now. No message has been sent. Please try again shortly.'
     }
   };
-  return messages[status] || null;
+  const config = messages[status] || null;
+  if (!config) return null;
+  const translated = t ? t(config.key) : config.key;
+  return { ...config, message: translated !== config.key ? translated : (config.fallback || translated) };
 }
 
 function orgManageStatus(status, t = null) {
@@ -1240,36 +1227,43 @@ function normalizeMyShift(row) {
   const when = dateTimeLabel(shift.start_time ?? shift.startTime);
   return {
     id,
-    label: when ? `${title} - ${when}` : title
+    label: when ? `${title} — ${when}` : title
   };
 }
 
-function normalizeSwapShift(row) {
+function normalizeSwapShift(row, t = null) {
   const shift = row && typeof row === 'object' ? row : {};
   return {
     id: positiveInteger(shift.id),
-    title: trimmed(shift.opportunity_title ?? shift.opportunityTitle) || 'Volunteering opportunity',
+    title: trimmed(shift.opportunity_title ?? shift.opportunityTitle)
+      || (t ? t('govuk_alpha.volunteering.detail_title') : 'Volunteering opportunity'),
     organizationName: trimmed(shift.organization_name ?? shift.organizationName),
     startLabel: dateTimeLabel(shift.start_time ?? shift.startTime)
   };
 }
 
-function normalizeSwapRequest(row) {
+function normalizeSwapRequest(row, t = null) {
   const swap = row && typeof row === 'object' ? row : {};
   const direction = trimmed(swap.direction) === 'received' ? 'received' : 'sent';
+  const statusValue = Object.hasOwn(SWAP_STATUS_LABELS, trimmed(swap.status)) ? trimmed(swap.status) : 'pending';
   const requester = swap.requester && typeof swap.requester === 'object' ? swap.requester : {};
   const recipient = swap.recipient && typeof swap.recipient === 'object' ? swap.recipient : {};
   return {
     id: positiveInteger(swap.id),
     direction,
-    directionLabel: direction === 'sent' ? 'Sent' : 'Received',
+    directionLabel: t
+      ? t(`govuk_alpha.vol_depth.swap_${direction}`)
+      : (direction === 'sent' ? 'Sent' : 'Received'),
     directionClassName: direction === 'sent' ? 'govuk-tag--blue' : 'govuk-tag--purple',
-    status: statusPresentation(swap.status, SWAP_STATUS_LABELS, SWAP_STATUS_CLASSES, 'pending'),
+    status: {
+      ...statusPresentation(statusValue, SWAP_STATUS_LABELS, SWAP_STATUS_CLASSES, 'pending'),
+      label: t ? t(`govuk_alpha.vol_depth.swap_status_${statusValue}`) : SWAP_STATUS_LABELS[statusValue]
+    },
     message: trimmed(swap.message),
     requesterName: trimmed(requester.name),
     recipientName: trimmed(recipient.name),
-    originalShift: normalizeSwapShift(swap.original_shift ?? swap.originalShift),
-    proposedShift: normalizeSwapShift(swap.proposed_shift ?? swap.proposedShift)
+    originalShift: normalizeSwapShift(swap.original_shift ?? swap.originalShift, t),
+    proposedShift: normalizeSwapShift(swap.proposed_shift ?? swap.proposedShift, t)
   };
 }
 
@@ -1955,14 +1949,14 @@ router.get('/swaps', asyncRoute(async (req, res) => {
   let loadError = null;
   try {
     swaps = collectionFrom(await callApi(token, 'GET', '/swaps'))
-      .map(normalizeSwapRequest)
+      .map((swap) => normalizeSwapRequest(swap, res.locals.t))
       .filter((swap) => swap.id);
     myShifts = collectionFrom(await callApi(token, 'GET', '/shifts?limit=50'))
       .map(normalizeMyShift)
       .filter((shift) => shift.id);
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    loadError = 'We could not load your swap requests. Please try again.';
+    loadError = res.locals.t('govuk_alpha.vol_depth.swaps_error');
   }
 
   return res.render('volunteering/swaps', {
@@ -1971,7 +1965,7 @@ router.get('/swaps', asyncRoute(async (req, res) => {
     swaps,
     myShifts,
     loadError,
-    status: swapPageStatus(trimmed(req.query.status)),
+    status: swapPageStatus(trimmed(req.query.status), res.locals.t),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { redirectOn401: loginRedirect() }));
@@ -2547,20 +2541,27 @@ router.post('/swaps', asyncRoute(async (req, res) => {
     return redirectTo(res, '/volunteering/swaps?status=swap-invalid');
   }
 
-  return runAction(
-    req,
-    res,
-    'POST',
-    '/swaps',
-    {
+  const token = tokenFrom(req);
+  if (!token) return redirectTo(res, loginRedirect());
+  try {
+    await callApi(token, 'POST', '/swaps', {
       from_shift_id: fromShiftId,
       to_shift_id: toShiftId,
       to_user_id: toUserId,
       message: trimmed(req.body.message)
-    },
-    '/volunteering/swaps?status=swap-requested',
-    '/volunteering/swaps?status=swap-request-failed'
-  );
+    });
+    return redirectTo(res, '/volunteering/swaps?status=swap-requested');
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    const code = apiErrorCode(error);
+    if (code === 'SAFEGUARDING_POLICY_UNAVAILABLE') {
+      return redirectTo(res, '/volunteering/swaps?status=swap-safeguarding-unavailable');
+    }
+    if (['SAFEGUARDING_CONTACT_RESTRICTED', 'VETTING_REQUIRED'].includes(code)) {
+      return redirectTo(res, '/volunteering/swaps?status=swap-safeguarding-restricted');
+    }
+    return redirectTo(res, '/volunteering/swaps?status=swap-request-failed');
+  }
 }));
 
 router.post('/swaps/:id(\\d+)/respond', asyncRoute(async (req, res) => {
@@ -2568,15 +2569,22 @@ router.post('/swaps/:id(\\d+)/respond', asyncRoute(async (req, res) => {
   const action = trimmed(req.body.action) === 'reject' ? 'reject' : 'accept';
   const status = action === 'accept' ? 'swap-accepted' : 'swap-rejected';
 
-  return runAction(
-    req,
-    res,
-    'PUT',
-    `/swaps/${id}`,
-    { action },
-    `/volunteering/swaps?status=${status}`,
-    '/volunteering/swaps?status=swap-respond-failed'
-  );
+  const token = tokenFrom(req);
+  if (!token) return redirectTo(res, loginRedirect());
+  try {
+    await callApi(token, 'PUT', `/swaps/${id}`, { action });
+    return redirectTo(res, `/volunteering/swaps?status=${status}`);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    const code = apiErrorCode(error);
+    if (code === 'SAFEGUARDING_POLICY_UNAVAILABLE') {
+      return redirectTo(res, '/volunteering/swaps?status=swap-safeguarding-unavailable');
+    }
+    if (['SAFEGUARDING_CONTACT_RESTRICTED', 'VETTING_REQUIRED'].includes(code)) {
+      return redirectTo(res, '/volunteering/swaps?status=swap-safeguarding-restricted');
+    }
+    return redirectTo(res, '/volunteering/swaps?status=swap-respond-failed');
+  }
 }));
 
 router.post('/swaps/:id(\\d+)/cancel', asyncRoute(async (req, res) => {
