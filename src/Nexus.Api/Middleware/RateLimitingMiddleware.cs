@@ -89,6 +89,8 @@ public static class RateLimitingExtensions
     public const string MessagesReactionPolicy = "messages-reaction";
     public const string MessagesReactionBatchPolicy = "messages-reaction-batch";
     public const string MessagesTypingPolicy = "messages-typing";
+    public const string MessagesMarkReadPolicy = "messages-mark-read";
+    public const string MessagesUnreadCountPolicy = "messages-unread-count";
 
     public static IReadOnlyList<SafeguardingVettingRateLimitContract> SafeguardingVettingRateLimitContracts { get; } =
     [
@@ -260,6 +262,22 @@ public static class RateLimitingExtensions
                     factory: _ => FixedWindow(
                         config.GetValue("RateLimiting:Messages:TypingPermitLimit", 60),
                         TimeSpan.FromSeconds(config.GetValue("RateLimiting:Messages:TypingWindowSeconds", 60)))));
+
+            // Laravel keeps these reads in separate authenticated 60/minute
+            // buckets so badge polling cannot consume conversation read writes.
+            options.AddPolicy(MessagesMarkReadPolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:Messages:MarkReadPermitLimit", 60),
+                        TimeSpan.FromSeconds(config.GetValue("RateLimiting:Messages:MarkReadWindowSeconds", 60)))));
+
+            options.AddPolicy(MessagesUnreadCountPolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:Messages:UnreadCountPermitLimit", 60),
+                        TimeSpan.FromSeconds(config.GetValue("RateLimiting:Messages:UnreadCountWindowSeconds", 60)))));
 
             // AI endpoints policy (more restrictive due to resource cost)
             options.AddPolicy(AiPolicy, context =>

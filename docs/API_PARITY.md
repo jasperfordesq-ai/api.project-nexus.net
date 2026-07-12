@@ -149,8 +149,13 @@ Laravel. The response is exactly `success/data.sent`, and the independent
 authenticated bucket is 60/minute. Seven endpoint/route tests and one
 transport-level request-signature test pass.
 
-This checkpoint is not direct-message completion. Exact read/unread envelopes
-and rate-limit behavior remain.
+Read/unread now matches the canonical React/Laravel contract. The unread count
+uses receiver archive/delete visibility and returns only `data.count`; mark-read
+uses a tenant-scoped other-user conversation, updates only messages from that
+partner, returns only `data.marked_read`, and does not emit the extra V2
+read-receipt event. The routes use separate authenticated 60/minute buckets.
+Route/policy ownership passed 1/1, focused disposable-PostgreSQL runtime passed
+3/3, and the combined messaging regression passed 44/44.
 
 The final deterministic direct-message state gate passed 39/39 with zero
 failed or skipped, covering migration/model contracts, edit/delete,
@@ -508,14 +513,13 @@ canonical React flow is incompatible. Enabling either `ForceAdmin2Fa` or
 `FORCE_ADMIN_2FA` now blocks startup with a lockout-risk error; ordinary
 enrolled-user login enforcement and voluntary authenticated setup remain live.
 
-The Laravel React typing-indicator route has shallow ASP.NET regression
-coverage for `POST /api/v2/messages/typing`, including `recipient_id` (and the
-older `to_user_id`/`conversation_id` compatibility inputs). It is not workflow
-complete: the current handler does not apply the sender, messaging-disabled,
-bidirectional-block, or safeguarding preflight used by Laravel, only broadcasts
-when a normalized conversation already exists, and targets SignalR rather than
-the Pusher pair channel consumed by the canonical React client. Keep this P1
-until a real event smoke proves the channel and `typing` event contract.
+The Laravel React typing-indicator route is workflow-complete for `POST
+/api/v2/messages/typing`: it accepts `recipient_id/is_typing`, applies the full
+sender, recipient, restriction, bilateral-block, and safeguarding preflight,
+works before a conversation exists without creating one, and publishes the
+exact signed Pusher tenant-user channel/event contract. Endpoint/route coverage
+passes 7/7 and transport request-signature coverage passes 1/1; live external
+provider delivery remains part of final provider certification.
 
 The Laravel React messaging restriction slice now uses live
 `user_monitoring_restrictions` state for
@@ -567,11 +571,16 @@ exact Laravel voice columns remain deeper workflow/schema gaps.
 The Laravel React unread/read-receipt slice now has focused ASP.NET regression
 coverage for `GET /api/v2/messages/unread-count` and
 `PUT /api/v2/messages/{id}/read`. The unread-count route returns
-`success/data.count` for `NotificationsContext.tsx`; the read route treats `{id}`
-as the other user id for `ConversationPage.tsx`, marks only messages sent by
-that user as read, and returns `success/data.marked_read`. Legacy
+`success/data.count` for `NotificationsContext.tsx`, filters receiver-archived,
+receiver-deleted, and globally deleted rows, and resolves conversations within
+the active tenant. The read route treats `{id}` as the other user id for
+`ConversationPage.tsx`, marks only messages sent by that user as read, returns
+only `success/data.marked_read`, and does not emit an extra read event absent
+from Laravel. Both use independent authenticated 60/minute buckets. Legacy
 `/api/messages/unread-count` and `/api/messages/{conversationId}/read` retain
-their older response shapes and conversation-id semantics.
+their older response shapes, conversation-id semantics, and legacy realtime
+side effect. Route/policy ownership is 1/1, focused runtime is 3/3, and combined
+direct-message regression is 44/44.
 
 The Laravel React message translation slice now has focused ASP.NET regression
 coverage for `POST /api/v2/messages/{id}/translate` as used by

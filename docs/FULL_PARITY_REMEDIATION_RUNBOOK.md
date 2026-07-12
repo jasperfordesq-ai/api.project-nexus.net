@@ -132,8 +132,12 @@ residual in this order:
    behavior without persistence, exact private tenant-user Pusher channel and
    `typing` payload, signed REST transport, best-effort delivery, exact response,
    and independent 60/minute bucket pass endpoint/route 7/7 plus transport 1/1.
-3. **P1 read/unread:** reconcile exact envelopes and rate-limit behavior for
-   mark-read, unread counts, and related list projections.
+3. **P1 read/unread completed 2026-07-12:** partner-ID mark-read and unread
+   counts now use exact minimal envelopes, explicit tenant-scoped conversation
+   resolution, Laravel receiver-visibility rules, no extra V2 read-receipt
+   event, and independent authenticated 60/minute buckets. Route/policy
+   ownership passed 1/1; focused disposable-PostgreSQL runtime passed 3/3; the
+   combined direct-message regression passed 44/44.
 
 Replace route-only and false-oracle tests for those handlers with two-user,
 reload, tenant, policy, and side-effect assertions. The final deterministic
@@ -746,10 +750,12 @@ sites. Web UK is an additional consumer once Laravel-first conversion is green.
 
 1. **P0 completed 2026-07-12:** sender-only 24-hour edit, scoped participant
    delete, and partner-ID per-user archive/restore now persist durable state.
-   Restricted-only coordinator help and durable policy-aware reactions/batch are
-   and full-preflight signed-Pusher typing are also complete. Continue with
-   exact read/unread envelopes/rates. Use two-user reload, tenant, policy,
-   cleanup, and side-effect tests; remove false oracles.
+   Restricted-only coordinator help, durable policy-aware reactions/batch,
+   full-preflight signed-Pusher typing, and tenant-scoped read/unread behavior
+   with exact envelopes and independent 60/minute buckets are also complete.
+   Continue the next canonical-frontend-used fallback inventory; use two-user
+   reload, tenant, policy, cleanup, and side-effect tests and remove false
+   oracles.
 2. Run the full ASP.NET suite and CI, then complete unchanged-frontend
    member, organisation, administrator, and Caring runtime smoke. The focused
    53/53 and affected 243/243 gates are green, but the discovery count is not a

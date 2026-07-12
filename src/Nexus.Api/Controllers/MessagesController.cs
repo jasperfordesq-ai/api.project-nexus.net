@@ -337,6 +337,7 @@ public class MessagesController : ControllerBase
         string? direction,
         string? cursor)
     {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
         var otherUser = await _db.Users
             .AsNoTracking()
             .FirstOrDefaultAsync(u => u.Id == otherUserId);
@@ -354,7 +355,9 @@ public class MessagesController : ControllerBase
         var participant2Id = Math.Max(currentUserId, otherUserId);
         var conversation = await _db.Conversations
             .AsNoTracking()
-            .FirstOrDefaultAsync(c => c.Participant1Id == participant1Id && c.Participant2Id == participant2Id);
+            .FirstOrDefaultAsync(c => c.TenantId == tenantId
+                && c.Participant1Id == participant1Id
+                && c.Participant2Id == participant2Id);
 
         var normalizedDirection = string.Equals(direction, "newer", StringComparison.OrdinalIgnoreCase)
             ? "newer"
@@ -533,6 +536,7 @@ public class MessagesController : ControllerBase
     /// Get the count of unread messages for the current user.
     /// </summary>
     [HttpGet("unread-count")]
+    [EnableRateLimiting(RateLimitingExtensions.MessagesUnreadCountPolicy)]
     public async Task<IActionResult> GetUnreadCount()
     {
         var userId = GetCurrentUserId();
@@ -541,9 +545,12 @@ public class MessagesController : ControllerBase
             return Unauthorized(new { error = "Invalid token" });
         }
 
-        // Get conversation IDs where user is a participant
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
+
+        // Get tenant-scoped conversation IDs where user is a participant.
         var conversationIds = await _db.Conversations
-            .Where(c => c.Participant1Id == userId.Value || c.Participant2Id == userId.Value)
+            .Where(c => c.TenantId == tenantId
+                && (c.Participant1Id == userId.Value || c.Participant2Id == userId.Value))
             .Select(c => c.Id)
             .ToListAsync();
 
@@ -1422,6 +1429,7 @@ public class MessagesController : ControllerBase
     /// Only marks messages from the other participant as read.
     /// </summary>
     [HttpPut("{id:int}/read")]
+    [EnableRateLimiting(RateLimitingExtensions.MessagesMarkReadPolicy)]
     public async Task<IActionResult> MarkConversationRead(int id)
     {
         var userId = GetCurrentUserId();
@@ -1492,10 +1500,13 @@ public class MessagesController : ControllerBase
 
     private async Task<IActionResult> MarkLaravelReactConversationReadAsync(int otherUserId, int currentUserId)
     {
+        var tenantId = _tenantContext.GetTenantIdOrThrow();
         var participant1Id = Math.Min(currentUserId, otherUserId);
         var participant2Id = Math.Max(currentUserId, otherUserId);
         var conversation = await _db.Conversations
-            .FirstOrDefaultAsync(c => c.Participant1Id == participant1Id && c.Participant2Id == participant2Id);
+            .FirstOrDefaultAsync(c => c.TenantId == tenantId
+                && c.Participant1Id == participant1Id
+                && c.Participant2Id == participant2Id);
 
         if (conversation == null)
         {
@@ -1521,32 +1532,12 @@ public class MessagesController : ControllerBase
         _logger.LogInformation("User {UserId} marked {Count} messages as read from user {OtherUserId}",
             currentUserId, markedCount, otherUserId);
 
-        if (markedCount > 0)
-        {
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    await _realTimeMessaging.NotifyMessagesReadAsync(conversation.Id, currentUserId, markedCount);
-                }
-                catch (InvalidOperationException ex)
-                {
-                    _logger.LogError(ex, "Failed to send read notification for conversation {ConversationId}", conversation.Id);
-                }
-                catch (TimeoutException ex)
-                {
-                    _logger.LogError(ex, "Failed to send read notification for conversation {ConversationId}", conversation.Id);
-                }
-            });
-        }
-
         return Ok(new
         {
             success = true,
             data = new
             {
-                marked_read = markedCount,
-                conversation_id = conversation.Id
+                marked_read = markedCount
             }
         });
     }

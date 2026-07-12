@@ -199,6 +199,8 @@ public sealed class LaravelReactRealtimeContractTests : IntegrationTestBase
 
         readResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         var readData = await ReadDataAsync(readResponse);
+        readData.EnumerateObject().Select(property => property.Name)
+            .Should().Equal("marked_read");
         readData.GetProperty("marked_read").GetInt32().Should().BeGreaterThan(0);
 
         var after = await ReadDataAsync(await Client.GetAsync("/api/v2/messages/unread-count"));
