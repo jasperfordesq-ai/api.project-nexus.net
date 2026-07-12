@@ -43,9 +43,10 @@ function createLaravelServer(requests) {
   return http.createServer((req, res) => {
     requests.push({ surface: 'laravel', method: req.method, url: req.url });
 
-    if (req.method === 'GET' && req.url === '/api/v2/groups?limit=1') {
+    if (req.method === 'GET' && req.url.startsWith('/api/v2/tenant/bootstrap?slug=')) {
+      const slug = new URL(req.url, 'http://laravel.test').searchParams.get('slug');
       res.writeHead(200, { 'content-type': 'application/json' });
-      res.end(JSON.stringify({ data: [] }));
+      res.end(JSON.stringify({ data: { slug } }));
       return;
     }
 
@@ -1762,7 +1763,7 @@ describe('Laravel runtime smoke harness', () => {
       ['signed-account-renders', true],
       ['logout-post-clears-signed-session', true]
     ]));
-    expect(requests.map((request) => `${request.surface} ${request.method} ${request.url}`)).toContain('laravel GET /api/v2/groups?limit=1');
+    expect(requests.map((request) => `${request.surface} ${request.method} ${request.url}`)).toContain('laravel GET /api/v2/tenant/bootstrap?slug=acme');
     expect(requests.map((request) => `${request.surface} ${request.method} ${request.url}`)).toContain('web POST /cookie-consent');
     expect(requests.map((request) => `${request.surface} ${request.method} ${request.url}`)).toContain('web POST /login');
     expect(requests.map((request) => `${request.surface} ${request.method} ${request.url}`)).toContain('web POST /logout');

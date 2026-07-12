@@ -1184,7 +1184,7 @@ async function runLaravelRuntimeSmoke(options = {}) {
     const response = await smokeRequest({
       fetchImpl: config.fetchImpl,
       timeoutMs: config.timeoutMs,
-      url: joinUrl(config.laravelBaseUrl, '/api/v2/groups?limit=1')
+      url: joinUrl(config.laravelBaseUrl, `/api/v2/tenant/bootstrap?slug=${encodeURIComponent(config.tenant)}`)
     });
     addCheck(checks, 'laravel-api-reachable', response.ok, response.ok ? 'Laravel API returned a successful response.' : `expected 2xx from Laravel API, got ${response.status}`, { status: response.status });
   } catch (error) {
