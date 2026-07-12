@@ -45,6 +45,7 @@ public static class RateLimitingExtensions
     public const string GuardianConsentListPolicy = "guardian-consent-list";
     public const string GuardianConsentRequestPolicy = "guardian-consent-request";
     public const string GuardianConsentVerifyPolicy = "guardian-consent-verify";
+    public const string GuardianConsentVerifyLookupPolicy = "guardian-consent-verify-lookup";
     public const string GuardianConsentWithdrawPolicy = "guardian-consent-withdraw";
     public const string RecurringPatternListPolicy = "volunteering-recurring-pattern-list";
     public const string RecurringPatternCreatePolicy = "volunteering-recurring-pattern-create";
@@ -368,6 +369,13 @@ public static class RateLimitingExtensions
                     factory: _ => FixedWindow(
                         config.GetValue("RateLimiting:GuardianConsent:VerifyPermitLimit", 10),
                         TimeSpan.FromSeconds(config.GetValue("RateLimiting:GuardianConsent:VerifyWindowSeconds", 300)))));
+
+            options.AddPolicy(GuardianConsentVerifyLookupPolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:GuardianConsent:VerifyLookupPermitLimit", 20),
+                        TimeSpan.FromSeconds(config.GetValue("RateLimiting:GuardianConsent:VerifyLookupWindowSeconds", 300)))));
 
             options.AddPolicy(GuardianConsentWithdrawPolicy, context =>
                 RateLimitPartition.GetFixedWindowLimiter(

@@ -59,6 +59,8 @@ public sealed class GuardianConsentRouteOwnershipTests
             [("POST", "api/v2/volunteering/guardian-consents")] =
                 ("VolunteeringParity", "CreateGuardianConsent", RateLimitingExtensions.GuardianConsentRequestPolicy),
             [("GET", "api/v2/volunteering/guardian-consents/verify/{token}")] =
+                ("VolunteeringParity", "ShowGuardianConsentVerification", RateLimitingExtensions.GuardianConsentVerifyLookupPolicy),
+            [("POST", "api/v2/volunteering/guardian-consents/verify/{token}")] =
                 ("VolunteeringParity", "VerifyGuardianConsent", RateLimitingExtensions.GuardianConsentVerifyPolicy),
             [("DELETE", "api/v2/volunteering/guardian-consents/{consentId:int}")] =
                 ("VolunteeringParity", "DeleteGuardianConsent", RateLimitingExtensions.GuardianConsentWithdrawPolicy),
@@ -82,11 +84,13 @@ public sealed class GuardianConsentRouteOwnershipTests
             }
         }
 
-        var verify = endpoints.Single(endpoint =>
-            endpoint.Method == "GET"
-            && endpoint.Template == "api/v2/volunteering/guardian-consents/verify/{token}");
-        verify.Endpoint.Metadata.GetMetadata<IAllowAnonymous>().Should().NotBeNull(
-            "the guardian's email credential is the authentication factor for the public verify action");
+        foreach (var verify in endpoints.Where(endpoint =>
+                     (endpoint.Method == "GET" || endpoint.Method == "POST")
+                     && endpoint.Template == "api/v2/volunteering/guardian-consents/verify/{token}"))
+        {
+            verify.Endpoint.Metadata.GetMetadata<IAllowAnonymous>().Should().NotBeNull(
+                "the guardian's email credential is the authentication factor for the public verify action");
+        }
 
         endpoints.Where(endpoint =>
                 endpoint.Template.StartsWith("api/v2/volunteering/guardian-consents", StringComparison.Ordinal)

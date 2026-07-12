@@ -663,6 +663,45 @@ public class VolunteeringParityController : ControllerBase
 
     [AllowAnonymous]
     [HttpGet("guardian-consents/verify/{token}")]
+    [EnableRateLimiting(RateLimitingExtensions.GuardianConsentVerifyLookupPolicy)]
+    public async Task<IActionResult> ShowGuardianConsentVerification(
+        string token,
+        CancellationToken cancellationToken = default)
+    {
+        var tenantId = TenantId();
+        if (!await _guardianConsent.IsVolunteeringEnabledAsync(tenantId, cancellationToken))
+        {
+            return GuardianConsentError(
+                StatusCodes.Status403Forbidden,
+                "FEATURE_DISABLED",
+                "Volunteering module is not enabled for this community");
+        }
+
+        var status = await _guardianConsent.GetConsentStatusByTokenAsync(
+            token,
+            tenantId,
+            cancellationToken);
+        if (status is null)
+        {
+            return GuardianConsentError(
+                StatusCodes.Status400BadRequest,
+                "INVALID_TOKEN",
+                "Consent token is invalid or expired");
+        }
+
+        return Ok(new
+        {
+            data = new
+            {
+                status = status.Status,
+                valid = status.Valid
+            },
+            meta = new { base_url = BaseUrl() }
+        });
+    }
+
+    [AllowAnonymous]
+    [HttpPost("guardian-consents/verify/{token}")]
     [EnableRateLimiting(RateLimitingExtensions.GuardianConsentVerifyPolicy)]
     public async Task<IActionResult> VerifyGuardianConsent(
         string token,

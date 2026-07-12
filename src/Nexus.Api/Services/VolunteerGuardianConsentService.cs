@@ -264,6 +264,33 @@ public sealed class VolunteerGuardianConsentService
         return true;
     }
 
+    public async Task<GuardianConsentTokenStatus?> GetConsentStatusByTokenAsync(
+        string token,
+        int tenantId,
+        CancellationToken cancellationToken = default)
+    {
+        if (!IsTokenShapeValid(token))
+            return null;
+
+        var now = DateTime.UtcNow;
+        var row = await _db.VolunteerGuardianConsents
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(consent => consent.TenantId == tenantId && consent.ConsentTokenHash == HashToken(token))
+            .Select(consent => new { consent.Status, consent.ExpiresAt })
+            .SingleOrDefaultAsync(cancellationToken);
+        if (row is null)
+            return null;
+
+        var expired = row.ExpiresAt.HasValue && row.ExpiresAt.Value < now;
+        var status = expired && row.Status == VolunteerGuardianConsentStatus.Pending
+            ? "expired"
+            : row.Status.ToString().ToLowerInvariant();
+        return new GuardianConsentTokenStatus(
+            status,
+            row.Status == VolunteerGuardianConsentStatus.Pending && !expired);
+    }
+
     public async Task<bool> WithdrawConsentAsync(
         int consentId,
         int actorUserId,
@@ -850,6 +877,8 @@ public sealed record GuardianConsentRequest(
     string? Relationship,
     string? GuardianPhone,
     int? OpportunityId);
+
+public sealed record GuardianConsentTokenStatus(string Status, bool Valid);
 
 public sealed record GuardianConsentView(
     int Id,

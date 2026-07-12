@@ -152,7 +152,7 @@ public sealed class GuardianConsentLifecycleTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task AnonymousVerify_IsTenantScopedSingleUseAndCreatesExactlyOneNotification()
+    public async Task AnonymousLookup_IsReadOnlyAndPostVerifyIsTenantScopedSingleUse()
     {
         var rawToken = RawToken("tenant-scoped-single-use");
         int consentId;
@@ -174,7 +174,27 @@ public sealed class GuardianConsentLifecycleTests : IntegrationTestBase
         await AssertErrorAsync(wrongTenant, HttpStatusCode.BadRequest, "INVALID_TOKEN");
 
         using var correctTenantClient = AnonymousTenantClient(TestData.Tenant1.Id);
-        var granted = await correctTenantClient.GetAsync(VerifyPath(rawToken));
+        var lookup = await correctTenantClient.GetAsync(VerifyPath(rawToken));
+        lookup.StatusCode.Should().Be(HttpStatusCode.OK);
+        var lookupBody = await ReadJsonAsync(lookup);
+        AssertBaseMeta(lookupBody);
+        lookupBody.GetProperty("data").GetProperty("status").GetString().Should().Be("pending");
+        lookupBody.GetProperty("data").GetProperty("valid").GetBoolean().Should().BeTrue();
+
+        using (var readOnlyCheck = Factory.Services.CreateScope())
+        {
+            var readOnlyDb = readOnlyCheck.ServiceProvider.GetRequiredService<NexusDbContext>();
+            (await readOnlyDb.VolunteerGuardianConsents.IgnoreQueryFilters()
+                .SingleAsync(consent => consent.Id == consentId)).Status
+                .Should().Be(VolunteerGuardianConsentStatus.Pending);
+            (await readOnlyDb.Notifications.IgnoreQueryFilters().CountAsync(notification =>
+                notification.Type == "guardian_consent"
+                && notification.Data != null
+                && notification.Data.Contains($"\"consent_id\":{consentId}")))
+                .Should().Be(0);
+        }
+
+        var granted = await correctTenantClient.PostAsync(VerifyPath(rawToken), null);
         granted.StatusCode.Should().Be(HttpStatusCode.OK);
         var grantedBody = await ReadJsonAsync(granted);
         AssertBaseMeta(grantedBody);
@@ -183,7 +203,13 @@ public sealed class GuardianConsentLifecycleTests : IntegrationTestBase
             .Should().Be("Guardian consent has been granted successfully.");
         grantedBody.ToString().Should().NotContain(rawToken);
 
-        var retry = await correctTenantClient.GetAsync(VerifyPath(rawToken));
+        var completedLookup = await correctTenantClient.GetAsync(VerifyPath(rawToken));
+        completedLookup.StatusCode.Should().Be(HttpStatusCode.OK);
+        var completedBody = await ReadJsonAsync(completedLookup);
+        completedBody.GetProperty("data").GetProperty("status").GetString().Should().Be("active");
+        completedBody.GetProperty("data").GetProperty("valid").GetBoolean().Should().BeFalse();
+
+        var retry = await correctTenantClient.PostAsync(VerifyPath(rawToken), null);
         await AssertErrorAsync(retry, HttpStatusCode.BadRequest, "INVALID_TOKEN");
 
         using var verify = Factory.Services.CreateScope();
@@ -221,8 +247,8 @@ public sealed class GuardianConsentLifecycleTests : IntegrationTestBase
         using var firstClient = AnonymousTenantClient(TestData.Tenant1.Id);
         using var secondClient = AnonymousTenantClient(TestData.Tenant1.Id);
         var responses = await Task.WhenAll(
-            firstClient.GetAsync(VerifyPath(rawToken)),
-            secondClient.GetAsync(VerifyPath(rawToken)));
+            firstClient.PostAsync(VerifyPath(rawToken), null),
+            secondClient.PostAsync(VerifyPath(rawToken), null));
 
         responses.Select(response => response.StatusCode).Should().BeEquivalentTo(
             new[] { HttpStatusCode.OK, HttpStatusCode.BadRequest });
