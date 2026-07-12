@@ -326,12 +326,20 @@ function opportunityRedirect(id, status) {
   return `/volunteering/opportunities/${id}?status=${encodeURIComponent(status)}`;
 }
 
-function accessibilityStatus(status) {
+function accessibilityStatus(status, t = null) {
   if (status === 'accessibility-saved') {
-    return { type: 'success', message: 'Your accessibility needs have been saved.' };
+    return {
+      type: 'success',
+      message: t ? t('govuk_alpha.volunteering.accessibility_saved') : 'Your accessibility needs have been saved.'
+    };
   }
   if (status === 'accessibility-failed') {
-    return { type: 'error', message: 'Your accessibility needs could not be saved. Try again.' };
+    return {
+      type: 'error',
+      message: t
+        ? t('govuk_alpha.volunteering.accessibility_failed')
+        : 'Your accessibility needs could not be saved. Try again.'
+    };
   }
   return null;
 }
@@ -1805,12 +1813,15 @@ router.get('/accessibility', asyncRoute(async (req, res) => {
 
   const accessibility = accessibilityPayload(collectionFrom(await callApi(token, 'GET', '/accessibility-needs')));
   return res.render('volunteering/accessibility', {
-    title: 'Your accessibility needs',
+    title: res.locals.t('govuk_alpha.volunteering.accessibility_title'),
     activeNav: 'volunteering',
-    needTypes: ACCESSIBILITY_NEED_TYPES,
+    needTypes: ACCESSIBILITY_NEED_TYPES.map((type) => ({
+      ...type,
+      label: res.locals.t(`govuk_alpha.volunteering.need_type_labels.${type.value}`)
+    })),
     selectedTypes: accessibility.selectedTypes,
     accessibility: accessibility.details,
-    status: accessibilityStatus(trimmed(req.query.status)),
+    status: accessibilityStatus(trimmed(req.query.status), res.locals.t),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { redirectOn401: loginRedirect() }));
