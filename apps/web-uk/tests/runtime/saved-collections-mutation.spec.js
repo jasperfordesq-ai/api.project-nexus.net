@@ -4,6 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 const { test, expect } = require('@playwright/test');
+const AxeBuilder = require('@axe-core/playwright').default;
 const { resolveOptions } = require('../../scripts/laravel-runtime-smoke');
 const {
   getBookmarks,
@@ -30,6 +31,20 @@ function bookmarkPair(row) {
   const rawType = String(row?.bookmarkable_type ?? row?.bookmarkableType ?? '').split('\\').pop().toLowerCase();
   const id = Number(row?.bookmarkable_id ?? row?.bookmarkableId);
   return `${rawType}:${id}`;
+}
+
+async function expectAccessibleReflow(page) {
+  await expect(page.locator('main')).toHaveCount(1);
+  await expect(page.locator('h1')).toHaveCount(1);
+  const duplicateIds = await page.locator('[id]').evaluateAll(elements => {
+    const ids = elements.map(element => element.id).filter(Boolean);
+    return [...new Set(ids.filter((id, index) => ids.indexOf(id) !== index))];
+  });
+  expect(duplicateIds).toEqual([]);
+  const dimensions = await page.evaluate(() => ({ viewport: document.documentElement.clientWidth, content: document.documentElement.scrollWidth }));
+  expect(dimensions.content).toBeLessThanOrEqual(dimensions.viewport);
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(results.violations.filter(({ impact }) => impact === 'serious' || impact === 'critical')).toEqual([]);
 }
 
 async function openCollections(page, status = '') {
@@ -109,6 +124,7 @@ test('creates, updates, and deletes a disposable saved collection', async ({ pag
 
   console.log(`Disposable collection fixture: ${createdName}`);
 
+  await page.setViewportSize({ width: 320, height: 640 });
   await authenticate(page);
   const recoveryNames = JSON.parse(process.env.WEB_UK_SAVED_COLLECTION_RECOVERY_NAMES || '[]');
   await cleanupNamedCollections(page, recoveryNames);
@@ -137,6 +153,7 @@ test('creates, updates, and deletes a disposable saved collection', async ({ pag
     await expect(page.locator('.govuk-notification-banner')).toContainText('Collection created.');
     collectionPath = collectionPath || await collectionPathByName(page, [createdName]);
     expect(collectionPath).toMatch(/\/me\/collections\/\d+$/);
+    await expectAccessibleReflow(page);
 
     await page.goto(collectionPath, { waitUntil: 'domcontentloaded' });
     await page.locator('details.govuk-details').evaluate((details) => { details.open = true; });
@@ -155,6 +172,7 @@ test('creates, updates, and deletes a disposable saved collection', async ({ pag
 
     await expect(page.locator('h1')).toContainText(updatedName);
     await expect(page.locator('.govuk-notification-banner')).toContainText('Collection updated.');
+    await expectAccessibleReflow(page);
 
     const auth = await login(smoke.email, smoke.password, smoke.tenant);
     const token = auth.access_token;
@@ -206,6 +224,7 @@ test('creates, updates, and deletes a disposable saved collection', async ({ pag
       per_page: 20
     }));
     expect(remainingItems.some((row) => Number(row?.id) === savedItemId)).toBe(false);
+    await expectAccessibleReflow(page);
 
     await page.locator('details.govuk-details').evaluate((details) => { details.open = true; });
     const deleteResponse = await submitPost(
@@ -219,6 +238,7 @@ test('creates, updates, and deletes a disposable saved collection', async ({ pag
 
     await expect(page.locator('.govuk-notification-banner')).toContainText('Collection deleted.');
     await expect(page.getByRole('link', { name: updatedName, exact: true })).toHaveCount(0);
+    await expectAccessibleReflow(page);
     deleted = true;
   } finally {
     if (!deleted) {
