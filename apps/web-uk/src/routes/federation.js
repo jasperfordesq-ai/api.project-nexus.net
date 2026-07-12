@@ -177,6 +177,7 @@ function normalizeMember(member, options = {}) {
     tenantName: trimmed((member && member.tenant_name) || timebank.name),
     messagingEnabled: bool(member && member.messaging_enabled),
     transactionsEnabled: bool(member && member.transactions_enabled),
+    showReviews: bool(member && member.show_reviews),
     reputationScore,
     reputationScoreLabel: formatNumber(reputationScore ?? 0, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
     reputationCount,
@@ -191,16 +192,20 @@ function normalizeMember(member, options = {}) {
   };
 }
 
-function normalizeReview(review) {
+function normalizeReview(review, options = {}) {
+  const t = typeof options.t === 'function' ? options.t : (key) => key;
+  const formatDate = typeof options.formatDate === 'function' ? options.formatDate : (value) => value;
   const reviewer = asObject(review && review.reviewer);
   const partner = asObject(review && review.partner);
+  const createdAt = review && review.created_at ? review.created_at : '';
 
   return {
     id: review && review.id,
     rating: numberOrZero(review && review.rating),
     comment: trimmed(review && review.comment),
-    createdAt: review && review.created_at ? review.created_at : '',
-    reviewerName: trimmed((review && review.reviewer_name) || reviewer.name) || 'Anonymous',
+    createdAt,
+    createdAtLabel: createdAt ? formatDate(createdAt, { day: 'numeric', month: 'long', year: 'numeric' }) : '',
+    reviewerName: trimmed((review && review.reviewer_name) || reviewer.name) || t('fed2.reviews.anonymous'),
     partnerName: trimmed((review && review.partner_name) || partner.name),
     verified: bool(review && review.verified)
   };
@@ -1466,10 +1471,13 @@ router.get('/members/:id', asyncRoute(async (req, res) => {
   const settings = asObject(settingsData.settings);
   let reviews = [];
 
-  if (member.reputationCount > 0) {
+  if (member.showReviews) {
     try {
       const reviewsResult = await callFederationApi(token, 'GET', `/members/${id}/reviews${tenantQuery}`);
-      reviews = asList(dataFrom(reviewsResult)).map(normalizeReview);
+      reviews = asList(dataFrom(reviewsResult)).map((review) => normalizeReview(review, {
+        t: res.locals.t,
+        formatDate: res.locals.formatLocaleDate
+      }));
     } catch (error) {
       if (!(error instanceof ApiError && [403, 404].includes(error.status))) {
         throw error;

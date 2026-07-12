@@ -4391,6 +4391,7 @@ describe('shared accessible frontend shell', () => {
             tenant_name: 'North Timebank',
             messaging_enabled: true,
             transactions_enabled: true,
+            show_reviews: true,
             reputation_score: 4.7,
             reputation_count: 3,
             connection_status: { status: 'none', connection_id: null }
@@ -4459,14 +4460,67 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('action="/federation/connections"');
     expect(response.text).toContain('name="receiver_id" value="77"');
     expect(response.text).toContain('name="receiver_tenant_id" value="12"');
+    expect(response.text).toContain('id="fed-actions-heading"');
+    expect(response.text).toContain('Connect and exchange');
+    expect(response.text).toContain('id="connect-message" name="message" type="text" maxlength="1000" aria-describedby="connect-message-hint"');
     expect(response.text).toContain('action="/federation/messages"');
+    expect(response.text).toContain('id="message-subject" name="subject" type="text" maxlength="255"');
+    expect(response.text).toContain('id="message-body" name="body" rows="4" maxlength="10000"');
     expect(response.text).toContain('href="/federation/members/77/transfer?tenant_id=12"');
+    expect(response.text).toContain('href="/federation/members/77?tenant_id=12"');
     expect(response.text).toContain('Mira Cole');
-    expect(response.text).toContain('Rating: 5');
+    expect(response.text).toContain('5 out of 5');
+    expect(response.text).toContain('Reviewed: 15 June 2026');
     expect(response.text).toContain('Avery was careful and generous with time.');
     expect(response.text).toContain('From North Timebank');
     expect(response.text).toContain('Verified');
     expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('matches Blade when Federation member and viewer action permissions differ', async () => {
+    const api = require('../src/lib/api');
+    let memberCapabilities = { messaging_enabled: true, transactions_enabled: true };
+    let viewerCapabilities = { messaging_enabled_federated: false, transactions_enabled_federated: false };
+
+    api.callFederationApi.mockImplementation(async (token, method, pathValue) => {
+      if (pathValue === '/members/77?tenant_id=12') {
+        return {
+          data: {
+            id: 77,
+            name: 'Avery Stone',
+            tenant_id: 12,
+            tenant_name: 'North Timebank',
+            connection_status: { status: 'accepted' },
+            ...memberCapabilities
+          }
+        };
+      }
+      if (pathValue === '/settings') {
+        return { data: { enabled: true, settings: { federation_optin: true, ...viewerCapabilities } } };
+      }
+      if (pathValue === '/members/77/reviews?tenant_id=12') return { data: [] };
+      return { data: {} };
+    });
+
+    const viewerDisabled = await request(app)
+      .get('/federation/members/77?tenant_id=12')
+      .set('Cookie', signedCookieHeader());
+
+    expect(viewerDisabled.status).toBe(200);
+    expect(api.callFederationApi).not.toHaveBeenCalledWith('test-token', 'GET', '/members/77/reviews?tenant_id=12');
+    expect(viewerDisabled.text).not.toContain('action="/federation/messages"');
+    expect(viewerDisabled.text).not.toContain('This member is not accepting federated messages.');
+    expect(viewerDisabled.text).not.toContain('/federation/members/77/transfer?tenant_id=12');
+    expect(viewerDisabled.text).not.toContain('This member is not accepting federated time credits.');
+
+    memberCapabilities = { messaging_enabled: false, transactions_enabled: false };
+    viewerCapabilities = { messaging_enabled_federated: true, transactions_enabled_federated: true };
+    const memberDisabled = await request(app)
+      .get('/federation/members/77?tenant_id=12')
+      .set('Cookie', signedCookieHeader());
+
+    expect(memberDisabled.text).toContain('This member is not accepting federated messages.');
+    expect(memberDisabled.text).toContain('This member is not accepting federated time credits.');
   });
 
   it('renders the Laravel-backed Federation transfer confirmation page', async () => {
