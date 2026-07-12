@@ -110,6 +110,7 @@ describe('ASP.NET readiness audit', () => {
     });
 
     expect(report.ready).toBe(true);
+    expect(report.runtimeAssessment).toEqual(expect.objectContaining({ status: 'compatible' }));
     expect(fetchImpl).toHaveBeenNthCalledWith(
       2,
       'http://aspnet.example.test/api/v2/tenant/bootstrap?slug=hour-timebank',
@@ -125,13 +126,16 @@ describe('ASP.NET readiness audit', () => {
   it('reports the tenant contract as blocked without hiding a healthy process', async () => {
     const fetchImpl = jest.fn()
       .mockResolvedValueOnce({ status: 200, text: async () => '{"status":"healthy"}' })
-      .mockResolvedValueOnce({ status: 400, text: async () => '{"error":"Tenant context required"}' })
-      .mockResolvedValueOnce({ status: 400, text: async () => '{"error":"Tenant context required"}' });
+      .mockResolvedValueOnce({ status: 400, text: async () => '{"error":"Tenant context required","message":"X-Tenant-ID header is required for this endpoint"}' })
+      .mockResolvedValueOnce({ status: 400, text: async () => '{"error":"Tenant context required","message":"X-Tenant-ID header is required for this endpoint"}' });
     const { runAspNetReadinessAudit } = require('../scripts/aspnet-readiness-audit');
 
     const report = await runAspNetReadinessAudit({ fetchImpl, baseUrl: 'http://aspnet.example.test' });
 
     expect(report.ready).toBe(false);
+    expect(report.runtimeAssessment).toEqual(expect.objectContaining({
+      status: 'stale-tenant-middleware'
+    }));
     expect(report.checks).toEqual(expect.arrayContaining([
       expect.objectContaining({ name: 'health', ok: true, actualStatus: 200 }),
       expect.objectContaining({ name: 'tenant-bootstrap-by-slug', ok: false, actualStatus: 400 }),

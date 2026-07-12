@@ -87,11 +87,35 @@ async function runAspNetReadinessAudit(options = {}) {
     })
   ]);
 
+  const ready = checks.every((item) => item.ok);
+  const health = checks.find((item) => item.name === 'health');
+  const tenantChecks = checks.filter((item) => item.name !== 'health');
+  const requiresLegacyTenantId = tenantChecks.length > 0
+    && tenantChecks.every((item) => item.actualStatus === 400)
+    && tenantChecks.some((item) => /X-Tenant-ID header is required/i.test(item.body || ''));
+  const runtimeAssessment = ready
+    ? {
+      status: 'compatible',
+      detail: 'The running ASP.NET backend satisfies the public slug-first bootstrap contract.'
+    }
+    : health?.ok && requiresLegacyTenantId
+      ? {
+        status: 'stale-tenant-middleware',
+        detail: 'The process is healthy but still requires legacy X-Tenant-ID routing on public v2 endpoints. Rebuild or replace the local runtime from current source before retrying.'
+      }
+      : {
+        status: health?.ok ? 'contract-incomplete' : 'backend-unavailable',
+        detail: health?.ok
+          ? 'The process is healthy but one or more public ASP.NET compatibility contracts are incomplete.'
+          : 'The ASP.NET health endpoint is unavailable.'
+      };
+
   return {
     target: 'aspnet',
     baseUrl,
     tenant,
-    ready: checks.every((item) => item.ok),
+    ready,
+    runtimeAssessment,
     checks
   };
 }

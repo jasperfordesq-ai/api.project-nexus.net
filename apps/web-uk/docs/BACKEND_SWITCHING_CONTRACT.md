@@ -1110,6 +1110,12 @@ Before switching backends, every certified route family needs proof for:
 - Localization: locale selection, RTL, translated labels, and validation copy.
 - Realtime or async status: messages, notifications, and unread-count behavior.
 
+`npm run audit:aspnet:readiness` fails closed and now distinguishes a healthy
+but stale runtime (`stale-tenant-middleware`, where public v2 calls still demand
+`X-Tenant-ID`) from an unavailable process or a broader incomplete contract.
+This diagnostic does not permit a Web UK fallback; rebuild the ASP.NET runtime
+from compatible source and rerun the slug-first checks.
+
 Use `docs/generated/accessible-route-matrix.csv` as the route-by-route backlog
 seed before certifying any family. It is refreshed with `npm run route:matrix`
 and records Laravel route names, handlers, inferred Blade views, feature/module
