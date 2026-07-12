@@ -561,7 +561,7 @@ describe('tenant-aware template helper conversion', () => {
 
     expect(donations).toContain("urlFor('/volunteering/donations#donate')");
     expect(myOrganisations).toContain("urlFor('/volunteering?tab=organisations')");
-    expect(emergencyAlerts).toContain('urlFor(dashboard.nextHref)');
+    expect(emergencyAlerts).not.toContain('dashboard.nextHref');
     expect(myOrganisations).toContain('urlFor(nextHref)');
     expect(orgVolunteers).toContain('urlFor(nextHref)');
   });
@@ -606,7 +606,7 @@ describe('tenant-aware template helper conversion', () => {
       'utf8'
     );
 
-    expect(emergencyAlerts).toMatch(/<span class="govuk-visually-hidden">Warning<\/span>\r?\n\s+Accepting commits/);
+    expect(emergencyAlerts).toMatch(/<span class="govuk-visually-hidden">{{ t\("states\.warning_prefix"\) }}<\/span>\r?\n\s+{{ t\("govuk_alpha_volunteering\.emergency\.accept_warning"\) }}/);
     expect(groupSignups).toMatch(/<span class="govuk-visually-hidden">Warning<\/span>\r?\n\s+Cancelling releases/);
     expect(emergencyAlerts).toContain('<h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>');
     expect(groupSignups).toContain('<h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>');

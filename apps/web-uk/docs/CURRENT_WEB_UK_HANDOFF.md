@@ -5248,6 +5248,20 @@ no serious/critical axe findings. It is a focused case, not a new full-browser
 aggregate claim. Live owner-role variations, the remaining owner pages, manual
 assistive-technology review, and ASP.NET compatibility remain open.
 
+## 2026-07-12 Default-English Emergency Alert Parity
+
+Emergency alerts now match Blade's catalog-backed default-English title,
+description, labels, priorities, warning, actions, response states, empty state,
+and safeguarding error outcomes. The Web UK-only cursor control was removed
+because the Blade page does not expose pagination. Focused render/action/error
+proof passed, including policy-unavailable mapping. No live response was sent
+because it changes shared alert state and may notify a coordinator.
+
+The full aggregate passed `45/45` suites and `1,456/1,456` tests; lint and the
+285-template zero-match localization audit also passed. Safe disposable live
+fixtures, manual assistive-technology review, and ASP.NET compatibility remain
+open.
+
 ## Final Handoff Checklist
 
 Before leaving this job for another agent, write a short note containing:

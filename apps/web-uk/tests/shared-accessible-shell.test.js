@@ -26872,8 +26872,16 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Delivery driver');
     expect(response.text).toContain('Urgent');
     expect(response.text).toContain('You declined this request');
-    expect(response.text).toContain('href="/volunteering/emergency-alerts?cursor=older-alerts"');
+    expect(response.text).not.toContain('href="/volunteering/emergency-alerts?cursor=older-alerts"');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
+
+    api.callVolunteeringApi.mockResolvedValueOnce({ data: { alerts: [] } });
+    const unavailable = await request(app)
+      .get('/volunteering/emergency-alerts?status=alert-safeguarding-unavailable')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    expect(unavailable.status).toBe(200);
+    expect(unavailable.text).toContain('We cannot confirm the community safeguarding policy right now.');
+    expect(unavailable.text).toContain('There are no urgent shift requests for you right now.');
   });
 
   it('renders the Laravel volunteering group sign-ups page for signed-in members', async () => {
@@ -27777,6 +27785,18 @@ describe('shared accessible frontend shell', () => {
       .send({ _csrf: csrfMatch[1], response: 'declined' });
     expect(emergencyResponse.headers.location).toBe('/volunteering/emergency-alerts?status=alert-declined');
     expect(api.callVolunteeringApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/emergency-alerts/9', { response: 'declined' });
+
+    api.callVolunteeringApi.mockRejectedValueOnce(new api.ApiError(
+      'Safeguarding policy unavailable',
+      503,
+      { errors: [{ code: 'SAFEGUARDING_POLICY_UNAVAILABLE' }] }
+    ));
+    const emergencyUnavailableResponse = await agent
+      .post('/volunteering/emergency-alerts/9/respond')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], response: 'accepted' });
+    expect(emergencyUnavailableResponse.headers.location).toBe('/volunteering/emergency-alerts?status=alert-safeguarding-unavailable');
 
     const deleteCredentialResponse = await agent
       .post('/volunteering/credentials/44/delete')

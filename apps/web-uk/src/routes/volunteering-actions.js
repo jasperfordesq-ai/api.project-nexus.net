@@ -449,7 +449,7 @@ function donationStatus(status, donateError = '') {
   return null;
 }
 
-function emergencyAlertStatus(status) {
+function emergencyAlertStatus(status, t = null) {
   const messages = {
     'alert-accepted': {
       type: 'success',
@@ -462,9 +462,37 @@ function emergencyAlertStatus(status) {
     'alert-respond-failed': {
       type: 'error',
       message: 'Your response could not be recorded. The request may have been filled or expired.'
+    },
+    'alert-safeguarding-restricted': {
+      type: 'error',
+      message: 'This member has asked for a coordinator to arrange contact on their behalf. Your message has not been sent. Please contact your broker or community administrator so they can help arrange the next safe step.'
+    },
+    'alert-safeguarding-unavailable': {
+      type: 'error',
+      message: 'We cannot confirm the community safeguarding policy right now. No message has been sent. Please try again shortly.'
     }
   };
-  return messages[status] || null;
+  const config = messages[status] || null;
+  const key = {
+    'alert-accepted': 'govuk_alpha_volunteering.emergency.alert_accepted',
+    'alert-declined': 'govuk_alpha_volunteering.emergency.alert_declined',
+    'alert-respond-failed': 'govuk_alpha_volunteering.emergency.alert_respond_failed',
+    'alert-safeguarding-restricted': 'safeguarding.errors.contact_restricted',
+    'alert-safeguarding-unavailable': 'safeguarding.errors.policy_unavailable'
+  }[status];
+  if (key && typeof t === 'function') {
+    const translated = t(key);
+    return {
+      type: ['alert-accepted', 'alert-declined'].includes(status) ? 'success' : 'error',
+      message: translated !== key ? translated : config.message
+    };
+  }
+  return config;
+}
+
+function apiErrorCode(error) {
+  const firstError = Array.isArray(error?.data?.errors) ? error.data.errors[0] : null;
+  return trimmed(firstError?.code ?? error?.data?.code).toUpperCase();
 }
 
 function groupSignupStatus(status) {
@@ -983,16 +1011,18 @@ function alertRowsFrom(result) {
   return [];
 }
 
-function alertPriorityPresentation(value) {
+function alertPriorityPresentation(value, t = null) {
   const priority = trimmed(value) || 'urgent';
   return {
     value: priority,
-    label: ALERT_PRIORITY_LABELS[priority] || headline(priority) || 'Urgent',
+    label: typeof t === 'function'
+      ? t(`govuk_alpha_volunteering.emergency.priority_${['normal', 'urgent', 'critical'].includes(priority) ? priority : 'urgent'}`)
+      : (ALERT_PRIORITY_LABELS[priority] || headline(priority) || 'Urgent'),
     className: ALERT_PRIORITY_CLASSES[priority] || 'govuk-tag--grey'
   };
 }
 
-function normalizeEmergencyAlert(row) {
+function normalizeEmergencyAlert(row, t = null) {
   const alert = row && typeof row === 'object' ? row : {};
   const shift = alert.shift && typeof alert.shift === 'object' ? alert.shift : {};
   const opportunity = alert.opportunity && typeof alert.opportunity === 'object' ? alert.opportunity : {};
@@ -1003,27 +1033,27 @@ function normalizeEmergencyAlert(row) {
 
   return {
     id: positiveInteger(alert.id),
-    priority: alertPriorityPresentation(alert.priority),
+    priority: alertPriorityPresentation(alert.priority, t),
     message: trimmed(alert.message),
     myResponse: trimmed(alert.my_response ?? alert.myResponse) || 'pending',
     skills: stringArray(alert.required_skills ?? alert.requiredSkills).join(', '),
     expiresAtLabel: dateTimeLabel(alert.expires_at ?? alert.expiresAt),
-    opportunityTitle: trimmed(opportunity.title) || 'Volunteering opportunity',
+    opportunityTitle: trimmed(opportunity.title) || (typeof t === 'function' ? t('volunteering.detail_title') : 'Volunteering opportunity'),
     location: trimmed(opportunity.location),
     organizationName: trimmed(organization.name),
     coordinatorName: trimmed(coordinator.name),
-    shiftLabel: startLabel && endLabel ? `${startLabel} - ${endLabel}` : startLabel
+    shiftLabel: startLabel && endLabel ? `${startLabel} – ${endLabel}` : startLabel
   };
 }
 
-function normalizeEmergencyAlertDashboard(result) {
+function normalizeEmergencyAlertDashboard(result, t = null) {
   const data = dataFrom(result);
   const meta = data && typeof data === 'object' ? data : {};
   const nextCursor = trimmed(meta.cursor ?? meta.next_cursor ?? meta.nextCursor);
   const hasMore = Boolean(meta.has_more ?? meta.hasMore);
 
   return {
-    alerts: alertRowsFrom(result).map(normalizeEmergencyAlert).filter((alert) => alert.id),
+    alerts: alertRowsFrom(result).map((alert) => normalizeEmergencyAlert(alert, t)).filter((alert) => alert.id),
     nextHref: hasMore && nextCursor ? `/volunteering/emergency-alerts?cursor=${encodeURIComponent(nextCursor)}` : ''
   };
 }
@@ -1770,18 +1800,18 @@ router.get('/emergency-alerts', asyncRoute(async (req, res) => {
   const cursor = trimmed(req.query.cursor, 512);
   try {
     const path = cursor ? `/emergency-alerts?cursor=${encodeURIComponent(cursor)}` : '/emergency-alerts';
-    dashboard = normalizeEmergencyAlertDashboard(await callApi(token, 'GET', path));
+    dashboard = normalizeEmergencyAlertDashboard(await callApi(token, 'GET', path), res.locals.t);
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
     loadError = 'We could not load your urgent shift requests. Please try again.';
   }
 
   return res.render('volunteering/emergency-alerts', {
-    title: 'Urgent shift requests',
+    title: res.locals.t('govuk_alpha_volunteering.emergency.title'),
     activeNav: 'volunteering',
     dashboard,
     loadError,
-    status: emergencyAlertStatus(trimmed(req.query.status)),
+    status: emergencyAlertStatus(trimmed(req.query.status), res.locals.t),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { redirectOn401: loginRedirect() }));
@@ -2538,16 +2568,22 @@ router.post('/emergency-alerts/:id(\\d+)/respond', asyncRoute(async (req, res) =
   const id = Number(req.params.id);
   const response = trimmed(req.body.response) === 'declined' ? 'declined' : 'accepted';
   const status = response === 'accepted' ? 'alert-accepted' : 'alert-declined';
+  const token = tokenFrom(req);
+  if (!token) return redirectTo(res, loginRedirect());
 
-  return runAction(
-    req,
-    res,
-    'PUT',
-    `/emergency-alerts/${id}`,
-    { response },
-    `/volunteering/emergency-alerts?status=${status}`,
-    '/volunteering/emergency-alerts?status=alert-respond-failed'
-  );
+  try {
+    await callApi(token, 'PUT', `/emergency-alerts/${id}`, { response });
+    return redirectTo(res, `/volunteering/emergency-alerts?status=${status}`);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    const code = apiErrorCode(error);
+    const failureStatus = code === 'SAFEGUARDING_POLICY_UNAVAILABLE'
+      ? 'alert-safeguarding-unavailable'
+      : (['SAFEGUARDING_CONTACT_RESTRICTED', 'VETTING_REQUIRED'].includes(code)
+        ? 'alert-safeguarding-restricted'
+        : 'alert-respond-failed');
+    return redirectTo(res, `/volunteering/emergency-alerts?status=${failureStatus}`);
+  }
 }));
 
 router.post('/credentials', asyncRoute(async (req, res) => {
