@@ -1464,6 +1464,27 @@ describe('tenant-aware template helper conversion', () => {
     expect(route).not.toContain('campaign-create-failed');
   });
 
+  it('keeps the Ideation campaign detail management workflow aligned with Blade', () => {
+    const template = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', 'ideation', 'campaign-detail.njk'),
+      'utf8'
+    );
+    const route = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'routes', 'ideation-actions.js'),
+      'utf8'
+    );
+
+    expect(template).toContain('{% if ideationIsAdmin %}');
+    expect(template).toContain('govuk_alpha_ideation.campaigns.edit_heading');
+    expect(template).toContain('govuk_alpha_ideation.campaigns.unlink_aria');
+    expect(template).toContain('govuk_alpha_ideation.campaigns.delete_warning');
+    expect(template).toContain("urlFor('/ideation/campaigns/' ~ campaign.id ~ '/delete')");
+    expect(route).toContain("campaignRedirect(id, 'campaign-updated')");
+    expect(route).not.toContain('campaign-save-failed');
+    expect(route).not.toContain('campaign-delete-failed');
+    expect(route).not.toContain('challenge-unlink-failed');
+  });
+
   it('keeps group exchange tabs, links, and forms behind urlFor()', () => {
     const templates = [
       path.join('group-exchanges', 'index.njk'),

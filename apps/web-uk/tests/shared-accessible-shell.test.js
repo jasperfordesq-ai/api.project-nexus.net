@@ -17605,8 +17605,43 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('href="/ideation/7"');
     expect(response.text).toContain('Accessible benches');
     expect(response.text).toContain('1 idea');
+    expect(response.text).not.toContain('id="edit"');
+    expect(response.text).not.toContain('Unlink challenge: Add safe lighting');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
     expect(api.callIdeationApi).toHaveBeenCalledWith('test-token', 'GET', '/ideation-campaigns/5');
+  });
+
+  it('renders the Blade-equivalent campaign management controls for an ideation administrator', async () => {
+    const api = require('../src/lib/api');
+    api.getProfile.mockResolvedValue({ data: { id: 101, role: 'tenant_admin' } });
+    api.callIdeationApi.mockResolvedValueOnce({
+      data: {
+        data: {
+          id: 5,
+          title: 'Park renewal',
+          description: 'Coordinate delivery.',
+          status: 'active',
+          start_date: '2026-08-01',
+          end_date: '2026-09-30',
+          challenges: [{ id: 7, title: 'Add safe lighting', ideas_count: 4 }]
+        }
+      }
+    });
+
+    const response = await request(app)
+      .get('/ideation/campaigns/5?status=campaign-invalid')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('id="edit"');
+    expect(response.text).toContain('action="/ideation/campaigns/5"');
+    expect(response.text).toContain('value="Park renewal"');
+    expect(response.text).toContain('value="2026-08-01"');
+    expect(response.text).toContain('value="active" checked');
+    expect(response.text).toContain('Unlink challenge: Add safe lighting');
+    expect(response.text).toContain('action="/ideation/campaigns/5/delete"');
+    expect(response.text).toContain('Yes, delete this campaign');
+    expect(response.text).toContain('id="campaign_title-error"');
   });
 
   it('renders the Laravel-backed ideation challenge create form', async () => {
@@ -18260,12 +18295,16 @@ describe('shared accessible frontend shell', () => {
     expect(invalidResponse.headers.location).toBe('/ideation/campaigns?status=campaign-invalid#create');
     expect(api.callIdeationApi).not.toHaveBeenCalled();
 
+    const invalidUpdateResponse = await post('/ideation/campaigns/5', { title: '   ' });
+    expect(invalidUpdateResponse.headers.location).toBe('/ideation/campaigns/5?status=campaign-invalid#edit');
+    expect(api.callIdeationApi).not.toHaveBeenCalled();
+
     const updateResponse = await post('/ideation/campaigns/5', {
       title: ' Updated campaign ',
       description: ' Updated summary ',
       campaign_status: 'paused'
     });
-    expect(updateResponse.headers.location).toBe('/ideation/campaigns/5?status=campaign-saved');
+    expect(updateResponse.headers.location).toBe('/ideation/campaigns/5?status=campaign-updated');
     expect(api.callIdeationApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/ideation-campaigns/5', {
       title: 'Updated campaign',
       description: 'Updated summary',

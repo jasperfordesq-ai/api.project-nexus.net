@@ -486,24 +486,6 @@ function manageErrorMessage(status) {
   return messages[trimmed(status)] || '';
 }
 
-function campaignStatusMessage(status) {
-  const messages = {
-    'campaign-created': 'The campaign has been created.',
-    'campaign-updated': 'The campaign has been updated.',
-    'campaign-deleted': 'The campaign has been deleted.',
-    'challenge-unlinked': 'The challenge has been unlinked from the campaign.'
-  };
-  return messages[trimmed(status)] || '';
-}
-
-function campaignErrorMessage(status) {
-  const messages = {
-    'campaign-invalid': 'Check the campaign details and try again.',
-    'campaign-failed': 'Sorry, that action could not be completed. Please try again.'
-  };
-  return messages[trimmed(status)] || '';
-}
-
 router.get('/', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) return redirectTo(res, loginRedirect());
@@ -586,7 +568,10 @@ router.get('/campaigns/:id(\\d+)', asyncRoute(async (req, res) => {
   if (!token) return redirectTo(res, loginRedirect());
 
   const id = positiveInteger(req.params.id);
-  const result = await callIdeationApi(token, 'GET', `/ideation-campaigns/${id}`);
+  const [result, profileResult] = await Promise.all([
+    callIdeationApi(token, 'GET', `/ideation-campaigns/${id}`),
+    getRequestProfile(req, token)
+  ]);
   const campaign = normalizeCampaignDetail({ id, ...itemFrom(result) });
   const status = trimmed(req.query.status);
 
@@ -595,8 +580,7 @@ router.get('/campaigns/:id(\\d+)', asyncRoute(async (req, res) => {
     activeNav: 'explore',
     campaign,
     status,
-    successMessage: campaignStatusMessage(status),
-    errorMessage: campaignErrorMessage(status)
+    ideationIsAdmin: ideationAdministrator(profileResult)
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Ideation campaign not found' }));
 

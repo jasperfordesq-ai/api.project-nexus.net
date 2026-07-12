@@ -261,14 +261,19 @@ router.post('/campaigns/:id(\\d+)', asyncRoute(async (req, res) => {
   if (!await guardCampaignAdministrator(req, res)) return undefined;
 
   const id = Number(req.params.id);
+  const payload = campaignPayload(req.body);
+  if (payload.title === '') {
+    return redirectTo(res, `${campaignRedirect(id, 'campaign-invalid')}#edit`);
+  }
+
   return runAction(
     req,
     res,
     'PUT',
     `/ideation-campaigns/${id}`,
-    campaignPayload(req.body),
-    campaignRedirect(id, 'campaign-saved'),
-    campaignRedirect(id, 'campaign-save-failed')
+    payload,
+    campaignRedirect(id, 'campaign-updated'),
+    campaignRedirect(id, 'campaign-failed')
   );
 }));
 
@@ -284,7 +289,7 @@ router.post('/campaigns/:id(\\d+)/challenges/:challengeId(\\d+)/unlink', asyncRo
     `/ideation-campaigns/${id}/challenges/${challengeId}`,
     undefined,
     campaignRedirect(id, 'challenge-unlinked'),
-    campaignRedirect(id, 'challenge-unlink-failed')
+    campaignRedirect(id, 'campaign-failed')
   );
 }));
 
@@ -299,7 +304,7 @@ router.post('/campaigns/:id(\\d+)/delete', asyncRoute(async (req, res) => {
     `/ideation-campaigns/${id}`,
     undefined,
     ideationSubpageRedirect('campaigns', 'campaign-deleted'),
-    campaignRedirect(id, 'campaign-delete-failed')
+    campaignRedirect(id, 'campaign-failed')
   );
 }));
 
