@@ -7,36 +7,43 @@
 
 {% block beforeContent %}
   {{ super() }}
-  <a class="govuk-back-link" href="{{ urlFor('/messages') }}">Back to direct messages</a>
+  <a class="govuk-back-link" href="{{ urlFor('/messages') }}">{{ t("govuk_alpha_messages.groups.back_to_messages") }}</a>
 {% endblock %}
 
 {% block mainContent %}
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
-      {% if statusMessage %}
+      {% if groupStatus and groupStatus.type == "success" %}
         <div class="govuk-notification-banner govuk-notification-banner--success" role="alert" aria-labelledby="messages-groups-status-title">
           <div class="govuk-notification-banner__header">
-            <h2 class="govuk-notification-banner__title" id="messages-groups-status-title">{{ t("states.success_title") }}</h2>
+            <h2 class="govuk-notification-banner__title" id="messages-groups-status-title">{{ t("govuk_alpha.states.success_title") }}</h2>
           </div>
           <div class="govuk-notification-banner__content">
-            <p class="govuk-body">{{ statusMessage }}</p>
+            <p class="govuk-notification-banner__heading">{{ groupStatus.message }}</p>
+          </div>
+        </div>
+      {% elif groupStatus %}
+        <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+          <div role="alert">
+            <h2 class="govuk-error-summary__title">{{ t("govuk_alpha.states.error_title") }}</h2>
+            <div class="govuk-error-summary__body"><ul class="govuk-list govuk-error-summary__list"><li>{{ groupStatus.message }}</li></ul></div>
           </div>
         </div>
       {% endif %}
 
-      <span class="govuk-caption-l">Messages</span>
-      <h1 class="govuk-heading-xl">Group conversations</h1>
-      <p class="govuk-body-l">Talk with several members at once in a shared conversation.</p>
+      <span class="govuk-caption-l">{{ t("govuk_alpha_messages.groups.caption") }}</span>
+      <h1 class="govuk-heading-xl">{{ t("govuk_alpha_messages.groups.title") }}</h1>
+      <p class="govuk-body-l">{{ t("govuk_alpha_messages.groups.description") }}</p>
 
-      <nav class="govuk-!-margin-bottom-6" aria-label="Message views">
+      <nav class="govuk-!-margin-bottom-6" aria-label="{{ t('govuk_alpha.messages.tabs_title') }}">
         <ul class="govuk-list govuk-list--inline">
-          <li><a class="govuk-link" href="{{ urlFor('/messages') }}">Direct messages</a></li>
-          <li><a class="govuk-link govuk-!-font-weight-bold" href="{{ urlFor('/messages/groups') }}" aria-current="page">Groups</a></li>
+          <li><a class="govuk-link" href="{{ urlFor('/messages') }}">{{ t("govuk_alpha_messages.groups.tab_direct") }}</a></li>
+          <li><a class="govuk-link govuk-!-font-weight-bold" href="{{ urlFor('/messages/groups') }}" aria-current="page">{{ t("govuk_alpha_messages.groups.tab_groups") }}</a></li>
         </ul>
       </nav>
 
       <p class="govuk-body">
-        <a class="govuk-button" href="{{ urlFor('/messages/groups/new') }}">Start a group conversation</a>
+        <a class="govuk-button" href="{{ urlFor('/messages/groups/new') }}">{{ t("govuk_alpha_messages.groups.new_button") }}</a>
       </p>
 
       {% if error %}
@@ -51,35 +58,35 @@
                 <a class="govuk-link" href="{{ urlFor('/messages/groups/' + (group.id | string)) }}">{{ group.displayName }}</a>
               </h2>
               <p class="govuk-hint govuk-!-margin-bottom-2">
-                {{ group.participant_count or group.participantCount or 0 }} members
+                {{ tc("govuk_alpha_messages.groups.members_count", group.participant_count or group.participantCount or 0, { count: group.participant_count or group.participantCount or 0 }) }}
               </p>
               {% if (group.unread_count or group.unreadCount or 0) > 0 %}
                 <strong class="govuk-tag govuk-tag--blue">
-                  {{ group.unread_count or group.unreadCount }} unread messages
+                  {{ tc("govuk_alpha_messages.groups.unread_count", group.unread_count or group.unreadCount, { count: group.unread_count or group.unreadCount }) }}
                 </strong>
               {% endif %}
               {% set lastMessage = group.last_message or group.lastMessage %}
               {% if lastMessage and lastMessage.body %}
                 <p class="govuk-body govuk-!-margin-top-3">
-                  <strong>Latest:</strong>
+                  <strong>{{ t("govuk_alpha_messages.groups.last_message_label") }}:</strong>
                   {% if lastMessage.sender_name or lastMessage.senderName %}
                     {{ lastMessage.sender_name or lastMessage.senderName }}:
                   {% endif %}
                   {{ lastMessage.body }}
                 </p>
               {% else %}
-                <p class="govuk-hint govuk-!-margin-top-3">No messages yet</p>
+                <p class="govuk-hint govuk-!-margin-top-3">{{ t("govuk_alpha_messages.groups.no_messages_yet") }}</p>
               {% endif %}
               {% if lastMessage and lastMessage.created_at %}
-                <p class="govuk-hint">Sent {{ lastMessage.created_at | formatDate }}</p>
+                <p class="govuk-hint">{{ t("govuk_alpha_messages.conversation.sent_label") }} {{ lastMessage.created_at | formatDate }}</p>
               {% endif %}
             </article>
           {% endfor %}
         </div>
       {% else %}
         <div class="govuk-inset-text">
-          <h2 class="govuk-heading-m">You are not in any group conversations</h2>
-          <p class="govuk-body govuk-!-margin-bottom-0">When you start or are added to a group conversation, it will appear here.</p>
+          <h2 class="govuk-heading-m">{{ t("govuk_alpha_messages.groups.empty_title") }}</h2>
+          <p class="govuk-body govuk-!-margin-bottom-0">{{ t("govuk_alpha_messages.groups.empty_body") }}</p>
         </div>
       {% endif %}
     </div>

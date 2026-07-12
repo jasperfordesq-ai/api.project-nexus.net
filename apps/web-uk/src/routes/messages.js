@@ -162,32 +162,41 @@ function selectedGroupMemberIds(query) {
   return memberIdsFrom(query.members || query['members[]']);
 }
 
-function groupStatusMessage(status) {
-  const messages = {
-    'group-created': 'Your group conversation has been created.',
-    'group-disabled': 'Direct messaging is currently turned off, so group conversations are unavailable.',
-    'group-create-failed': 'We could not create the group. Add a name and at least two other members, then try again.',
-    'group-message-sent': 'Your message has been sent to the group.',
-    'group-message-empty': 'Enter a message before sending.',
-    'group-message-too-long': 'Your message is too long. Please shorten it and try again.',
-    'group-message-failed': 'We could not send your message.',
-    'group-message-forbidden': 'You are no longer a member of this group, so you cannot send messages.',
-    'group-member-added': 'The member has been added to the group.',
-    'group-member-removed': 'The member has been removed from the group.',
-    'group-member-invalid': 'Choose a valid member to add.',
-    'group-member-forbidden': 'Only group administrators can add or remove members.',
-    'group-member-not-found': 'That member could not be found in this community.',
-    'group-member-limit': 'This group already has the maximum number of members.',
-    'group-member-failed': 'We could not update the group members.',
-    'group-left': 'You have left the group.',
-    'group-leave-failed': 'We could not remove you from the group.',
-    'reaction-added': 'Your reaction has been added.',
-    'reaction-removed': 'Your reaction has been removed.',
-    'reaction-invalid': 'That reaction is not available.',
-    'reaction-forbidden': 'You cannot react to this message.',
-    'reaction-failed': 'We could not save your reaction.'
+const GROUP_SUCCESS_STATUSES = new Set([
+  'group-created',
+  'group-message-sent',
+  'group-member-added',
+  'group-member-removed',
+  'group-left',
+  'reaction-added',
+  'reaction-removed'
+]);
+
+const GROUP_ERROR_STATUSES = new Set([
+  'group-disabled',
+  'group-create-failed',
+  'group-message-empty',
+  'group-message-too-long',
+  'group-message-failed',
+  'group-message-forbidden',
+  'group-member-invalid',
+  'group-member-forbidden',
+  'group-member-not-found',
+  'group-member-limit',
+  'group-member-failed',
+  'group-leave-failed',
+  'reaction-invalid',
+  'reaction-forbidden',
+  'reaction-failed'
+]);
+
+function groupStatus(status, t) {
+  const value = trimmed(status);
+  if (!GROUP_SUCCESS_STATUSES.has(value) && !GROUP_ERROR_STATUSES.has(value)) return null;
+  return {
+    type: GROUP_SUCCESS_STATUSES.has(value) ? 'success' : 'error',
+    message: t(`govuk_alpha_messages.status.${value.replaceAll('-', '_')}`)
   };
-  return messages[trimmed(status)] || '';
 }
 
 function directStatusMessage(status) {
@@ -219,21 +228,25 @@ function directErrorMessage(status) {
   return messages[trimmed(status)] || '';
 }
 
-function groupName(group) {
-  return trimmed(group && (group.group_name || group.groupName || group.name)) || 'Group conversation';
+function groupName(group, t = null) {
+  return trimmed(group && (group.group_name || group.groupName || group.name))
+    || (t ? t('govuk_alpha_messages.groups.untitled') : 'Group conversation');
 }
 
-function memberName(member) {
-  return trimmed(member && (member.name || member.full_name || member.fullName)) || 'Unknown member';
+function memberName(member, t = null) {
+  return trimmed(member && (member.name || member.full_name || member.fullName))
+    || (t ? t('govuk_alpha.members.unknown_member') : 'Unknown member');
 }
 
-function senderName(message, currentUserId) {
+function senderName(message, currentUserId, t = null) {
   const senderId = positiveInteger(message && message.sender_id);
-  if (senderId !== null && currentUserId !== null && senderId === currentUserId) return 'You';
+  if (senderId !== null && currentUserId !== null && senderId === currentUserId) {
+    return t ? t('govuk_alpha_messages.conversation.sent_by_you') : 'You';
+  }
   const sender = message && message.sender && typeof message.sender === 'object' ? message.sender : {};
   return trimmed(sender.name || sender.full_name || sender.fullName)
     || trimmed(message && (message.sender_name || message.senderName))
-    || 'Unknown member';
+    || (t ? t('govuk_alpha.members.unknown_member') : 'Unknown member');
 }
 
 function conversationOtherUser(conversation, fallbackId) {
@@ -684,12 +697,12 @@ router.get('/groups', requireAuth, asyncRoute(async (req, res) => {
   }
 
   res.render('messages/groups', {
-    title: 'Group conversations',
+    title: res.locals.t('govuk_alpha_messages.groups.title'),
     groups: groups.map(group => ({
       ...group,
-      displayName: groupName(group)
+      displayName: groupName(group, res.locals.t)
     })),
-    statusMessage: groupStatusMessage(req.query.status),
+    groupStatus: groupStatus(req.query.status, res.locals.t),
     error
   });
 }));
@@ -705,7 +718,7 @@ router.get('/groups/new', requireAuth, asyncRoute(async (req, res) => {
     rawSearchResults = listFrom(dataFrom(result))
       .map(member => ({
         ...member,
-        displayName: memberName(member),
+        displayName: memberName(member, res.locals.t),
         id: positiveInteger(member.id)
       }))
       .filter(member => member.id !== null);
@@ -714,14 +727,14 @@ router.get('/groups/new', requireAuth, asyncRoute(async (req, res) => {
   const namedSelected = new Map(rawSearchResults.map(member => [member.id, member.displayName]));
 
   res.render('messages/group-create', {
-    title: 'Start a group conversation',
+    title: res.locals.t('govuk_alpha_messages.create.title'),
     query,
     groupName: trimmed(req.query.name, 100),
     selectedIds,
-    selectedMembers: selectedIds.map(id => ({ id, displayName: namedSelected.get(id) || `Member ${id}` })),
+    selectedMembers: selectedIds.map(id => ({ id, displayName: namedSelected.get(id) || res.locals.t('govuk_alpha.members.unknown_member') })),
     searchResults,
     canCreate: selectedIds.length >= 2,
-    statusMessage: groupStatusMessage(req.query.status),
+    groupStatus: groupStatus(req.query.status, res.locals.t),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }));
@@ -737,29 +750,29 @@ router.get('/groups/:conversationId(\\d+)', requireAuth, asyncRoute(async (req, 
   const profile = dataFrom(profileResult);
   const currentUserId = positiveInteger(profile && profile.id);
   const meta = (messagesResult && messagesResult.meta) || {};
-  const conversation = meta.conversation || { id: conversationId, group_name: 'Group conversation' };
+  const conversation = meta.conversation || { id: conversationId };
   const participants = listFrom(dataFrom(participantsResult)).map(member => ({
     ...member,
     id: positiveInteger(member.id),
-    displayName: memberName(member)
+    displayName: memberName(member, res.locals.t)
   }));
   const viewer = participants.find(member => member.id !== null && member.id === currentUserId);
   const viewerRole = trimmed(viewer && viewer.role) || 'member';
   const searchQuery = trimmed(req.query.q);
   const messages = listFrom(dataFrom(messagesResult)).map(message => ({
     ...message,
-    displaySenderName: senderName(message, currentUserId)
+    displaySenderName: senderName(message, currentUserId, res.locals.t)
   }));
   const visibleMessages = searchQuery
     ? messages.filter(message => String(message.body || message.content || '').toLowerCase().includes(searchQuery.toLowerCase()))
     : messages;
 
   res.render('messages/group-conversation', {
-    title: groupName(conversation),
+    title: groupName(conversation, res.locals.t),
     conversation: {
       ...conversation,
       id: conversationId,
-      displayName: groupName(conversation)
+      displayName: groupName(conversation, res.locals.t)
     },
     messages: visibleMessages,
     participants,
@@ -773,7 +786,7 @@ router.get('/groups/:conversationId(\\d+)', requireAuth, asyncRoute(async (req, 
       cursor: meta.cursor || ''
     },
     reactionEmojis: ['\u{1F44D}', '\u2764\uFE0F', '\u{1F602}', '\u{1F62E}', '\u{1F622}', '\u{1F64F}'],
-    statusMessage: groupStatusMessage(req.query.status),
+    groupStatus: groupStatus(req.query.status, res.locals.t),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { notFoundTitle: 'Group conversation not found' }));

@@ -22980,6 +22980,21 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Create group conversation');
   });
 
+  it('renders Laravel group-message failures as error summaries', async () => {
+    const api = require('../src/lib/api');
+    api.callConversationApi.mockResolvedValueOnce({ data: [] });
+
+    const response = await request(app)
+      .get('/messages/groups?status=group-create-failed')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('class="govuk-error-summary"');
+    expect(response.text).toContain('There is a problem');
+    expect(response.text).toContain('We could not create the group. Add a name and at least two other members, then try again.');
+    expect(response.text).not.toContain('govuk-notification-banner--success');
+  });
+
   it('renders the Laravel group conversation detail for signed-in members', async () => {
     const api = require('../src/lib/api');
     api.getProfile.mockResolvedValueOnce({ data: { id: 101, name: 'Avery Stone' } });

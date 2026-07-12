@@ -5522,6 +5522,20 @@ Focused render/source proof passed. Full Jest remains `45/45` suites and
 Publish/moderation, live subscribe behavior, tenant author gates, manual
 assistive-technology depth, and ASP.NET compatibility remain open.
 
+## 2026-07-12 Default-English Group Message Parity
+
+The group list, no-JavaScript create/search form, and conversation/manage
+surface now use Laravel's `govuk_alpha_messages` catalog for fixed copy,
+plurals, member and sender fallbacks, accessible reaction labels, and
+destructive warnings. Group failures now render Blade-style error summaries
+instead of being announced as successful outcomes.
+
+Focused render/source coverage passed 5/5. Full Jest passed `45/45` suites and
+`1,460/1,460` tests with green lint and the 285-template zero-match audit.
+Restriction/feature-gate depth, live group mutation effects, exact relative
+dates, direct-conversation contextual localization, manual assistive-technology
+review, and ASP.NET compatibility remain open.
+
 ## Final Handoff Checklist
 
 Before leaving this job for another agent, write a short note containing:

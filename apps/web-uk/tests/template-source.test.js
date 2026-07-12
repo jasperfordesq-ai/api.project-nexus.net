@@ -1514,6 +1514,23 @@ describe('tenant-aware template helper conversion', () => {
     expect(source).toMatch(/urlFor\(["']\/listings/);
   });
 
+  it('keeps group-message fixed copy on the Laravel catalog', () => {
+    const source = [
+      path.join('messages', 'groups.njk'),
+      path.join('messages', 'group-create.njk'),
+      path.join('messages', 'group-conversation.njk')
+    ].map((templatePath) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', templatePath),
+      'utf8'
+    )).join('\n');
+
+    expect(source).toContain('govuk_alpha_messages.groups.title');
+    expect(source).toContain('govuk_alpha_messages.create.title');
+    expect(source).toContain('govuk_alpha_messages.conversation.members_heading');
+    expect(source).toContain('govuk_alpha_messages.manage.leave_warning');
+    expect(source).not.toMatch(/>Back to group conversations<|>Start a group conversation<|>Manage members<|>Leave this group<|>React to this message</);
+  });
+
   it('keeps message route redirects behind the active tenant URL helper', () => {
     const route = fs.readFileSync(
       path.join(__dirname, '..', 'src', 'routes', 'messages.js'),
