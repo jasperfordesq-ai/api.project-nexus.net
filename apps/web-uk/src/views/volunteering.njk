@@ -176,8 +176,11 @@
       </div>
 
       <div class="govuk-form-group">
-        <label class="govuk-label" for="category_id">Category</label>
-        <input class="govuk-input govuk-input--width-10" id="category_id" name="category_id" inputmode="numeric" value="{{ categoryId }}">
+        <label class="govuk-label" for="category_id">{{ t("volunteering.category_label") }}</label>
+        <select class="govuk-select" id="category_id" name="category_id">
+          <option value="">{{ t("volunteering.all_categories") }}</option>
+          {% for category in categories %}<option value="{{ category.id }}"{% if categoryId == (category.id | string) %} selected{% endif %}>{{ category.name }}</option>{% endfor %}
+        </select>
       </div>
 
       <div class="govuk-form-group">
@@ -190,23 +193,17 @@
       </div>
 
       <div class="govuk-button-group">
-        <button class="govuk-button" data-module="govuk-button" type="submit">Search</button>
+        <button class="govuk-button" data-module="govuk-button" type="submit">{{ t("actions.search") }}</button>
         {% if volunteeringQuery or categoryId or isRemote %}
-          <a class="govuk-link" href="{{ urlFor('/volunteering') }}">Clear filters</a>
+          <a class="govuk-link" href="{{ urlFor('/volunteering') }}">{{ t("actions.clear_filters") }}</a>
         {% endif %}
       </div>
     </fieldset>
   </form>
 
-  <h2 class="govuk-heading-l">Opportunities</h2>
+  <h2 class="govuk-heading-l">{{ t("volunteering.results_title") }}</h2>
   <p class="govuk-body nexus-alpha-result-count" aria-live="polite">
-    {% if opportunities.length == 0 %}
-      No opportunities shown
-    {% elseif opportunities.length == 1 %}
-      1 opportunity shown
-    {% else %}
-      {{ opportunities.length }} opportunities shown
-    {% endif %}
+    {{ tc("volunteering.result_count", opportunities.length, { count: opportunities.length }) }}
   </p>
 
   {% if error %}
@@ -225,11 +222,11 @@
       {% for opportunity in opportunities %}
         <article class="nexus-alpha-card">
           <h3 class="govuk-heading-m govuk-!-margin-bottom-2">
-            <a class="govuk-link" href="{{ urlFor('/volunteering/opportunities/' ~ opportunity.id) }}">{{ opportunity.title or "Volunteering opportunity" }}</a>
+            <a class="govuk-link" href="{{ urlFor('/volunteering/opportunities/' ~ opportunity.id) }}">{{ opportunity.title or t("volunteering.detail_title") }}</a>
           </h3>
 
           {% if opportunity.is_remote %}
-            <strong class="govuk-tag govuk-tag--turquoise">Remote</strong>
+            <strong class="govuk-tag govuk-tag--turquoise">{{ t("volunteering.remote") }}</strong>
           {% endif %}
 
           <dl class="nexus-alpha-inline-list govuk-!-margin-top-2">
@@ -241,13 +238,13 @@
             {% endif %}
             {% if opportunity.location %}
               <div>
-                <dt>Location</dt>
+                <dt>{{ t("volunteering.location") }}</dt>
                 <dd>{{ opportunity.location }}</dd>
               </div>
             {% endif %}
             {% if opportunity.categoryName %}
               <div>
-                <dt>Category</dt>
+                <dt>{{ t("volunteering.category_label") }}</dt>
                 <dd>{{ opportunity.categoryName }}</dd>
               </div>
             {% endif %}
@@ -257,10 +254,7 @@
             <p class="govuk-body govuk-!-margin-top-3">{{ opportunity.summary }}</p>
           {% endif %}
 
-          <ul class="govuk-list govuk-list--inline govuk-!-margin-bottom-0">
-            <li><a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor('/volunteering/opportunities/' ~ opportunity.id) }}">{{ t("actions.view_details") }}</a></li>
-            <li><a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor('/organisations/opportunities/' ~ opportunity.id ~ '/apply') }}">Apply to volunteer</a></li>
-          </ul>
+          <a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor('/volunteering/opportunities/' ~ opportunity.id) }}">{{ t("actions.view_details") }}</a>
         </article>
       {% endfor %}
     </div>
@@ -278,13 +272,13 @@
     {% endif %}
   {% else %}
     <div class="govuk-inset-text">
-      <h2 class="govuk-heading-m">No opportunities found</h2>
+      <h2 class="govuk-heading-m">{{ t("states.empty_title") }}</h2>
       <p class="govuk-body">{{ t("volunteering.empty") }}</p>
       <p class="govuk-body govuk-!-margin-bottom-0">
         {% if volunteeringQuery or categoryId or isRemote %}
-          No opportunities match your filters. Try widening your search or <a class="govuk-link" href="{{ urlFor('/volunteering') }}">clear filters</a>.
+          {{ t("vol_clarity.empty_opportunities_filtered_cta") }} <a class="govuk-link" href="{{ urlFor('/volunteering') }}">{{ t("actions.clear_filters") }}</a>.
         {% else %}
-          There are no opportunities listed right now. Check back soon, or follow the community feed for new openings.
+          {{ t("vol_clarity.empty_opportunities_cta") }}
         {% endif %}
       </p>
     </div>

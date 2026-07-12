@@ -936,10 +936,10 @@ async function downloadVolunteerCredential(token, id) {
   });
 }
 
-async function getVolunteeringCategories(token) {
-  return request('/api/v2/categories?type=volunteering', {
+async function getVolunteeringCategories(token = '') {
+  return request('/api/v2/categories?type=volunteering', token ? {
     headers: { Authorization: `Bearer ${token}` }
-  });
+  } : {});
 }
 
 async function getGoals(token, params = {}) {

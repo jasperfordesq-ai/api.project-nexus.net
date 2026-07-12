@@ -708,7 +708,7 @@ app.get('/account', async (req, res) => {
 app.use('/explore', exploreRoutes);
 
 app.get('/volunteering', (req, res) => {
-  const { callVolunteeringApi, getVolunteeringOpportunities } = require('./lib/api');
+  const { callVolunteeringApi, getVolunteeringCategories, getVolunteeringOpportunities } = require('./lib/api');
   const token = req.signedCookies.token || '';
   const selectedTab = token && req.query.tab === 'applications' ? 'applications' : 'opportunities';
   const applicationStatus = ['pending', 'approved', 'declined', 'withdrawn'].includes(req.query.app_status)
@@ -780,9 +780,10 @@ app.get('/volunteering', (req, res) => {
   const organisationsPromise = token
     ? callVolunteeringApi(token, 'GET', '/my-organisations?per_page=5').catch(() => ({ data: [] }))
     : Promise.resolve({ data: [] });
+  const categoriesPromise = getVolunteeringCategories(token).catch(() => ({ data: [] }));
 
-  Promise.all([getVolunteeringOpportunities(filters, token), applicationsPromise, hoursSummaryPromise, organisationsPromise])
-    .then(([result, applicationsResult, hoursSummaryResult, organisationsResult]) => {
+  Promise.all([getVolunteeringOpportunities(filters, token), applicationsPromise, hoursSummaryPromise, organisationsPromise, categoriesPromise])
+    .then(([result, applicationsResult, hoursSummaryResult, organisationsResult, categoriesResult]) => {
       const opportunities = Array.isArray(result?.data)
         ? result.data
         : (Array.isArray(result?.items) ? result.items : []);
@@ -813,6 +814,7 @@ app.get('/volunteering', (req, res) => {
         thisMonth: Number(hoursSummary.this_month_hours ?? 0).toFixed(1)
       };
       const organisations = Array.isArray(organisationsResult?.data) ? organisationsResult.data : [];
+      const categories = Array.isArray(categoriesResult?.data) ? categoriesResult.data : [];
       const manageableOrganisations = organisations.filter((organisation) => (
         ['owner', 'admin'].includes(String(organisation?.member_role || 'member'))
         && ['approved', 'active'].includes(String(organisation?.status || 'pending'))
@@ -837,6 +839,7 @@ app.get('/volunteering', (req, res) => {
         hoursSummaryLabels,
         manageableOrganisations,
         pendingOwnedOrganisations,
+        categories,
         selectedTab,
         status: typeof req.query.status === 'string' ? req.query.status : '',
         volunteeringQuery,
@@ -862,6 +865,7 @@ app.get('/volunteering', (req, res) => {
         hoursSummaryLabels: { approved: '0.0', pending: '0.0', thisMonth: '0.0' },
         manageableOrganisations: [],
         pendingOwnedOrganisations: [],
+        categories: [],
         selectedTab,
         status: typeof req.query.status === 'string' ? req.query.status : '',
         volunteeringQuery,

@@ -15152,6 +15152,9 @@ describe('shared accessible frontend shell', () => {
       ],
       meta: { cursor: 'next-cursor', per_page: 20, has_more: true }
     });
+    api.getVolunteeringCategories.mockResolvedValueOnce({
+      data: [{ id: 3, name: 'Food support' }]
+    });
     const response = await request(app).get('/volunteering?q=kitchen&category_id=3&is_remote=1');
 
     expect(staticPageRoutes.pages['/volunteering']).toBeUndefined();
@@ -15161,6 +15164,7 @@ describe('shared accessible frontend shell', () => {
       is_remote: true,
       per_page: 20
     }, '');
+    expect(api.getVolunteeringCategories).toHaveBeenCalledWith('');
     expect(response.status).toBe(200);
     expect(response.text).toContain('Project NEXUS Accessible');
     expect(response.text).toContain('Volunteering');
@@ -15174,6 +15178,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Search opportunities');
     expect(response.text).toContain('value="kitchen"');
     expect(response.text).toContain('name="is_remote"');
+    expect(response.text).toContain('<option value="3" selected>Food support</option>');
     expect(response.text).toContain('checked');
     expect(response.text).toContain('1 opportunity shown');
     expect(response.text).toContain('href="/volunteering/opportunities/77"');
@@ -15183,8 +15188,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Derry');
     expect(response.text).toContain('Food support');
     expect(response.text).toContain('Help prepare meals and welcome visitors');
-    expect(response.text).toContain('href="/organisations/opportunities/77/apply"');
-    expect(response.text).toContain('Apply to volunteer');
+    expect(response.text).not.toContain('href="/organisations/opportunities/77/apply"');
     expect(response.text).toContain('href="/volunteering?q=kitchen&amp;category_id=3&amp;is_remote=1&amp;cursor=next-cursor"');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
