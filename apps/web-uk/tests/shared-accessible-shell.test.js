@@ -15442,12 +15442,22 @@ describe('shared accessible frontend shell', () => {
         name: 'Community Helpers',
         description: 'Too short',
         email: 'hello@example.org',
+        website: 'https://example.org',
         agreed_terms: '1'
       });
 
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe('/organisations/register?status=org-description-invalid');
     expect(api.createVolunteerOrganisation).not.toHaveBeenCalled();
+
+    const replay = await agent
+      .get(response.headers.location)
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    expect(replay.text).toContain('value="Community Helpers"');
+    expect(replay.text).toContain('>Too short</textarea>');
+    expect(replay.text).toContain('value="hello@example.org"');
+    expect(replay.text).toContain('value="https://example.org"');
+    expect(replay.text).toContain('id="agreed_terms" name="agreed_terms" type="checkbox" value="1" checked');
   });
 
   it('submits the dedicated organisation register POST to Laravel volunteering API', async () => {
@@ -15657,7 +15667,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('This organisation has no reviews yet.');
   });
 
-  it('renders the Blade-style organisation jobs page from the Laravel jobs contract', async () => {
+  it('keeps volunteer organisation jobs empty rather than crossing into the separate jobs organisation IDs', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');
     api.getVolunteerOrganisation.mockResolvedValueOnce({
@@ -15672,24 +15682,7 @@ describe('shared accessible frontend shell', () => {
         }
       }
     });
-    api.getOrganisationJobs.mockResolvedValueOnce({
-      items: [
-        {
-          id: 501,
-          title: 'Volunteer Coordinator',
-          type: 'volunteer',
-          is_remote: true,
-          deadline: '2026-08-01'
-        },
-        {
-          id: 502,
-          title: 'Paid Outreach Lead',
-          type: 'paid',
-          location: 'Cork'
-        }
-      ],
-      meta: { limit: 20 }
-    });
+    api.getOrganisationJobs.mockClear();
     const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
 
     const response = await request(app)
@@ -15697,23 +15690,15 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
 
     expect(api.getVolunteerOrganisation).toHaveBeenCalledWith('42');
-    expect(api.getOrganisationJobs).toHaveBeenCalledWith('42', 'test-token', { limit: 20 });
+    expect(api.getOrganisationJobs).not.toHaveBeenCalled();
     expect(response.status).toBe(200);
     expect(response.text).toContain('href="/organisations/42"');
     expect(response.text).toContain('Community Club');
     expect(response.text).toContain('Organisations in Project NEXUS Accessible');
     expect(response.text).toContain('Job openings at Community Club');
     expect(response.text).toContain('Open roles posted by this organisation.');
-    expect(response.text).toContain('2 openings');
-    expect(response.text).toContain('href="/jobs/501"');
-    expect(response.text).toContain('Volunteer Coordinator');
-    expect(response.text).toContain('Volunteer');
-    expect(response.text).toContain('Remote');
-    expect(response.text).toContain('Closes');
-    expect(response.text).toContain('Paid Outreach Lead');
-    expect(response.text).toContain('Paid');
-    expect(response.text).toContain('Cork');
-    expect(response.text).toContain('View role');
+    expect(response.text).toContain('This organisation has no open job openings at the moment.');
+    expect(response.text).not.toContain('href="/jobs/501"');
   });
 
   it('redirects unsigned visitors from organisation jobs before data lookup', async () => {

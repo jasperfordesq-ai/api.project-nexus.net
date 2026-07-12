@@ -5,49 +5,25 @@
 
 {% extends "layouts/base.njk" %}
 
-{% set organisationName = organisation.name or "Job openings" %}
+{% set organisationName = organisation.name or t("govuk_alpha_organisations.jobs.title") %}
 
 {% block mainContent %}
   {% if organisation.id %}
     <a class="govuk-back-link" href="{{ urlFor('/organisations/' + (organisation.id | string)) }}">{{ organisationName }}</a>
   {% else %}
-    <a class="govuk-back-link" href="{{ urlFor('/organisations/browse') }}">Back to organisations</a>
+    <a class="govuk-back-link" href="{{ urlFor('/organisations/browse') }}">{{ t("govuk_alpha_organisations.common.back_to_organisations") }}</a>
   {% endif %}
 
-  <span class="govuk-caption-xl">Organisations in {{ tenantName }}</span>
-  <h1 class="govuk-heading-xl">Job openings at {{ organisationName }}</h1>
-  <p class="govuk-body-l">Open roles posted by this organisation.</p>
-
-  {% if error %}
-    <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
-      <div role="alert">
-        <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
-        <div class="govuk-error-summary__body">
-          <ul class="govuk-list govuk-error-summary__list">
-            <li>We could not load the job openings. Please try again.</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-  {% endif %}
-
-  {% if authRequired %}
-    <div class="govuk-notification-banner" role="region" aria-labelledby="organisation-jobs-auth-title" data-module="govuk-notification-banner">
-      <div class="govuk-notification-banner__header">
-        <h2 class="govuk-notification-banner__title" id="organisation-jobs-auth-title">Sign in required</h2>
-      </div>
-      <div class="govuk-notification-banner__content">
-        <p class="govuk-body">Sign in to load Laravel-backed job openings.</p>
-      </div>
-    </div>
-  {% endif %}
+  <span class="govuk-caption-xl">{{ t("govuk_alpha_organisations.common.caption", { community: tenantName }) }}</span>
+  <h1 class="govuk-heading-xl">{{ t("govuk_alpha_organisations.jobs.heading", { name: organisationName }) }}</h1>
+  <p class="govuk-body-l">{{ t("govuk_alpha_organisations.jobs.description") }}</p>
 
   {% if jobs and jobs.length %}
     <p class="govuk-body">
       {% if jobs.length == 1 %}
-        1 opening
+        {{ tc("govuk_alpha_organisations.jobs.count", jobs.length, { count: formatLocaleNumber(jobs.length) }) }}
       {% else %}
-        {{ jobs.length }} openings
+        {{ tc("govuk_alpha_organisations.jobs.count", jobs.length, { count: formatLocaleNumber(jobs.length) }) }}
       {% endif %}
     </p>
 
@@ -56,45 +32,45 @@
         {% if job.id %}
           <article class="nexus-alpha-card">
             <h2 class="govuk-heading-m govuk-!-margin-bottom-2">
-              <a class="govuk-link" href="{{ urlFor('/jobs/' + (job.id | string)) }}">{{ job.title or "Job openings" }}</a>
+              <a class="govuk-link" href="{{ urlFor('/jobs/' + (job.id | string)) }}">{{ job.title or t("govuk_alpha_organisations.jobs.title") }}</a>
             </h2>
 
             <dl class="nexus-alpha-inline-list nexus-alpha-meta">
               {% if job.typeLabel %}
                 <div>
-                  <dt class="govuk-visually-hidden">Type of role</dt>
+                  <dt class="govuk-visually-hidden">{{ t("govuk_alpha_organisations.jobs.term_type") }}</dt>
                   <dd><strong class="govuk-tag {{ job.typeTagClass }}">{{ job.typeLabel }}</strong></dd>
                 </div>
               {% endif %}
 
               {% if job.is_remote %}
                 <div>
-                  <dt class="govuk-visually-hidden">Location</dt>
-                  <dd>Remote</dd>
+                  <dt class="govuk-visually-hidden">{{ t("govuk_alpha_organisations.jobs.term_location") }}</dt>
+                  <dd>{{ t("govuk_alpha_organisations.jobs.remote") }}</dd>
                 </div>
               {% elseif job.location %}
                 <div>
-                  <dt class="govuk-visually-hidden">Location</dt>
+                  <dt class="govuk-visually-hidden">{{ t("govuk_alpha_organisations.jobs.term_location") }}</dt>
                   <dd>{{ job.location }}</dd>
                 </div>
               {% endif %}
 
               {% if job.deadline %}
                 <div>
-                  <dt class="govuk-visually-hidden">Application deadline</dt>
-                  <dd>Closes {{ job.deadline | date }}</dd>
+                  <dt class="govuk-visually-hidden">{{ t("govuk_alpha_organisations.jobs.term_deadline") }}</dt>
+                  <dd>{{ t("govuk_alpha_organisations.jobs.closes", { date: job.deadline | date }) }}</dd>
                 </div>
               {% endif %}
             </dl>
 
             <div class="nexus-alpha-actions">
-              <a class="govuk-link" href="{{ urlFor('/jobs/' + (job.id | string)) }}">View role</a>
+              <a class="govuk-link" href="{{ urlFor('/jobs/' + (job.id | string)) }}">{{ t("govuk_alpha_organisations.jobs.view_job") }}</a>
             </div>
           </article>
         {% endif %}
       {% endfor %}
     </div>
   {% else %}
-    <div class="govuk-inset-text">This organisation has no open job openings at the moment.</div>
+    <div class="govuk-inset-text">{{ t("govuk_alpha_organisations.jobs.empty") }}</div>
   {% endif %}
 {% endblock %}

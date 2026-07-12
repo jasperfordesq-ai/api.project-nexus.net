@@ -8,7 +8,7 @@
 {% macro errorMessage(field) %}
   {% if activeErrorField == field %}
     <p id="{{ field }}-error" class="govuk-error-message">
-      <span class="govuk-visually-hidden">There is a problem:</span> {{ activeErrorMessage }}
+      <span class="govuk-visually-hidden">{{ t("govuk_alpha_organisations.common.error_title") }}:</span> {{ activeErrorMessage }}
     </p>
   {% endif %}
 {% endmacro %}
@@ -22,15 +22,15 @@
 {% endmacro %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="{{ urlFor('/organisations/browse') }}">Back to organisations</a>
+  <a class="govuk-back-link" href="{{ urlFor('/organisations/browse') }}">{{ t("govuk_alpha_organisations.common.back_to_organisations") }}</a>
 
-  <span class="govuk-caption-xl">Organisations in {{ tenantName }}</span>
-  <h1 class="govuk-heading-xl">Register a volunteer organisation</h1>
+  <span class="govuk-caption-xl">{{ t("govuk_alpha_organisations.common.caption", { community: tenantName }) }}</span>
+  <h1 class="govuk-heading-xl">{{ t("govuk_alpha_organisations.register.heading") }}</h1>
 
   {% if activeErrorMessage %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
       <div role="alert">
-        <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
+        <h2 class="govuk-error-summary__title">{{ t("govuk_alpha_organisations.common.error_title") }}</h2>
         <div class="govuk-error-summary__body">
           <ul class="govuk-list govuk-error-summary__list">
             <li><a href="#{{ activeErrorField }}">{{ activeErrorMessage }}</a></li>
@@ -40,7 +40,7 @@
     </div>
   {% endif %}
 
-  <p class="govuk-body-l">List your organisation so volunteers can find your opportunities. Organisations are reviewed by an administrator before they appear publicly.</p>
+  <p class="govuk-body-l">{{ t("govuk_alpha_organisations.register.description") }}</p>
 
   <form method="post" action="{{ urlFor('/organisations/register') }}">
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
@@ -48,64 +48,64 @@
     <div class="govuk-grid-row">
       <div class="govuk-grid-column-two-thirds">
         <div class="govuk-form-group{{ errorClass('name', 'govuk-form-group--error') }}">
-          <label class="govuk-label" for="name">Organisation name</label>
-          <div id="name-hint" class="govuk-hint">Use the full, recognised name of your organisation.</div>
+          <label class="govuk-label" for="name">{{ t("govuk_alpha_organisations.register.name_label") }}</label>
+          <div id="name-hint" class="govuk-hint">{{ t("govuk_alpha_organisations.register.name_hint") }}</div>
           {{ errorMessage('name') }}
-          <input class="govuk-input{{ errorClass('name', 'govuk-input--error') }}" id="name" name="name" type="text" minlength="3" maxlength="255" aria-describedby="{{ describedBy('name', 'name-hint') }}" required>
+          <input class="govuk-input{{ errorClass('name', 'govuk-input--error') }}" id="name" name="name" type="text" minlength="3" maxlength="255" value="{{ values.name or '' }}" aria-describedby="{{ describedBy('name', 'name-hint') }}" required>
         </div>
 
         <div class="govuk-form-group{{ errorClass('description', 'govuk-form-group--error') }}">
-          <label class="govuk-label" for="description">Description</label>
-          <div id="description-hint" class="govuk-hint">Describe what your organisation does. Use at least 20 characters.</div>
+          <label class="govuk-label" for="description">{{ t("govuk_alpha_organisations.register.description_label") }}</label>
+          <div id="description-hint" class="govuk-hint">{{ t("govuk_alpha_organisations.register.description_hint") }}</div>
           {{ errorMessage('description') }}
-          <textarea class="govuk-textarea{{ errorClass('description', 'govuk-textarea--error') }}" id="description" name="description" rows="4" minlength="20" maxlength="2000" aria-describedby="{{ describedBy('description', 'description-hint') }}" required></textarea>
+          <textarea class="govuk-textarea{{ errorClass('description', 'govuk-textarea--error') }}" id="description" name="description" rows="4" minlength="20" maxlength="2000" aria-describedby="{{ describedBy('description', 'description-hint') }}" required>{{ values.description or '' }}</textarea>
         </div>
 
         <div class="govuk-form-group{{ errorClass('email', 'govuk-form-group--error') }}">
-          <label class="govuk-label" for="email">Contact email address</label>
-          <div id="email-hint" class="govuk-hint">Volunteers and administrators will use this to contact you.</div>
+          <label class="govuk-label" for="email">{{ t("govuk_alpha_organisations.register.email_label") }}</label>
+          <div id="email-hint" class="govuk-hint">{{ t("govuk_alpha_organisations.register.email_hint") }}</div>
           {{ errorMessage('email') }}
-          <input class="govuk-input{{ errorClass('email', 'govuk-input--error') }}" id="email" name="email" type="email" autocomplete="email" aria-describedby="{{ describedBy('email', 'email-hint') }}" required>
+          <input class="govuk-input{{ errorClass('email', 'govuk-input--error') }}" id="email" name="email" type="email" autocomplete="email" value="{{ values.email or '' }}" aria-describedby="{{ describedBy('email', 'email-hint') }}" required>
         </div>
 
         <div class="govuk-form-group{{ errorClass('website', 'govuk-form-group--error') }}">
-          <label class="govuk-label" for="website">{{ t("organisations.website_label") }}</label>
-          <div id="website-hint" class="govuk-hint">Start with https:// - for example, https://www.example.org</div>
+          <label class="govuk-label" for="website">{{ t("govuk_alpha_organisations.register.website_label") }}</label>
+          <div id="website-hint" class="govuk-hint">{{ t("govuk_alpha_organisations.register.website_hint") }}</div>
           {{ errorMessage('website') }}
-          <input class="govuk-input{{ errorClass('website', 'govuk-input--error') }}" id="website" name="website" type="url" inputmode="url" aria-describedby="{{ describedBy('website', 'website-hint') }}">
+          <input class="govuk-input{{ errorClass('website', 'govuk-input--error') }}" id="website" name="website" type="url" inputmode="url" value="{{ values.website or '' }}" aria-describedby="{{ describedBy('website', 'website-hint') }}">
         </div>
 
         <div class="govuk-inset-text">
-          <h2 class="govuk-heading-s">Before you register</h2>
+          <h2 class="govuk-heading-s">{{ t("govuk_alpha_organisations.register.terms_heading") }}</h2>
           <ul class="govuk-list govuk-list--bullet">
-            <li>You confirm you are authorised to register this organisation.</li>
-            <li>The information you provide is accurate and up to date.</li>
-            <li>Your organisation is a bona-fide group, charity or community body.</li>
-            <li>You will keep your opportunities and contact details current.</li>
-            <li>You agree to the community guidelines for organisations.</li>
+            <li>{{ t("govuk_alpha_organisations.register.terms_item_1") }}</li>
+            <li>{{ t("govuk_alpha_organisations.register.terms_item_2") }}</li>
+            <li>{{ t("govuk_alpha_organisations.register.terms_item_3") }}</li>
+            <li>{{ t("govuk_alpha_organisations.register.terms_item_4") }}</li>
+            <li>{{ t("govuk_alpha_organisations.register.terms_item_5") }}</li>
           </ul>
         </div>
 
         <div class="govuk-form-group{{ errorClass('agreed_terms', 'govuk-form-group--error') }}">
           <fieldset class="govuk-fieldset" aria-describedby="{% if activeErrorField == 'agreed_terms' %}agreed_terms-error{% endif %}">
-            <legend class="govuk-fieldset__legend govuk-visually-hidden">Before you register</legend>
+            <legend class="govuk-fieldset__legend govuk-visually-hidden">{{ t("govuk_alpha_organisations.register.terms_heading") }}</legend>
             {{ errorMessage('agreed_terms') }}
             <div class="govuk-checkboxes" data-module="govuk-checkboxes">
               <div class="govuk-checkboxes__item">
-                <input class="govuk-checkboxes__input" id="agreed_terms" name="agreed_terms" type="checkbox" value="1" required>
-                <label class="govuk-label govuk-checkboxes__label" for="agreed_terms">I confirm the above and agree to the community guidelines.</label>
+                <input class="govuk-checkboxes__input" id="agreed_terms" name="agreed_terms" type="checkbox" value="1"{% if values.agreedTerms %} checked{% endif %} required>
+                <label class="govuk-label govuk-checkboxes__label" for="agreed_terms">{{ t("govuk_alpha_organisations.register.terms_agree") }}</label>
               </div>
             </div>
           </fieldset>
         </div>
 
         <div class="govuk-button-group">
-          <button class="govuk-button" data-module="govuk-button" type="submit">Register organisation</button>
-          <a class="govuk-link" href="{{ urlFor('/organisations/browse') }}">{{ t("polish_federation.transfer_cancel") }}</a>
+          <button class="govuk-button" data-module="govuk-button" type="submit">{{ t("govuk_alpha_organisations.register.submit") }}</button>
+          <a class="govuk-link" href="{{ urlFor('/organisations/browse') }}">{{ t("govuk_alpha_organisations.register.cancel") }}</a>
         </div>
 
         <div class="govuk-inset-text">
-          <p class="govuk-body govuk-!-margin-bottom-0">Your organisation will be reviewed by an administrator before it is listed. You will be able to manage it once it is approved.</p>
+          <p class="govuk-body govuk-!-margin-bottom-0">{{ t("govuk_alpha_organisations.register.pending_notice") }}</p>
         </div>
       </div>
     </div>

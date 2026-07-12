@@ -1176,39 +1176,42 @@ app.get('/organisations/browse', requireOrganisationAuth, (req, res) => {
 
 app.get('/organisations/register', requireOrganisationAuth, (req, res) => {
   const status = typeof req.query.status === 'string' ? req.query.status : '';
+  const values = req.session?.organisationRegistrationValues || {};
+  if (req.session) delete req.session.organisationRegistrationValues;
   const errorMap = {
     'org-name-invalid': {
       field: 'name',
-      message: 'Enter an organisation name of at least 3 characters'
+      key: 'govuk_alpha_organisations.register.errors.org-name-invalid'
     },
     'org-description-invalid': {
       field: 'description',
-      message: 'Enter a description of at least 20 characters'
+      key: 'govuk_alpha_organisations.register.errors.org-description-invalid'
     },
     'org-email-invalid': {
       field: 'email',
-      message: 'Enter a valid contact email address'
+      key: 'govuk_alpha_organisations.register.errors.org-email-invalid'
     },
     'org-website-invalid': {
       field: 'website',
-      message: 'Enter a valid website address starting with http:// or https://'
+      key: 'govuk_alpha_organisations.register.errors.org-website-invalid'
     },
     'org-terms-required': {
       field: 'agreed_terms',
-      message: 'You must confirm and agree before registering'
+      key: 'govuk_alpha_organisations.register.errors.org-terms-required'
     },
     'org-failed': {
       field: 'name',
-      message: 'We could not register your organisation. Please check your details and try again.'
+      key: 'govuk_alpha_organisations.register.errors.org-failed'
     }
   };
   const activeError = errorMap[status] || null;
 
   res.render('organisations-register', {
-    title: 'Register an organisation',
+    title: res.locals.t('govuk_alpha_organisations.register.title'),
     activeNav: 'explore',
     activeErrorField: activeError ? activeError.field : '',
-    activeErrorMessage: activeError ? activeError.message : ''
+    activeErrorMessage: activeError ? res.locals.t(activeError.key) : '',
+    values
   });
 });
 
@@ -1252,6 +1255,15 @@ async function handleOrganisationRegistrationPost(req, res, options = {}) {
   );
 
   if (invalidStatus) {
+    if (!options.coarseInvalid && req.session) {
+      req.session.organisationRegistrationValues = {
+        name: payload.name,
+        description: payload.description,
+        email: payload.contact_email,
+        website: payload.website,
+        agreedTerms: acceptedOrganisationTerms(req.body.agreed_terms)
+      };
+    }
     const invalidRedirect = options.coarseInvalid
       ? '/organisations?status=org-invalid'
       : `/organisations/register?status=${invalidStatus}`;
@@ -1271,6 +1283,15 @@ async function handleOrganisationRegistrationPost(req, res, options = {}) {
       return res.status(503).render('errors/503', { title: 'Service unavailable' });
     }
 
+    if (!options.coarseInvalid && req.session) {
+      req.session.organisationRegistrationValues = {
+        name: payload.name,
+        description: payload.description,
+        email: payload.contact_email,
+        website: payload.website,
+        agreedTerms: acceptedOrganisationTerms(req.body.agreed_terms)
+      };
+    }
     const failedRedirect = options.coarseInvalid
       ? '/organisations?status=org-failed'
       : '/organisations/register?status=org-failed';
@@ -1300,7 +1321,7 @@ app.get('/organisations/manage', requireOrganisationAuth, (req, res) => {
     });
 
     res.render('organisations-manage', {
-      title: 'Manage my organisations',
+      title: res.locals.t('govuk_alpha_organisations.manage.title'),
       activeNav: 'explore',
       manageableOrganisations,
       pendingOrganisations,
@@ -1327,8 +1348,7 @@ app.get('/organisations/manage', requireOrganisationAuth, (req, res) => {
 });
 
 app.get('/organisations/:id(\\d+)/jobs', requireOrganisationAuth, (req, res) => {
-  const token = req.signedCookies.token;
-  const { ApiError, getOrganisationJobs, getVolunteerOrganisation } = require('./lib/api');
+  const { ApiError, getVolunteerOrganisation } = require('./lib/api');
 
   const normalizeOrganisation = (result) => {
     const data = result?.data && typeof result.data === 'object' ? result.data : {};
@@ -1342,34 +1362,12 @@ app.get('/organisations/:id(\\d+)/jobs', requireOrganisationAuth, (req, res) => 
     };
   };
 
-  const normalizeJob = (job) => {
-    const type = String(job.type || '');
-    const typeLabels = {
-      paid: 'Paid',
-      volunteer: 'Volunteer',
-      timebank: 'Time credits'
-    };
-    const typeTagClasses = {
-      paid: 'govuk-tag--green',
-      volunteer: 'govuk-tag--blue',
-      timebank: 'govuk-tag--yellow'
-    };
-
-    return {
-      ...job,
-      typeLabel: typeLabels[type] || type,
-      typeTagClass: typeTagClasses[type] || 'govuk-tag--blue'
-    };
-  };
-
-  const renderJobs = ({ organisation, jobs = [], error = false, authRequired = false }) => {
+  const renderJobs = (organisation) => {
     res.render('organisations-jobs', {
-      title: `Job openings at ${organisation.name || 'Organisations'}`,
+      title: res.locals.t('govuk_alpha_organisations.jobs.title'),
       activeNav: 'explore',
       organisation,
-      jobs,
-      error,
-      authRequired
+      jobs: []
     });
   };
 
@@ -1377,24 +1375,7 @@ app.get('/organisations/:id(\\d+)/jobs', requireOrganisationAuth, (req, res) => 
     .then((result) => {
       const organisation = normalizeOrganisation(result);
 
-      if (!token) {
-        return renderJobs({ organisation, authRequired: true });
-      }
-
-      return getOrganisationJobs(req.params.id, token, { limit: 20 })
-        .then((jobsResult) => {
-          const jobs = Array.isArray(jobsResult?.items)
-            ? jobsResult.items
-            : (Array.isArray(jobsResult?.data) ? jobsResult.data : []);
-
-          renderJobs({
-            organisation,
-            jobs: jobs.map(normalizeJob)
-          });
-        })
-        .catch(() => {
-          renderJobs({ organisation, error: true });
-        });
+      return renderJobs(organisation);
     })
     .catch((error) => {
       if (error instanceof ApiError && error.status === 404) {
@@ -1430,7 +1411,7 @@ app.get('/organisations/opportunities/:id(\\d+)/apply', requireOrganisationAuth,
       const opportunity = normalizeOpportunity(result);
 
       res.render('organisations-apply', {
-        title: 'Apply to volunteer',
+        title: res.locals.t('govuk_alpha_organisations.apply.title'),
         activeNav: 'explore',
         opportunity,
         opportunityId: req.params.id,
