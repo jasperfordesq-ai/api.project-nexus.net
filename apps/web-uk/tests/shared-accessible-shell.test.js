@@ -4917,6 +4917,30 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('Laravel Blade route');
   });
 
+  it('renders Blade-aligned Federation groups permission and recoverable failure states', async () => {
+    const api = require('../src/lib/api');
+    api.callFederationApi.mockRejectedValueOnce(new api.ApiError('Groups are not enabled.', 403));
+
+    const unavailable = await request(app)
+      .get('/federation/groups')
+      .set('Cookie', signedCookieHeader());
+
+    expect(unavailable.status).toBe(200);
+    expect(unavailable.text).toContain('Federated groups browsing is not available for this community.');
+    expect(unavailable.text).not.toContain('Search groups');
+
+    api.callFederationApi.mockRejectedValueOnce(new api.ApiOfflineError());
+
+    const loadFailure = await request(app)
+      .get('/federation/groups')
+      .set('Cookie', signedCookieHeader());
+
+    expect(loadFailure.status).toBe(200);
+    expect(loadFailure.text).toContain('We could not load groups. Please try again.');
+    expect(loadFailure.text).toContain('href="/federation/groups">Try again</a>');
+    expect(loadFailure.text).not.toContain('Service temporarily unavailable');
+  });
+
   it('renders the Laravel-backed Federation listings page', async () => {
     const api = require('../src/lib/api');
     api.callFederationApi.mockImplementation(async (token, method, pathValue) => {
@@ -5251,7 +5275,7 @@ describe('shared accessible frontend shell', () => {
     });
     api.callFederationApi.mockRejectedValue(error);
 
-    for (const pathValue of ['/federation/connections', '/federation/events', '/federation/messages', '/federation/members/351']) {
+    for (const pathValue of ['/federation/connections', '/federation/events', '/federation/groups', '/federation/messages', '/federation/members/351']) {
       const response = await request(app)
         .get(pathValue)
         .set('Cookie', signedCookieHeader());

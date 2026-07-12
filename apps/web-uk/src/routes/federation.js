@@ -243,16 +243,20 @@ function normalizeConnection(connection, options = {}) {
   return normalized;
 }
 
-function normalizeGroup(group) {
+function normalizeGroup(group, options = {}) {
+  const t = typeof options.t === 'function' ? options.t : (key) => key;
+  const formatNumber = typeof options.formatNumber === 'function' ? options.formatNumber : (value) => String(value);
   const timebank = asObject(group && group.timebank);
   const tenantId = group && group.tenant_id !== undefined ? group.tenant_id : timebank.id;
+  const memberCount = numberOrZero(group && group.member_count);
 
   return {
     id: group && group.id,
-    name: trimmed(group && group.name) || 'Federation group',
+    name: trimmed(group && group.name) || t('polish_federation.groups_title'),
     description: trimmed(group && group.description, 200),
     privacy: trimmed(group && group.privacy),
-    memberCount: numberOrZero(group && group.member_count),
+    memberCount,
+    memberCountLabel: formatNumber(memberCount),
     coverImage: trimmed(group && group.cover_image),
     tenantId,
     tenantName: trimmed((group && group.tenant_name) || timebank.name),
@@ -949,45 +953,55 @@ router.get('/groups', asyncRoute(async (req, res) => {
 
   let groupsResult;
   let partnersResult;
+  let allowed = true;
+  let loadError = false;
   try {
     groupsResult = await callFederationApi(token, 'GET', `/groups${federationQuery(req, ['q', 'partner_id', 'cursor'])}`);
     partnersResult = await callFederationApi(token, 'GET', '/partners');
   } catch (error) {
-    if (error instanceof ApiError && error.status === 403) {
-      return res.render('federation/groups', {
-        title: 'Groups from partner communities',
-        activeNav: 'explore',
-        federationActiveTab: 'groups',
-        allowed: false,
-        groups: [],
-        partnerOptions: [],
-        filters: {
-          q: trimmed(req.query.q),
-          partnerId: trimmed(req.query.partner_id)
-        },
-        loadMoreHref: ''
-      });
+    const errorCodes = error instanceof ApiError && Array.isArray(error.data && error.data.errors)
+      ? error.data.errors.map((item) => trimmed(item && item.code)).filter(Boolean)
+      : [];
+    if (error instanceof ApiError && error.status === 403 && errorCodes.includes('FEDERATION_NOT_ENABLED')) {
+      return redirectTo(res, '/federation/opt-in');
     }
-    if (renderFederationError(error, res)) return undefined;
-    throw error;
+    if (error instanceof ApiError && error.status === 401) {
+      return redirectTo(res, '/login?status=auth-required');
+    }
+    if (error instanceof ApiError && error.status === 403) {
+      allowed = false;
+    } else if (error instanceof ApiError || error instanceof ApiOfflineError) {
+      loadError = true;
+    } else {
+      throw error;
+    }
+    groupsResult = { data: [] };
+    partnersResult = { data: [] };
   }
 
-  const groups = asList(dataFrom(groupsResult)).map(normalizeGroup);
-  const partnerOptions = asList(dataFrom(partnersResult)).map(normalizePartner).filter(isInternalPartner);
+  const groups = asList(dataFrom(groupsResult)).map((group) => normalizeGroup(group, {
+    t: res.locals.t,
+    formatNumber: res.locals.formatLocaleNumber
+  }));
+  const partnerOptions = asList(dataFrom(partnersResult)).map((partner) => normalizePartner(partner, {
+    t: res.locals.t,
+    formatNumber: res.locals.formatLocaleNumber
+  })).filter(isInternalPartner);
   const meta = metaFrom(groupsResult);
   const nextCursor = trimmed(meta.cursor || meta.next_cursor);
 
   return res.render('federation/groups', {
-    title: 'Groups from partner communities',
+    title: res.locals.t('polish_federation.groups_title'),
     activeNav: 'explore',
     federationActiveTab: 'groups',
-    allowed: true,
+    allowed,
     groups,
     partnerOptions,
     filters: {
       q: trimmed(req.query.q),
       partnerId: trimmed(req.query.partner_id)
     },
+    loadError,
     loadMoreHref: nextCursor ? loadMoreHref('/federation/groups', req, nextCursor) : ''
   });
 }));

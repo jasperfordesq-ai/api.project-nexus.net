@@ -8,7 +8,7 @@
 {% block mainContent %}
   <a href="{{ urlFor('/federation') }}" class="govuk-back-link">{{ t("polish_federation.groups_back") }}</a>
 
-  <span class="govuk-caption-xl">This community federation</span>
+  <span class="govuk-caption-xl">{{ t("polish_federation.groups_caption", { community: tenantName }) }}</span>
   <h1 class="govuk-heading-xl">{{ t("polish_federation.groups_title") }}</h1>
   <p class="govuk-body-l">{{ t("polish_federation.groups_description") }}</p>
 
@@ -26,19 +26,31 @@
       </div>
 
       <div class="govuk-form-group">
-        <label class="govuk-label" for="partner_id">Community</label>
+        <label class="govuk-label" for="partner_id">{{ t("polish_federation.groups_filter_label") }}</label>
         <select class="govuk-select" id="partner_id" name="partner_id">
-          <option value=""{% if not filters.partnerId %} selected{% endif %}>All communities</option>
+          <option value=""{% if not filters.partnerId %} selected{% endif %}>{{ t("polish_federation.groups_filter_all") }}</option>
           {% for partner in partnerOptions %}
             <option value="{{ partner.id }}"{% if filters.partnerId == partner.id %} selected{% endif %}>{{ partner.name }}</option>
           {% endfor %}
         </select>
       </div>
 
-      <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">Apply filters</button>
+      <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">{{ t("polish_federation.groups_apply_filters") }}</button>
     </form>
 
-    {% if groups.length %}
+    {% if loadError %}
+      <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+        <div role="alert">
+          <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
+          <div class="govuk-error-summary__body">
+            <p class="govuk-body">{{ t("polish_federation.groups_load_error") }}</p>
+            <ul class="govuk-list govuk-error-summary__list">
+              <li><a href="{{ urlFor('/federation/groups') }}">{{ t("polish_federation.groups_try_again") }}</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    {% elif groups.length %}
       <div class="nexus-alpha-card-list">
         {% for group in groups %}
           <article class="nexus-alpha-card">
@@ -49,7 +61,7 @@
             <h2 class="govuk-heading-s govuk-!-margin-bottom-1">
               {{ group.name }}
               {% if group.privacy == "private" %}
-                <strong class="govuk-tag govuk-tag--yellow">Private</strong>
+                <strong class="govuk-tag govuk-tag--yellow">{{ t("polish_federation.groups_private") }}</strong>
               {% endif %}
             </h2>
 
@@ -59,12 +71,12 @@
 
             <dl class="nexus-alpha-inline-list">
               <div>
-                <dt>Community</dt>
+                <dt>{{ t("polish_federation.groups_community_label") }}</dt>
                 <dd>{{ group.tenantName }}</dd>
               </div>
               <div>
-                <dt>Members</dt>
-                <dd>{{ group.memberCount }}</dd>
+                <dt>{{ t("polish_federation.groups_members_label") }}</dt>
+                <dd>{{ group.memberCountLabel }}</dd>
               </div>
             </dl>
           </article>
