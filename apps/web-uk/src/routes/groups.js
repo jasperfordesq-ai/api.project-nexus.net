@@ -417,7 +417,7 @@ function normalizeGroupFile(item) {
   };
 }
 
-function normalizeGroupMember(item, ownerId = null) {
+function normalizeGroupMember(item, ownerId = null, t = (key) => key) {
   const raw = item && typeof item === 'object' ? item : {};
   const user = raw.user && typeof raw.user === 'object' ? raw.user : {};
   const id = positiveInteger(raw.id) || positiveInteger(raw.user_id) || positiveInteger(raw.userId) || positiveInteger(user.id);
@@ -429,7 +429,7 @@ function normalizeGroupMember(item, ownerId = null) {
     id,
     name: trimmed(raw.name || raw.display_name || raw.displayName || user.name || user.display_name || user.displayName || '') || (id ? `#${id}` : 'Member'),
     role: normalizedRole,
-    roleLabel: normalizedRole === 'owner' ? 'Owner' : normalizedRole === 'admin' ? 'Admin' : 'Member',
+    roleLabel: t(`groups.manage.role_${normalizedRole}`),
     roleClass: normalizedRole === 'owner' || normalizedRole === 'admin' ? 'govuk-tag--blue' : 'govuk-tag--grey',
     isOwner
   };
@@ -744,14 +744,14 @@ function fileStatus(status) {
   return { statusBanner: null };
 }
 
-function manageStatus(status) {
+function manageStatus(status, t = (key) => key) {
   const value = trimmed(status);
   if (Object.prototype.hasOwnProperty.call(GROUP_MANAGE_SUCCESS_MESSAGES, value)) {
     return {
       statusBanner: {
         type: 'success',
-        title: 'Success',
-        message: GROUP_MANAGE_SUCCESS_MESSAGES[value]
+        title: t('states.success_title'),
+        message: t(`groups.states.${value}`)
       }
     };
   }
@@ -760,8 +760,8 @@ function manageStatus(status) {
     return {
       statusBanner: {
         type: 'error',
-        title: 'There is a problem',
-        message: GROUP_MANAGE_ERROR_MESSAGES[value]
+        title: t('states.error_title'),
+        message: t(`groups.states.${value}`)
       }
     };
   }
@@ -1288,9 +1288,12 @@ router.get('/:id(\\d+)/files', requireAuth, asyncRoute(async (req, res) => {
 
 router.get('/:id(\\d+)/manage', requireAuth, asyncRoute(async (req, res) => {
   const id = req.params.id;
-  const groupResult = await getGroup(req.token, id);
-  const group = normalizeGroup(dataFrom(groupResult)?.group || dataFrom(groupResult), Number(id));
+  const { group, profile } = await groupAccessContext(req, id);
+  if (isKnownGroupAdmin(group, profile) !== true) {
+    return renderForbidden(res);
+  }
   const ownerId = positiveInteger(group.owner_id || group.ownerId);
+  const currentUserId = positiveInteger(profile.id || profile.user_id || profile.userId);
   const visibility = trimmed(group.visibility || 'public') || 'public';
   const isPrivate = checked(group.is_private ?? group.isPrivate) || visibility !== 'public';
 
@@ -1303,20 +1306,20 @@ router.get('/:id(\\d+)/manage', requireAuth, asyncRoute(async (req, res) => {
   ]);
 
   const members = collectionFrom(membersResult)
-    .map((member) => normalizeGroupMember(member, ownerId))
-    .filter((member) => member.id !== null);
+    .map((member) => normalizeGroupMember(member, ownerId, res.locals.t))
+    .filter((member) => member.id !== null && member.id !== currentUserId);
   const pendingRequests = collectionFrom(requestsResult)
     .map(normalizeJoinRequest)
     .filter((requestItem) => requestItem.id !== null);
 
   return res.render('groups/manage', {
-    title: 'Manage group',
+    title: res.locals.t('groups.manage.title'),
     activeNav: 'explore',
     group,
     members,
     pendingRequests,
     isPrivate,
-    ...manageStatus(req.query.status)
+    ...manageStatus(req.query.status, res.locals.t)
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Group not found' }));
 

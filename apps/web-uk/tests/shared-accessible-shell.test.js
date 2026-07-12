@@ -19990,6 +19990,7 @@ describe('shared accessible frontend shell', () => {
 
   it('renders the Laravel group manage page for signed-in group admins', async () => {
     const api = require('../src/lib/api');
+    api.getProfile.mockReset().mockResolvedValueOnce({ data: { id: 10, role: 'member' } });
     api.getGroup.mockReset().mockResolvedValueOnce({
       data: {
         id: 42,
@@ -20024,16 +20025,17 @@ describe('shared accessible frontend shell', () => {
     expect(unsigned.status).toBe(302);
     expect(unsigned.headers.location).toBe('/login?status=auth-required');
     expect(signed.status).toBe(200);
-    expect(signed.text).toContain('Manage group');
+    expect(signed.text).toContain('Manage members');
     expect(signed.text).toContain('Neighbourhood Repairs');
     expect(signed.text).toContain('The member is now an admin.');
-    expect(signed.text).toContain('Membership requests');
+    expect(signed.text).toContain('Join requests');
     expect(signed.text).toContain('Riley Requester');
     expect(signed.text).toContain('method="post" action="/groups/42/requests/77"');
     expect(signed.text).toContain('Avery Admin');
     expect(signed.text).toContain('Admin');
     expect(signed.text).toContain('method="post" action="/groups/42/members/55"');
     expect(signed.text).toContain('Morgan Member');
+    expect(signed.text).not.toContain('Pat Owner');
     expect(signed.text).toContain('Member');
     expect(signed.text).toContain('value="promote"');
     expect(signed.text).toContain('value="remove"');
@@ -20042,6 +20044,30 @@ describe('shared accessible frontend shell', () => {
     expect(api.getGroup).toHaveBeenCalledWith('test-token', '42');
     expect(api.getGroupMembers).toHaveBeenCalledWith('test-token', '42', { per_page: 100 });
     expect(api.callGroupApi).toHaveBeenCalledWith('test-token', 'GET', '/42/requests');
+  });
+
+  it('fails closed before loading group management data for ordinary members', async () => {
+    const api = require('../src/lib/api');
+    api.getProfile.mockReset().mockResolvedValueOnce({ data: { id: 66, role: 'member' } });
+    api.getGroup.mockReset().mockResolvedValueOnce({
+      data: {
+        id: 42,
+        name: 'Neighbourhood Repairs',
+        visibility: 'private',
+        owner_id: 10,
+        my_membership: { role: 'member', status: 'active' }
+      }
+    });
+    api.getGroupMembers.mockClear();
+    api.callGroupApi.mockClear();
+
+    const response = await request(app)
+      .get('/groups/42/manage')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(403);
+    expect(api.getGroupMembers).not.toHaveBeenCalled();
+    expect(api.callGroupApi).not.toHaveBeenCalled();
   });
 
   it('renders group navigation without legacy member-management links', async () => {
