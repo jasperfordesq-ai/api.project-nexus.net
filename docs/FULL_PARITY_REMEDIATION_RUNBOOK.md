@@ -441,7 +441,7 @@ route coverage is not a completion score.
 
 | Surface | Score | Meaning |
 | --- | ---: | --- |
-| ASP.NET static API method/path inventory | 944/1000 | 2,438 of 2,583 current Laravel operations matched, with 145 route-shape gaps after the expanded supplemental inventory; this is route-shape coverage, not behavioral parity |
+| ASP.NET static API method/path inventory | 944/1000 | 2,439 of 2,583 current Laravel operations matched, with 144 route-shape gaps after the expanded supplemental inventory; this is route-shape coverage, not behavioral parity |
 | ASP.NET implementation parity | 640/1000 | Broad implementation with material workflow, schema, integration, and localization gaps |
 | ASP.NET certification confidence | 420/1000 | Current full-suite and frontend-on-ASP proof is insufficient |
 | Web UK Laravel-first implementation | 910/1000 | Route conversion is advanced; several source and presentation gaps remain |
@@ -452,9 +452,9 @@ route coverage is not a completion score.
 
 | Check | Current result or retained historical evidence |
 | --- | --- |
-| ASP.NET static operations | 4,316 |
+| ASP.NET static operations | 4,318 |
 | Laravel source operations | 2,583 |
-| Static method/path matches | 2,438 matched, 145 missing |
+| Static method/path matches | 2,439 matched, 144 missing |
 | Explicit admin compatibility behavior | At least 196 of 329 `AdminExplicitParityController` route declarations reached generic fallbacks at audit time |
 | Schema inventory | Live: 333 Laravel migration files, 117 ASP.NET migration source files, 115 runtime migrations, 368 Laravel source tables, 336 ASP.NET tables, 142 exact matches, 226 missing names, and 194 ASP.NET-only names |
 | ASP.NET backend localization comparator | 7/11 locales, 49/605 namespaces, 157 comparable English keys matched, 5,018 missing |
@@ -947,6 +947,15 @@ dedicated authenticated bucket is 10 attempts per 600 seconds. Focused
 disposable-PostgreSQL workflows passed 2/2, signed-token binding/claim tests
 passed 2/2, route/policy ownership passed 1/1, and the Release solution build
 completed with zero errors and the same four pre-existing warnings.
+
+The subsequent PWA-manifest slice closes the canonical React/browser
+`GET /api/v2/pwa/manifest` workflow plus its legacy alias. It returns raw
+`application/manifest+json`, exact cache/Vary headers, tenant name/id/start/scope
+overlays, path-prefixed shortcuts, shared-host slug resolution, and dedicated-
+domain switching restricted to active direct children through
+`tenant_hierarchies`. Focused disposable-PostgreSQL runtime passed 2/2,
+route/policy ownership passed 1/1, and the Release solution build and API
+comparator fixtures are green.
 
 ### Backend 1000/1000 gate
 

@@ -92,6 +92,7 @@ public static class RateLimitingExtensions
     public const string MessagesMarkReadPolicy = "messages-mark-read";
     public const string MessagesUnreadCountPolicy = "messages-unread-count";
     public const string WebAuthnSecurityConfirmPolicy = "webauthn-security-confirm";
+    public const string PwaManifestPolicy = "pwa-manifest";
 
     public static IReadOnlyList<SafeguardingVettingRateLimitContract> SafeguardingVettingRateLimitContracts { get; } =
     [
@@ -286,6 +287,13 @@ public static class RateLimitingExtensions
                     factory: _ => FixedWindow(
                         config.GetValue("RateLimiting:WebAuthn:SecurityConfirmPermitLimit", 10),
                         TimeSpan.FromSeconds(config.GetValue("RateLimiting:WebAuthn:SecurityConfirmWindowSeconds", 600)))));
+
+            options.AddPolicy(PwaManifestPolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:PwaManifest:PermitLimit", 60),
+                        TimeSpan.FromSeconds(config.GetValue("RateLimiting:PwaManifest:WindowSeconds", 60)))));
 
             // AI endpoints policy (more restrictive due to resource cost)
             options.AddPolicy(AiPolicy, context =>

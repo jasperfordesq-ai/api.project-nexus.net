@@ -389,12 +389,13 @@ Earlier published slice evidence retained for context:
 - `Phase73NewScheduledJobsTests`: 16/16 after one Testcontainers-only startup retry;
 - exact React cron/security contracts: 3/3;
 - canonical broker persistence contract: 1/1;
-- API comparator fixture: green; live regeneration reports 4,316 ASP.NET
-  controller operations, 2,438/2,583 Laravel source operations matched, and 145
+- API comparator fixture: green; live regeneration reports 4,318 ASP.NET
+  controller operations, 2,439/2,583 Laravel source operations matched, and 144
   missing. Seven are the deliberately unresolved document-era admin
   vetting writes (root create, record update/delete, upload/verify/reject, and
-  bulk), with the remaining four at PWA manifest, prerender reset/invalidate,
-  and guardian-consent token verification. The legacy vetting routes cannot be
+  bulk). The expanded remainder is dominated by event-product routes, with
+  prerender reset/invalidate and guardian-consent token verification also open.
+  The legacy vetting routes cannot be
   restored as contact-authorizing document workflows;
 - pre-volunteering EF Release baseline: 75 migrations, latest
   `20260710092435_CanonicalRoleSemantics`; no pending model changes.
@@ -445,8 +446,8 @@ Earlier published slice evidence retained for context:
 - earlier volunteering-chain proof reached
   `20260711031959_NullableTransactionLedgerLegs`; the current migration proof
   is recorded above;
-- API route comparator: 2,438/2,583 current Laravel/supplemental operations
-  matched, 145 route-shape gaps after the expanded event/security inventory;
+- API route comparator: 2,439/2,583 current Laravel/supplemental operations
+  matched, 144 route-shape gaps after the expanded event/security inventory;
 - historical schema comparator: 134/361 Laravel tables matched, 227 missing, 194
   ASP.NET-only; the current result above supersedes it and remains a global red
   gate.
