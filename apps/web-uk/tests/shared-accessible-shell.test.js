@@ -17539,8 +17539,33 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Completed');
     expect(response.text).toContain('1 challenge');
     expect(response.text).not.toContain('href="/ideation/new"');
+    expect(response.text).not.toContain('id="create"');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
     expect(api.callIdeationApi).toHaveBeenCalledWith('test-token', 'GET', '/ideation-campaigns?per_page=50');
+  });
+
+  it('renders the Blade-equivalent campaign form for an ideation administrator', async () => {
+    const api = require('../src/lib/api');
+    api.getProfile.mockResolvedValue({ data: { id: 101, role: 'tenant_admin' } });
+    api.callIdeationApi.mockResolvedValueOnce({ data: { data: [] } });
+
+    const response = await request(app)
+      .get('/ideation/campaigns?status=campaign-invalid')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Check the campaign details and try again.');
+    expect(response.text).toContain('href="#campaign_title"');
+    expect(response.text).toContain('id="create"');
+    expect(response.text).toContain('action="/ideation/campaigns"');
+    expect(response.text).toContain('Campaign title');
+    expect(response.text).toContain('id="campaign_title-error"');
+    expect(response.text).toContain('Enter a campaign title.');
+    expect(response.text).toContain('name="cover_image"');
+    expect(response.text).toContain('name="start_date"');
+    expect(response.text).toContain('name="end_date"');
+    expect(response.text).toContain('name="campaign_status"');
+    expect(response.text).toContain('Create campaign');
   });
 
   it('renders the Laravel-backed ideation campaign detail page', async () => {
@@ -18198,6 +18223,7 @@ describe('shared accessible frontend shell', () => {
   it('submits Laravel ideation campaign aliases and redirects signed-out visitors', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');
+    api.getProfile.mockResolvedValue({ data: { id: 101, role: 'tenant_admin' } });
     const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
     const agent = request.agent(app);
     const first = await agent
@@ -18210,28 +18236,43 @@ describe('shared accessible frontend shell', () => {
       .type('form')
       .send({ _csrf: csrfMatch[1], ...body });
 
+    api.callIdeationApi.mockResolvedValueOnce({ data: { id: 9 } });
     const createResponse = await post('/ideation/campaigns', {
       title: ' Park renewal ',
       description: ' Gather related park challenges ',
-      status: 'active'
+      cover_image: ' https://example.test/park.jpg ',
+      start_date: ' 2026-08-01 ',
+      end_date: ' 2026-09-30 ',
+      campaign_status: 'active'
     });
-    expect(createResponse.headers.location).toBe('/ideation/campaigns?status=campaign-created');
+    expect(createResponse.headers.location).toBe('/ideation/campaigns/9?status=campaign-created');
     expect(api.callIdeationApi).toHaveBeenLastCalledWith('test-token', 'POST', '/ideation-campaigns', {
       title: 'Park renewal',
       description: 'Gather related park challenges',
+      cover_image: 'https://example.test/park.jpg',
+      start_date: '2026-08-01',
+      end_date: '2026-09-30',
       status: 'active'
     });
+
+    api.callIdeationApi.mockClear();
+    const invalidResponse = await post('/ideation/campaigns', { title: '   ' });
+    expect(invalidResponse.headers.location).toBe('/ideation/campaigns?status=campaign-invalid#create');
+    expect(api.callIdeationApi).not.toHaveBeenCalled();
 
     const updateResponse = await post('/ideation/campaigns/5', {
       title: ' Updated campaign ',
       description: ' Updated summary ',
-      status: 'paused'
+      campaign_status: 'paused'
     });
     expect(updateResponse.headers.location).toBe('/ideation/campaigns/5?status=campaign-saved');
     expect(api.callIdeationApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/ideation-campaigns/5', {
       title: 'Updated campaign',
       description: 'Updated summary',
-      status: 'paused'
+      cover_image: '',
+      start_date: null,
+      end_date: null,
+      status: 'draft'
     });
 
     const unlinkResponse = await post('/ideation/campaigns/5/challenges/7/unlink');
@@ -18252,6 +18293,28 @@ describe('shared accessible frontend shell', () => {
       .send({ _csrf: unsignedCsrf[1], idea_title: 'Bench' });
     expect(unsignedResponse.status).toBe(302);
     expect(unsignedResponse.headers.location).toBe('/login?status=auth-required');
+    expect(api.callIdeationApi).not.toHaveBeenCalled();
+  });
+
+  it('rejects ideation campaign mutations from a non-administrator before the API call', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.getProfile.mockResolvedValue({ data: { id: 202, role: 'member' } });
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    api.callIdeationApi.mockClear();
+    const response = await agent
+      .post('/ideation/campaigns')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], title: 'Not allowed' });
+
+    expect(response.status).toBe(403);
     expect(api.callIdeationApi).not.toHaveBeenCalled();
   });
 

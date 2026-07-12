@@ -1443,6 +1443,27 @@ describe('tenant-aware template helper conversion', () => {
     }
   });
 
+  it('keeps the Ideation campaign create workflow aligned with the Blade contract', () => {
+    const template = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', 'ideation', 'campaigns.njk'),
+      'utf8'
+    );
+    const route = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'routes', 'ideation-actions.js'),
+      'utf8'
+    );
+
+    expect(template).toContain('{% if ideationIsAdmin %}');
+    expect(template).toContain('name="campaign_status"');
+    expect(template).toContain('name="cover_image"');
+    expect(template).toContain('name="start_date"');
+    expect(template).toContain('name="end_date"');
+    expect(template).toContain('govuk_alpha_ideation.campaigns.submit_create');
+    expect(route).toContain("ideationSubpageRedirect('campaigns', 'campaign-invalid')");
+    expect(route).toContain("ideationSubpageRedirect('campaigns', 'campaign-failed')");
+    expect(route).not.toContain('campaign-create-failed');
+  });
+
   it('keeps group exchange tabs, links, and forms behind urlFor()', () => {
     const templates = [
       path.join('group-exchanges', 'index.njk'),

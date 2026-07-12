@@ -5,6 +5,7 @@
 
 const express = require('express');
 const { ApiError, callIdeationApi } = require('../lib/api');
+const { getRequestProfile } = require('../lib/request-profile');
 const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
@@ -97,6 +98,27 @@ async function runAction(req, res, method, path, data, successRedirect, failureR
   }
 }
 
+function ideationAdministrator(profileResult) {
+  const profile = dataFrom(profileResult) || {};
+  const role = trimmed(profile.role || profile.user_role || profile.userRole).toLowerCase();
+  return ['admin', 'tenant_admin', 'tenant_super_admin', 'super_admin'].includes(role);
+}
+
+async function guardCampaignAdministrator(req, res) {
+  const token = tokenFrom(req);
+  if (!token) {
+    redirectTo(res, loginRedirect());
+    return false;
+  }
+
+  if (!ideationAdministrator(await getRequestProfile(req, token))) {
+    res.status(403).render('errors/403', { title: 'Forbidden' });
+    return false;
+  }
+
+  return true;
+}
+
 function challengeRedirect(id, status) {
   return `${IDEATION_PATH}/${id}?status=${encodeURIComponent(status)}`;
 }
@@ -165,14 +187,17 @@ function ideaPayload(body) {
 
 function campaignPayload(body) {
   const payload = {
-    title: trimmed(body.title, 200),
-    description: trimmed(body.description, 10000)
+    title: trimmed(body.title, 255),
+    description: trimmed(body.description, 5000),
+    cover_image: trimmed(body.cover_image, 500),
+    start_date: trimmed(body.start_date) || null,
+    end_date: trimmed(body.end_date) || null
   };
 
-  const status = trimmed(body.status, 64);
-  if (status !== '') {
-    payload.status = status;
-  }
+  const requestedStatus = trimmed(body.campaign_status || body.status, 64);
+  payload.status = ['draft', 'active', 'completed', 'archived'].includes(requestedStatus)
+    ? requestedStatus
+    : 'draft';
 
   return payload;
 }
@@ -208,17 +233,33 @@ function convertPayload(body) {
   };
 }
 
-router.post('/campaigns', asyncRoute(async (req, res) => runAction(
-  req,
-  res,
-  'POST',
-  '/ideation-campaigns',
-  campaignPayload(req.body),
-  ideationSubpageRedirect('campaigns', 'campaign-created'),
-  ideationSubpageRedirect('campaigns', 'campaign-create-failed')
-)));
+router.post('/campaigns', asyncRoute(async (req, res) => {
+  if (!await guardCampaignAdministrator(req, res)) return undefined;
+
+  const payload = campaignPayload(req.body);
+  if (payload.title === '') {
+    return redirectTo(res, `${ideationSubpageRedirect('campaigns', 'campaign-invalid')}#create`);
+  }
+
+  return runAction(
+    req,
+    res,
+    'POST',
+    '/ideation-campaigns',
+    payload,
+    (result) => {
+      const id = resultId(result);
+      return id === null
+        ? ideationSubpageRedirect('campaigns', 'campaign-created')
+        : campaignRedirect(id, 'campaign-created');
+    },
+    `${ideationSubpageRedirect('campaigns', 'campaign-failed')}#create`
+  );
+}));
 
 router.post('/campaigns/:id(\\d+)', asyncRoute(async (req, res) => {
+  if (!await guardCampaignAdministrator(req, res)) return undefined;
+
   const id = Number(req.params.id);
   return runAction(
     req,
@@ -232,6 +273,8 @@ router.post('/campaigns/:id(\\d+)', asyncRoute(async (req, res) => {
 }));
 
 router.post('/campaigns/:id(\\d+)/challenges/:challengeId(\\d+)/unlink', asyncRoute(async (req, res) => {
+  if (!await guardCampaignAdministrator(req, res)) return undefined;
+
   const id = Number(req.params.id);
   const challengeId = Number(req.params.challengeId);
   return runAction(
@@ -246,6 +289,8 @@ router.post('/campaigns/:id(\\d+)/challenges/:challengeId(\\d+)/unlink', asyncRo
 }));
 
 router.post('/campaigns/:id(\\d+)/delete', asyncRoute(async (req, res) => {
+  if (!await guardCampaignAdministrator(req, res)) return undefined;
+
   const id = Number(req.params.id);
   return runAction(
     req,

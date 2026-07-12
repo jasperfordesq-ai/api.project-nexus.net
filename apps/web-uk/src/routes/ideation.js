@@ -211,7 +211,10 @@ function campaignStatusDetails(status) {
 function normalizeCampaign(item) {
   const row = item && typeof item === 'object' ? item : {};
   const id = positiveInteger(row.id);
-  const status = campaignStatusDetails(row.status);
+  const statusValue = ['active', 'completed', 'archived'].includes(trimmed(row.status).toLowerCase())
+    ? trimmed(row.status).toLowerCase()
+    : 'draft';
+  const status = campaignStatusDetails(statusValue);
   const challengeCount = Number(row.challenge_count ?? row.challengeCount ?? 0) || 0;
   const creator = row.creator && typeof row.creator === 'object' ? row.creator : {};
   return {
@@ -219,6 +222,7 @@ function normalizeCampaign(item) {
     id,
     title: trimmed(row.title) || 'Campaigns',
     description: limitText(row.description),
+    status: statusValue,
     statusLabel: status.label,
     statusClass: status.className,
     challengeCount,
@@ -573,9 +577,7 @@ router.get('/campaigns', asyncRoute(async (req, res) => {
     activeNav: 'explore',
     campaigns,
     ideationIsAdmin: ideationAdministrator(profileResult),
-    status,
-    successMessage: campaignStatusMessage(status),
-    errorMessage: campaignErrorMessage(status)
+    status
   });
 }, { redirectOn401: loginRedirect() }));
 
