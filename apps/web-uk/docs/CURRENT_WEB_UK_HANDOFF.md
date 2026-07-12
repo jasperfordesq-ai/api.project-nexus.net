@@ -5483,6 +5483,17 @@ disposable PDF upload/render/delete gate remains valid (`1/1`, `44.2` seconds).
 Focused security/render proof passed. Full Jest remains `45/45` suites and
 `1,456/1,456` tests with green lint and the 285-template zero-match audit.
 
+## 2026-07-12 Default-English Volunteer Donations Parity
+
+Donations now uses Laravel's catalog for the page and form, donor plurals,
+progress accessibility text, statuses, methods, and result states. Tenant
+currency and the existing currency-free POST contract remain unchanged, and
+the `1,000,000` amount ceiling is still enforced.
+
+Focused render/action proof passed. Full Jest remains `45/45` suites and
+`1,456/1,456` tests with green lint and the 285-template zero-match audit. No
+live donation was created because Laravel exposes no residue-free deletion path.
+
 ## Final Handoff Checklist
 
 Before leaving this job for another agent, write a short note containing:

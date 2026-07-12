@@ -31,13 +31,13 @@
     {% endif %}
   {% endif %}
 
-  <span class="govuk-caption-l">Volunteering</span>
-  <h1 class="govuk-heading-xl">Donations and giving</h1>
-  <p class="govuk-body-l">Support your community with a money donation, and follow how active fundraising campaigns are doing.</p>
+  <span class="govuk-caption-l">{{ t("govuk_alpha_volunteering.donations.caption") }}</span>
+  <h1 class="govuk-heading-xl">{{ t("govuk_alpha_volunteering.donations.title") }}</h1>
+  <p class="govuk-body-l">{{ t("govuk_alpha_volunteering.donations.description") }}</p>
 
   <div class="govuk-inset-text" role="note" aria-labelledby="donations-intro-heading">
-    <h2 class="govuk-heading-s govuk-!-margin-bottom-2" id="donations-intro-heading">About donations</h2>
-    <p class="govuk-body govuk-!-margin-bottom-0">Donations are money gifts to support the community. They are not time credits. Time credits are still earned only by logging approved volunteer hours.</p>
+    <h2 class="govuk-heading-s govuk-!-margin-bottom-2" id="donations-intro-heading">{{ t("govuk_alpha_volunteering.donations.intro_title") }}</h2>
+    <p class="govuk-body govuk-!-margin-bottom-0">{{ t("govuk_alpha_volunteering.donations.intro_desc") }}</p>
   </div>
 
   {% if loadError %}
@@ -51,23 +51,23 @@
     </div>
   {% endif %}
 
-  <h2 class="govuk-heading-l">Fundraising so far</h2>
+  <h2 class="govuk-heading-l">{{ t("govuk_alpha_volunteering.donations.stats_title") }}</h2>
   <dl class="nexus-alpha-stat-grid">
     <div class="nexus-alpha-stat">
-      <dt>Total raised</dt>
+      <dt>{{ t("govuk_alpha_volunteering.donations.stat_total_raised") }}</dt>
       <dd>{{ dashboard.stats.totalRaisedLabel }}</dd>
     </div>
     <div class="nexus-alpha-stat">
-      <dt>Donors</dt>
+      <dt>{{ t("govuk_alpha_volunteering.donations.stat_total_donors") }}</dt>
       <dd>{{ dashboard.stats.totalDonors }}</dd>
     </div>
     <div class="nexus-alpha-stat">
-      <dt>Active campaigns</dt>
+      <dt>{{ t("govuk_alpha_volunteering.donations.stat_active_campaigns") }}</dt>
       <dd>{{ dashboard.stats.activeCampaigns }}</dd>
     </div>
   </dl>
 
-  <h2 class="govuk-heading-l">Active giving days</h2>
+  <h2 class="govuk-heading-l">{{ t("govuk_alpha_volunteering.donations.giving_days_title") }}</h2>
   {% if dashboard.givingDays.length %}
     <ul class="nexus-alpha-card-list govuk-list">
       {% for day in dashboard.givingDays %}
@@ -79,35 +79,35 @@
           {% if day.description %}
             <p class="govuk-body">{{ day.description }}</p>
           {% endif %}
-          <p class="govuk-body govuk-!-margin-bottom-1">Raised {{ day.raisedLabel }} of {{ day.goalLabel }}</p>
-          <progress max="100" value="{{ day.percent }}" aria-label="Fundraising progress: {{ day.percent }} percent of the goal">{{ day.percent }}%</progress>
+          <p class="govuk-body govuk-!-margin-bottom-1">{{ t("govuk_alpha_volunteering.donations.progress_label", { raised: day.raisedLabel, goal: day.goalLabel }) }}</p>
+          <progress max="100" value="{{ day.percent }}" aria-label="{{ t('govuk_alpha_volunteering.donations.progress_aria', { percent: day.percent }) }}">{{ day.percent }}%</progress>
           <p class="nexus-alpha-meta govuk-!-margin-top-1">
-            <span>{{ day.donorsLabel }}</span>
+            <span>{{ tc("govuk_alpha_volunteering.donations.donors_count", day.donorCount, { count: day.donorCount }) }}</span>
             {% if day.endDateLabel %}
-              <span>Campaign ends: {{ day.endDateLabel }}</span>
+              <span>{{ t("govuk_alpha_volunteering.donations.ends_label") }}: {{ day.endDateLabel }}</span>
             {% endif %}
           </p>
           {% if day.id %}
-            <a class="govuk-link" href="#donate-form" data-vol-giving-day="{{ day.id }}">Donate to this campaign</a>
+            <a class="govuk-link" href="#donate-form" data-vol-giving-day="{{ day.id }}">{{ t("govuk_alpha_volunteering.donations.donate_to_day") }}</a>
           {% endif %}
         </li>
       {% endfor %}
     </ul>
   {% else %}
-    <div class="govuk-inset-text">There are no active fundraising campaigns right now.</div>
+    <div class="govuk-inset-text">{{ t("govuk_alpha_volunteering.donations.giving_days_empty") }}</div>
   {% endif %}
 
-  <h2 class="govuk-heading-l">My donations</h2>
+  <h2 class="govuk-heading-l">{{ t("govuk_alpha_volunteering.donations.history_title") }}</h2>
   {% if dashboard.donations.length %}
     <table class="govuk-table">
-      <caption class="govuk-visually-hidden">My donations</caption>
+      <caption class="govuk-visually-hidden">{{ t("govuk_alpha_volunteering.donations.history_title") }}</caption>
       <thead class="govuk-table__head">
         <tr class="govuk-table__row">
-          <th scope="col" class="govuk-table__header">Amount</th>
-          <th scope="col" class="govuk-table__header">Status</th>
-          <th scope="col" class="govuk-table__header">Method</th>
-          <th scope="col" class="govuk-table__header">Date</th>
-          <th scope="col" class="govuk-table__header">Message</th>
+          <th scope="col" class="govuk-table__header">{{ t("govuk_alpha_volunteering.donations.col_amount") }}</th>
+          <th scope="col" class="govuk-table__header">{{ t("govuk_alpha_volunteering.donations.col_status") }}</th>
+          <th scope="col" class="govuk-table__header">{{ t("govuk_alpha_volunteering.donations.col_method") }}</th>
+          <th scope="col" class="govuk-table__header">{{ t("govuk_alpha_volunteering.donations.col_when") }}</th>
+          <th scope="col" class="govuk-table__header">{{ t("govuk_alpha_volunteering.donations.col_message") }}</th>
         </tr>
       </thead>
       <tbody class="govuk-table__body">
@@ -117,28 +117,28 @@
             <td class="govuk-table__cell">
               <strong class="govuk-tag {{ donation.status.className }}">{{ donation.status.label }}</strong>
               {% if donation.isAnonymous %}
-                <strong class="govuk-tag govuk-tag--grey">Anonymous</strong>
+                <strong class="govuk-tag govuk-tag--grey">{{ t("govuk_alpha_volunteering.donations.anonymous_tag") }}</strong>
               {% endif %}
             </td>
             <td class="govuk-table__cell">{{ donation.methodLabel }}</td>
-            <td class="govuk-table__cell">{{ donation.createdAtLabel or "-" }}</td>
+            <td class="govuk-table__cell">{{ donation.createdAtLabel or "—" }}</td>
             <td class="govuk-table__cell">{{ donation.message }}</td>
           </tr>
         {% endfor %}
       </tbody>
     </table>
   {% else %}
-    <div class="govuk-inset-text">You have not made any donations yet.</div>
+    <div class="govuk-inset-text">{{ t("govuk_alpha_volunteering.donations.history_empty") }}</div>
   {% endif %}
 
-  <h2 class="govuk-heading-l" id="donate-form">Make a donation</h2>
-  <p class="govuk-body">Record a donation by bank transfer or PayPal. An administrator will confirm it once the payment has arrived.</p>
+  <h2 class="govuk-heading-l" id="donate-form">{{ t("govuk_alpha_volunteering.donations.form_title") }}</h2>
+  <p class="govuk-body">{{ t("govuk_alpha_volunteering.donations.form_intro") }}</p>
   <form id="donate" method="post" action="{{ urlFor('/volunteering/donations#donate') }}" class="govuk-!-margin-bottom-8">
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
     <div class="govuk-form-group{% if status and status.type == 'error' %} govuk-form-group--error{% endif %}">
-      <label class="govuk-label govuk-label--s" for="donate-amount">Amount</label>
-      <div id="donate-amount-hint" class="govuk-hint">A whole or decimal amount, for example 25 or 25.50.</div>
+      <label class="govuk-label govuk-label--s" for="donate-amount">{{ t("govuk_alpha_volunteering.donations.amount_label") }}</label>
+      <div id="donate-amount-hint" class="govuk-hint">{{ t("govuk_alpha_volunteering.donations.amount_hint") }}</div>
       {% if status and status.type == 'error' %}
         <p id="donate-amount-error" class="govuk-error-message">
           <span class="govuk-visually-hidden">There is a problem:</span>
@@ -153,10 +153,10 @@
 
     {% if dashboard.givingDays.length %}
       <div class="govuk-form-group">
-        <label class="govuk-label govuk-label--s" for="donate-giving-day">Campaign</label>
-        <div id="donate-giving-day-hint" class="govuk-hint">Choose a fundraising campaign, or leave as a general community donation.</div>
+        <label class="govuk-label govuk-label--s" for="donate-giving-day">{{ t("govuk_alpha_volunteering.donations.campaign_label") }}</label>
+        <div id="donate-giving-day-hint" class="govuk-hint">{{ t("govuk_alpha_volunteering.donations.campaign_hint") }}</div>
         <select class="govuk-select" id="donate-giving-day" name="giving_day_id" aria-describedby="donate-giving-day-hint">
-          <option value="0">General community donation</option>
+          <option value="0">{{ t("govuk_alpha_volunteering.donations.campaign_general") }}</option>
           {% for day in dashboard.givingDays %}
             {% if day.id %}
               <option value="{{ day.id }}">{{ day.title }}</option>
@@ -168,8 +168,8 @@
 
     <div class="govuk-form-group">
       <fieldset class="govuk-fieldset" aria-describedby="donate-method-hint">
-        <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">Payment method</legend>
-        <div id="donate-method-hint" class="govuk-hint">How you will send the donation.</div>
+        <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">{{ t("govuk_alpha_volunteering.donations.method_label") }}</legend>
+        <div id="donate-method-hint" class="govuk-hint">{{ t("govuk_alpha_volunteering.donations.method_hint") }}</div>
         <div class="govuk-radios govuk-radios--small" data-module="govuk-radios">
           {% for method in dashboard.paymentMethods %}
             <div class="govuk-radios__item">
@@ -182,8 +182,8 @@
     </div>
 
     <div class="govuk-form-group">
-      <label class="govuk-label govuk-label--s" for="donate-message">Message optional</label>
-      <div id="donate-message-hint" class="govuk-hint">An optional note shown with your donation.</div>
+      <label class="govuk-label govuk-label--s" for="donate-message">{{ t("govuk_alpha_volunteering.donations.message_label") }} {{ t("govuk_alpha_volunteering.shared.optional") }}</label>
+      <div id="donate-message-hint" class="govuk-hint">{{ t("govuk_alpha_volunteering.donations.message_hint") }}</div>
       <textarea class="govuk-textarea" id="donate-message" name="message" rows="3" maxlength="500" aria-describedby="donate-message-hint"></textarea>
     </div>
 
@@ -191,12 +191,12 @@
       <div class="govuk-checkboxes govuk-checkboxes--small" data-module="govuk-checkboxes">
         <div class="govuk-checkboxes__item">
           <input class="govuk-checkboxes__input" id="donate-anonymous" name="is_anonymous" type="checkbox" value="1" aria-describedby="donate-anonymous-hint">
-          <label class="govuk-label govuk-checkboxes__label" for="donate-anonymous">Donate anonymously</label>
-          <div id="donate-anonymous-hint" class="govuk-hint govuk-checkboxes__hint">Hide your name from public donor lists.</div>
+          <label class="govuk-label govuk-checkboxes__label" for="donate-anonymous">{{ t("govuk_alpha_volunteering.donations.anonymous_label") }}</label>
+          <div id="donate-anonymous-hint" class="govuk-hint govuk-checkboxes__hint">{{ t("govuk_alpha_volunteering.donations.anonymous_hint") }}</div>
         </div>
       </div>
     </div>
 
-    <button class="govuk-button" data-module="govuk-button">Record donation</button>
+    <button class="govuk-button" data-module="govuk-button">{{ t("govuk_alpha_volunteering.donations.submit_button") }}</button>
   </form>
 {% endblock %}

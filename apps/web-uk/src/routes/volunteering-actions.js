@@ -465,22 +465,32 @@ function wellbeingStatus(status, t = null) {
   return null;
 }
 
-function donationStatus(status, donateError = '') {
+function donationStatus(status, donateError = '', t = null) {
   if (status === 'donate-recorded') {
     return {
       type: 'success',
-      message: 'Thank you. Your donation has been recorded and is awaiting confirmation of payment.'
+      message: t
+        ? t('govuk_alpha_volunteering.donations.donate_recorded')
+        : 'Thank you. Your donation has been recorded and is awaiting confirmation of payment.'
     };
   }
   if (status === 'donate-failed') {
     const messages = {
-      amount: 'Enter a donation amount greater than zero',
-      'amount-max': 'Enter a donation amount within the allowed limit',
-      validation: 'Check your answers and try again'
+      amount: 'error_amount',
+      'amount-max': 'error_amount_max',
+      validation: 'error_validation'
     };
+    const key = messages[donateError] || 'donate_failed';
     return {
       type: 'error',
-      message: messages[donateError] || 'Your donation could not be recorded. Please try again.',
+      message: t
+        ? t(`govuk_alpha_volunteering.donations.${key}`)
+        : {
+          error_amount: 'Enter a donation amount greater than zero',
+          error_amount_max: 'Enter a donation amount within the allowed limit',
+          error_validation: 'Check your answers and try again',
+          donate_failed: 'Your donation could not be recorded. Please try again.'
+        }[key],
       field: 'donate-amount'
     };
   }
@@ -879,24 +889,26 @@ function percentageLabel(value, total) {
   return Math.min(100, Math.max(0, Math.round((amount / goal) * 100)));
 }
 
-function donationMethodLabel(value) {
-  const labels = {
-    bank_transfer: 'Bank transfer',
-    paypal: 'PayPal',
-    card: 'Card',
-    stripe: 'Card'
+function donationMethodLabel(value, t = null) {
+  const keys = {
+    bank_transfer: 'method_bank_transfer',
+    paypal: 'method_paypal',
+    card: 'method_card',
+    stripe: 'method_stripe'
   };
   const method = trimmed(value);
-  return labels[method] || method || '-';
+  if (keys[method] && t) return t(`govuk_alpha_volunteering.donations.${keys[method]}`);
+  const labels = { bank_transfer: 'Bank transfer', paypal: 'PayPal', card: 'Card', stripe: 'Card' };
+  return labels[method] || method || '—';
 }
 
-function donationStatusPresentation(value) {
+function donationStatusPresentation(value, t = null) {
   const status = trimmed(value) || 'pending';
-  const labels = {
-    pending: 'Pending',
-    completed: 'Completed',
-    failed: 'Failed',
-    refunded: 'Refunded'
+  const keys = {
+    pending: 'status_pending',
+    completed: 'status_completed',
+    failed: 'status_failed',
+    refunded: 'status_refunded'
   };
   const classNames = {
     pending: 'govuk-tag--yellow',
@@ -906,17 +918,19 @@ function donationStatusPresentation(value) {
   };
   return {
     value: status,
-    label: labels[status] || headline(status) || 'Pending',
+    label: t
+      ? t(`govuk_alpha_volunteering.donations.${keys[status] || 'status_pending'}`)
+      : ({ pending: 'Pending', completed: 'Completed', failed: 'Failed', refunded: 'Refunded' }[status] || 'Pending'),
     className: classNames[status] || 'govuk-tag--grey'
   };
 }
 
-function givingDayStatusPresentation(value, isActive = false) {
+function givingDayStatusPresentation(value, isActive = false, t = null) {
   const status = trimmed(value) || (isActive ? 'active' : 'ended');
-  const labels = {
-    active: 'Active',
-    upcoming: 'Upcoming',
-    ended: 'Ended'
+  const keys = {
+    active: 'day_status_active',
+    upcoming: 'day_status_upcoming',
+    ended: 'day_status_ended'
   };
   const classNames = {
     active: 'govuk-tag--green',
@@ -925,22 +939,18 @@ function givingDayStatusPresentation(value, isActive = false) {
   };
   return {
     value: status,
-    label: labels[status] || headline(status) || 'Ended',
+    label: t
+      ? t(`govuk_alpha_volunteering.donations.${keys[status] || 'day_status_ended'}`)
+      : ({ active: 'Active', upcoming: 'Upcoming', ended: 'Ended' }[status] || 'Ended'),
     className: classNames[status] || 'govuk-tag--grey'
   };
 }
 
-function donorsLabel(count) {
-  const number = Number(count);
-  if (!Number.isFinite(number) || number <= 0) return 'No donors yet';
-  return number === 1 ? '1 donor' : `${number} donors`;
-}
-
-function normalizeGivingDay(row) {
+function normalizeGivingDay(row, t = null) {
   const day = row && typeof row === 'object' ? row : {};
   const goal = Number(day.goal_amount ?? day.target_amount);
   const raised = Number(day.raised_amount);
-  const status = givingDayStatusPresentation(day.status, checked(day.is_active));
+  const status = givingDayStatusPresentation(day.status, checked(day.is_active), t);
   const donorCount = Number(day.donor_count);
   const percent = percentageLabel(raised, goal);
   return {
@@ -951,29 +961,28 @@ function normalizeGivingDay(row) {
     goalLabel: moneyLabel(goal),
     raisedLabel: moneyLabel(raised),
     donorCount: Number.isFinite(donorCount) ? donorCount : 0,
-    donorsLabel: donorsLabel(donorCount),
     endDateLabel: dateLabel(day.end_date ?? day.ends_at ?? day.endsAt),
     percent
   };
 }
 
-function normalizeDonation(row) {
+function normalizeDonation(row, t = null) {
   const donation = row && typeof row === 'object' ? row : {};
   return {
     id: positiveInteger(donation.id),
     amountLabel: moneyLabel(donation.amount),
     currency: trimmed(donation.currency),
-    status: donationStatusPresentation(donation.status),
-    methodLabel: donationMethodLabel(donation.payment_method ?? donation.paymentMethod),
+    status: donationStatusPresentation(donation.status, t),
+    methodLabel: donationMethodLabel(donation.payment_method ?? donation.paymentMethod, t),
     createdAtLabel: dateLabel(donation.created_at ?? donation.createdAt),
     message: trimmed(donation.message),
     isAnonymous: checked(donation.is_anonymous ?? donation.isAnonymous)
   };
 }
 
-function normalizeDonationDashboard(givingDaysResult, donationsResult) {
-  const givingDays = collectionFrom(givingDaysResult).map(normalizeGivingDay);
-  const donations = collectionFrom(donationsResult).map(normalizeDonation);
+function normalizeDonationDashboard(givingDaysResult, donationsResult, t = null) {
+  const givingDays = collectionFrom(givingDaysResult).map((day) => normalizeGivingDay(day, t));
+  const donations = collectionFrom(donationsResult).map((donation) => normalizeDonation(donation, t));
   const stats = givingDays.reduce((totals, day) => ({
     totalRaised: totals.totalRaised + Number(day.raisedLabel),
     totalDonors: totals.totalDonors + day.donorCount,
@@ -984,8 +993,8 @@ function normalizeDonationDashboard(givingDaysResult, donationsResult) {
     givingDays,
     donations,
     paymentMethods: [
-      { value: 'bank_transfer', label: 'Bank transfer', checked: true },
-      { value: 'paypal', label: 'PayPal', checked: false }
+      { value: 'bank_transfer', label: donationMethodLabel('bank_transfer', t), checked: true },
+      { value: 'paypal', label: donationMethodLabel('paypal', t), checked: false }
     ],
     stats: {
       totalRaisedLabel: moneyLabel(stats.totalRaised),
@@ -2354,24 +2363,24 @@ router.get('/donations', asyncRoute(async (req, res) => {
     return redirectTo(res, loginRedirect());
   }
 
-  let dashboard = normalizeDonationDashboard({}, {});
+  let dashboard = normalizeDonationDashboard({}, {}, res.locals.t);
   let loadError = null;
   try {
     const givingDays = await callApi(token, 'GET', '/giving-days');
     const donations = await callApi(token, 'GET', '/donations?per_page=20');
-    dashboard = normalizeDonationDashboard(givingDays, donations);
+    dashboard = normalizeDonationDashboard(givingDays, donations, res.locals.t);
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
     loadError = 'We could not load your donations. Please try again.';
   }
 
   return res.render('volunteering/donations', {
-    title: 'Donations and giving',
+    title: res.locals.t('govuk_alpha_volunteering.donations.title'),
     activeNav: 'volunteering',
     dashboard,
     tenantCurrency: tenantCurrency(req),
     loadError,
-    status: donationStatus(trimmed(req.query.status), trimmed(req.query.donate_error)),
+    status: donationStatus(trimmed(req.query.status), trimmed(req.query.donate_error), res.locals.t),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { redirectOn401: loginRedirect() }));
