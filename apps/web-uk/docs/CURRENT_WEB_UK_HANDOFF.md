@@ -5588,6 +5588,20 @@ conversation.
 Focused inbox coverage passed 4/4. Full Jest passed `45/45` suites and
 `1,462/1,462` tests with green lint and the 285-template zero-match audit.
 
+## 2026-07-12 Disposable Jobs Owner Lifecycle
+
+The Jobs create/edit form now matches Blade's catalog-backed caption, headings,
+descriptions, field labels and hints, salary/status legends, and submit actions.
+`npm run smoke:laravel:jobs-mutation` passed `1/1` in `81.7` seconds: it created
+a unique draft time-credit opportunity, proved Laravel persistence and 320px
+structure/reflow/axe, edited title/commitment/location, proved the updated API
+contract, deleted through the visible owner form, and proved final absence. The
+independent cleanup path retained no fixture.
+
+Full Jest passed `45/45` suites and `1,463/1,463` tests with green lint and the
+285-template zero-match audit. Application, CV, interview, and offer mutation
+depth remain open.
+
 ## Final Handoff Checklist
 
 Before leaving this job for another agent, write a short note containing:

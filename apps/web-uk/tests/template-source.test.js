@@ -2146,6 +2146,21 @@ describe('tenant-aware template helper conversion', () => {
   });
 });
 
+describe('Jobs owner form source contract', () => {
+  it('keeps fixed create and edit copy on the Laravel catalog', () => {
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', 'jobs', 'form.njk'),
+      'utf8'
+    );
+
+    expect(source).toContain('govuk_alpha.jobs_t3.create_caption');
+    expect(source).toContain('govuk_alpha.jobs_t3.label_description');
+    expect(source).toContain('govuk_alpha.jobs_t3.label_status');
+    expect(source).toContain('govuk_alpha.jobs_t3.submit_update');
+    expect(source).not.toMatch(/>Project NEXUS Accessible<|>Description<|>Location \(optional\)<|>Closing date \(optional\)<|>Visibility</);
+  });
+});
+
 describe('localized progressive validation source contract', () => {
   it('gives every enhanced form localized summary and screen-reader prefix copy', () => {
     const viewsRoot = path.join(__dirname, '..', 'src', 'views');

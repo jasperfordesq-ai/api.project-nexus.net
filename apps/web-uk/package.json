@@ -29,6 +29,7 @@
     "smoke:laravel:events-mutation": "npm run build:css && node scripts/events-mutation-local-server.js",
     "smoke:laravel:goals-mutation": "npm run build:css && node scripts/goals-mutation-local-server.js",
     "smoke:laravel:groups-mutation": "npm run build:css && node scripts/groups-mutation-local-server.js",
+    "smoke:laravel:jobs-mutation": "npm run build:css && node scripts/jobs-mutation-local-server.js",
     "smoke:laravel:tenant-module-gates": "npm run build:css && node scripts/tenant-module-gates-local-server.js",
     "audit:aspnet:readiness": "node scripts/aspnet-readiness-audit.js",
     "locales:sync": "php scripts/sync-laravel-locales.php",
