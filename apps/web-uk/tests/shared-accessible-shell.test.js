@@ -12928,7 +12928,7 @@ describe('shared accessible frontend shell', () => {
     expect(api.getComments).not.toHaveBeenCalled();
     expect(response.text).toContain('href="/feed"');
     expect(response.text).toContain('Back to the feed');
-    expect(response.text).toContain('Community feed at');
+    expect(response.text).toContain('A shared item at Project NEXUS Accessible');
     expect(response.text).toContain('<h1');
     expect(response.text).toContain('Borrow a cargo bike');
     expect(response.text).toContain('Listing');
@@ -12946,6 +12946,42 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('No comments yet.');
     expect(response.text).not.toContain('name="content"');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
+  it('renders Blade-aligned localized engagement controls on a signed polymorphic feed item', async () => {
+    const api = require('../src/lib/api');
+    api.getFeedItemV2.mockResolvedValueOnce({
+      data: {
+        id: 42,
+        type: 'listing',
+        content: 'A shared cargo bike.',
+        author: { name: 'Grace Hopper' },
+        likes_count: 1,
+        comments_count: 0,
+        is_liked: true,
+        reactions: { counts: { love: 2 }, user_reaction: 'love' }
+      }
+    });
+    api.getComments.mockResolvedValueOnce({ data: { comments: [] } });
+
+    const response = await request(app)
+      .get('/feed/item/listing/42?locale=ar&status=reaction-added')
+      .set('Cookie', signedCookieHeader());
+
+    const ar = createTranslator('ar');
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('lang="ar"');
+    expect(response.text).toContain('dir="rtl"');
+    expect(response.text).toContain(ar('govuk_alpha_feed.item.caption', { community: 'Project NEXUS Accessible' }));
+    expect(response.text).toContain(ar('govuk_alpha_feed.item.posted_by', { name: 'Grace Hopper' }));
+    expect(response.text).toContain(ar('govuk_alpha_feed.states.reaction_added'));
+    expect(response.text).toContain('action="/feed/items/listing/42/like"');
+    expect(response.text).toContain('action="/feed/items/listing/42/react"');
+    expect(response.text).toContain('name="emoji" value="love"');
+    expect(response.text).toContain('nexus-alpha-reaction--active');
+    expect(response.text).toContain('action="/feed/items/listing/42/not-interested"');
+    expect(response.text).toContain('action="/feed/items/listing/42/comments"');
+    expect(response.text).toContain(ar('govuk_alpha_feed.item.no_comments'));
   });
 
   it('keeps public feed permalink documents available when Laravel protects the v2 payload APIs', async () => {

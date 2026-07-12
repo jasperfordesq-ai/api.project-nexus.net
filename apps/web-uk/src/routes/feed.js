@@ -322,6 +322,21 @@ function feedIndexStatusMessage(status, t) {
   return { type: errorStatuses.has(status) ? 'error' : 'success', text: t(key) };
 }
 
+function feedItemStatusMessage(status, t) {
+  const keys = {
+    'reaction-added': 'govuk_alpha_feed.states.reaction_added',
+    'reaction-removed': 'govuk_alpha_feed.states.reaction_removed',
+    'reaction-failed': 'govuk_alpha_feed.states.reaction_failed',
+    'not-interested': 'govuk_alpha_feed.states.not_interested',
+    'not-interested-failed': 'govuk_alpha_feed.states.not_interested_failed',
+    'comment-created': 'govuk_alpha_feed.states.success_title'
+  };
+  const errorStatuses = new Set(['reaction-failed', 'not-interested-failed']);
+  const key = keys[status];
+  if (!key || typeof t !== 'function') return null;
+  return { type: errorStatuses.has(status) ? 'error' : 'success', text: t(key) };
+}
+
 router.get('/hashtags', asyncRoute(async (req, res) => {
   const searchQuery = trimmed(req.query.q, 100);
   const searchTerm = strippedSearch(searchQuery);
@@ -422,7 +437,7 @@ router.get('/item/:type([a-z]+)/:id(\\d+)', asyncRoute(withTokenRefresh(async (r
     itemUnavailable,
     comments,
     requiresAuth: !token,
-    statusMessage: feedStatusMessage(trimmed(req.query.status)),
+    statusMessage: feedItemStatusMessage(trimmed(req.query.status), req.t || res.locals.t),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }), { notFoundTitle: 'Feed item not found' }));
