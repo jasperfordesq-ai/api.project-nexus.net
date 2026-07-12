@@ -6,14 +6,14 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a href="{{ urlFor('/federation/messages') }}" class="govuk-back-link">Back to conversations</a>
+  <a href="{{ urlFor('/federation/messages') }}" class="govuk-back-link">{{ t("fed2.messages.back_to_conversations") }}</a>
 
-  <span class="govuk-caption-xl">Conversation with {{ conversation.partnerName }}</span>
+  <span class="govuk-caption-xl">{{ t("fed2.messages.conversation_with", { name: conversation.partnerName }) }}</span>
   <h1 class="govuk-heading-xl">{{ conversation.partnerName }}</h1>
 
   {% if conversation.partnerTenantName %}
     <p class="govuk-body-l govuk-!-margin-bottom-2">
-      <strong class="govuk-tag govuk-tag--grey">Community: {{ conversation.partnerTenantName }}</strong>
+      <strong class="govuk-tag govuk-tag--grey">{{ t("fed2.messages.community_label") }}: {{ conversation.partnerTenantName }}</strong>
     </p>
   {% endif %}
 
@@ -48,35 +48,41 @@
       <article class="nexus-alpha-card">
         <p class="govuk-body-s govuk-!-margin-bottom-1">
           {% if message.outbound %}
-            <strong class="govuk-tag govuk-tag--grey">Sent</strong>
+            <strong class="govuk-tag govuk-tag--grey">{{ t("fed2.messages.sent_label") }}</strong>
           {% else %}
-            <strong class="govuk-tag govuk-tag--blue">Received</strong>
+            <strong class="govuk-tag govuk-tag--blue">{{ t("fed2.messages.received_label") }}</strong>
           {% endif %}
         </p>
 
-        <h2 class="govuk-heading-s govuk-!-margin-bottom-1">{{ message.subject or "No subject" }}</h2>
-        <p class="govuk-body govuk-!-margin-bottom-1">{{ message.body }}</p>
+        <h2 class="govuk-heading-s govuk-!-margin-bottom-1">{{ message.subject or t("fed2.messages.no_subject") }}</h2>
+        <p class="govuk-body govuk-!-margin-bottom-1">{{ message.body | nl2br | safe }}</p>
 
         {% if message.createdAt %}
           <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">
-            <time datetime="{{ message.createdAt }}">{{ message.createdAt | date }}</time>
+            <time datetime="{{ message.createdAt }}">{{ message.createdAtLabel }}</time>
           </p>
         {% endif %}
 
         {% if message.outbound %}
           <p class="govuk-body-s govuk-!-margin-bottom-0">
             {% if message.read %}
-              <strong class="govuk-tag govuk-tag--green">Read</strong>
+              <strong class="govuk-tag govuk-tag--green">{{ t("fed2.messages.read_label") }}</strong>
             {% else %}
-              <strong class="govuk-tag govuk-tag--grey">Delivered</strong>
+              <strong class="govuk-tag govuk-tag--grey">{{ t("fed2.messages.delivered_label") }}</strong>
             {% endif %}
           </p>
-        {% elif translateEnabled %}
+        {% elif translateEnabled and translation and translation.id == message.id %}
+          <div class="govuk-!-margin-top-2">
+            <p class="govuk-body-s govuk-!-margin-bottom-1"><strong class="govuk-tag govuk-tag--purple">{{ t("fed2.messages.translated_label") }}</strong></p>
+            <p class="govuk-body govuk-!-margin-bottom-1">{{ translation.text | nl2br | safe }}</p>
+            <p class="govuk-body-s govuk-!-margin-bottom-0"><a class="govuk-link" href="{{ urlFor('/federation/messages/conversation/' + conversation.partnerId + '?tenant_id=' + conversation.partnerTenantId) }}">{{ t("fed2.messages.view_original") }}</a></p>
+          </div>
+        {% elif not message.outbound and translateEnabled %}
           <form method="post" action="{{ urlFor('/federation/messages/translate/' + (message.id | string)) }}" class="govuk-!-margin-top-2">
             <input type="hidden" name="_csrf" value="{{ csrfToken }}">
             <input type="hidden" name="partner_id" value="{{ conversation.partnerId }}">
             <input type="hidden" name="partner_tenant_id" value="{{ conversation.partnerTenantId }}">
-            <button type="submit" class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button">Translate</button>
+            <button type="submit" class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button">{{ t("fed2.messages.translate_button") }}</button>
           </form>
         {% endif %}
       </article>
@@ -90,15 +96,15 @@
       <input type="hidden" name="receiver_tenant_id" value="{{ conversation.partnerTenantId }}">
       <input type="hidden" name="context" value="conversation">
       <input type="hidden" name="reference_message_id" value="{{ conversation.referenceMessageId }}">
-      <input type="hidden" name="subject" value="Re: federated message">
+      <input type="hidden" name="subject" value="{{ t('fed2.messages.reply_subject_default') }}">
 
       <div class="govuk-form-group">
-        <label class="govuk-label" for="body">Your reply</label>
-        <div id="body-hint" class="govuk-hint">Write a reply to this member.</div>
+        <label class="govuk-label" for="body">{{ t("fed2.messages.reply_label") }}</label>
+        <div id="body-hint" class="govuk-hint">{{ t("fed2.messages.reply_hint") }}</div>
         <textarea class="govuk-textarea" id="body" name="body" rows="4" maxlength="10000" aria-describedby="body-hint"></textarea>
       </div>
 
-      <button type="submit" class="govuk-button" data-module="govuk-button">Send reply</button>
+      <button type="submit" class="govuk-button" data-module="govuk-button">{{ t("fed2.messages.reply_submit") }}</button>
     </form>
   {% endif %}
 {% endblock %}

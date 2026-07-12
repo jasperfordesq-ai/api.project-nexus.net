@@ -395,7 +395,9 @@ function normalizeMessageThreads(messages, query = '', options = {}) {
     });
 }
 
-function normalizeConversation(messages, partnerId, partnerTenantId) {
+function normalizeConversation(messages, partnerId, partnerTenantId, options = {}) {
+  const t = typeof options.t === 'function' ? options.t : (key) => key;
+  const formatDate = typeof options.formatDate === 'function' ? options.formatDate : (value) => value;
   const partnerIdText = trimmed(partnerId);
   const partnerTenantIdText = trimmed(partnerTenantId);
   const conversationMessages = [];
@@ -413,7 +415,7 @@ function normalizeConversation(messages, partnerId, partnerTenantId) {
     if (!userMatches || !tenantMatches) return;
 
     if (!partnerName) {
-      partnerName = participantName(partner);
+      partnerName = participantName(partner, t);
       partnerTenantName = trimmed(partner.tenant_name || partner.tenantName);
     }
 
@@ -429,7 +431,10 @@ function normalizeConversation(messages, partnerId, partnerTenantId) {
       body: trimmed(message && message.body, 10000),
       outbound,
       read,
-      createdAt: message && message.created_at ? message.created_at : ''
+      createdAt: message && message.created_at ? message.created_at : '',
+      createdAtLabel: message && message.created_at
+        ? formatDate(message.created_at, { day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+        : ''
     });
   });
 
@@ -443,7 +448,7 @@ function normalizeConversation(messages, partnerId, partnerTenantId) {
   return {
     partnerId: partnerIdText,
     partnerTenantId: partnerTenantIdText,
-    partnerName: partnerName || 'A member',
+    partnerName: partnerName || t('fed2.messages.someone'),
     partnerTenantName,
     messages: conversationMessages,
     unreadIds: unreadIds.filter((id) => Number.isFinite(id) && id > 0).slice(0, 100),
@@ -1418,7 +1423,10 @@ router.get('/messages/conversation/:partnerId', asyncRoute(async (req, res) => {
     throw error;
   }
 
-  const conversation = normalizeConversation(dataFrom(messagesResult), partnerId, partnerTenantId);
+  const conversation = normalizeConversation(dataFrom(messagesResult), partnerId, partnerTenantId, {
+    t: res.locals.t,
+    formatDate: res.locals.formatLocaleDate
+  });
   if (conversation.messages.length === 0) {
     return redirectTo(res, '/federation/messages');
   }
@@ -1436,12 +1444,20 @@ router.get('/messages/conversation/:partnerId', asyncRoute(async (req, res) => {
   const settingsData = asObject(dataFrom(settingsResult));
   const settings = asObject(settingsData.settings);
   const optedIn = bool(settings.federation_optin) || bool(settingsData.enabled);
+  const flashedTranslation = req.session && req.session.federationTranslation;
+  const translation = flashedTranslation
+    && trimmed(flashedTranslation.partnerId) === partnerId
+    && trimmed(flashedTranslation.partnerTenantId) === partnerTenantId
+    ? { id: numberOrZero(flashedTranslation.id), text: trimmed(flashedTranslation.text, 10000) }
+    : null;
+  if (req.session && req.session.federationTranslation) delete req.session.federationTranslation;
 
   return res.render('federation/conversation', {
     title: conversation.partnerName,
     activeNav: 'explore',
     federationActiveTab: 'messages',
     conversation,
+    translation,
     canReply: optedIn && bool(settings.messaging_enabled_federated),
     translateEnabled: tenantFeatureEnabled(req, 'message_translation', true),
     statusBanner: messagesStatusBanner(req.query.status, res.locals.t)

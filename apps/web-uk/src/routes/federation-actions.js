@@ -303,9 +303,12 @@ router.post('/messages/translate/:id(\\d+)', asyncRoute(async (req, res) => {
   const targetLanguage = trimmed(req.body.target_language || req.body.target_locale || 'en', 10) || 'en';
   let status = 'translate-done';
   try {
-    await callFederation(token, 'POST', `/messages/${id}/translate`, {
+    const result = await callFederation(token, 'POST', `/messages/${id}/translate`, {
       target_language: targetLanguage
     });
+    const translatedText = trimmed((result && result.data && result.data.translated_text) || (result && result.translated_text), 10000);
+    if (!translatedText) throw new Error('Translation response did not include translated text');
+    if (req.session) req.session.federationTranslation = { id, text: translatedText, partnerId, partnerTenantId };
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
     status = 'translate-failed';

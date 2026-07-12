@@ -16448,6 +16448,56 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('Laravel Blade route');
   });
 
+  it('renders a translated Federation message once after the no-JavaScript redirect', async () => {
+    const api = require('../src/lib/api');
+    api.callFederationApi.mockImplementation(async (token, method, pathValue) => {
+      if (pathValue === '/settings') {
+        return { data: { enabled: true, settings: { federation_optin: true, messaging_enabled_federated: true } } };
+      }
+      if (pathValue === '/messages') {
+        return { data: [{
+          id: 33,
+          subject: 'Workshop plans',
+          body: 'Can we confirm tools for Saturday?',
+          direction: 'inbound',
+          status: 'read',
+          created_at: '2026-07-02T12:00:00Z',
+          sender: { id: 77, name: 'Avery Stone', tenant_id: 12, tenant_name: 'North Timebank' },
+          receiver: { id: 5, name: 'Jasper Ford', tenant_id: 1, tenant_name: 'Local Timebank' }
+        }] };
+      }
+      if (method === 'POST' && pathValue === '/messages/33/translate') {
+        return { data: { translated_text: 'An féidir linn na huirlisí a dheimhniú?' } };
+      }
+      return { data: {} };
+    });
+
+    const agent = request.agent(app);
+    const page = await agent
+      .get('/federation/messages/conversation/77?tenant_id=12')
+      .set('Cookie', signedCookieHeader());
+    const csrf = page.text.match(/name="_csrf" value="([^"]+)"/)[1];
+    const translated = await agent
+      .post('/federation/messages/translate/33')
+      .set('Cookie', signedCookieHeader())
+      .type('form')
+      .send({ _csrf: csrf, partner_id: '77', partner_tenant_id: '12', target_language: 'ga' });
+
+    expect(translated.headers.location).toBe('/federation/messages/conversation/77?tenant_id=12&status=translate-done#message-33');
+    const result = await agent
+      .get('/federation/messages/conversation/77?tenant_id=12&status=translate-done')
+      .set('Cookie', signedCookieHeader());
+    expect(result.text).toContain('Translated');
+    expect(result.text).toContain('An féidir linn na huirlisí a dheimhniú?');
+    expect(result.text).toContain('Show original');
+
+    const original = await agent
+      .get('/federation/messages/conversation/77?tenant_id=12')
+      .set('Cookie', signedCookieHeader());
+    expect(original.text).not.toContain('An féidir linn na huirlisí a dheimhniú?');
+    expect(original.text).toContain('action="/federation/messages/translate/33"');
+  });
+
   it('matches Blade Federation connection permission and load-failure states', async () => {
     const api = require('../src/lib/api');
     api.callFederationApi.mockRejectedValueOnce(new api.ApiError('Forbidden', 403));
@@ -24747,6 +24797,7 @@ describe('shared accessible frontend shell', () => {
       reference_message_id: 33
     });
 
+    api.callFederationApi.mockResolvedValueOnce({ data: { translated_text: 'An féidir linn na huirlisí a dheimhniú?' } });
     const translateResponse = await post('/federation/messages/translate/33', {
       partner_id: '77',
       partner_tenant_id: '12',
