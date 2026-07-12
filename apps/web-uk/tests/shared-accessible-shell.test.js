@@ -7837,7 +7837,9 @@ describe('shared accessible frontend shell', () => {
 
     expect(response.status).toBe(200);
     expect(response.text).toContain('Repair a bicycle');
-    expect(response.text).toContain('Message member');
+    expect(response.text).toContain('Message the other member');
+    expect(response.text).toContain('This exchange was requested from you.');
+    expect(response.text).toContain('The exchange has been completed and credits have been transferred.');
     expect(response.text).toContain('The chain is slipping when changing gear.');
     expect(response.text).toContain('Final hours');
     expect(response.text).toContain('2.25 hours');

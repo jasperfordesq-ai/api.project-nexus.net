@@ -32,14 +32,18 @@
   <p class="govuk-body-l">{{ exchange.roleText }}</p>
   <strong class="govuk-tag {{ exchange.statusClass }} govuk-!-margin-bottom-4">{{ exchange.statusLabel }}</strong>
 
-  {% if exchange.status == 'disputed' %}
-    <div class="govuk-inset-text">This exchange has been referred for support.</div>
+  {% if exchange.status in ["pending_provider", "pending_broker", "accepted", "in_progress", "pending_confirmation", "completed", "disputed", "cancelled", "declined", "expired"] %}
+    <p class="govuk-body">{{ t("exchanges.status_descriptions." + exchange.status) }}</p>
   {% endif %}
 
-  <h2 class="govuk-heading-l govuk-!-margin-top-7">Summary</h2>
+  {% if exchange.status == 'disputed' %}
+    <div class="govuk-inset-text">{{ t("exchanges.disputed_detail") }}</div>
+  {% endif %}
+
+  <h2 class="govuk-heading-l govuk-!-margin-top-7">{{ t("exchanges.summary_title") }}</h2>
   <dl class="govuk-summary-list">
     <div class="govuk-summary-list__row">
-      <dt class="govuk-summary-list__key">Listing</dt>
+      <dt class="govuk-summary-list__key">{{ t("exchanges.listing_label") }}</dt>
       <dd class="govuk-summary-list__value">
         <a class="govuk-link" href="{{ urlFor('/listings/' + (exchange.listingId | string)) }}">{{ exchange.listingTitle }}</a>
       </dd>
@@ -54,18 +58,18 @@
     </div>
     <div class="govuk-summary-list__row">
       <dt class="govuk-summary-list__key">{{ t("exchanges.proposed_hours_label") }}</dt>
-      <dd class="govuk-summary-list__value">{{ exchange.proposedHours }} hours</dd>
+      <dd class="govuk-summary-list__value">{{ t("exchanges.hours", { count: exchange.proposedHours }) }}</dd>
     </div>
     {% if exchange.prepTime %}
       <div class="govuk-summary-list__row">
         <dt class="govuk-summary-list__key">{{ t("exchanges.prep_time_label") }}</dt>
-        <dd class="govuk-summary-list__value">{{ exchange.prepTime }} hours</dd>
+        <dd class="govuk-summary-list__value">{{ t("exchanges.hours", { count: exchange.prepTime }) }}</dd>
       </div>
     {% endif %}
     {% if exchange.finalHours %}
       <div class="govuk-summary-list__row">
         <dt class="govuk-summary-list__key">{{ t("exchanges.final_hours_label") }}</dt>
-        <dd class="govuk-summary-list__value">{{ exchange.finalHours }} hours</dd>
+        <dd class="govuk-summary-list__value">{{ t("exchanges.hours", { count: exchange.finalHours }) }}</dd>
       </div>
     {% endif %}
     {% if exchange.status == 'in_progress' or exchange.status == 'pending_confirmation' or exchange.status == 'completed' %}
@@ -73,7 +77,7 @@
         <dt class="govuk-summary-list__key">{{ t("exchanges.requester_confirmation_label") }}</dt>
         <dd class="govuk-summary-list__value">
           {% if exchange.hasRequesterConfirmed %}
-            <strong class="govuk-tag govuk-tag--green">Confirmed</strong>
+            <strong class="govuk-tag govuk-tag--green">{{ t("exchanges.confirmed") }}</strong>
           {% else %}
             <strong class="govuk-tag govuk-tag--yellow">{{ t("exchanges.awaiting_confirmation") }}</strong>
           {% endif %}
@@ -83,7 +87,7 @@
         <dt class="govuk-summary-list__key">{{ t("exchanges.provider_confirmation_label") }}</dt>
         <dd class="govuk-summary-list__value">
           {% if exchange.hasProviderConfirmed %}
-            <strong class="govuk-tag govuk-tag--green">Confirmed</strong>
+            <strong class="govuk-tag govuk-tag--green">{{ t("exchanges.confirmed") }}</strong>
           {% else %}
             <strong class="govuk-tag govuk-tag--yellow">{{ t("exchanges.awaiting_confirmation") }}</strong>
           {% endif %}
@@ -91,31 +95,31 @@
       </div>
     {% endif %}
     <div class="govuk-summary-list__row">
-      <dt class="govuk-summary-list__key">Risk</dt>
+      <dt class="govuk-summary-list__key">{{ t("exchanges.risk_label") }}</dt>
       <dd class="govuk-summary-list__value">{{ exchange.riskLabel }}</dd>
     </div>
     {% if exchange.createdAt %}
       <div class="govuk-summary-list__row">
-        <dt class="govuk-summary-list__key">Created</dt>
+        <dt class="govuk-summary-list__key">{{ t("exchanges.created_label") }}</dt>
         <dd class="govuk-summary-list__value">{{ exchange.createdAt | formatDate }}</dd>
       </div>
     {% endif %}
   </dl>
 
   {% if exchange.message %}
-    <h2 class="govuk-heading-m">Message</h2>
+    <h2 class="govuk-heading-m">{{ t("exchanges.message_label") }}</h2>
     <div class="govuk-inset-text">{{ exchange.message | nl2br | safe }}</div>
   {% endif %}
 
   {% if exchange.otherUserId %}
     <div class="nexus-alpha-actions govuk-!-margin-bottom-7">
-      <a class="govuk-button govuk-button--secondary" href="{{ urlFor('/messages/' + (exchange.otherUserId | string)) }}" role="button" draggable="false" data-module="govuk-button">{{ t("polish_federation.listings_contact") }}</a>
+      <a class="govuk-button govuk-button--secondary" href="{{ urlFor('/messages/' + (exchange.otherUserId | string)) }}" role="button" draggable="false" data-module="govuk-button">{{ t("exchanges.message_member") }}</a>
     </div>
   {% endif %}
 
-  <h2 class="govuk-heading-l">Actions</h2>
+  <h2 class="govuk-heading-l">{{ t("exchanges.actions_title") }}</h2>
   {% if not exchange.canAccept and not exchange.canDecline and not exchange.canStart and not exchange.canComplete and not exchange.canConfirm and not exchange.canCancel %}
-    <div class="govuk-inset-text">There is no action to take right now.</div>
+    <div class="govuk-inset-text">{{ t("exchanges.no_action") }}</div>
   {% else %}
     {% if exchange.canAccept or exchange.canStart or exchange.canComplete %}
       <div class="govuk-button-group govuk-!-margin-bottom-5">
@@ -123,7 +127,7 @@
           <form method="post" action="{{ urlFor('/exchanges/' + (exchange.id | string)) }}">
             <input type="hidden" name="_csrf" value="{{ csrfToken }}">
             <input type="hidden" name="action" value="accept">
-            <button class="govuk-button" data-module="govuk-button">Accept</button>
+            <button class="govuk-button" data-module="govuk-button">{{ t("actions.accept") }}</button>
           </form>
         {% endif %}
         {% if exchange.canStart %}
@@ -137,7 +141,7 @@
           <form method="post" action="{{ urlFor('/exchanges/' + (exchange.id | string)) }}">
             <input type="hidden" name="_csrf" value="{{ csrfToken }}">
             <input type="hidden" name="action" value="complete">
-            <button class="govuk-button" data-module="govuk-button">Mark ready</button>
+            <button class="govuk-button" data-module="govuk-button">{{ t("actions.mark_ready") }}</button>
           </form>
         {% endif %}
       </div>
@@ -148,8 +152,8 @@
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
         <input type="hidden" name="action" value="confirm">
         <div class="govuk-form-group">
-          <label class="govuk-label" for="hours">{{ t("actions.confirm_hours") }}</label>
-          <div id="hours-hint" class="govuk-hint">Enter the final time-credit hours.</div>
+          <label class="govuk-label" for="hours">{{ t("exchanges.confirm_hours_label") }}</label>
+          <div id="hours-hint" class="govuk-hint">{{ t("exchanges.confirm_hours_hint") }}</div>
           <input class="govuk-input govuk-input--width-5" id="hours" name="hours" type="number" min="0.25" max="24" step="0.25" value="{{ exchange.proposedHours or 1 }}" aria-describedby="hours-hint" required>
         </div>
         <button class="govuk-button" data-module="govuk-button">{{ t("actions.confirm_hours") }}</button>
@@ -206,31 +210,29 @@
   {% endif %}
 
   {% if exchange.status == 'completed' %}
-    <h2 class="govuk-heading-l govuk-!-margin-top-7" id="rating">Review</h2>
+    <h2 class="govuk-heading-l govuk-!-margin-top-7" id="rating">{{ t("exchanges.review_title") }}</h2>
     {% if canReview %}
-      <p class="govuk-body">Leave a review for this completed exchange.</p>
+      <p class="govuk-body">{{ t("exchanges.review_hint") }}</p>
       <form method="post" action="{{ urlFor('/exchanges/' + (exchange.id | string) + '/rate') }}">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
         <div class="govuk-form-group">
-          <label class="govuk-label" for="rating-select">Rating</label>
-          <div id="rating-hint" class="govuk-hint">5 is excellent and 1 is poor.</div>
+          <label class="govuk-label" for="rating-select">{{ t("exchanges.review_rating_label") }}</label>
+          <div id="rating-hint" class="govuk-hint">{{ t("exchanges.review_rating_hint") }}</div>
           <select class="govuk-select govuk-input--width-10" id="rating-select" name="rating" aria-describedby="rating-hint" required>
-            <option value="5">5 out of 5</option>
-            <option value="4">4 out of 5</option>
-            <option value="3">3 out of 5</option>
-            <option value="2">2 out of 5</option>
-            <option value="1">1 out of 5</option>
+            {% for ratingValue in [5, 4, 3, 2, 1] %}
+              <option value="{{ ratingValue }}">{{ t("exchanges.review_rating_value", { rating: ratingValue }) }}</option>
+            {% endfor %}
           </select>
         </div>
         <div class="govuk-form-group">
-          <label class="govuk-label" for="comment">{{ t("actions.comment") }}</label>
-          <div id="comment-hint" class="govuk-hint">Optional.</div>
+          <label class="govuk-label" for="comment">{{ t("exchanges.review_comment_label") }}</label>
+          <div id="comment-hint" class="govuk-hint">{{ t("exchanges.review_comment_hint") }}</div>
           <textarea class="govuk-textarea" id="comment" name="comment" rows="4" aria-describedby="comment-hint"></textarea>
         </div>
-        <button class="govuk-button" data-module="govuk-button">Submit review</button>
+        <button class="govuk-button" data-module="govuk-button">{{ t("exchanges.review_submit") }}</button>
       </form>
     {% else %}
-      <div class="govuk-inset-text">Thanks for reviewing this exchange.</div>
+      <div class="govuk-inset-text">{{ t("exchanges.review_thanks") }}</div>
     {% endif %}
   {% endif %}
 
@@ -241,7 +243,7 @@
         <li class="nexus-alpha-card govuk-!-margin-bottom-3">
           <p class="govuk-body govuk-!-margin-bottom-1">
             <strong>{{ rating.raterName }}</strong>
-            - {{ rating.rating }} out of 5
+            - {{ t("exchanges.review_rating_value", { rating: rating.rating }) }}
           </p>
           {% if rating.comment %}
             <p class="govuk-body govuk-!-margin-bottom-0">{{ rating.comment | nl2br | safe }}</p>
@@ -251,16 +253,16 @@
     </ul>
   {% endif %}
 
-  <h2 class="govuk-heading-l govuk-!-margin-top-8">Timeline</h2>
+  <h2 class="govuk-heading-l govuk-!-margin-top-8">{{ t("exchanges.timeline_title") }}</h2>
   {% if exchange.history.length == 0 %}
-    <div class="govuk-inset-text">There are no timeline entries yet.</div>
+    <div class="govuk-inset-text">{{ t("exchanges.empty_timeline") }}</div>
   {% else %}
     <ol class="govuk-list govuk-list--spaced">
       {% for entry in exchange.history %}
         <li>
           <strong>{{ entry.statusLabel }}</strong>
           {% if entry.actorName %}
-            <span class="govuk-hint govuk-!-margin-bottom-0">By {{ entry.actorName }}</span>
+            <span class="govuk-hint govuk-!-margin-bottom-0">{{ t("exchanges.timeline_by", { name: entry.actorName }) }}</span>
           {% endif %}
           {% if entry.created_at %}
             <span class="govuk-hint govuk-!-margin-bottom-0">{{ entry.created_at | formatDate }}</span>

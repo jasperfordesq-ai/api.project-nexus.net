@@ -67,7 +67,7 @@ function confirmationHours(value) {
   return Number.isFinite(number) && number >= 0.25 && number <= 24 ? number : null;
 }
 
-function normalizeRating(rating = {}) {
+function normalizeRating(rating = {}, t = (key) => key) {
   const rater = rating.rater && typeof rating.rater === 'object' ? rating.rater : {};
   const fullName = [rating.rater_first_name, rating.rater_last_name]
     .map(value => String(value || '').trim())
@@ -75,7 +75,7 @@ function normalizeRating(rating = {}) {
     .join(' ');
   return {
     ...rating,
-    raterName: firstPresent(fullName, rater.name, rating.rater_username, 'Unknown member')
+    raterName: firstPresent(fullName, rater.name, rating.rater_username, t('members.unknown_member'))
   };
 }
 
@@ -108,7 +108,7 @@ function statusTagClass(status) {
   }
 }
 
-function normalizeExchange(exchange = {}, currentUserId = null) {
+function normalizeExchange(exchange = {}, currentUserId = null, t = (key) => key) {
   const listing = exchange.listing && typeof exchange.listing === 'object' ? exchange.listing : {};
   const requester = exchange.requester && typeof exchange.requester === 'object' ? exchange.requester : {};
   const provider = exchange.provider && typeof exchange.provider === 'object' ? exchange.provider : {};
@@ -124,29 +124,41 @@ function normalizeExchange(exchange = {}, currentUserId = null) {
     ? 'respond'
     : (['in_progress', 'pending_confirmation'].includes(status) && !viewerConfirmed ? 'confirm' : null);
 
+  const localizedStatuses = new Set([
+    'active', 'pending_provider', 'pending_broker', 'accepted', 'in_progress',
+    'pending_confirmation', 'completed', 'disputed', 'cancelled', 'expired'
+  ]);
+  const riskLevel = firstPresent(exchange.risk_level, 'unknown');
+
   return {
     ...exchange,
     id: exchange.id,
     listingId: firstPresent(exchange.listing_id, listing.id),
-    listingTitle: firstPresent(exchange.listing_title, listing.title, 'Exchange details'),
+    listingTitle: firstPresent(exchange.listing_title, listing.title, t('exchanges.detail_title')),
     requesterId,
     providerId,
-    requesterName: firstPresent(exchange.requester_name, requester.name, 'Unknown member'),
-    providerName: firstPresent(exchange.provider_name, provider.name, 'Unknown member'),
+    requesterName: firstPresent(exchange.requester_name, requester.name, t('members.unknown_member')),
+    providerName: firstPresent(exchange.provider_name, provider.name, t('members.unknown_member')),
     proposedHours: toNumber(exchange.proposed_hours, 0),
     prepTime: toNumber(exchange.prep_time, null),
     finalHours: toNumber(exchange.final_hours, null),
-    riskLevel: firstPresent(exchange.risk_level, 'unknown'),
-    riskLabel: labelFromKey(firstPresent(exchange.risk_level, 'unknown'), 'Unknown'),
+    riskLevel,
+    riskLabel: ['low', 'medium', 'high', 'critical', 'unknown'].includes(riskLevel)
+      ? t(`exchanges.risk_values.${riskLevel}`)
+      : labelFromKey(riskLevel, t('exchanges.risk_values.unknown')),
     message: firstPresent(exchange.message, exchange.requester_notes),
     status,
-    statusLabel: labelFromKey(status, 'Pending provider'),
+    statusLabel: localizedStatuses.has(status)
+      ? t(`exchanges.statuses.${status}`)
+      : labelFromKey(status, t('exchanges.statuses.pending_provider')),
     statusClass: statusTagClass(status),
     isRequester,
     isProvider,
-    roleText: isRequester ? 'You are the requester for this exchange.' : 'You are the provider for this exchange.',
+    roleText: t(isRequester ? 'exchanges.role_requester' : 'exchanges.role_provider'),
     otherUserId: isRequester ? providerId : requesterId,
-    otherName: isRequester ? firstPresent(exchange.provider_name, provider.name, 'Unknown member') : firstPresent(exchange.requester_name, requester.name, 'Unknown member'),
+    otherName: isRequester
+      ? firstPresent(exchange.provider_name, provider.name, t('members.unknown_member'))
+      : firstPresent(exchange.requester_name, requester.name, t('members.unknown_member')),
     hasRequesterConfirmed,
     hasProviderConfirmed,
     canAccept: isProvider && status === 'pending_provider',
@@ -160,7 +172,9 @@ function normalizeExchange(exchange = {}, currentUserId = null) {
     history: Array.isArray(exchange.status_history)
       ? exchange.status_history.map(entry => ({
         ...entry,
-        statusLabel: labelFromKey(firstPresent(entry.new_status, entry.old_status, status), status),
+        statusLabel: localizedStatuses.has(firstPresent(entry.new_status, entry.old_status, status))
+          ? t(`exchanges.statuses.${firstPresent(entry.new_status, entry.old_status, status)}`)
+          : labelFromKey(firstPresent(entry.new_status, entry.old_status, status), status),
         actorName: firstPresent(entry.actor_name, entry.actor?.name)
       }))
       : []
@@ -185,22 +199,22 @@ function flashValue(req, key) {
   return req.flash ? req.flash(key)[0] : null;
 }
 
-function statusMessage(status) {
+function statusMessage(status, t) {
   switch (status) {
     case 'exchange-created':
-      return 'Exchange request sent.';
+      return t('exchanges.created');
     case 'exchange-updated':
-      return 'Exchange updated.';
+      return t('exchanges.updated');
     case 'rating-submitted':
-      return 'Review submitted.';
+      return t('exchanges.rating_submitted');
     case 'exchange-action-failed':
-      return 'Exchange action failed. Try again.';
+      return t('exchanges.failed');
     case 'rating-failed':
-      return 'Review could not be submitted. Try again.';
+      return t('exchanges.rating_failed');
     case 'rating-invalid':
-      return 'Select a rating from 1 to 5.';
+      return t('exchanges.rating_invalid');
     case 'exchange-hours-invalid':
-      return 'Enter final hours between 0.25 and 24.';
+      return t('exchanges.confirm_hours_hint');
     default:
       return '';
   }
@@ -232,20 +246,20 @@ router.get('/', asyncRoute(async (req, res) => {
     workflowEnabled = unwrapObject(configPayload).exchange_workflow_enabled === true;
     if (workflowEnabled) {
       const exchangesPayload = await getExchanges(req.token, { status, per_page: 20, cursor });
-      exchanges = unwrapList(exchangesPayload).map(exchange => normalizeExchange(exchange, currentUserId));
+      exchanges = unwrapList(exchangesPayload).map(exchange => normalizeExchange(exchange, currentUserId, res.locals.t));
       meta = unwrapMeta(exchangesPayload);
     }
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) throw error;
     if (error instanceof ApiError || error instanceof ApiOfflineError) {
-      errorMessage = 'Exchange items could not be loaded. Try again.';
+      errorMessage = res.locals.t('error_pages.503_body');
     } else {
       throw error;
     }
   }
 
   res.render('exchanges/index', {
-    title: 'Exchanges',
+    title: res.locals.t('exchanges.title'),
     workflowEnabled,
     workflowAvailable,
     activeTab: tab,
@@ -254,7 +268,7 @@ router.get('/', asyncRoute(async (req, res) => {
     meta,
     errorMessage,
     successMessage: flashValue(req, 'success'),
-    statusMessage: statusMessage(req.query.status),
+    statusMessage: statusMessage(req.query.status, res.locals.t),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }));
@@ -267,17 +281,17 @@ router.get('/:id', asyncRoute(async (req, res) => {
     getExchangeRatings(req.token, id).catch(() => ({ data: { ratings: [], has_rated: false } }))
   ]);
   const currentUserId = toNumber(firstPresent(profilePayload?.id, profilePayload?.data?.id), null);
-  const exchange = normalizeExchange(unwrapObject(exchangePayload), currentUserId);
+  const exchange = normalizeExchange(unwrapObject(exchangePayload), currentUserId, res.locals.t);
   const ratings = unwrapRatings(ratingsPayload);
 
   res.render('exchanges/detail', {
     title: exchange.listingTitle,
     exchange,
-    ratings: ratings.ratings.map(normalizeRating),
+    ratings: ratings.ratings.map(rating => normalizeRating(rating, res.locals.t)),
     canReview: exchange.status === 'completed' && !ratings.hasRated,
     status: req.query.status || '',
     successMessage: flashValue(req, 'success'),
-    statusMessage: statusMessage(req.query.status),
+    statusMessage: statusMessage(req.query.status, res.locals.t),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }));

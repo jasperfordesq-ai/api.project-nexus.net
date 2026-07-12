@@ -3,7 +3,7 @@
 {% block mainContent %}
   <span class="govuk-caption-l">{{ t("exchanges.title") }}</span>
   <h1 class="govuk-heading-xl">{{ t("exchanges.title") }}</h1>
-  <p class="govuk-body-l">Review exchange requests and track time-credit work.</p>
+  <p class="govuk-body-l">{{ t("exchanges.description") }}</p>
 
   {% if statusMessage or successMessage %}
     <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="exchange-success-title">
@@ -30,32 +30,31 @@
   {% if workflowAvailable and not workflowEnabled %}
     <div class="govuk-notification-banner" data-module="govuk-notification-banner" role="region" aria-labelledby="exchange-disabled-title">
       <div class="govuk-notification-banner__header">
-        <h2 class="govuk-notification-banner__title" id="exchange-disabled-title">Exchanges are unavailable</h2>
+        <h2 class="govuk-notification-banner__title" id="exchange-disabled-title">{{ t("exchanges.disabled_title") }}</h2>
       </div>
       <div class="govuk-notification-banner__content">
-        <p class="govuk-body">Exchange workflows are not enabled for this community.</p>
+        <p class="govuk-body">{{ t("exchanges.disabled_detail") }}</p>
       </div>
     </div>
   {% endif %}
 
-  <nav aria-label="Filter exchanges" class="govuk-!-margin-bottom-7">
+  <nav aria-label="{{ t('polish_listings.exchanges_tab_filter_label') }}" class="govuk-!-margin-bottom-7">
     <ul class="nexus-alpha-filter-nav">
-      <li><a class="govuk-link{% if activeTab == 'all' %} govuk-link--no-visited-state{% endif %}" href="{{ urlFor('/exchanges?tab=all') }}"{% if activeTab == 'all' %} aria-current="true"{% endif %}>All</a></li>
-      <li><a class="govuk-link{% if activeTab == 'active' %} govuk-link--no-visited-state{% endif %}" href="{{ urlFor('/exchanges?tab=active') }}"{% if activeTab == 'active' %} aria-current="true"{% endif %}>Active</a></li>
+      <li><a class="govuk-link{% if activeTab == 'all' %} govuk-link--no-visited-state{% endif %}" href="{{ urlFor('/exchanges?tab=all') }}"{% if activeTab == 'all' %} aria-current="true"{% endif %}>{{ t("polish_listings.exchanges_tab_all") }}</a></li>
+      <li><a class="govuk-link{% if activeTab == 'active' %} govuk-link--no-visited-state{% endif %}" href="{{ urlFor('/exchanges?tab=active') }}"{% if activeTab == 'active' %} aria-current="true"{% endif %}>{{ t("polish_listings.exchanges_tab_active") }}</a></li>
       <li><a class="govuk-link{% if activeTab == 'needs_confirmation' %} govuk-link--no-visited-state{% endif %}" href="{{ urlFor('/exchanges?tab=needs_confirmation') }}"{% if activeTab == 'needs_confirmation' %} aria-current="true"{% endif %}>{{ t("polish_listings.exchanges_tab_needs_confirmation") }}</a></li>
-      <li><a class="govuk-link{% if activeTab == 'completed' %} govuk-link--no-visited-state{% endif %}" href="{{ urlFor('/exchanges?tab=completed') }}"{% if activeTab == 'completed' %} aria-current="true"{% endif %}>Completed</a></li>
+      <li><a class="govuk-link{% if activeTab == 'completed' %} govuk-link--no-visited-state{% endif %}" href="{{ urlFor('/exchanges?tab=completed') }}"{% if activeTab == 'completed' %} aria-current="true"{% endif %}>{{ t("polish_listings.exchanges_tab_completed") }}</a></li>
     </ul>
   </nav>
 
-  <h2 class="govuk-heading-l">{{ t("listings.results_title") }}</h2>
+  <h2 class="govuk-heading-l">{{ t("exchanges.results_title") }}</h2>
   <p class="govuk-body nexus-alpha-result-count" aria-live="polite">
-    {% if exchanges.length == 1 %}1 exchange shown{% else %}{{ exchanges.length }} exchanges shown{% endif %}
+    {{ tc("exchanges.result_count", exchanges.length, { count: exchanges.length }) }}
   </p>
 
   {% if not errorMessage and exchanges.length == 0 %}
     <div class="govuk-inset-text">
-      <h2 class="govuk-heading-m">No results</h2>
-      <p class="govuk-body">There are no exchanges to show for this filter.</p>
+      <p class="govuk-body">{{ t("exchanges.empty") }}</p>
     </div>
   {% elif exchanges.length > 0 %}
     <div class="nexus-alpha-card-list">
@@ -66,23 +65,23 @@
           </h3>
           <strong class="govuk-tag {{ exchange.statusClass }}">{{ exchange.statusLabel }}</strong>
           {% if exchange.actionNeeded == 'respond' %}
-            <strong class="govuk-tag govuk-tag--red">Respond</strong>
+            <strong class="govuk-tag govuk-tag--red">{{ t("exchanges.action_respond") }}</strong>
           {% elif exchange.actionNeeded == 'confirm' %}
-            <strong class="govuk-tag govuk-tag--red">{{ t("actions.confirm_hours") }}</strong>
+            <strong class="govuk-tag govuk-tag--red">{{ t("exchanges.action_confirm") }}</strong>
           {% endif %}
 
           <dl class="nexus-alpha-inline-list govuk-!-margin-top-3">
             <div>
               <dt>{{ t("exchanges.proposed_hours_label") }}</dt>
-              <dd>{{ exchange.proposedHours }} hours</dd>
+              <dd>{{ t("exchanges.hours", { count: exchange.proposedHours }) }}</dd>
             </div>
             <div>
-              <dt>Member</dt>
+              <dt>{% if exchange.isRequester %}{{ t("exchanges.provider_label") }}{% else %}{{ t("exchanges.requester_label") }}{% endif %}</dt>
               <dd>{{ exchange.otherName }}</dd>
             </div>
             {% if exchange.createdAt %}
               <div>
-                <dt>Created</dt>
+                <dt>{{ t("exchanges.created_label") }}</dt>
                 <dd>{{ exchange.createdAt | formatDate }}</dd>
               </div>
             {% endif %}

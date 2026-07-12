@@ -45,4 +45,21 @@ describe('Laravel exchange workflow integration contract', () => {
     expect(route).toContain("action === 'confirm' && hours === null");
     expect(route).toContain('status=exchange-hours-invalid#hours');
   });
+
+  it('uses the current Laravel Blade catalogue for exchange list and detail states', () => {
+    const route = source('src', 'routes', 'exchanges.js');
+    const index = source('src', 'views', 'exchanges', 'index.njk');
+    const detail = source('src', 'views', 'exchanges', 'detail.njk');
+
+    expect(route).toContain("t(isRequester ? 'exchanges.role_requester' : 'exchanges.role_provider')");
+    expect(route).toContain("res.locals.t('error_pages.503_body')");
+    expect(route).not.toContain('Exchange items could not be loaded. Try again.');
+    expect(index).toContain('t("exchanges.description")');
+    expect(index).toContain('tc("exchanges.result_count"');
+    expect(index).toContain('t("exchanges.empty")');
+    expect(detail).toContain('t("exchanges.status_descriptions." + exchange.status)');
+    expect(detail).toContain('t("exchanges.review_title")');
+    expect(detail).toContain('t("exchanges.empty_timeline")');
+    expect(detail).not.toContain('There are no timeline entries yet.');
+  });
 });
