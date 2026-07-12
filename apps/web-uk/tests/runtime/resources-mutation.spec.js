@@ -115,6 +115,26 @@ test('uploads, enforces the non-admin reorder guard, downloads, and deletes a di
 
   try {
     await authenticate(page);
+    await page.goto(`${mountPath}/resources/upload`, {
+      waitUntil: 'domcontentloaded',
+      timeout: 300_000
+    });
+    await page.locator('#description').fill('Preserve this validation description');
+    const validationResponsePromise = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return response.request().method() === 'POST' && url.pathname.endsWith('/resources/upload');
+    }, { timeout: 300_000 });
+    await page.getByRole('button', { name: 'Upload resource', exact: true }).click();
+    const validationResponse = await validationResponsePromise;
+    expect(validationResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    const errorSummary = page.locator('.govuk-error-summary');
+    await expect(errorSummary.getByRole('link', { name: 'Enter a title for the resource', exact: true })).toHaveAttribute('href', '#title');
+    await expect(errorSummary.getByRole('link', { name: 'Choose a file to upload', exact: true })).toHaveAttribute('href', '#file');
+    await expect(page.locator('#title')).toHaveAttribute('aria-describedby', 'title-hint title-error');
+    await expect(page.locator('#file')).toHaveAttribute('aria-describedby', 'file-hint file-error');
+    await expect(page.locator('#description')).toHaveValue('Preserve this validation description');
+
     await uploadDisposableResource(page, {
       title,
       description: 'Disposable upload, download, and delete smoke fixture.',

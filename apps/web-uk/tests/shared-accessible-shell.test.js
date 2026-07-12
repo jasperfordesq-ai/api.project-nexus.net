@@ -11372,6 +11372,51 @@ describe('shared accessible frontend shell', () => {
     expect(api.getResourceCategories).toHaveBeenCalledWith('test-token');
   });
 
+  it('replays Laravel resource upload field errors and safe input after one submission', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    api.getResourceCategories.mockResolvedValue({
+      data: [{ id: 7, name: 'Guides', color: 'green' }]
+    });
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+    const csrfCookies = (first.headers['set-cookie'] || []).map((cookie) => cookie.split(';')[0]);
+    const cookieHeader = [`token=${encodeURIComponent(signedToken)}`, ...csrfCookies].join('; ');
+
+    const response = await agent
+      .post('/resources/upload')
+      .set('Cookie', cookieHeader)
+      .field('_csrf', csrfMatch[1])
+      .field('title', '  ')
+      .field('description', 'Keep this safe description')
+      .field('category_id', '7');
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/resources/upload');
+    expect(api.uploadResource).not.toHaveBeenCalled();
+
+    const replay = await agent
+      .get('/resources/upload')
+      .set('Cookie', cookieHeader);
+    expect(replay.status).toBe(200);
+    expect(replay.text).toContain('href="#title"');
+    expect(replay.text).toContain('href="#file"');
+    expect(replay.text).toContain('Enter a title for the resource');
+    expect(replay.text).toContain('Choose a file to upload');
+    expect(replay.text).toContain('govuk-form-group govuk-form-group--error');
+    expect(replay.text).toContain('id="title-error"');
+    expect(replay.text).toContain('aria-describedby="title-hint title-error"');
+    expect(replay.text).toContain('id="file-error"');
+    expect(replay.text).toContain('aria-describedby="file-hint file-error"');
+    expect(replay.text).toContain('Keep this safe description');
+    expect(replay.text).toContain('value="7" selected');
+  });
+
   it('drops a forged cross-tenant category id before uploading a resource', async () => {
     const api = require('../src/lib/api');
     const cookieSignature = require('cookie-signature');

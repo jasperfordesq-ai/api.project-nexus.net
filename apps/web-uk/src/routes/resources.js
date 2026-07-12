@@ -45,6 +45,10 @@ const DOWNLOAD_HEADER_NAMES = [
 ];
 const RESOURCE_PAGE_SIZE = 50;
 const MAX_RESOURCE_PAGES = 100;
+const RESOURCE_MAX_BYTES = 10 * 1024 * 1024;
+const RESOURCE_ALLOWED_EXTENSIONS = new Set([
+  'pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt', 'csv', 'jpg', 'png', 'gif', 'webp'
+]);
 
 function tokenFrom(req) {
   return (req.signedCookies && req.signedCookies.token) || '';
@@ -405,6 +409,31 @@ function uploadStatusMessage(status, t) {
   };
 }
 
+function resourceUploadValues(body = {}) {
+  const categoryId = positiveInteger(body.category_id);
+  return {
+    title: trimmed(body.title, 255),
+    description: trimmed(body.description, 5000),
+    category_id: categoryId === null ? '' : String(categoryId)
+  };
+}
+
+function rememberResourceUpload(req, values, fieldErrors) {
+  req.flash('resourceUploadValues', values);
+  req.flash('resourceUploadFieldErrors', fieldErrors);
+}
+
+function recalledResourceUpload(req, key) {
+  const values = req.flash(key);
+  return values.length > 0 && values[0] && typeof values[0] === 'object' ? values[0] : {};
+}
+
+function uploadFileExtension(file) {
+  const filename = trimmed(file && file.originalFilename);
+  const dot = filename.lastIndexOf('.');
+  return dot >= 0 ? filename.slice(dot + 1).toLowerCase() : '';
+}
+
 function uploadedFile(req, fieldName) {
   const file = req.files && req.files[fieldName];
   if (!file || typeof file !== 'object' || !file.filepath) {
@@ -550,7 +579,9 @@ router.get('/upload', asyncRoute(async (req, res) => {
     flatCategories,
     maxSizeLabel: '10MB',
     allowedLabel: 'PDF, DOC, DOCX, XLS, XLSX, TXT, CSV, JPG, PNG, GIF, WEBP',
-    status: uploadStatusMessage(trimmed(req.query && req.query.status), res.locals.t)
+    status: uploadStatusMessage(trimmed(req.query && req.query.status), res.locals.t),
+    values: recalledResourceUpload(req, 'resourceUploadValues'),
+    fieldErrors: recalledResourceUpload(req, 'resourceUploadFieldErrors')
   });
 }, { redirectOn401: '/login?status=auth-required', notFoundTitle: 'Upload a resource' }));
 
@@ -744,10 +775,22 @@ router.post('/upload', asyncRoute(async (req, res) => {
   }
 
   const file = uploadedFile(req, 'file');
-  const title = trimmed(req.body.title, 255);
-  if (!title || !file) {
+  const values = resourceUploadValues(req.body);
+  const fieldErrors = {};
+  if (!values.title) {
+    fieldErrors.title = res.locals.t('govuk_alpha_resources.upload.error_title_required');
+  }
+  if (!file) {
+    fieldErrors.file = res.locals.t('govuk_alpha_resources.upload.error_file_required');
+  } else if (Number(file.size) > RESOURCE_MAX_BYTES) {
+    fieldErrors.file = res.locals.t('govuk_alpha_resources.upload.error_too_large');
+  } else if (!RESOURCE_ALLOWED_EXTENSIONS.has(uploadFileExtension(file))) {
+    fieldErrors.file = res.locals.t('govuk_alpha_resources.upload.error_type');
+  }
+  if (Object.keys(fieldErrors).length > 0) {
+    rememberResourceUpload(req, values, fieldErrors);
     await removeUploadedFile(file);
-    return redirectTo(res, '/resources/upload?status=resource-upload-failed');
+    return redirectTo(res, '/resources/upload');
   }
 
   try {
@@ -762,8 +805,8 @@ router.post('/upload', asyncRoute(async (req, res) => {
     }
 
     await uploadResource(token, {
-      title,
-      description: trimmed(req.body.description, 5000),
+      title: values.title,
+      description: values.description,
       category_id: categoryId,
       file: {
         buffer,
@@ -775,7 +818,10 @@ router.post('/upload', asyncRoute(async (req, res) => {
   } catch (error) {
     if (redirectAuthIfNeeded(error, req, res)) return undefined;
     if (isForbidden(error)) throw error;
-    return redirectTo(res, '/resources/upload?status=resource-upload-failed');
+    rememberResourceUpload(req, values, {
+      file: res.locals.t('govuk_alpha_resources.upload.error_upload_failed')
+    });
+    return redirectTo(res, '/resources/upload');
   } finally {
     await removeUploadedFile(file);
   }
