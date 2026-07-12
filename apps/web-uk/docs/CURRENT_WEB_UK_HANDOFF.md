@@ -5098,14 +5098,17 @@ open.
 ## 2026-07-12 Disposable Marketplace Listing Lifecycle
 
 The dedicated default-English Laravel gate creates a uniquely named free
-marketplace listing with a real PNG, verifies Laravel's image row and the
-rendered image, edits and re-reads its title, checks the detail at 320 CSS
-pixels for structure, reflow, and serious/critical axe findings, deletes the
-listing through Web UK, and proves final Laravel absence. Independent API
-cleanup covers failures before or after editing. The `1/1` run passed in
-`138.8` seconds and retained no fixture. Hosted checkout, offer/order/pickup/
-coupon depth, merchant profile-image uploads, manual assistive-technology
-review, and ASP.NET compatibility remain open.
+marketplace listing with a real PNG, verifies Laravel's image row and rendered
+image, edits and deletes it, then creates a unique seller pickup slot, edits
+its time, capacity, recurrence and active state, and deletes it. Both flows
+check 320 CSS pixel structure, reflow, and serious/critical axe findings and
+prove final Laravel absence with independent API cleanup. The slot run exposed
+and fixed unchecked `is_active` edits being forced back to true while
+preserving create's default-active behavior. The expanded `2/2` run passed in
+`119.9` seconds and retained no fixture. The local tenant explicitly disables
+merchant coupons, so that mutation remains fixture-blocked. Hosted checkout,
+offer/order/coupon depth, merchant profile-image uploads, manual assistive-
+technology review, and ASP.NET compatibility remain open.
 
 ## 2026-07-12 Disposable Event Cover Lifecycle
 

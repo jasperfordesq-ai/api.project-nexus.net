@@ -212,14 +212,14 @@ function listingPayload(body) {
   return payload;
 }
 
-function pickupSlotPayload(body) {
+function pickupSlotPayload(body, { defaultActive = true } = {}) {
   const capacity = positiveInteger(body.capacity);
   return {
     slot_start: trimmed(body.slot_start),
     slot_end: trimmed(body.slot_end),
     capacity: capacity === null ? 1 : Math.min(capacity, 1000),
     is_recurring: checked(body.is_recurring),
-    is_active: body.is_active === undefined ? true : checked(body.is_active)
+    is_active: body.is_active === undefined ? defaultActive : checked(body.is_active)
   };
 }
 
@@ -638,7 +638,7 @@ router.post('/slots/:id(\\d+)/update', asyncRoute(async (req, res) => {
     res,
     'PUT',
     `/seller/pickup-slots/${id}`,
-    pickupSlotPayload(req.body),
+    pickupSlotPayload(req.body, { defaultActive: false }),
     `/marketplace/slots/${id}/edit?status=slot-saved`,
     `/marketplace/slots/${id}/edit?status=slot-save-failed`
   );

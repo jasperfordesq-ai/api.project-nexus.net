@@ -25846,7 +25846,7 @@ describe('shared accessible frontend shell', () => {
       slot_end: '2026-08-02T12:00',
       capacity: 5,
       is_recurring: false,
-      is_active: true
+      is_active: false
     });
 
     const slotDeleteResponse = await post('/marketplace/slots/7/delete');

@@ -28,6 +28,11 @@ function dataFrom(result) {
   return result && typeof result === 'object' && result.data !== undefined ? result.data : result;
 }
 
+function localDateTime(date) {
+  const pad = (value) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 async function submitPost(page, button, pathnameSuffix) {
   const requestPromise = page.waitForResponse((response) => {
     const url = new URL(response.url());
@@ -158,6 +163,90 @@ test('creates, uploads, edits, and deletes a disposable marketplace listing', as
         : await findByTitle(token, updatedTitle) || await findByTitle(token, title);
       if (existing?.id) {
         await callMarketplaceApi(token, 'DELETE', `/listings/${existing.id}`);
+      }
+    }
+  }
+});
+
+test('creates, edits, and deletes a disposable seller pickup slot', async ({ page }) => {
+  const start = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+  start.setSeconds(0, 0);
+  const end = new Date(start.getTime() + 30 * 60 * 1000);
+  const updatedEnd = new Date(start.getTime() + 60 * 60 * 1000);
+  const startInput = localDateTime(start);
+  const endInput = localDateTime(end);
+  const updatedEndInput = localDateTime(updatedEnd);
+  const auth = await login(smoke.email, smoke.password, smoke.tenant);
+  const token = auth.access_token;
+  let slotId = null;
+  let deleted = false;
+
+  expect(token).toBeTruthy();
+  console.log(`Disposable pickup slot fixture: ${startInput}`);
+
+  const findSlot = async () => {
+    const result = await callMarketplaceApi(token, 'GET', '/seller/pickup-slots');
+    return rowsFrom(result).find((slot) => String(slot?.slot_start || slot?.slotStart).startsWith(startInput)) || null;
+  };
+
+  try {
+    await authenticate(page);
+    await page.goto(`${mountPath}/marketplace/slots`, {
+      waitUntil: 'domcontentloaded',
+      timeout: 300_000
+    });
+    await page.locator('#slot_start').fill(startInput);
+    await page.locator('#slot_end').fill(endInput);
+    await page.locator('#capacity').fill('2');
+    await page.locator('#is_recurring').uncheck();
+    await page.locator('#is_active').check();
+    await submitPost(page, page.getByRole('button', { name: 'Add slot', exact: true }), '/marketplace/slots');
+
+    let slot = await findSlot();
+    expect(slot).toBeTruthy();
+    slotId = Number(slot.id);
+    expect(slotId).toBeGreaterThan(0);
+    expect(Number(slot.capacity)).toBe(2);
+
+    await page.goto(`${mountPath}/marketplace/slots/${slotId}/edit`, {
+      waitUntil: 'domcontentloaded',
+      timeout: 300_000
+    });
+    await page.locator('#slot_end').fill(updatedEndInput);
+    await page.locator('#capacity').fill('3');
+    await page.locator('#is_recurring').check();
+    await page.locator('#is_active').uncheck();
+    await submitPost(page, page.getByRole('button', { name: 'Save changes', exact: true }), `/marketplace/slots/${slotId}/update`);
+
+    slot = await findSlot();
+    expect(slot).toBeTruthy();
+    expect(Number(slot.capacity)).toBe(3);
+    expect([true, 1, '1'].includes(slot.is_recurring ?? slot.isRecurring)).toBe(true);
+    expect([false, 0, '0'].includes(slot.is_active ?? slot.isActive)).toBe(true);
+
+    await page.setViewportSize({ width: 320, height: 640 });
+    await page.goto(`${mountPath}/marketplace/slots/${slotId}/edit`, {
+      waitUntil: 'domcontentloaded',
+      timeout: 300_000
+    });
+    await expect(page.locator('#slot_end')).toHaveValue(updatedEndInput);
+    await expect(page.locator('#capacity')).toHaveValue('3');
+    await expect(page.locator('#is_recurring')).toBeChecked();
+    await expect(page.locator('#is_active')).not.toBeChecked();
+    await expectAccessibleReflow(page);
+
+    await submitPost(
+      page,
+      page.locator(`form[action$="/marketplace/slots/${slotId}/delete"] button`),
+      `/marketplace/slots/${slotId}/delete`
+    );
+    expect(await findSlot()).toBeNull();
+    deleted = true;
+  } finally {
+    if (!deleted) {
+      const existing = slotId ? { id: slotId } : await findSlot();
+      if (existing?.id) {
+        await callMarketplaceApi(token, 'DELETE', `/seller/pickup-slots/${existing.id}`).catch(() => undefined);
       }
     }
   }
