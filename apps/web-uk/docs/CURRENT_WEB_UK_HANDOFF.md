@@ -5449,6 +5449,17 @@ Focused render/download proof passed. Full Jest remains `45/45` suites and
 live certificate was generated because that creates a persistent account record
 without a residue-free deletion path.
 
+## 2026-07-12 Default-English My Organisations Parity
+
+My organisations now uses Laravel's catalog for role filters, known role/status
+labels, empty guidance, card metadata, approval states, and organisation-specific
+dashboard action names. Unknown role/status values retain Blade's headline
+fallback and website links remain HTTP/HTTPS-only.
+
+Focused owner-filter/render proof passed. Full Jest remains `45/45` suites and
+`1,456/1,456` tests with green lint and the 285-template zero-match audit. This
+surface is read-only; broader live owner/admin/member tenant variants remain open.
+
 ## Final Handoff Checklist
 
 Before leaving this job for another agent, write a short note containing:

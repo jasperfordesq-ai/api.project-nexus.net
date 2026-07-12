@@ -1279,7 +1279,7 @@ function normalizeSwapRequest(row, t = null) {
   };
 }
 
-function normalizeVolunteerOrganizationCard(row) {
+function normalizeVolunteerOrganizationCard(row, t = null) {
   const organization = row && typeof row === 'object' ? row : {};
   const id = positiveInteger(organization.id);
   const statusValue = trimmed(organization.status) || 'pending';
@@ -1289,14 +1289,16 @@ function normalizeVolunteerOrganizationCard(row) {
   return {
     id,
     name: trimmed(organization.name) || `Organisation ${id || ''}`.trim(),
-    status: statusPresentation(
-      statusValue,
-      VOLUNTEER_ORG_STATUS_LABELS,
-      VOLUNTEER_ORG_STATUS_CLASSES,
-      'pending'
-    ),
+    status: {
+      ...statusPresentation(statusValue, VOLUNTEER_ORG_STATUS_LABELS, VOLUNTEER_ORG_STATUS_CLASSES, 'pending'),
+      label: Object.hasOwn(VOLUNTEER_ORG_STATUS_LABELS, statusValue) && t
+        ? t(`govuk_alpha.volunteering.status_values.${statusValue}`)
+        : (VOLUNTEER_ORG_STATUS_LABELS[statusValue] || headline(statusValue))
+    },
     roleValue,
-    roleLabel: VOLUNTEER_ORG_ROLE_LABELS[roleValue] || headline(roleValue) || 'Member',
+    roleLabel: Object.hasOwn(VOLUNTEER_ORG_ROLE_LABELS, roleValue) && t
+      ? t(`govuk_alpha.volunteering.roles.${roleValue}`)
+      : (VOLUNTEER_ORG_ROLE_LABELS[roleValue] || headline(roleValue) || 'Member'),
     contactEmail: trimmed(organization.contact_email ?? organization.contactEmail ?? organization.email),
     website,
     websiteHref,
@@ -2019,7 +2021,7 @@ router.get('/my-organisations', asyncRoute(async (req, res) => {
   try {
     const result = await callApi(token, 'GET', `/my-organisations?${params.toString()}`);
     organizations = collectionFrom(result)
-      .map(normalizeVolunteerOrganizationCard)
+      .map((organization) => normalizeVolunteerOrganizationCard(organization, res.locals.t))
       .filter((organization) => organization.id)
       .filter((organization) => !roleFilter || organization.roleValue === roleFilter);
     nextHref = volunteeringMyOrganisationsNextHref(roleFilter, collectionMetaFrom(result));
@@ -2029,7 +2031,7 @@ router.get('/my-organisations', asyncRoute(async (req, res) => {
   }
 
   return res.render('volunteering/my-organisations', {
-    title: 'My organisations',
+    title: res.locals.t('govuk_alpha_volunteering.my_orgs.title'),
     activeNav: 'volunteering',
     organizations,
     roleFilter,
