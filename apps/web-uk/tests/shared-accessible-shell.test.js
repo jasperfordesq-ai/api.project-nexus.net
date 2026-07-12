@@ -2462,6 +2462,12 @@ describe('shared accessible frontend shell', () => {
           name: 'Grace Hopper',
           avatar_url: '/avatars/grace.jpg',
           reason: 'Blocked after repeated unwanted messages'
+        },
+        {
+          user_id: 89,
+          name: '',
+          avatar_url: null,
+          reason: null
         }
       ]
     });
@@ -2482,6 +2488,8 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('Blocked members');
     expect(signed.text).toContain('Members you block cannot see your profile or contact you');
     expect(signed.text).toContain('Grace Hopper');
+    expect(signed.text).toContain('Community member');
+    expect(signed.text).not.toContain('Unknown member');
     expect(signed.text).toContain('Blocked after repeated unwanted messages');
     expect(signed.text).toContain('/members/88/unblock');
     expect(signed.text).toContain('name="from" value="list"');

@@ -1043,9 +1043,10 @@ function renderTwoFactor(req, res, twoFactor, status = '') {
   });
 }
 
-function normalizeBlockedUsers(payload) {
+function normalizeBlockedUsers(payload, t) {
   return arrayFromPayload(payload, ['blocked', 'users', 'items']).map((blockedUser) => {
-    const name = trimmed(blockedUser.name || blockedUser.display_name || blockedUser.full_name || 'Unknown member');
+    const name = trimmed(blockedUser.name || blockedUser.display_name || blockedUser.full_name)
+      || t('members.unknown_member');
     return {
       user_id: Number(blockedUser.user_id || blockedUser.id || blockedUser.blocked_user_id || 0),
       name,
@@ -1604,7 +1605,7 @@ router.get('/blocked', asyncRoute(async (req, res) => {
 
   let blocked = [];
   try {
-    blocked = normalizeBlockedUsers(payloadFrom(await callProfile(token, 'GET', '/users/blocked')));
+    blocked = normalizeBlockedUsers(payloadFrom(await callProfile(token, 'GET', '/users/blocked')), res.locals.t);
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
   }
