@@ -2388,3 +2388,17 @@ describe('Laravel-first Gamification sub-navigation source contract', () => {
     }
   });
 });
+
+describe('GOV.UK Frontend palette compatibility', () => {
+  it('avoids removed legacy colour names in the shared visual layer', () => {
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'assets', 'scss', 'main.scss'),
+      'utf8'
+    );
+
+    expect(source).not.toContain('govuk-colour("light-grey")');
+    expect(source).not.toContain('govuk-colour("turquoise")');
+    expect(source).toContain('govuk-colour("black", $variant: "tint-95")');
+    expect(source).toContain('govuk-colour("teal", $variant: "primary")');
+  });
+});
