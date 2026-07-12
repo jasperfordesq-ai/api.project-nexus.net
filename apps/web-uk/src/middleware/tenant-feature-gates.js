@@ -80,6 +80,10 @@ function tenantFeatureGate(req, res, next) {
     }
 
     if (gate.featureKey && !flagEnabled(tenant, gate.featureKey, 'features', true)) {
+      if (gate.featureKey === 'volunteering' && (req.path || '/') === '/volunteering') {
+        res.locals.volunteeringDisabled = true;
+        return next();
+      }
       return res.status(403).render('errors/403', {
         title: 'Forbidden',
         message: 'This feature is not enabled for this community.'

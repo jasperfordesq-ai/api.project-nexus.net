@@ -710,6 +710,14 @@ app.use('/explore', exploreRoutes);
 app.get('/volunteering', (req, res) => {
   const { callVolunteeringApi, getVolunteeringCategories, getVolunteeringOpportunities } = require('./lib/api');
   const token = req.signedCookies.token || '';
+  if (res.locals.volunteeringDisabled) {
+    return res.status(403).render('volunteering', {
+      title: res.locals.t('volunteering.title'),
+      activeNav: 'volunteering',
+      moduleDisabled: true,
+      authRequired: !token
+    });
+  }
   const requestedTab = ['applications', 'recommended', 'community_projects'].includes(req.query.tab)
     ? req.query.tab
     : 'opportunities';

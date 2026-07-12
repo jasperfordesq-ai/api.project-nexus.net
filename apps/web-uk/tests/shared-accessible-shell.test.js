@@ -1337,7 +1337,15 @@ describe('shared accessible frontend shell', () => {
         .set('Cookie', signedCookieHeader());
 
       expect(response.status).toBe(403);
-      expect(response.text).toContain(englishForbiddenTitle);
+      if (path === '/acme/accessible/volunteering') {
+        expect(response.text).toContain('Volunteering is not enabled for this community.');
+        expect(response.text).toContain('The volunteering module is not currently available for Acme Timebank.');
+        expect(response.text).not.toContain('How volunteering works');
+        expect(api.getVolunteeringOpportunities).not.toHaveBeenCalled();
+        expect(api.callVolunteeringApi).not.toHaveBeenCalled();
+      } else {
+        expect(response.text).toContain(englishForbiddenTitle);
+      }
     }
   });
 

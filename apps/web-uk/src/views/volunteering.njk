@@ -10,6 +10,15 @@
   <h1 class="govuk-heading-xl">{{ t("volunteering.title") }}</h1>
   <p class="govuk-body-l">{{ t("volunteering.description") }}</p>
 
+  {% if moduleDisabled %}
+    <div class="govuk-notification-banner" data-module="govuk-notification-banner" role="region" aria-labelledby="volunteering-disabled-title">
+      <div class="govuk-notification-banner__header"><h2 class="govuk-notification-banner__title" id="volunteering-disabled-title">{{ t("states.error_title") }}</h2></div>
+      <div class="govuk-notification-banner__content">
+        <p class="govuk-notification-banner__heading">{{ t("states.volunteering_disabled") }}</p>
+        <p class="govuk-body">{{ t("volunteering.module_disabled_detail", { community: tenantName }) }}</p>
+      </div>
+    </div>
+  {% else %}
   <p class="govuk-body govuk-!-margin-bottom-6">
     <a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor('/organisations') }}">{{ t("vol_org.browse_link") }}</a>
   </p>
@@ -319,6 +328,7 @@
         {% endif %}
       </p>
     </div>
+  {% endif %}
   {% endif %}
   {% endif %}
 {% endblock %}
