@@ -65,18 +65,6 @@ const SETTINGS_STATUS_MESSAGES = {
 };
 const SETTINGS_AVAILABILITY_DISPLAY_DAYS = [1, 2, 3, 4, 5, 6, 0];
 const SETTINGS_AVAILABILITY_SLOTS_PER_DAY = 3;
-const SETTINGS_LINK_TYPE_LABELS = {
-  family: 'Family member',
-  guardian: 'Guardian',
-  carer: 'Carer',
-  organization: 'Organisation'
-};
-const SETTINGS_LINK_PERMISSION_LABELS = {
-  can_view_activity: 'View their activity',
-  can_manage_listings: 'Manage their listings',
-  can_transact: 'Send and receive time credits',
-  can_view_messages: 'View their messages'
-};
 const SETTINGS_INSURANCE_TYPE_LABELS = {
   public_liability: 'Public liability',
   professional_indemnity: 'Professional indemnity',
@@ -236,7 +224,7 @@ function relationshipRowsFromPayload(payload, keys) {
   return [];
 }
 
-function normalizeRelationship(row) {
+function normalizeRelationship(row, t) {
   const permissions = jsonObjectFrom(row && row.permissions);
   const first = trimmed(row && row.first_name);
   const last = trimmed(row && row.last_name);
@@ -245,11 +233,11 @@ function normalizeRelationship(row) {
 
   return {
     relationshipId: positiveInteger(row && (row.relationship_id || row.id)) || 0,
-    name: name || 'Unknown member',
+    name: name || t('govuk_alpha_settings.common.unknown_member'),
     email: trimmed(row && row.email),
     avatarUrl: trimmed(row && row.avatar_url),
     relationshipType: type,
-    relationshipTypeLabel: SETTINGS_LINK_TYPE_LABELS[type],
+    relationshipTypeLabel: t(`govuk_alpha_settings.linked.types.${type}`),
     status: trimmed(row && row.status) || 'pending',
     permissions: SETTINGS_LINK_PERMISSIONS.reduce((acc, key) => {
       acc[key] = Boolean(permissions[key]);
@@ -258,8 +246,8 @@ function normalizeRelationship(row) {
   };
 }
 
-function normalizeRelationships(payload, keys) {
-  return relationshipRowsFromPayload(payload, keys).map(normalizeRelationship);
+function normalizeRelationships(payload, keys, t) {
+  return relationshipRowsFromPayload(payload, keys).map((row) => normalizeRelationship(row, t));
 }
 
 function humanizeStatus(value) {
@@ -435,13 +423,13 @@ router.get('/linked-accounts', asyncRoute(async (req, res) => {
       'sub_accounts',
       'accounts',
       'items'
-    ]);
+    ], res.locals.t);
     parents = normalizeRelationships(payloadFrom(await callSettings(token, 'GET', '/parent-accounts')), [
       'parents',
       'parent_accounts',
       'accounts',
       'items'
-    ]);
+    ], res.locals.t);
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
   }
@@ -449,10 +437,14 @@ router.get('/linked-accounts', asyncRoute(async (req, res) => {
   const status = typeof req.query.status === 'string' ? req.query.status : '';
 
   return res.render('settings/linked-accounts', {
-    title: 'Linked accounts',
+    title: res.locals.t('govuk_alpha_settings.linked.title'),
     activeNav: 'account',
     status,
-    statusMessage: SETTINGS_STATUS_MESSAGES[status] || '',
+    statusMessage: SETTINGS_STATUS_MESSAGES[status]
+      ? (['link-vetting-required', 'link-contact-restricted', 'link-safeguarding-unavailable'].includes(status)
+        ? SETTINGS_STATUS_MESSAGES[status]
+        : res.locals.t(`govuk_alpha_settings.states.${status}`))
+      : '',
     successStatus: ['link-requested', 'link-approved', 'link-revoked', 'link-permissions-saved'].includes(status),
     errorStatus: [
       'link-email-invalid',
@@ -470,13 +462,13 @@ router.get('/linked-accounts', asyncRoute(async (req, res) => {
     maxChildren: 20,
     linkTypes: SETTINGS_LINK_TYPES.map((type) => ({
       value: type,
-      label: SETTINGS_LINK_TYPE_LABELS[type],
+      label: res.locals.t(`govuk_alpha_settings.linked.types.${type}`),
       selected: type === 'family'
     })),
     permissions: SETTINGS_LINK_PERMISSIONS.map((permission) => ({
       value: permission,
       field: `perm_${permission}`,
-      label: SETTINGS_LINK_PERMISSION_LABELS[permission],
+      label: res.locals.t(`govuk_alpha_settings.linked.permissions.${permission}`),
       checkedByDefault: permission === 'can_view_activity'
     }))
   });

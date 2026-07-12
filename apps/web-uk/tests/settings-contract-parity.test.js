@@ -188,6 +188,64 @@ describe('Laravel account and settings contract parity', () => {
     expect(unknownStatusResponse.body.locals.statusMessage).toBe('');
   });
 
+  it('normalizes linked-account rows and labels from the exact Laravel catalog', async () => {
+    api.callUserSettingsApi.mockImplementation((token, method, requestPath) => {
+      if (method === 'GET' && requestPath === '/sub-accounts') {
+        return Promise.resolve({
+          data: {
+            sub_accounts: [{
+              relationship_id: 41,
+              name: '',
+              relationship_type: 'organization',
+              status: 'active',
+              permissions: JSON.stringify({ can_view_activity: true })
+            }]
+          }
+        });
+      }
+      if (method === 'GET' && requestPath === '/parent-accounts') {
+        return Promise.resolve({
+          data: {
+            parent_accounts: [{
+              id: 42,
+              first_name: 'Ada',
+              last_name: 'Lovelace',
+              relationship_type: 'guardian',
+              status: 'pending'
+            }]
+          }
+        });
+      }
+      return Promise.resolve({ data: {} });
+    });
+    const response = await request(settingsApp()).get('/settings/linked-accounts?status=link-approved');
+    const t = createTranslator('en');
+
+    expect(response.status).toBe(200);
+    expect(response.body.locals.title).toBe(t('govuk_alpha_settings.linked.title'));
+    expect(response.body.locals.statusMessage).toBe(t('govuk_alpha_settings.states.link-approved'));
+    expect(response.body.locals.children[0]).toEqual(expect.objectContaining({
+      relationshipId: 41,
+      name: t('govuk_alpha_settings.common.unknown_member'),
+      relationshipType: 'organization',
+      relationshipTypeLabel: t('govuk_alpha_settings.linked.types.organization'),
+      status: 'active',
+      permissions: expect.objectContaining({ can_view_activity: true, can_view_messages: false })
+    }));
+    expect(response.body.locals.parents[0]).toEqual(expect.objectContaining({
+      relationshipId: 42,
+      name: 'Ada Lovelace',
+      relationshipTypeLabel: t('govuk_alpha_settings.linked.types.guardian'),
+      status: 'pending'
+    }));
+    expect(response.body.locals.permissions.map(({ label }) => label)).toEqual([
+      'can_view_activity',
+      'can_manage_listings',
+      'can_transact',
+      'can_view_messages'
+    ].map((permission) => t(`govuk_alpha_settings.linked.permissions.${permission}`)));
+  });
+
   it('uses exact session, safeguarding, and consent reads and normalizes their v2 envelopes', async () => {
     const response = await request(profileApp({ insuranceEnabled: false })).get('/profile/settings');
 

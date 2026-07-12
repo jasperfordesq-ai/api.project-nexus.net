@@ -21,7 +21,7 @@
 
     <p class="govuk-body-s govuk-!-margin-bottom-2">
       <strong class="govuk-tag{% if isPending %} govuk-tag--yellow{% else %} govuk-tag--green{% endif %}">
-        {% if isPending %}Awaiting approval{% else %}Active{% endif %}
+        {% if isPending %}{{ t("govuk_alpha_settings.linked.status_pending") }}{% else %}{{ t("govuk_alpha_settings.linked.status_active") }}{% endif %}
       </strong>
     </p>
 
@@ -29,7 +29,7 @@
       <form method="post" action="{{ urlFor('/settings/linked-accounts/approve') }}" class="govuk-!-display-inline-block govuk-!-margin-right-2">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
         <input type="hidden" name="relationship_id" value="{{ relationship.relationshipId }}">
-        <button class="govuk-button govuk-!-margin-bottom-0" data-module="govuk-button">Approve link<span class="govuk-visually-hidden"> {{ relationship.name }}</span></button>
+        <button class="govuk-button govuk-!-margin-bottom-0" data-module="govuk-button">{{ t("govuk_alpha_settings.linked.approve_button") }}<span class="govuk-visually-hidden"> {{ relationship.name }}</span></button>
       </form>
     {% endif %}
 
@@ -38,7 +38,7 @@
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
         <input type="hidden" name="relationship_id" value="{{ relationship.relationshipId }}">
         <fieldset class="govuk-fieldset govuk-!-margin-bottom-2">
-          <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">What this account can do</legend>
+          <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">{{ t("govuk_alpha_settings.linked.permissions_heading") }}</legend>
           <div class="govuk-checkboxes govuk-checkboxes--small" data-module="govuk-checkboxes">
             {% for permission in permissions %}
               <div class="govuk-checkboxes__item">
@@ -48,14 +48,14 @@
             {% endfor %}
           </div>
         </fieldset>
-        <button class="govuk-button govuk-button--secondary govuk-!-margin-bottom-2" data-module="govuk-button">Save permissions<span class="govuk-visually-hidden"> {{ relationship.name }}</span></button>
+        <button class="govuk-button govuk-button--secondary govuk-!-margin-bottom-2" data-module="govuk-button">{{ t("govuk_alpha_settings.linked.save_permissions") }}<span class="govuk-visually-hidden"> {{ relationship.name }}</span></button>
       </form>
 
       <div class="govuk-warning-text govuk-!-margin-bottom-2">
         <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
         <strong class="govuk-warning-text__text">
-          <span class="govuk-visually-hidden">{{ t("states.error_title") }}</span>
-          Removing a link cannot be undone. The other account will no longer be linked to yours.
+          <span class="govuk-visually-hidden">{{ t("govuk_alpha_settings.common.error_title") }}</span>
+          {{ t("govuk_alpha_settings.linked.revoke_warning") }}
         </strong>
       </div>
     {% endif %}
@@ -64,7 +64,7 @@
       <form method="post" action="{{ urlFor('/settings/linked-accounts/revoke') }}" class="govuk-!-display-inline-block">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
         <input type="hidden" name="relationship_id" value="{{ relationship.relationshipId }}">
-        <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">Remove link<span class="govuk-visually-hidden"> {{ relationship.name }}</span></button>
+        <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">{{ t("govuk_alpha_settings.linked.revoke_button") }}<span class="govuk-visually-hidden"> {{ relationship.name }}</span></button>
       </form>
     {% endif %}
   </li>
@@ -73,12 +73,12 @@
 {% block mainContent %}
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
-      <a class="govuk-back-link" href="{{ urlFor('/profile/settings') }}">Back to settings</a>
+      <a class="govuk-back-link" href="{{ urlFor('/profile/settings') }}">{{ t("govuk_alpha_settings.common.back_to_settings") }}</a>
 
       {% if statusMessage and successStatus %}
         <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="linked-status-title">
           <div class="govuk-notification-banner__header">
-            <h2 class="govuk-notification-banner__title" id="linked-status-title">{{ t("states.success_title") }}</h2>
+            <h2 class="govuk-notification-banner__title" id="linked-status-title">{{ t("govuk_alpha_settings.common.success_title") }}</h2>
           </div>
           <div class="govuk-notification-banner__content">
             <p class="govuk-notification-banner__heading">{{ statusMessage }}</p>
@@ -87,7 +87,7 @@
       {% elif statusMessage and errorStatus %}
         <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
           <div role="alert">
-            <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
+            <h2 class="govuk-error-summary__title">{{ t("govuk_alpha_settings.common.error_title") }}</h2>
             <div class="govuk-error-summary__body">
               <ul class="govuk-list govuk-error-summary__list">
                 <li><a href="#request">{{ statusMessage }}</a></li>
@@ -97,15 +97,15 @@
         </div>
       {% endif %}
 
-      <span class="govuk-caption-xl">{{ t("account.settings_title") }}</span>
-      <h1 class="govuk-heading-xl">Linked accounts</h1>
-      <p class="govuk-body-l">Link a family member, dependant or someone you care for to your account so you can help manage their activity. Linked members must approve the link before it becomes active.</p>
+      <span class="govuk-caption-xl">{{ t("govuk_alpha_settings.linked.caption") }}</span>
+      <h1 class="govuk-heading-xl">{{ t("govuk_alpha_settings.linked.title") }}</h1>
+      <p class="govuk-body-l">{{ t("govuk_alpha_settings.linked.description") }}</p>
 
       <section aria-labelledby="parents-heading" id="parents">
-        <h2 class="govuk-heading-l" id="parents-heading">Accounts that manage you</h2>
-        <p class="govuk-body">People who have asked to help manage your account. Approve a request to let them act on your behalf, or remove the link.</p>
+        <h2 class="govuk-heading-l" id="parents-heading">{{ t("govuk_alpha_settings.linked.parents_heading") }}</h2>
+        <p class="govuk-body">{{ t("govuk_alpha_settings.linked.parents_description") }}</p>
         {% if not parents.length %}
-          <div class="govuk-inset-text"><p class="govuk-body">No one has asked to manage your account.</p></div>
+          <div class="govuk-inset-text"><p class="govuk-body">{{ t("govuk_alpha_settings.linked.parents_empty") }}</p></div>
         {% else %}
           <ul class="govuk-list nexus-alpha-card-list">
             {% for parent in parents %}
@@ -118,10 +118,10 @@
       <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
 
       <section aria-labelledby="children-heading" id="children">
-        <h2 class="govuk-heading-l" id="children-heading">Accounts you manage</h2>
-        <p class="govuk-body">People you have linked to your account. You can change what each linked account can do, or remove the link.</p>
+        <h2 class="govuk-heading-l" id="children-heading">{{ t("govuk_alpha_settings.linked.children_heading") }}</h2>
+        <p class="govuk-body">{{ t("govuk_alpha_settings.linked.children_description") }}</p>
         {% if not children.length %}
-          <div class="govuk-inset-text"><p class="govuk-body">You do not manage any linked accounts yet.</p></div>
+          <div class="govuk-inset-text"><p class="govuk-body">{{ t("govuk_alpha_settings.linked.children_empty") }}</p></div>
         {% else %}
           <ul class="govuk-list nexus-alpha-card-list">
             {% for child in children %}
@@ -134,19 +134,19 @@
       <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
 
       <section aria-labelledby="request-heading">
-        <h2 class="govuk-heading-l" id="request-heading">Link a new account</h2>
-        <p class="govuk-body">Enter the email address of the member you want to link. They must already have an account in this community.</p>
-        <p class="govuk-body-s nexus-alpha-meta">You can manage up to {{ maxChildren }} linked accounts.</p>
+        <h2 class="govuk-heading-l" id="request-heading">{{ t("govuk_alpha_settings.linked.request_heading") }}</h2>
+        <p class="govuk-body">{{ t("govuk_alpha_settings.linked.request_description") }}</p>
+        <p class="govuk-body-s nexus-alpha-meta">{{ t("govuk_alpha_settings.linked.request_max", { count: maxChildren }) }}</p>
 
         <form method="post" action="{{ urlFor('/settings/linked-accounts/request') }}">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
           <div class="govuk-form-group{% if status == 'link-email-invalid' or status == 'link-user-not-found' %} govuk-form-group--error{% endif %}">
-            <label class="govuk-label" for="request">Email address</label>
-            <div id="request-hint" class="govuk-hint">For example, name@example.com</div>
+            <label class="govuk-label" for="request">{{ t("govuk_alpha_settings.linked.email_label") }}</label>
+            <div id="request-hint" class="govuk-hint">{{ t("govuk_alpha_settings.linked.email_hint") }}</div>
             {% if status == 'link-email-invalid' or status == 'link-user-not-found' %}
               <p id="request-error" class="govuk-error-message">
-                <span class="govuk-visually-hidden">There is a problem:</span>
+                <span class="govuk-visually-hidden">{{ t("govuk_alpha_settings.common.error_title") }}:</span>
                 {{ statusMessage }}
               </p>
             {% endif %}
@@ -154,7 +154,7 @@
           </div>
 
           <div class="govuk-form-group">
-            <label class="govuk-label" for="relationship_type">Relationship</label>
+            <label class="govuk-label" for="relationship_type">{{ t("govuk_alpha_settings.linked.type_label") }}</label>
             <select class="govuk-select" id="relationship_type" name="relationship_type">
               {% for type in linkTypes %}
                 <option value="{{ type.value }}"{% if type.selected %} selected{% endif %}>{{ type.label }}</option>
@@ -163,7 +163,7 @@
           </div>
 
           <fieldset class="govuk-fieldset govuk-!-margin-bottom-3">
-            <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">What this account can do</legend>
+            <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">{{ t("govuk_alpha_settings.linked.permissions_heading") }}</legend>
             <div class="govuk-checkboxes govuk-checkboxes--small" data-module="govuk-checkboxes">
               {% for permission in permissions %}
                 <div class="govuk-checkboxes__item">
@@ -174,7 +174,7 @@
             </div>
           </fieldset>
 
-          <button class="govuk-button" data-module="govuk-button">Send link request</button>
+          <button class="govuk-button" data-module="govuk-button">{{ t("govuk_alpha_settings.linked.request_button") }}</button>
         </form>
       </section>
     </div>
