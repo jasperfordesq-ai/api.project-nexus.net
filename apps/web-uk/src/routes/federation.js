@@ -675,7 +675,7 @@ function onboardingBool(settings, key) {
     : Boolean(FEDERATION_ONBOARDING_DEFAULTS[key]);
 }
 
-function normalizeOnboardingSettings(rawSettings) {
+function normalizeOnboardingSettings(rawSettings, t = (key) => key) {
   const settings = asObject(rawSettings);
   const reach = trimmed(settings.service_reach);
   const travelRadius = numberOrZero(settings.travel_radius_km);
@@ -693,17 +693,17 @@ function normalizeOnboardingSettings(rawSettings) {
   };
 
   normalized.reachSummary = normalized.service_reach === 'travel_ok'
-    ? `Happy to travel up to ${normalized.travel_radius_km} km`
+    ? t('govuk_alpha_federation.onboarding.reach_summary_travel_ok', { km: normalized.travel_radius_km })
     : normalized.service_reach === 'remote_ok'
-      ? 'Remote is fine'
-      : 'Local only';
+      ? t('govuk_alpha_federation.onboarding.reach_summary_remote_ok')
+      : t('govuk_alpha_federation.onboarding.reach_summary_local_only');
   return normalized;
 }
 
-function onboardingStatusBanner(status) {
+function onboardingStatusBanner(status, t = (key) => key) {
   const banners = {
-    unavailable: 'Federation is not available for your community right now. Please try again later.',
-    'optin-failed': 'We could not enable federation. Please try again.'
+    unavailable: t('govuk_alpha_federation.onboarding.unavailable'),
+    'optin-failed': t('govuk_alpha_federation.onboarding.optin_failed')
   };
 
   const message = banners[trimmed(status)];
@@ -856,7 +856,7 @@ router.get('/opt-out', asyncRoute(async (req, res) => {
   }
 
   return res.render('federation/opt-out', {
-    title: 'Opt out of federation',
+    title: res.locals.t('federation.optout.title'),
     activeNav: 'explore',
     federationActiveTab: 'overview'
   });
@@ -891,13 +891,16 @@ router.get('/onboarding', asyncRoute(async (req, res) => {
   const settings = normalizeOnboardingSettings({
     ...asObject(settingsData.settings),
     ...onboardingSessionBag(req)
-  });
+  }, res.locals.t);
   saveOnboardingSessionBag(req, settings);
   const stepNumber = FEDERATION_ONBOARDING_STEPS.indexOf(step) + 1;
-  const partners = asList(dataFrom(partnersResult)).map(normalizePartner).filter(isInternalPartner).slice(0, 5);
+  const partners = asList(dataFrom(partnersResult)).map((partner) => normalizePartner(partner, {
+    t: res.locals.t,
+    formatNumber: res.locals.formatLocaleNumber
+  })).filter(isInternalPartner).slice(0, 5);
 
   return res.render('federation/onboarding', {
-    title: 'Set up federation',
+    title: res.locals.t('govuk_alpha_federation.onboarding.page_title'),
     activeNav: 'explore',
     federationActiveTab: 'overview',
     step,
@@ -906,7 +909,7 @@ router.get('/onboarding', asyncRoute(async (req, res) => {
     progressValue: Math.round((stepNumber / FEDERATION_ONBOARDING_STEPS.length) * 100),
     settings,
     partners,
-    statusBanner: onboardingStatusBanner(req.query && req.query.status)
+    statusBanner: onboardingStatusBanner(req.query && req.query.status, res.locals.t)
   });
 }));
 

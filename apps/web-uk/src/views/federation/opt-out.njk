@@ -8,8 +8,8 @@
 {% block mainContent %}
   <a href="{{ urlFor('/federation/settings') }}" class="govuk-back-link">{{ t("federation.optout.back") }}</a>
 
-  <span class="govuk-caption-xl">This community</span>
-  <h1 class="govuk-heading-xl">Opt out of federation</h1>
+  <span class="govuk-caption-xl">{{ t("federation.optout.caption", { community: tenantName }) }}</span>
+  <h1 class="govuk-heading-xl">{{ t("federation.optout.title") }}</h1>
 
   {% include "federation/_nav.njk" %}
 
@@ -19,7 +19,7 @@
       <div class="govuk-warning-text">
         <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
         <strong class="govuk-warning-text__text">
-          <span class="govuk-visually-hidden">Warning</span>
+          <span class="govuk-visually-hidden">{{ t("states.warning") }}</span>
           {{ t("federation.optout.warning_title") }}
         </strong>
       </div>
@@ -29,8 +29,8 @@
       <form method="post" action="{{ urlFor('/federation/opt-out') }}">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
         <div class="govuk-button-group">
-          <button type="submit" class="govuk-button govuk-button--warning" data-module="govuk-button">Opt out of federation</button>
-          <a class="govuk-link" href="{{ urlFor('/federation/settings') }}">{{ t("polish_federation.transfer_cancel") }}</a>
+          <button type="submit" class="govuk-button govuk-button--warning" data-module="govuk-button">{{ t("federation.optout.submit") }}</button>
+          <a class="govuk-link" href="{{ urlFor('/federation/settings') }}">{{ t("federation.optout.cancel") }}</a>
         </div>
       </form>
     </div>
