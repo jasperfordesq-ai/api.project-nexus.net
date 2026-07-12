@@ -4250,7 +4250,7 @@ describe('shared accessible frontend shell', () => {
             country: 'GB',
             member_count: 40,
             listing_count: 8,
-            federation_level_name: 'Social',
+            level_name: 'social',
             partnership_since: '2026-02-01T00:00:00Z',
             permissions: ['profiles', 'listings', 'events']
           }
@@ -4271,10 +4271,13 @@ describe('shared accessible frontend shell', () => {
 
     expect(response.status).toBe(200);
     expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'GET', '/partners/12');
-    expect(response.text).toContain('href="/federation/partners"');
+    expect(response.text).toContain('href="/federation"');
+    expect(response.text).toContain('Back to federation');
+    expect(response.text).toContain('Partner community');
     expect(response.text).toContain('North Timebank');
     expect(response.text).toContain('Social');
     expect(response.text).toContain('Neighbouring community exchange');
+    expect(response.text).toContain('exchange<br>');
     expect(response.text).toContain('Open to skill sharing.');
     expect(response.text).toContain('Location');
     expect(response.text).toContain('Derry');
@@ -4284,10 +4287,13 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('40');
     expect(response.text).toContain('Listings');
     expect(response.text).toContain('8');
-    expect(response.text).toContain('Permissions');
-    expect(response.text).toContain('profiles');
-    expect(response.text).toContain('listings');
-    expect(response.text).toContain('events');
+    expect(response.text).toContain('Partners since');
+    expect(response.text).toContain('1 February 2026');
+    expect(response.text).toContain('Shared features');
+    expect(response.text).toContain('Member profiles');
+    expect(response.text).toContain('Listings');
+    expect(response.text).toContain('Events');
+    expect(response.text).toContain('Browse this community');
     expect(response.text).toContain('href="/federation/members?partner_id=12"');
     expect(response.text).toContain('href="/federation/listings?partner_id=12"');
     expect(response.text).toContain('href="/federation/events?partner_id=12"');

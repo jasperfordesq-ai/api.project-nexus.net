@@ -92,6 +92,11 @@ function normalizePartner(partner, options = {}) {
   const knownLevels = new Set(['discovery', 'social', 'economic', 'integrated', 'external']);
   const knownPermissions = new Set(['profiles', 'listings', 'events', 'messaging', 'transactions', 'groups']);
   const partnershipSince = partner && partner.partnership_since ? partner.partnership_since : '';
+  const partnershipDateOptions = options.partnershipDateOptions || {
+    day: undefined,
+    month: 'long',
+    year: 'numeric'
+  };
   const memberCount = numberOrZero(partner && partner.member_count);
   const listingCount = numberOrZero(partner && partner.listing_count);
 
@@ -110,7 +115,7 @@ function normalizePartner(partner, options = {}) {
     levelLabel: knownLevels.has(levelName) ? t(`federation.levels.${levelName}`) : levelName,
     partnershipSince,
     partnershipSinceLabel: partnershipSince
-      ? formatDate(partnershipSince, { day: undefined, month: 'long', year: 'numeric' })
+      ? formatDate(partnershipSince, partnershipDateOptions)
       : '',
     isExternal: bool(partner && partner.is_external),
     permissions,
@@ -1133,7 +1138,8 @@ router.get('/partners/:id', asyncRoute(async (req, res) => {
     taglineLimit: null,
     t: res.locals.t,
     formatDate: res.locals.formatLocaleDate,
-    formatNumber: res.locals.formatLocaleNumber
+    formatNumber: res.locals.formatLocaleNumber,
+    partnershipDateOptions: { day: 'numeric', month: 'long', year: 'numeric' }
   });
   partner.id = id;
   partner.href = partnerHref(id);
