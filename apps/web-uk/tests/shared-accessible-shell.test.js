@@ -27906,6 +27906,16 @@ describe('shared accessible frontend shell', () => {
     expect(groupAddResponse.headers.location).toBe('/volunteering/group-signups?status=member-added');
     expect(api.callVolunteeringApi).toHaveBeenLastCalledWith('test-token', 'POST', '/group-reservations/30/members', { user_id: 55 });
 
+    api.callVolunteeringApi.mockRejectedValueOnce(new api.ApiError('Safeguarding unavailable', 503, {
+      code: 'SAFEGUARDING_POLICY_UNAVAILABLE'
+    }));
+    const unavailableGroupAddResponse = await agent
+      .post('/volunteering/group-signups/30/members')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], user_id: '55' });
+    expect(unavailableGroupAddResponse.headers.location).toBe('/volunteering/group-signups?status=member-safeguarding-unavailable');
+
     const groupRemoveResponse = await agent
       .post('/volunteering/group-signups/30/members/55/remove')
       .set('Cookie', `token=${encodeURIComponent(signedToken)}`)

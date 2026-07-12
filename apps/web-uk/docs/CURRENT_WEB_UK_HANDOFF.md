@@ -5368,6 +5368,18 @@ Focused action proof passed. Full Jest remains `45/45` suites and
 live swap mutation was submitted because the available shifts are shared
 records rather than disposable fixtures.
 
+## 2026-07-12 Default-English Group Sign-ups Parity
+
+Group sign-ups now use Laravel's catalog for reservation/member states, counts,
+summary and table labels, leader controls, warning text, and accessible action
+context. Add-member policy failures now preserve Laravel's distinct
+safeguarding unavailable/restricted states.
+
+Focused render/action proof passed. Full Jest remains `45/45` suites and
+`1,456/1,456` tests with green lint and the 285-template zero-match audit. No
+live add/remove/cancel was submitted because there is no residue-free group
+reservation fixture; shared reservations were not mutated.
+
 ## Final Handoff Checklist
 
 Before leaving this job for another agent, write a short note containing:

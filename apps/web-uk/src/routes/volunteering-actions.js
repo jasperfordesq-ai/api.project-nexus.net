@@ -496,38 +496,28 @@ function apiErrorCode(error) {
   return trimmed(firstError?.code ?? error?.data?.code).toUpperCase();
 }
 
-function groupSignupStatus(status) {
+function groupSignupStatus(status, t = null) {
   const messages = {
-    'member-added': {
-      type: 'success',
-      message: 'The member has been added to the reservation.'
+    'member-added': { type: 'success', key: 'govuk_alpha_volunteering.group_signups.success_member_added' },
+    'member-removed': { type: 'success', key: 'govuk_alpha_volunteering.group_signups.success_member_removed' },
+    'reservation-cancelled': { type: 'success', key: 'govuk_alpha_volunteering.group_signups.success_reservation_cancelled' },
+    'member-id-required': { type: 'error', key: 'govuk_alpha_volunteering.group_signups.error_member_id_required' },
+    'member-add-failed': { type: 'error', key: 'govuk_alpha_volunteering.group_signups.error_member_add_failed' },
+    'member-remove-failed': { type: 'error', key: 'govuk_alpha_volunteering.group_signups.error_member_remove_failed' },
+    'reservation-cancel-failed': { type: 'error', key: 'govuk_alpha_volunteering.group_signups.error_reservation_cancel_failed' },
+    'member-safeguarding-restricted': {
+      type: 'error', key: 'safeguarding.errors.interaction_not_allowed',
+      fallback: 'The recipient’s community safeguarding policy does not allow this direct interaction. Ask a coordinator for help.'
     },
-    'member-removed': {
-      type: 'success',
-      message: 'The member has been removed from the reservation.'
-    },
-    'reservation-cancelled': {
-      type: 'success',
-      message: 'The reservation has been cancelled.'
-    },
-    'member-id-required': {
-      type: 'error',
-      message: 'Enter a member ID'
-    },
-    'member-add-failed': {
-      type: 'error',
-      message: 'The member could not be added. Check that you lead this group and that slots are still available.'
-    },
-    'member-remove-failed': {
-      type: 'error',
-      message: 'The member could not be removed. Check that you lead this group.'
-    },
-    'reservation-cancel-failed': {
-      type: 'error',
-      message: 'The reservation could not be cancelled. Check that you lead this group.'
+    'member-safeguarding-unavailable': {
+      type: 'error', key: 'safeguarding.errors.policy_unavailable',
+      fallback: 'We cannot confirm the community safeguarding policy right now. No message has been sent. Please try again shortly.'
     }
   };
-  return messages[status] || null;
+  const config = messages[status] || null;
+  if (!config) return null;
+  const translated = t ? t(config.key) : config.key;
+  return { ...config, message: translated !== config.key ? translated : (config.fallback || translated) };
 }
 
 function safeguardingStatus(status) {
@@ -1089,40 +1079,56 @@ function statusPresentation(value, labels, classNames, fallback) {
   };
 }
 
-function normalizeGroupMember(row) {
+function normalizeGroupMember(row, t = null) {
   const member = row && typeof row === 'object' ? row : {};
+  const statusValue = Object.hasOwn(GROUP_MEMBER_STATUS_LABELS, trimmed(member.status))
+    ? trimmed(member.status)
+    : 'pending';
   return {
     id: positiveInteger(member.id ?? member.user_id ?? member.userId),
     name: trimmed(member.name),
-    status: statusPresentation(
-      member.status,
-      GROUP_MEMBER_STATUS_LABELS,
-      GROUP_MEMBER_STATUS_CLASSES,
-      'pending'
-    )
+    status: {
+      ...statusPresentation(statusValue, GROUP_MEMBER_STATUS_LABELS, GROUP_MEMBER_STATUS_CLASSES, 'pending'),
+      label: t
+        ? t(`govuk_alpha_volunteering.group_signups.member_status_${statusValue}`)
+        : GROUP_MEMBER_STATUS_LABELS[statusValue]
+    }
   };
 }
 
-function normalizeGroupReservation(row) {
+function normalizeGroupReservation(row, t = null) {
   const reservation = row && typeof row === 'object' ? row : {};
   const shift = reservation.shift && typeof reservation.shift === 'object' ? reservation.shift : {};
   const opportunity = reservation.opportunity && typeof reservation.opportunity === 'object' ? reservation.opportunity : {};
   const organization = reservation.organization && typeof reservation.organization === 'object' ? reservation.organization : {};
-  const members = Array.isArray(reservation.members) ? reservation.members.map(normalizeGroupMember) : [];
+  const members = Array.isArray(reservation.members)
+    ? reservation.members.map((member) => normalizeGroupMember(member, t))
+    : [];
   const confirmedCount = members.filter((member) => member.status.value === 'confirmed').length;
   const maxMembers = positiveInteger(reservation.max_members ?? reservation.maxMembers);
   const isLeader = checked(reservation.is_leader ?? reservation.isLeader);
-  const status = statusPresentation(
-    reservation.status,
-    GROUP_RESERVATION_STATUS_LABELS,
-    GROUP_RESERVATION_STATUS_CLASSES,
-    'active'
-  );
+  const statusValue = Object.hasOwn(GROUP_RESERVATION_STATUS_LABELS, trimmed(reservation.status))
+    ? trimmed(reservation.status)
+    : 'active';
+  const status = {
+    ...statusPresentation(statusValue, GROUP_RESERVATION_STATUS_LABELS, GROUP_RESERVATION_STATUS_CLASSES, 'active'),
+    label: t
+      ? t(`govuk_alpha_volunteering.group_signups.status_${statusValue}`)
+      : GROUP_RESERVATION_STATUS_LABELS[statusValue]
+  };
   const isCancelled = status.value === 'cancelled';
+  const membersCountLabel = maxMembers
+    ? (t
+      ? t('govuk_alpha_volunteering.group_signups.members_count', { filled: confirmedCount, total: maxMembers })
+      : `${confirmedCount} of ${maxMembers} slots filled`)
+    : (t
+      ? t('govuk_alpha_volunteering.group_signups.members_count_open', { count: members.length })
+      : `${members.length} members`);
 
   return {
     id: positiveInteger(reservation.id),
-    groupName: trimmed(reservation.group_name ?? reservation.groupName) || 'Group sign-ups',
+    groupName: trimmed(reservation.group_name ?? reservation.groupName)
+      || (t ? t('govuk_alpha_volunteering.group_signups.title') : 'Group sign-ups'),
     status,
     isLeader,
     isCancelled,
@@ -1135,7 +1141,7 @@ function normalizeGroupReservation(row) {
     members,
     confirmedCount,
     maxMembers,
-    membersCountLabel: maxMembers ? `${confirmedCount} of ${maxMembers} slots filled` : `${members.length} members`,
+    membersCountLabel,
     canAddMembers: isLeader && !isCancelled && (!maxMembers || confirmedCount < maxMembers)
   };
 }
@@ -1849,7 +1855,7 @@ router.get('/group-signups', asyncRoute(async (req, res) => {
   let loadError = null;
   try {
     reservations = groupReservationRowsFrom(await callApi(token, 'GET', '/group-reservations'))
-      .map(normalizeGroupReservation)
+      .map((reservation) => normalizeGroupReservation(reservation, res.locals.t))
       .filter((reservation) => reservation.id);
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
@@ -1857,11 +1863,11 @@ router.get('/group-signups', asyncRoute(async (req, res) => {
   }
 
   return res.render('volunteering/group-signups', {
-    title: 'Group sign-ups',
+    title: res.locals.t('govuk_alpha_volunteering.group_signups.title'),
     activeNav: 'volunteering',
     reservations,
     loadError,
-    status: groupSignupStatus(trimmed(req.query.status)),
+    status: groupSignupStatus(trimmed(req.query.status), res.locals.t),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { redirectOn401: loginRedirect() }));
@@ -2729,15 +2735,22 @@ router.post('/group-signups/:id(\\d+)/members', asyncRoute(async (req, res) => {
     return redirectTo(res, '/volunteering/group-signups?status=member-id-required');
   }
 
-  return runAction(
-    req,
-    res,
-    'POST',
-    `/group-reservations/${id}/members`,
-    { user_id: userId },
-    '/volunteering/group-signups?status=member-added',
-    '/volunteering/group-signups?status=member-add-failed'
-  );
+  const token = tokenFrom(req);
+  if (!token) return redirectTo(res, loginRedirect());
+  try {
+    await callApi(token, 'POST', `/group-reservations/${id}/members`, { user_id: userId });
+    return redirectTo(res, '/volunteering/group-signups?status=member-added');
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    const code = apiErrorCode(error);
+    if (code === 'SAFEGUARDING_POLICY_UNAVAILABLE') {
+      return redirectTo(res, '/volunteering/group-signups?status=member-safeguarding-unavailable');
+    }
+    if (['SAFEGUARDING_CONTACT_RESTRICTED', 'VETTING_REQUIRED'].includes(code)) {
+      return redirectTo(res, '/volunteering/group-signups?status=member-safeguarding-restricted');
+    }
+    return redirectTo(res, '/volunteering/group-signups?status=member-add-failed');
+  }
 }));
 
 router.post('/group-signups/:id(\\d+)/members/:userId(\\d+)/remove', asyncRoute(async (req, res) => {
