@@ -6,10 +6,10 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a href="{{ urlFor('/federation') }}" class="govuk-back-link">Back to federation</a>
+  <a href="{{ urlFor('/federation') }}" class="govuk-back-link">{{ t("federation.listings_browse.back") }}</a>
 
-  <span class="govuk-caption-xl">This community</span>
-  <h1 class="govuk-heading-xl">{{ t("federation.hub.quick_link_listings") }}</h1>
+  <span class="govuk-caption-xl">{{ t("federation.listings_browse.caption", { community: tenantName }) }}</span>
+  <h1 class="govuk-heading-xl">{{ t("federation.listings_browse.title") }}</h1>
   <p class="govuk-body-l">{{ t("federation.listings_browse.description") }}</p>
 
   {% include "federation/_nav.njk" %}
@@ -20,44 +20,44 @@
   {% else %}
     <form method="get" action="{{ urlFor('/federation/listings') }}" class="govuk-!-margin-bottom-6">
       <fieldset class="govuk-fieldset">
-        <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">Filter listings</legend>
+        <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">{{ t("federation.listings_browse.filters_legend") }}</legend>
 
         <div class="govuk-form-group">
           <label class="govuk-label" for="q">{{ t("federation.listings_browse.search_label") }}</label>
-          <div id="q-hint" class="govuk-hint">Search by title or description.</div>
+          <div id="q-hint" class="govuk-hint">{{ t("federation.listings_browse.search_hint") }}</div>
           <input class="govuk-input govuk-!-width-two-thirds" id="q" name="q" type="search" value="{{ filters.q }}" aria-describedby="q-hint">
         </div>
 
         <div class="govuk-form-group">
-          <label class="govuk-label" for="type">Type</label>
+          <label class="govuk-label" for="type">{{ t("federation.listings_browse.filter_type_label") }}</label>
           <select class="govuk-select" id="type" name="type">
-            <option value=""{% if not filters.type %} selected{% endif %}>All</option>
-            <option value="offer"{% if filters.type == "offer" %} selected{% endif %}>Offer</option>
-            <option value="request"{% if filters.type == "request" %} selected{% endif %}>Request</option>
+            <option value=""{% if not filters.type %} selected{% endif %}>{{ t("federation.listings_browse.filter_type_all") }}</option>
+            <option value="offer"{% if filters.type == "offer" %} selected{% endif %}>{{ t("federation.listings_browse.type_offer") }}</option>
+            <option value="request"{% if filters.type == "request" %} selected{% endif %}>{{ t("federation.listings_browse.type_request") }}</option>
           </select>
         </div>
 
         <div class="govuk-form-group">
-          <label class="govuk-label" for="partner_id">Community</label>
+          <label class="govuk-label" for="partner_id">{{ t("federation.listings_browse.filter_partner_label") }}</label>
           <select class="govuk-select" id="partner_id" name="partner_id">
-            <option value=""{% if not filters.partnerId %} selected{% endif %}>All communities</option>
+            <option value=""{% if not filters.partnerId %} selected{% endif %}>{{ t("federation.listings_browse.filter_partner_all") }}</option>
             {% for partner in partnerOptions %}
               <option value="{{ partner.id }}"{% if filters.partnerId == partner.id %} selected{% endif %}>{{ partner.name }}</option>
             {% endfor %}
           </select>
         </div>
 
-        <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">Apply filters</button>
+        <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">{{ t("federation.listings_browse.apply_filters") }}</button>
       </fieldset>
     </form>
 
     {% if loadError %}
       <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
         <div role="alert">
-          <h2 class="govuk-error-summary__title">We could not load federated listings.</h2>
+          <h2 class="govuk-error-summary__title">{{ t("federation.listings_browse.unable_to_load") }}</h2>
           <div class="govuk-error-summary__body">
             <ul class="govuk-list govuk-error-summary__list">
-              <li><a href="{{ urlFor('/federation/listings') }}">Try again</a></li>
+              <li><a href="{{ urlFor('/federation/listings') }}">{{ t("federation.listings_browse.try_again") }}</a></li>
             </ul>
           </div>
         </div>
@@ -80,29 +80,25 @@
                   {{ listing.title }}
                 {% endif %}
               </h2>
-              {% if listing.type == "request" %}
-                <strong class="govuk-tag govuk-tag--blue">Request</strong>
-              {% else %}
-                <strong class="govuk-tag govuk-tag--green">Offer</strong>
-              {% endif %}
+              <strong class="govuk-tag {% if listing.type == 'request' %}govuk-tag--blue{% else %}govuk-tag--green{% endif %}">{{ listing.typeLabel }}</strong>
             </div>
 
             {% if listing.categoryName %}
-              <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">Category: {{ listing.categoryName }}</p>
+              <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">{{ t("federation.listings_browse.category_label") }}: {{ listing.categoryName }}</p>
             {% endif %}
 
             {% if listing.estimatedHours %}
-              <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">{{ listing.estimatedHours }} hours</p>
+              <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">{{ listing.estimatedHoursLabel }}</p>
             {% endif %}
 
             {% if listing.location %}
-              <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">Location: {{ listing.location }}</p>
+              <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">{{ t("federation.location_label") }}: {{ listing.location }}</p>
             {% endif %}
 
-            <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">Posted by {{ listing.authorName }}</p>
+            <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">{{ t("federation.listings_browse.posted_by", { name: listing.authorName }) }}</p>
 
             {% if listing.createdAt %}
-              <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">Posted {{ listing.createdAt | date }}</p>
+              <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">{{ t("federation.listings_browse.posted_on", { date: listing.createdAtLabel }) }}</p>
             {% endif %}
 
             {% if listing.tenantName %}

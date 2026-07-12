@@ -999,7 +999,7 @@ router.get('/listings', asyncRoute(async (req, res) => {
   } catch (error) {
     if (error instanceof ApiError && error.status === 403) {
       return res.render('federation/listings', {
-        title: 'Federated listings',
+        title: res.locals.t('federation.listings_browse.title'),
         activeNav: 'explore',
         federationActiveTab: 'listings',
         allowed: false,
@@ -1019,12 +1019,15 @@ router.get('/listings', asyncRoute(async (req, res) => {
     formatDate: res.locals.formatLocaleDate,
     formatNumber: res.locals.formatLocaleNumber
   }));
-  const partnerOptions = asList(dataFrom(partnersResult)).map(normalizePartner).filter(isInternalPartner);
+  const partnerOptions = asList(dataFrom(partnersResult)).map((partner) => normalizePartner(partner, {
+    t: res.locals.t,
+    formatNumber: res.locals.formatLocaleNumber
+  })).filter(isInternalPartner);
   const meta = metaFrom(listingsResult);
   const nextCursor = trimmed(meta.cursor || meta.next_cursor);
 
   return res.render('federation/listings', {
-    title: 'Federated listings',
+    title: res.locals.t('federation.listings_browse.title'),
     activeNav: 'explore',
     federationActiveTab: 'listings',
     allowed: true,
