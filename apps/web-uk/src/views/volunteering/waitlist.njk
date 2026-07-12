@@ -29,8 +29,8 @@
     {% endif %}
   {% endif %}
 
-  <span class="govuk-caption-l">Volunteering</span>
-  <h1 class="govuk-heading-xl">{{ t("vol_depth.waitlist_link") }}</h1>
+  <span class="govuk-caption-l">{{ t("volunteering.title") }}</span>
+  <h1 class="govuk-heading-xl">{{ t("vol_depth.waitlist_title") }}</h1>
   <p class="govuk-body-l">{{ t("vol_depth.waitlist_description") }}</p>
 
   {% if loadError %}
@@ -56,25 +56,25 @@
             <strong class="govuk-tag govuk-tag--green">{{ t("vol_depth.waitlist_spot_available") }}</strong>
             <p class="govuk-body govuk-!-margin-top-3">{{ t("vol_depth.waitlist_notified_hint") }}</p>
           {% else %}
-            <strong class="govuk-tag govuk-tag--yellow">Position {{ entry.position }}</strong>
+            <strong class="govuk-tag govuk-tag--yellow">{{ t("vol_depth.waitlist_position", { position: entry.position }) }}</strong>
           {% endif %}
 
           <dl class="govuk-summary-list govuk-!-margin-top-4 govuk-!-margin-bottom-3">
             {% if entry.organizationName %}
               <div class="govuk-summary-list__row">
-                <dt class="govuk-summary-list__key">{{ t("auth.profile_type_organisation") }}</dt>
+                <dt class="govuk-summary-list__key">{{ t("volunteering.organization") }}</dt>
                 <dd class="govuk-summary-list__value">{{ entry.organizationName }}</dd>
               </div>
             {% endif %}
             {% if entry.location %}
               <div class="govuk-summary-list__row">
-                <dt class="govuk-summary-list__key">Location</dt>
+                <dt class="govuk-summary-list__key">{{ t("volunteering.location") }}</dt>
                 <dd class="govuk-summary-list__value">{{ entry.location }}</dd>
               </div>
             {% endif %}
             {% if entry.shiftLabel %}
               <div class="govuk-summary-list__row">
-                <dt class="govuk-summary-list__key">Shift</dt>
+                <dt class="govuk-summary-list__key">{{ t("volunteering.shift_label") }}</dt>
                 <dd class="govuk-summary-list__value">{{ entry.shiftLabel }}</dd>
               </div>
             {% endif %}
@@ -90,7 +90,7 @@
             <form method="post" action="{{ urlFor('/volunteering/waitlist/' ~ entry.shiftId ~ '/leave') }}">
               <input type="hidden" name="_csrf" value="{{ csrfToken }}">
               <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">
-                {{ t("vol_depth.waitlist_leave") }}<span class="govuk-visually-hidden"> for {{ entry.title }}</span>
+                {{ t("vol_depth.waitlist_leave") }}<span class="govuk-visually-hidden"> {{ t("vol_depth.waitlist_leave_for", { title: entry.title }) }}</span>
               </button>
             </form>
           {% endif %}

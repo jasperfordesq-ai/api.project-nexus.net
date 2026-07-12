@@ -5343,6 +5343,18 @@ pass. Disposable create/delete proof remains open until a legitimately approved
 fixture exists; the first attempted harness failed safely before mutation and
 was removed rather than committed as a red gate.
 
+## 2026-07-12 Default-English Shift Waitlist Parity
+
+The shift waitlist now matches Blade's catalog-backed status, empty guidance,
+position/notification cards, organisation/location/shift/joined labels, and
+context-specific leave buttons. Load and leave failures, fallback opportunity
+titles, and position interpolation also use the current Laravel catalog.
+
+Focused waitlist/swaps proof passed. Full Jest remains `45/45` suites and
+`1,456/1,456` tests with green lint and the 285-template zero-match audit. No
+live leave was submitted because the available entries are shared signups, not
+disposable fixtures.
+
 ## Final Handoff Checklist
 
 Before leaving this job for another agent, write a short note containing:

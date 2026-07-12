@@ -577,18 +577,19 @@ function safeguardingStatus(status) {
   return messages[status] || null;
 }
 
-function waitlistStatus(status) {
+function waitlistStatus(status, t = null) {
   const messages = {
     'waitlist-left': {
       type: 'success',
-      message: 'You have left the waitlist.'
+      key: 'govuk_alpha.vol_depth.waitlist_left'
     },
     'waitlist-leave-failed': {
       type: 'error',
-      message: 'We could not remove you from the waitlist. You may not be on it.'
+      key: 'govuk_alpha.vol_depth.waitlist_leave_failed'
     }
   };
-  return messages[status] || null;
+  const config = messages[status] || null;
+  return config ? { ...config, message: t ? t(config.key) : config.key } : null;
 }
 
 function swapPageStatus(status) {
@@ -1210,7 +1211,7 @@ function normalizeSafeguardingIncident(row) {
   };
 }
 
-function normalizeWaitlistEntry(row) {
+function normalizeWaitlistEntry(row, t = null) {
   const entry = row && typeof row === 'object' ? row : {};
   const shift = entry.shift && typeof entry.shift === 'object' ? entry.shift : {};
   const opportunity = entry.opportunity && typeof entry.opportunity === 'object' ? entry.opportunity : {};
@@ -1223,7 +1224,8 @@ function normalizeWaitlistEntry(row) {
     status,
     isNotified: status === 'notified',
     shiftId: positiveInteger(shift.id ?? entry.shift_id ?? entry.shiftId),
-    title: trimmed(opportunity.title) || 'Volunteering opportunity',
+    title: trimmed(opportunity.title)
+      || (t ? t('govuk_alpha.volunteering.detail_title') : 'Volunteering opportunity'),
     location: trimmed(opportunity.location),
     organizationName: trimmed(organization.name),
     shiftLabel: dateTimeLabel(shift.start_time ?? shift.startTime),
@@ -1925,11 +1927,11 @@ router.get('/waitlist', asyncRoute(async (req, res) => {
   let loadError = null;
   try {
     entries = collectionFrom(await callApi(token, 'GET', '/my-waitlists'))
-      .map(normalizeWaitlistEntry)
+      .map((entry) => normalizeWaitlistEntry(entry, res.locals.t))
       .filter((entry) => entry.id);
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    loadError = 'We could not load your waitlist. Please try again.';
+    loadError = res.locals.t('govuk_alpha.vol_depth.waitlist_error');
   }
 
   return res.render('volunteering/waitlist', {
@@ -1937,7 +1939,7 @@ router.get('/waitlist', asyncRoute(async (req, res) => {
     activeNav: 'volunteering',
     entries,
     loadError,
-    status: waitlistStatus(trimmed(req.query.status)),
+    status: waitlistStatus(trimmed(req.query.status), res.locals.t),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { redirectOn401: loginRedirect() }));
