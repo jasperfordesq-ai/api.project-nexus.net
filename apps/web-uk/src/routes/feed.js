@@ -270,21 +270,6 @@ function feedStatusMessage(status) {
   return messages[status] || null;
 }
 
-function feedPostStatusMessage(status) {
-  const messages = {
-    'reaction-added': { type: 'success', text: 'Your reaction has been added.' },
-    'reaction-removed': { type: 'success', text: 'Your reaction has been removed.' },
-    'comment-created': { type: 'success', text: 'Your comment has been posted.' },
-    'comment-updated': { type: 'success', text: 'Your comment has been updated.' },
-    'comment-deleted': { type: 'success', text: 'Your comment has been deleted.' },
-    'share-added': { type: 'success', text: 'This post has been shared to your feed.' },
-    'share-removed': { type: 'success', text: 'This post has been removed from your feed.' },
-    'save-added': { type: 'success', text: 'This post has been saved.' },
-    'save-removed': { type: 'success', text: 'This post has been removed from your saved items.' }
-  };
-  return messages[status] || null;
-}
-
 function feedIndexStatusMessage(status, t) {
   const keys = {
     'post-created': 'states.post-created',
@@ -402,7 +387,7 @@ router.get('/posts/:id(\\d+)', asyncRoute(async (req, res) => {
     comments,
     currentUserId,
     requiresAuth: !token,
-    statusMessage: feedPostStatusMessage(trimmed(req.query.status)),
+    statusMessage: feedIndexStatusMessage(trimmed(req.query.status), req.t || res.locals.t),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { notFoundTitle: 'Post not found' }));

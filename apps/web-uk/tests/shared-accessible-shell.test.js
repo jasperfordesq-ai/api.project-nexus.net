@@ -12878,10 +12878,10 @@ describe('shared accessible frontend shell', () => {
     expect(api.getComments).not.toHaveBeenCalled();
     expect(response.text).toContain('href="/feed"');
     expect(response.text).toContain('Back to the feed');
-    expect(response.text).toContain('Community feed at');
+    expect(response.text).toContain('<span class="govuk-caption-l">Project NEXUS Accessible</span>');
     expect(response.text).toContain('<h1');
     expect(response.text).toContain('Post');
-    expect(response.text).toContain('Sign in to take part in the feed.');
+    expect(response.text).toContain('Sign in to use this page.');
     expect(response.text).toContain('Posted by Ada Lovelace');
     expect(response.text).toContain('Repair cafe is open.');
     expect(response.text).toContain('Bring your bike lights.');
@@ -12890,7 +12890,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('2 likes');
     expect(response.text).toContain('1 comment');
     expect(response.text).toContain('Comments');
-    expect(response.text).toContain('No comments yet.');
+    expect(response.text).toContain('There are no comments yet.');
     expect(response.text).not.toContain('name="content"');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
@@ -12960,7 +12960,7 @@ describe('shared accessible frontend shell', () => {
     for (const response of [post, item]) {
       expect(response.status).toBe(200);
       expect(response.headers.location).toBeUndefined();
-      expect(response.text).toContain('Sign in to take part in the feed.');
+      expect(response.text).toContain('Sign in');
       expect(response.text).toContain('This post is no longer available.');
     }
   });
@@ -13306,6 +13306,27 @@ describe('shared accessible frontend shell', () => {
     expect(detail.text).toContain('action="/feed/comments/12/react"');
     expect(detail.text).toContain('action="/feed/comments/12/update"');
     expect(detail.text).toContain('action="/feed/comments/12/delete"');
+
+    api.getFeedPostV2.mockResolvedValueOnce({
+      data: {
+        id: 42,
+        type: 'post',
+        content: 'Owner lifecycle update.',
+        author: { id: 101, name: 'Current member' }
+      }
+    });
+    api.getComments.mockResolvedValueOnce({ data: { comments: [] } });
+    const arabic = await request(app)
+      .get('/feed/posts/42?locale=ar&status=reaction-added')
+      .set('Cookie', signedCookieHeader());
+    expect(arabic.status).toBe(200);
+    expect(arabic.text).toContain('lang="ar"');
+    expect(arabic.text).toContain('dir="rtl"');
+    const ar = createTranslator('ar');
+    expect(arabic.text).toContain(ar('feed_t1.permalink_heading'));
+    expect(arabic.text).toContain(ar('feed.posted_by', { name: 'Current member' }));
+    expect(arabic.text).toContain(ar('feed.no_comments'));
+    expect(arabic.text).toContain(ar('feed_t1.status_reaction_added'));
   });
 
   it('renders Laravel feed type, order, and listing-subtype filters without the legacy groups filter', async () => {

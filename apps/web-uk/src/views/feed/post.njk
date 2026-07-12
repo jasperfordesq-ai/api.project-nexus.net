@@ -10,8 +10,8 @@
     <div class="govuk-grid-column-two-thirds">
       <a href="{{ urlFor('/feed') }}" class="govuk-back-link">{{ t("feed_t1.permalink_back") }}</a>
 
-      <span class="govuk-caption-l">Community feed at {{ communityName }}</span>
-      <h1 class="govuk-heading-xl">Post</h1>
+      <span class="govuk-caption-l">{{ t("feed.caption", { community: communityName }) }}</span>
+      <h1 class="govuk-heading-xl">{{ t("feed_t1.permalink_heading") }}</h1>
 
       {% if statusMessage %}
         <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="permalink-status-title">
@@ -30,7 +30,7 @@
             <h2 class="govuk-notification-banner__title" id="permalink-auth-title">{{ t("states.error_title") }}</h2>
           </div>
           <div class="govuk-notification-banner__content">
-            <p class="govuk-notification-banner__heading">Sign in to take part in the feed.</p>
+            <p class="govuk-notification-banner__heading">{{ t("states.auth_required") }}</p>
             <div class="govuk-button-group">
               <a class="govuk-button" href="{{ urlFor('/login') }}" role="button" draggable="false" data-module="govuk-button">{{ t("auth.login_action") }}</a>
             </div>
@@ -49,10 +49,10 @@
           {% if item.authorAvatar %}
             <img class="nexus-alpha-avatar nexus-alpha-avatar--small" src="{{ item.authorAvatar }}" alt="" loading="lazy" decoding="async" width="32" height="32">
           {% endif %}
-          Posted by {{ item.authorName }}
+          {{ t("feed.posted_by", { name: item.authorName }) }}
           {% if item.createdAt %}
             <span aria-hidden="true"> | </span>
-            <span class="govuk-visually-hidden">Posted on </span>
+            <span class="govuk-visually-hidden">{{ t("feed.posted_on_prefix") }}</span>
             <time datetime="{{ item.createdAt }}">{{ item.createdAt | formatDate }}</time>
           {% endif %}
         </p>
@@ -66,7 +66,7 @@
             {% for media in item.media %}
               <li>
                 <a href="{{ media.fileUrl }}" target="_blank" rel="noopener noreferrer">
-                  <span class="govuk-visually-hidden"> Opens in a new tab</span>
+                  <span class="govuk-visually-hidden"> {{ t("opens_new_tab") }}</span>
                   <img src="{{ media.thumbnailUrl }}" alt="{{ media.altText or t('govuk_alpha_feed.item.image_alt') }}" class="nexus-alpha-feed-image" loading="lazy">
                 </a>
               </li>
@@ -119,13 +119,13 @@
           </div>
         {% endif %}
 
-        <h2 class="govuk-heading-m govuk-!-margin-top-4">Comments</h2>
+        <h2 class="govuk-heading-m govuk-!-margin-top-4">{{ t("feed.comments_summary") }}</h2>
         {% if comments and comments.length %}
           <ul class="govuk-list nexus-alpha-card-list">
             {% for comment in comments %}
               <li class="nexus-alpha-card">
                 <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">
-                  Posted by {{ comment.author.name or comment.author_name or "A community member" }}
+                  {{ t("feed.posted_by", { name: comment.author.name or comment.author_name or t("feed.unknown_author") }) }}
                 </p>
                 <p class="govuk-body">{{ comment.content or comment.body }}</p>
                 {% if not requiresAuth and comment.id %}
@@ -169,7 +169,7 @@
             {% endfor %}
           </ul>
         {% else %}
-          <p class="govuk-body">No comments yet.</p>
+          <p class="govuk-body">{{ t("feed.no_comments") }}</p>
         {% endif %}
 
         {% if not requiresAuth %}
@@ -177,7 +177,7 @@
             <input type="hidden" name="_csrf" value="{{ csrfToken }}">
             <div class="govuk-form-group">
               <label class="govuk-label" for="permalink-comment-{{ item.id }}">{{ t("blog.comment_body_label") }}</label>
-              <div id="permalink-comment-{{ item.id }}-hint" class="govuk-hint">Be respectful. Comments are visible to other members.</div>
+              <div id="permalink-comment-{{ item.id }}-hint" class="govuk-hint">{{ t("feed.comment_hint") }}</div>
               <textarea class="govuk-textarea" id="permalink-comment-{{ item.id }}" name="content" rows="3" aria-describedby="permalink-comment-{{ item.id }}-hint"></textarea>
             </div>
             <button class="govuk-button" data-module="govuk-button">{{ t("actions.comment") }}</button>
