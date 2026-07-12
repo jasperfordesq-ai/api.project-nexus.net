@@ -403,12 +403,20 @@ function monthLabel(value) {
   }).format(date);
 }
 
-function certificateStatus(status) {
+function certificateStatus(status, t = null) {
   if (status === 'certificate-generated') {
-    return { type: 'success', message: 'Your certificate has been generated.' };
+    return {
+      type: 'success',
+      message: t ? t('govuk_alpha.vol_depth.certificate_generated') : 'Your certificate has been generated.'
+    };
   }
   if (status === 'certificate-no-hours') {
-    return { type: 'error', message: 'You do not have any approved volunteering hours to certify yet.' };
+    return {
+      type: 'error',
+      message: t
+        ? t('govuk_alpha.vol_depth.certificate_no_hours')
+        : 'You do not have any approved volunteering hours to certify yet.'
+    };
   }
   return null;
 }
@@ -1622,7 +1630,7 @@ function normalizeHourLog(row) {
   };
 }
 
-function normalizeCertificate(row) {
+function normalizeCertificate(row, t = null) {
   const certificate = row && typeof row === 'object' ? row : {};
   const code = trimmed(certificate.verification_code ?? certificate.verificationCode);
   const dateRange = certificate.date_range && typeof certificate.date_range === 'object'
@@ -1639,7 +1647,8 @@ function normalizeCertificate(row) {
     rangeEndLabel: dateLabel(dateRange.end ?? certificate.end_date ?? certificate.endDate),
     generatedAtLabel: dateLabel(certificate.generated_at ?? certificate.generatedAt),
     organizations: organizations.map((organization) => ({
-      name: trimmed(organization?.name) || 'Independent volunteering',
+      name: trimmed(organization?.name)
+        || (t ? t('govuk_alpha.vol_depth.certificate_independent') : 'Independent volunteering'),
       hoursLabel: hoursLabel(organization?.hours)
     })),
     downloadPath: code ? `/volunteering/certificates/${encodeURIComponent(code)}/download` : ''
@@ -1766,18 +1775,19 @@ router.get('/certificates', asyncRoute(async (req, res) => {
   let certificates = [];
   let loadError = null;
   try {
-    certificates = collectionFrom(await callApi(token, 'GET', '/certificates')).map(normalizeCertificate);
+    certificates = collectionFrom(await callApi(token, 'GET', '/certificates'))
+      .map((certificate) => normalizeCertificate(certificate, res.locals.t));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
     loadError = 'We could not load your certificates. Please try again.';
   }
 
   return res.render('volunteering/certificates', {
-    title: 'Volunteer certificates',
+    title: res.locals.t('govuk_alpha.vol_depth.certificates_title'),
     activeNav: 'volunteering',
     certificates,
     loadError,
-    status: certificateStatus(trimmed(req.query.status)),
+    status: certificateStatus(trimmed(req.query.status), res.locals.t),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { redirectOn401: loginRedirect() }));

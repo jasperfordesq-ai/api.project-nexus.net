@@ -29,7 +29,7 @@
     {% endif %}
   {% endif %}
 
-  <span class="govuk-caption-l">Volunteering</span>
+  <span class="govuk-caption-l">{{ t("govuk_alpha.volunteering.title") }}</span>
   <h1 class="govuk-heading-xl">{{ t("vol_depth.certificates_link") }}</h1>
   <p class="govuk-body-l">{{ t("vol_depth.certificates_description") }}</p>
 
@@ -72,13 +72,13 @@
             {% endif %}
             {% if certificate.verificationCode %}
               <div class="govuk-summary-list__row">
-                <dt class="govuk-summary-list__key">Verification code</dt>
+                <dt class="govuk-summary-list__key">{{ t("govuk_alpha.vol_depth.certificate_code") }}</dt>
                 <dd class="govuk-summary-list__value"><span class="govuk-!-font-weight-bold">{{ certificate.verificationCode }}</span></dd>
               </div>
             {% endif %}
           </dl>
           {% if certificate.organizations.length %}
-            <p class="govuk-body govuk-!-margin-bottom-1"><strong>Organisations</strong></p>
+            <p class="govuk-body govuk-!-margin-bottom-1"><strong>{{ t("govuk_alpha.vol_depth.certificate_organisations") }}</strong></p>
             <ul class="govuk-list govuk-list--bullet">
               {% for organization in certificate.organizations %}
                 <li>{{ organization.name }} ({{ organization.hoursLabel }} hours)</li>

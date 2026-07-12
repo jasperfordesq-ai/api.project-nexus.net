@@ -5437,6 +5437,18 @@ Focused render/action proof passed. Full Jest remains `45/45` suites and
 live save was submitted because it would mutate the signed-in account's
 persistent personal profile without an independent disposable fixture.
 
+## 2026-07-12 Default-English Volunteer Certificates Parity
+
+Certificates now use Laravel's catalog for the caption, page/status copy,
+verification and organisation labels, and independent-volunteering fallback.
+The existing download route still proves ownership before returning Laravel's
+certificate HTML.
+
+Focused render/download proof passed. Full Jest remains `45/45` suites and
+`1,456/1,456` tests with green lint and the 285-template zero-match audit. No
+live certificate was generated because that creates a persistent account record
+without a residue-free deletion path.
+
 ## Final Handoff Checklist
 
 Before leaving this job for another agent, write a short note containing:
