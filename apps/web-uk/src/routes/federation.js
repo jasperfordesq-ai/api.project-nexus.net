@@ -79,12 +79,21 @@ function partnerHref(id) {
 }
 
 function normalizePartner(partner, options = {}) {
-  const name = trimmed(partner && partner.name) || 'Federated community';
+  const t = typeof options.t === 'function' ? options.t : (key) => key;
+  const formatDate = typeof options.formatDate === 'function' ? options.formatDate : (value) => value;
+  const formatNumber = typeof options.formatNumber === 'function' ? options.formatNumber : (value) => String(value);
+  const name = trimmed(partner && partner.name) || t('federation.title');
   const id = partner && partner.id !== undefined ? partner.id : '';
-  const taglineLimit = Object.prototype.hasOwnProperty.call(options, 'taglineLimit') ? options.taglineLimit : 220;
+  const taglineLimit = Object.prototype.hasOwnProperty.call(options, 'taglineLimit') ? options.taglineLimit : 200;
   const permissions = Array.isArray(partner && partner.permissions)
     ? partner.permissions.map((permission) => trimmed(permission)).filter(Boolean)
     : [];
+  const levelName = trimmed(partner && (partner.level_name || partner.federation_level_name || partner.level));
+  const knownLevels = new Set(['discovery', 'social', 'economic', 'integrated', 'external']);
+  const knownPermissions = new Set(['profiles', 'listings', 'events', 'messaging', 'transactions', 'groups']);
+  const partnershipSince = partner && partner.partnership_since ? partner.partnership_since : '';
+  const memberCount = numberOrZero(partner && partner.member_count);
+  const listingCount = numberOrZero(partner && partner.listing_count);
 
   return {
     id,
@@ -93,12 +102,21 @@ function normalizePartner(partner, options = {}) {
     tagline: trimmed(partner && partner.tagline, taglineLimit),
     location: trimmed(partner && partner.location),
     country: trimmed(partner && partner.country),
-    memberCount: numberOrZero(partner && partner.member_count),
-    listingCount: numberOrZero(partner && partner.listing_count),
-    levelName: trimmed(partner && (partner.federation_level_name || partner.level_name || partner.level)),
-    partnershipSince: partner && partner.partnership_since ? partner.partnership_since : '',
+    memberCount,
+    memberCountLabel: formatNumber(memberCount),
+    listingCount,
+    listingCountLabel: formatNumber(listingCount),
+    levelName,
+    levelLabel: knownLevels.has(levelName) ? t(`federation.levels.${levelName}`) : levelName,
+    partnershipSince,
+    partnershipSinceLabel: partnershipSince
+      ? formatDate(partnershipSince, { day: undefined, month: 'long', year: 'numeric' })
+      : '',
     isExternal: bool(partner && partner.is_external),
-    permissions
+    permissions,
+    permissionLabels: permissions.map((permission) => (
+      knownPermissions.has(permission) ? t(`federation.permissions.${permission}`) : permission
+    ))
   };
 }
 
@@ -1075,10 +1093,14 @@ router.get('/partners', asyncRoute(async (req, res) => {
     throw error;
   }
 
-  const partners = asList(dataFrom(partnersResult)).map(normalizePartner);
+  const partners = asList(dataFrom(partnersResult)).map((partner) => normalizePartner(partner, {
+    t: res.locals.t,
+    formatDate: res.locals.formatLocaleDate,
+    formatNumber: res.locals.formatLocaleNumber
+  }));
 
   return res.render('federation/partners', {
-    title: 'Federation partners',
+    title: res.locals.t('federation.partners_list.title'),
     activeNav: 'explore',
     federationActiveTab: 'partners',
     partners
@@ -1107,7 +1129,12 @@ router.get('/partners/:id', asyncRoute(async (req, res) => {
     throw error;
   }
 
-  const partner = normalizePartner(asObject(dataFrom(partnerResult)), { taglineLimit: null });
+  const partner = normalizePartner(asObject(dataFrom(partnerResult)), {
+    taglineLimit: null,
+    t: res.locals.t,
+    formatDate: res.locals.formatLocaleDate,
+    formatNumber: res.locals.formatLocaleNumber
+  });
   partner.id = id;
   partner.href = partnerHref(id);
   partner.isInternal = isInternalPartner(partner);

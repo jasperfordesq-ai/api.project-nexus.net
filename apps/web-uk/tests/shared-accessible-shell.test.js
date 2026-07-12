@@ -4070,7 +4070,7 @@ describe('shared accessible frontend shell', () => {
               location: 'Derry',
               member_count: 40,
               listing_count: 8,
-              federation_level_name: 'Social',
+              level_name: 'social',
               partnership_since: '2026-02-01T00:00:00Z'
             }
           ],
@@ -4217,18 +4217,22 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(200);
     expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'GET', '/partners');
     expect(response.text).toContain('href="/federation"');
-    expect(response.text).toContain('Federation partners');
+    expect(response.text).toContain('Partner communities');
+    expect(response.text).toContain('All the communities connected to yours through the federation network.');
     expect(response.text).toContain('North Timebank');
     expect(response.text).toContain('Neighbouring community exchange');
     expect(response.text).toContain('Derry');
     expect(response.text).toContain('40');
     expect(response.text).toContain('8');
     expect(response.text).toContain('Social');
-    expect(response.text).toContain('profiles');
-    expect(response.text).toContain('messaging');
+    expect(response.text).toContain('February 2026');
+    expect(response.text).toContain('Member profiles');
+    expect(response.text).toContain('Messaging');
+    expect(response.text).not.toContain('>profiles<');
+    expect(response.text).not.toContain('>messaging<');
     expect(response.text).toContain('href="/federation/partners/12"');
     expect(response.text).toContain('External Commons');
-    expect(response.text).toContain('External');
+    expect(response.text).toContain('External partner');
     expect(response.text).toContain('href="/federation/partners/ext-7"');
     expect(response.text).not.toContain('Laravel Blade route');
   });

@@ -6,11 +6,11 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <p class="govuk-body"><a class="govuk-back-link" href="{{ urlFor('/federation') }}">{{ t("polish_federation.groups_back") }}</a></p>
+  <a class="govuk-back-link" href="{{ urlFor('/federation') }}">{{ t("federation.partners_list.back") }}</a>
 
-  <span class="govuk-caption-xl">{{ tenantName }}</span>
-  <h1 class="govuk-heading-xl">Federation partners</h1>
-  <p class="govuk-body-l">Browse partner communities connected to this community through federation.</p>
+  <span class="govuk-caption-xl">{{ t("federation.partners_list.caption", { community: tenantName }) }}</span>
+  <h1 class="govuk-heading-xl">{{ t("federation.partners_list.title") }}</h1>
+  <p class="govuk-body-l">{{ t("federation.partners_list.description") }}</p>
 
   {% include "federation/_nav.njk" %}
 
@@ -20,11 +20,11 @@
       {% for partner in partners %}
         <article class="nexus-alpha-card">
           <div class="nexus-alpha-module-row">
-            <h2 class="govuk-heading-m govuk-!-margin-bottom-1"><a class="govuk-link" href="{{ urlFor(partner.href) }}">{{ partner.name }}</a></h2>
+            <h2 class="govuk-heading-s govuk-!-margin-bottom-1"><a class="govuk-link" href="{{ urlFor(partner.href) }}">{{ partner.name }}</a></h2>
             {% if partner.isExternal %}
-              <strong class="govuk-tag govuk-tag--grey">External</strong>
-            {% elif partner.levelName %}
-              <strong class="govuk-tag govuk-tag--purple">{{ partner.levelName }}</strong>
+              <strong class="govuk-tag govuk-tag--blue">{{ t("federation.external_tag") }}</strong>
+            {% elif partner.levelLabel %}
+              <strong class="govuk-tag govuk-tag--purple">{{ partner.levelLabel }}</strong>
             {% endif %}
           </div>
 
@@ -33,27 +33,28 @@
           {% endif %}
 
           <dl class="nexus-alpha-inline-list">
-            {% if partner.location %}<div><dt>Location</dt><dd>{{ partner.location }}</dd></div>{% endif %}
-            <div><dt>Members</dt><dd>{{ partner.memberCount }}</dd></div>
-            <div><dt>Listings</dt><dd>{{ partner.listingCount }}</dd></div>
-            {% if partner.partnershipSince %}<div><dt>Since</dt><dd>{{ partner.partnershipSince | date }}</dd></div>{% endif %}
+            {% if partner.location %}<div><dt>{{ t("federation.location_label") }}</dt><dd>{{ partner.location }}</dd></div>{% endif %}
+            <div><dt>{{ t("federation.members_label") }}</dt><dd>{{ partner.memberCountLabel }}</dd></div>
+            <div><dt>{{ t("federation.listings_label") }}</dt><dd>{{ partner.listingCountLabel }}</dd></div>
+            {% if partner.partnershipSinceLabel %}<div><dt>{{ t("federation.since_label") }}</dt><dd>{{ partner.partnershipSinceLabel }}</dd></div>{% endif %}
           </dl>
 
-          {% if partner.permissions.length %}
-            <ul class="govuk-list govuk-!-margin-bottom-2" aria-label="Federation permissions for {{ partner.name }}">
-              {% for permission in partner.permissions %}
-                <li class="govuk-!-display-inline-block govuk-!-margin-right-1 govuk-!-margin-bottom-1"><strong class="govuk-tag govuk-tag--grey">{{ permission }}</strong></li>
+          {% if partner.permissionLabels.length %}
+            <p class="govuk-body-s govuk-!-margin-bottom-2">
+              <span class="nexus-alpha-meta">{{ t("federation.permissions_label") }}:</span>
+              {% for permissionLabel in partner.permissionLabels %}
+                <strong class="govuk-tag govuk-tag--grey govuk-!-margin-right-1">{{ permissionLabel }}</strong>
               {% endfor %}
-            </ul>
+            </p>
           {% endif %}
 
-          <p class="govuk-body-s govuk-!-margin-bottom-0"><a class="govuk-link" href="{{ urlFor(partner.href) }}">View community</a></p>
+          <p class="govuk-body govuk-!-margin-bottom-0"><a class="govuk-link" href="{{ urlFor(partner.href) }}">{{ t("federation.partners_list.view_community") }}</a></p>
         </article>
       {% endfor %}
     </div>
   {% else %}
     <div class="govuk-inset-text">
-      <p class="govuk-body govuk-!-margin-bottom-0">No partner communities are available yet.</p>
+      <p class="govuk-body">{{ t("federation.partners_list.empty") }}</p>
     </div>
   {% endif %}
 {% endblock %}
