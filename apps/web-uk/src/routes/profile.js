@@ -775,9 +775,7 @@ function marketingConsentFrom(payload) {
 
 function insuranceEnabledForRequest(req) {
   const compliance = req?.accessibleRouting?.tenant?.compliance;
-  if (!compliance || typeof compliance !== 'object') return true;
-  return !Object.prototype.hasOwnProperty.call(compliance, 'insurance_enabled')
-    || Boolean(compliance.insurance_enabled);
+  return Boolean(compliance && typeof compliance === 'object' && compliance.insurance_enabled);
 }
 
 function buildProfileSettingsViewModel(req, data) {

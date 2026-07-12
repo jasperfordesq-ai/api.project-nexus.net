@@ -18,11 +18,13 @@ async function check(fetchImpl, baseUrl, name, path, options = {}) {
       headers: options.headers || {}
     });
     const body = await response.text();
+    const bodyOk = typeof options.validateBody === 'function' ? options.validateBody(body) : true;
     return {
       name,
-      ok: response.status === options.expectedStatus,
+      ok: response.status === options.expectedStatus && bodyOk,
       expectedStatus: options.expectedStatus,
       actualStatus: response.status,
+      bodyOk,
       body: body.slice(0, 500)
     };
   } catch (error) {
@@ -47,7 +49,15 @@ async function runAspNetReadinessAudit(options = {}) {
     check(fetchImpl, baseUrl, 'health', '/health', { expectedStatus: 200 }),
     check(fetchImpl, baseUrl, 'tenant-bootstrap-by-slug', `/api/v2/tenant/bootstrap?slug=${encodedTenant}`, {
       expectedStatus: 200,
-      headers: tenantHeaders
+      headers: tenantHeaders,
+      validateBody: (body) => {
+        try {
+          const payload = JSON.parse(body);
+          return typeof payload?.data?.compliance?.insurance_enabled === 'boolean';
+        } catch {
+          return false;
+        }
+      }
     }),
     check(fetchImpl, baseUrl, 'platform-stats-by-slug', '/api/v2/platform/stats', {
       expectedStatus: 200,

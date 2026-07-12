@@ -341,6 +341,7 @@ describe('shared accessible frontend shell', () => {
         tagline: 'Neighbours helping neighbours',
         modules: { feed: true, listings: true, wallet: true },
         features: { connections: true, events: true, volunteering: true },
+        compliance: { insurance_enabled: true },
         ...overrides
       }
     };
@@ -2274,7 +2275,7 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('Linked accounts');
     expect(signed.text).toContain('Appearance');
     expect(signed.text).toContain('Your data rights');
-    expect(signed.text).toContain('Insurance certificates');
+    expect(signed.text).not.toContain('Insurance certificates');
     expect(signed.text).toContain('Your availability');
     expect(signed.text).toContain('Profile photo');
     expect(signed.text).toContain('Upload a new photo');
@@ -3900,9 +3901,7 @@ describe('shared accessible frontend shell', () => {
   });
 
   it('renders the Laravel-style insurance settings page', async () => {
-    const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');
-    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
 
     api.callUserSettingsApi.mockImplementation(async (token, method, pathValue) => {
       if (method === 'GET' && pathValue === '/insurance') {
@@ -3922,8 +3921,8 @@ describe('shared accessible frontend shell', () => {
 
     const unsigned = await request(app).get('/settings/insurance');
     const signed = await request(app)
-      .get('/settings/insurance?status=insurance-uploaded')
-      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+      .get('/acme/accessible/settings/insurance?status=insurance-uploaded')
+      .set('Cookie', signedAuthCookieHeader());
 
     expect(unsigned.status).toBe(302);
     expect(unsigned.headers.location).toBe('/login?status=auth-required');
@@ -3951,6 +3950,41 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('Certificate file');
     expect(signed.text).toContain('Upload certificate');
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
+  });
+
+  it('fails closed for insurance settings when the tenant compliance toggle is disabled or absent', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const csrfToken = await csrfTokenFor(agent, '/acme/accessible/contact', signedAuthCookieHeader());
+    api.getTenantBootstrap
+      .mockResolvedValueOnce(tenantBootstrap('acme', { compliance: { insurance_enabled: false } }))
+      .mockResolvedValueOnce(tenantBootstrap('acme', { compliance: {} }))
+      .mockResolvedValueOnce(tenantBootstrap('acme', { compliance: { insurance_enabled: false } }));
+
+    const disabled = await request(app)
+      .get('/acme/accessible/settings/insurance')
+      .set('Cookie', signedAuthCookieHeader());
+    const absent = await request(app)
+      .get('/acme/accessible/settings/insurance')
+      .set('Cookie', signedAuthCookieHeader());
+    const upload = await agent
+      .post('/acme/accessible/settings/insurance')
+      .set('Cookie', signedAuthCookieHeader())
+      .field('_csrf', csrfToken)
+      .field('insurance_type', 'public_liability');
+
+    expect(disabled.status).toBe(404);
+    expect(absent.status).toBe(404);
+    expect(upload.status).toBe(404);
+    expect(api.callUserSettingsApi).not.toHaveBeenCalled();
+    expect(api.uploadInsuranceCertificate).not.toHaveBeenCalled();
+
+    api.getTenantBootstrap.mockResolvedValueOnce(tenantBootstrap('acme', { compliance: { insurance_enabled: false } }));
+    const profileSettings = await request(app)
+      .get('/acme/accessible/profile/settings')
+      .set('Cookie', signedAuthCookieHeader());
+    expect(profileSettings.status).toBe(200);
+    expect(profileSettings.text).not.toContain('/settings/insurance');
   });
 
   it('does not keep static placeholders for Laravel-backed marketplace and podcast pages', () => {
@@ -22758,11 +22792,11 @@ describe('shared accessible frontend shell', () => {
     expect(api.callUserSettingsApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/sub-accounts/77');
 
     api.callUserSettingsApi.mockClear();
-    const insuranceResponse = await post('/settings/insurance', {
+    const insuranceResponse = await post('/acme/accessible/settings/insurance', {
       insurance_type: 'public_liability',
       provider_name: 'Example Mutual'
     });
-    expect(insuranceResponse.headers.location).toBe('/settings/insurance?status=insurance-file-required#upload');
+    expect(insuranceResponse.headers.location).toBe('/acme/accessible/settings/insurance?status=insurance-file-required#upload');
     expect(api.callUserSettingsApi).not.toHaveBeenCalled();
 
     const unsigned = request.agent(app);
@@ -22788,7 +22822,7 @@ describe('shared accessible frontend shell', () => {
     expect(csrfMatch).not.toBeNull();
 
     const response = await agent
-      .post('/settings/insurance')
+      .post('/acme/accessible/settings/insurance')
       .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
       .field('_csrf', csrfMatch[1])
       .field('insurance_type', 'public_liability')
@@ -22801,7 +22835,7 @@ describe('shared accessible frontend shell', () => {
       });
 
     expect(response.status).toBe(302);
-    expect(response.headers.location).toBe('/settings/insurance?status=insurance-uploaded#certificates');
+    expect(response.headers.location).toBe('/acme/accessible/settings/insurance?status=insurance-uploaded#certificates');
     expect(api.uploadInsuranceCertificate).toHaveBeenCalledWith('test-token', expect.objectContaining({
       insurance_type: 'public_liability',
       provider_name: 'Example Mutual',

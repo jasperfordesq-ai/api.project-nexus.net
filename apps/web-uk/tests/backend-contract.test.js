@@ -99,7 +99,7 @@ describe('ASP.NET readiness audit', () => {
   it('passes only when the public slug-first bootstrap contract is available', async () => {
     const fetchImpl = jest.fn()
       .mockResolvedValueOnce({ status: 200, text: async () => '{"status":"healthy"}' })
-      .mockResolvedValueOnce({ status: 200, text: async () => '{"data":{"slug":"hour-timebank"}}' })
+      .mockResolvedValueOnce({ status: 200, text: async () => '{"data":{"slug":"hour-timebank","compliance":{"insurance_enabled":false}}}' })
       .mockResolvedValueOnce({ status: 200, text: async () => '{"data":{"members":1}}' });
     const { runAspNetReadinessAudit } = require('../scripts/aspnet-readiness-audit');
 
@@ -136,6 +136,26 @@ describe('ASP.NET readiness audit', () => {
       expect.objectContaining({ name: 'health', ok: true, actualStatus: 200 }),
       expect.objectContaining({ name: 'tenant-bootstrap-by-slug', ok: false, actualStatus: 400 }),
       expect.objectContaining({ name: 'platform-stats-by-slug', ok: false, actualStatus: 400 })
+    ]));
+  });
+
+  it('rejects a successful bootstrap that omits Laravel insurance compliance state', async () => {
+    const fetchImpl = jest.fn()
+      .mockResolvedValueOnce({ status: 200, text: async () => '{"status":"healthy"}' })
+      .mockResolvedValueOnce({ status: 200, text: async () => '{"data":{"slug":"hour-timebank"}}' })
+      .mockResolvedValueOnce({ status: 200, text: async () => '{"data":{"members":1}}' });
+    const { runAspNetReadinessAudit } = require('../scripts/aspnet-readiness-audit');
+
+    const report = await runAspNetReadinessAudit({ fetchImpl, baseUrl: 'http://aspnet.example.test' });
+
+    expect(report.ready).toBe(false);
+    expect(report.checks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        name: 'tenant-bootstrap-by-slug',
+        ok: false,
+        actualStatus: 200,
+        bodyOk: false
+      })
     ]));
   });
 });
