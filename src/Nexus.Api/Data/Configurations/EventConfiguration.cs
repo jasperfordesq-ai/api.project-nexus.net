@@ -186,5 +186,55 @@ public class EventConfiguration : TenantScopedConfiguration
             entity.HasIndex(e => new { e.TenantId, e.SourceEventId, e.CreatedAt, e.Id }).HasDatabaseName("idx_event_template_audit_source");
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
         });
+
+        modelBuilder.Entity<EventRegistration>(entity =>
+        {
+            entity.ToTable("event_registrations"); entity.Property(e => e.RegistrationState).HasMaxLength(24);
+            entity.HasIndex(e => new { e.TenantId, e.EventId, e.UserId }).IsUnique().HasDatabaseName("uq_event_registration_user");
+            entity.HasIndex(e => new { e.TenantId, e.EventId, e.RegistrationState, e.UserId }).HasDatabaseName("idx_event_registration_audience");
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+        modelBuilder.Entity<EventWaitlistEntry>(entity =>
+        {
+            entity.ToTable("event_waitlist_entries"); entity.Property(e => e.QueueState).HasMaxLength(24);
+            entity.HasIndex(e => new { e.TenantId, e.EventId, e.UserId }).IsUnique().HasDatabaseName("uq_event_waitlist_user");
+            entity.HasIndex(e => new { e.TenantId, e.EventId, e.QueueState, e.OfferExpiresAt, e.UserId }).HasDatabaseName("idx_event_waitlist_audience");
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+        modelBuilder.Entity<EventAttendance>(entity =>
+        {
+            entity.ToTable("event_attendance"); entity.Property(e => e.AttendanceStatus).HasMaxLength(24);
+            entity.HasIndex(e => new { e.TenantId, e.EventId, e.UserId }).IsUnique().HasDatabaseName("uq_event_attendance_user");
+            entity.HasIndex(e => new { e.TenantId, e.EventId, e.AttendanceStatus, e.UserId }).HasDatabaseName("idx_event_attendance_audience");
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+        modelBuilder.Entity<EventBroadcast>(entity =>
+        {
+            entity.ToTable("event_broadcasts"); entity.Property(e => e.Variant).HasMaxLength(32); entity.Property(e => e.Status).HasMaxLength(16);
+            entity.Property(e => e.AudienceSegments).HasColumnType("jsonb"); entity.Property(e => e.Channels).HasColumnType("jsonb"); entity.Property(e => e.Body).HasColumnType("text"); entity.Property(e => e.ContentHash).HasMaxLength(64).IsFixedLength(); entity.Property(e => e.FailureCode).HasMaxLength(100);
+            entity.HasIndex(e => new { e.TenantId, e.EventId, e.Id }).IsUnique().HasDatabaseName("uq_event_broadcast_scope_id");
+            entity.HasIndex(e => new { e.TenantId, e.EventId, e.Status, e.CreatedAt, e.Id }).HasDatabaseName("idx_event_broadcast_event_status");
+            entity.HasIndex(e => new { e.Status, e.ScheduledAt, e.Id }).HasDatabaseName("idx_event_broadcast_schedule");
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+        modelBuilder.Entity<EventBroadcastHistory>(entity =>
+        {
+            entity.ToTable("event_broadcast_history"); entity.Property(e => e.Action).HasMaxLength(16); entity.Property(e => e.FromStatus).HasMaxLength(16); entity.Property(e => e.ToStatus).HasMaxLength(16); entity.Property(e => e.Metadata).HasColumnType("jsonb");
+            foreach (var p in new[] { nameof(EventBroadcastHistory.IdempotencyHash), nameof(EventBroadcastHistory.RequestHash), nameof(EventBroadcastHistory.ContentHash) }) entity.Property(p).HasMaxLength(64).IsFixedLength();
+            entity.HasIndex(e => new { e.TenantId, e.BroadcastId, e.BroadcastVersion }).IsUnique().HasDatabaseName("uq_event_broadcast_history_version"); entity.HasIndex(e => new { e.TenantId, e.IdempotencyHash }).IsUnique().HasDatabaseName("uq_event_broadcast_history_key"); entity.HasIndex(e => new { e.TenantId, e.EventId, e.BroadcastId, e.CreatedAt, e.Id }).HasDatabaseName("idx_event_broadcast_history_event");
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+        modelBuilder.Entity<EventBroadcastDelivery>(entity =>
+        {
+            entity.ToTable("event_broadcast_deliveries"); entity.Property(e => e.Channel).HasMaxLength(16); entity.Property(e => e.DeliveryKey).HasMaxLength(64).IsFixedLength(); entity.Property(e => e.Status).HasMaxLength(16); entity.Property(e => e.ClaimToken).HasMaxLength(36); entity.Property(e => e.PreferenceReason).HasMaxLength(100); entity.Property(e => e.SuppressionReason).HasMaxLength(100); entity.Property(e => e.Provider).HasMaxLength(50); entity.Property(e => e.ProviderEvidenceId).HasMaxLength(255); entity.Property(e => e.LastErrorCode).HasMaxLength(100);
+            entity.HasIndex(e => new { e.TenantId, e.DeliveryKey }).IsUnique().HasDatabaseName("uq_event_broadcast_delivery_key"); entity.HasIndex(e => new { e.BroadcastId, e.RecipientUserId, e.Channel }).IsUnique().HasDatabaseName("uq_event_broadcast_recipient_channel"); entity.HasIndex(e => new { e.TenantId, e.EventId, e.BroadcastId, e.Id }).IsUnique().HasDatabaseName("uq_event_broadcast_delivery_scope"); entity.HasIndex(e => new { e.Status, e.AvailableAt, e.NextAttemptAt, e.Id }).HasDatabaseName("idx_event_broadcast_delivery_claim"); entity.HasIndex(e => new { e.TenantId, e.BroadcastId, e.Status, e.Id }).HasDatabaseName("idx_event_broadcast_delivery_status");
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+        modelBuilder.Entity<EventBroadcastDeliveryAttempt>(entity =>
+        {
+            entity.ToTable("event_broadcast_delivery_attempts"); entity.Property(e => e.Outcome).HasMaxLength(16); entity.Property(e => e.Provider).HasMaxLength(50); entity.Property(e => e.ProviderEvidenceId).HasMaxLength(255); entity.Property(e => e.ReasonCode).HasMaxLength(100); entity.Property(e => e.Metadata).HasColumnType("jsonb");
+            entity.HasIndex(e => new { e.TenantId, e.DeliveryId, e.AttemptNumber, e.Outcome }).IsUnique().HasDatabaseName("uq_event_broadcast_attempt_outcome"); entity.HasIndex(e => new { e.TenantId, e.BroadcastId, e.CreatedAt, e.Id }).HasDatabaseName("idx_event_broadcast_attempt_parent");
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
     }
 }

@@ -54,6 +54,28 @@ containers from this repo.
 
 ## Latest Verified Backend Slice — 2026-07-12
 
+The latest backend-only slice closes all eight event-broadcast route shapes:
+list/show/preview/create/revise/schedule/cancel/retry across `/api` and
+`/api/v2`. It implements the strict canonical React projections, manager
+authorization, optimistic versions, action-bound idempotency, exact organizer
+prose preservation, and private/no-store responses. Scheduling deliberately
+uses only canonical registration, waitlist, and attendance ledgers, applies
+safeguarding contact policy, and freezes durable recipient/channel deliveries;
+legacy RSVP rows are not an audience fallback.
+
+Migration `20260712204651_EventBroadcastWorkflowParity` adds those three
+canonical audience ledgers and four exact Laravel broadcast/evidence tables.
+PostgreSQL enforces state values, aggregate identity, lifecycle/version
+transitions, post-draft content freeze, terminal immutability, delivery
+transitions, and append-only history/attempt evidence. All 122 migrations
+replayed on blank disposable PostgreSQL, EF model drift is clean, and focused
+HTTP/database proof passed 4/4.
+
+The live comparator now reports 4,384 ASP.NET operations, 2,477/2,592 matched,
+and 115 missing. The schema comparator reports 377 Laravel migration files, 124
+ASP.NET migration source files, 122 runtime IDs, 353 ASP.NET table names, 162
+exact matches, 293 missing Laravel names, and 191 ASP.NET-only names.
+
 The latest backend-only slice closes Laravel's event-template workflow across
 both `/api` and `/api/v2`: safe capture preview/capture, list/show/history,
 revision, archive, materialization preview, and materialization. Capture uses a
@@ -65,12 +87,9 @@ adds the four exact Laravel tables and safe event fields. All 121 migrations
 replayed on blank disposable PostgreSQL, EF model drift is clean, focused proof
 passed 4/4, and the combined event lifecycle/template gate passed 8/8.
 
-The live comparator now reports 4,368 ASP.NET operations, 2,469/2,592 matched,
-and 123 missing. All nine event-template route shapes closed; Laravel gained
-nine operations concurrently, so the absolute remainder did not fall. The
-schema comparator reports 377 Laravel migration files, 123 ASP.NET migration
-source files, 121 runtime IDs, 346 ASP.NET table names, 155 exact matches, 300
-missing Laravel names, and 191 ASP.NET-only names.
+The preceding event-template checkpoint reported 4,368 ASP.NET operations,
+2,469/2,592 matched, and 123 missing, with 155 exact schema names. The newer
+event-broadcast baseline above supersedes those counts.
 
 The current backend-only slice implements Laravel's metadata-only safeguarding
 attestation model, onboarding/admin/member workflows, message restriction
@@ -134,7 +153,7 @@ idempotency, and first-writer race behavior have focused coverage; frontend
 runtime and notification depth remain open.
 
 The current latest migration is
-`20260712191551_EventTemplateWorkflowParity`, runtime ID 121. The historical
+`20260712204651_EventBroadcastWorkflowParity`, runtime ID 122. The historical
 checkpoint below describes migrations 112 through 116; later group and event
 workflow evidence is recorded at the start of this section and in the
 maintained runbook.
@@ -467,9 +486,8 @@ Earlier published slice evidence retained for context:
 - earlier volunteering-chain proof reached
   `20260711031959_NullableTransactionLedgerLegs`; the current migration proof
   is recorded above;
-- API route comparator: 2,469/2,592 current Laravel/supplemental operations
-  matched, 123 route-shape gaps after event-template closure and concurrent
-  Laravel inventory growth;
+- API route comparator: 2,477/2,592 current Laravel/supplemental operations
+  matched, 115 route-shape gaps after event-broadcast closure;
 - historical schema comparator: 134/361 Laravel tables matched, 227 missing, 194
   ASP.NET-only; the current result above supersedes it and remains a global red
   gate.

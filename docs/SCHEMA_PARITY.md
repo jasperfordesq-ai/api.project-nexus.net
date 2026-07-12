@@ -9,21 +9,21 @@ Laravel source of truth: `C:\platforms\htdocs\staging\database\migrations` and
 
 The static schema-table counts were regenerated with
 `scripts/compare-laravel-schema-parity.ps1` on 2026-07-12 after the event
-template workflow slice. Runtime migration counts come from a separate
+broadcast workflow slice. Runtime migration counts come from a separate
 blank PostgreSQL replay.
 
 | Source | Count | Notes |
 | --- | ---: | --- |
 | Laravel migrations | 377 | PHP migration files under `database/migrations`. |
-| ASP.NET migration source files | 123 | Main migration `.cs` files excluding designers and the model snapshot. |
-| ASP.NET runtime migrations | 121 | Blank replay applied every recorded EF migration through `20260712191551_EventTemplateWorkflowParity`; `has-pending-model-changes` is green. |
+| ASP.NET migration source files | 124 | Main migration `.cs` files excluding designers and the model snapshot. |
+| ASP.NET runtime migrations | 122 | Blank replay applied every recorded EF migration through `20260712204651_EventBroadcastWorkflowParity`; `has-pending-model-changes` is green. |
 | Laravel created tables | 298 | Unique `Schema::create(...)` table names. |
 | Laravel touched tables | 128 | Unique `Schema::table(...)` table names. |
 | Laravel explicit model tables | 267 | Unique `protected/public $table = ...` model declarations. |
 | Laravel source tables | 455 | Union of migration-created, migration-touched, and explicit model tables. |
-| ASP.NET tables | 346 | Static table union after adding event-template workflow evidence. |
-| Exact matched tables | 155 | Current exact table-name matches. |
-| Missing Laravel tables | 300 | Laravel source names not represented exactly in ASP.NET. |
+| ASP.NET tables | 353 | Static table union after adding canonical broadcast audience and evidence tables. |
+| Exact matched tables | 162 | Current exact table-name matches. |
+| Missing Laravel tables | 293 | Laravel source names not represented exactly in ASP.NET. |
 | Extra ASP.NET tables | 191 | .NET table names with no exact Laravel table name. |
 
 These counts are not a parity score. Static table-name matching will overstate
@@ -33,8 +33,19 @@ triage and compatibility decisions before any table can be marked equivalent.
 
 ## 2026-07-12 Runtime Migration, Direct-Message, And Safeguarding Evidence Status
 
-`20260712191551_EventTemplateWorkflowParity` is the current latest migration
-and runtime ID 121. It adds the exact Laravel tables `event_templates`,
+`20260712204651_EventBroadcastWorkflowParity` is the current latest migration
+and runtime ID 122. It adds canonical `event_registrations`,
+`event_waitlist_entries`, and `event_attendance` audience ledgers plus exact
+Laravel tables `event_broadcasts`, `event_broadcast_history`,
+`event_broadcast_deliveries`, and `event_broadcast_delivery_attempts`.
+PostgreSQL checks and triggers enforce lifecycle transitions, version
+progression, identity and content freezing, terminal state, delivery state, and
+append-only history/attempt evidence. All 122 migrations applied to blank
+disposable PostgreSQL 16, EF reports no pending model changes, and focused
+broadcast proof passed 4/4. No production resource was touched.
+
+`20260712191551_EventTemplateWorkflowParity` is the preceding migration and
+runtime ID 121. It adds the exact Laravel tables `event_templates`,
 `event_template_versions`, `event_template_materializations`, and
 `event_template_audit`, plus the safe event fields required for capture and
 materialization. PostgreSQL constraints and triggers reject mutation of
