@@ -5083,6 +5083,18 @@ structural, reflow, and serious/critical axe assertions. Buddy effects,
 tenant feature-gate depth, manual assistive-technology review, and ASP.NET
 compatibility remain open.
 
+## 2026-07-12 Disposable Saved-Collection Item Lifecycle
+
+The existing saved-collections gate now adds an existing tenant listing to its
+unique private SOC10 collection, proves the rendered no-JavaScript remove form,
+submits removal through Web UK, verifies the saved-item row is absent from
+Laravel, then deletes the collection and proves final absence. The listing and
+all pre-existing saves are untouched; independent `finally` cleanup remains in
+place. Together with flat BookmarkService removal, the expanded gate passed
+`2/2` in `82.9` seconds. Appreciation/reaction effects, tenant feature-gate
+depth, manual assistive-technology review, and ASP.NET compatibility remain
+open.
+
 ## Known Remaining Work
 
 Prioritize visual/manual Blade parity, page-level feature-disabled behavior, and

@@ -8,7 +8,9 @@ const { resolveOptions } = require('../../scripts/laravel-runtime-smoke');
 const {
   getBookmarks,
   getListings,
+  getSavedCollectionItems,
   login,
+  saveSavedItem,
   toggleBookmark
 } = require('../../src/lib/api');
 
@@ -153,6 +155,57 @@ test('creates, updates, and deletes a disposable saved collection', async ({ pag
 
     await expect(page.locator('h1')).toContainText(updatedName);
     await expect(page.locator('.govuk-notification-banner')).toContainText('Collection updated.');
+
+    const auth = await login(smoke.email, smoke.password, smoke.tenant);
+    const token = auth.access_token;
+    expect(token).toBeTruthy();
+    const collectionId = Number(collectionPath.split('/').pop());
+    expect(collectionId).toBeGreaterThan(0);
+
+    const listing = rowsFrom(await getListings(token, { limit: 100 }))
+      .find((row) => Number.isInteger(Number(row?.id)) && Number(row.id) > 0);
+    expect(listing).toBeTruthy();
+    const listingId = Number(listing.id);
+    await saveSavedItem(token, {
+      collection_id: collectionId,
+      item_type: 'listing',
+      item_id: listingId,
+      note: 'Disposable Laravel collection-item mutation smoke fixture.'
+    });
+
+    await page.goto(collectionPath, { waitUntil: 'domcontentloaded', timeout: 180_000 });
+    const collectionItems = rowsFrom(await getSavedCollectionItems(token, collectionId, {
+      page: 1,
+      per_page: 20
+    }));
+    const savedItem = collectionItems.find((row) => (
+      String(row?.item_type ?? row?.itemType) === 'listing'
+      && Number(row?.item_id ?? row?.itemId) === listingId
+    ));
+    expect(savedItem).toBeTruthy();
+    const savedItemId = Number(savedItem.id);
+
+    const removeForm = page.locator(`form[action$="/items/${savedItemId}/remove"]`);
+    await expect(removeForm).toHaveCount(1);
+    await expect(removeForm).toContainText('Remove');
+    const removeResponse = await submitPost(
+      page,
+      removeForm.locator('button[type="submit"], button:not([type])'),
+      `/items/${savedItemId}/remove`
+    );
+    expect(removeResponse.status()).toBe(302);
+
+    await page.goto(`${collectionPath}?status=item-removed`, {
+      waitUntil: 'domcontentloaded',
+      timeout: 180_000
+    });
+    await expect(page.locator('.govuk-notification-banner')).toContainText('Item removed from the collection.');
+    await expect(removeForm).toHaveCount(0);
+    const remainingItems = rowsFrom(await getSavedCollectionItems(token, collectionId, {
+      page: 1,
+      per_page: 20
+    }));
+    expect(remainingItems.some((row) => Number(row?.id) === savedItemId)).toBe(false);
 
     await page.locator('details.govuk-details').evaluate((details) => { details.open = true; });
     const deleteResponse = await submitPost(
