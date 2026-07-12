@@ -13259,6 +13259,55 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('action="/feed/items/post/42/like"');
   });
 
+  it('renders Blade-aligned owner, reaction, engagement, and comment controls for a signed feed post', async () => {
+    const api = require('../src/lib/api');
+    api.getProfile.mockResolvedValue({ id: 101, name: 'Current member' });
+    api.getFeedPosts.mockResolvedValueOnce({
+      data: [{
+        id: 42,
+        type: 'post',
+        content: 'Owner lifecycle update.',
+        author: { id: 101, name: 'Current member' },
+        reactions: { counts: { celebrate: 2 }, user_reaction: 'celebrate' },
+        is_bookmarked: true,
+        share_count: 3
+      }],
+      meta: { has_more: false }
+    });
+
+    const index = await request(app).get('/feed').set('Cookie', signedCookieHeader());
+    expect(index.status).toBe(200);
+    expect(index.text).toContain('action="/feed/posts/42/react"');
+    expect(index.text).toContain('name="emoji" value="celebrate"');
+    expect(index.text).toContain('action="/feed/posts/42/save"');
+    expect(index.text).toContain('action="/feed/posts/42/update"');
+    expect(index.text).toContain('action="/feed/posts/42/delete"');
+    expect(index.text).not.toContain('action="/feed/posts/42/share"');
+
+    api.getFeedPostV2.mockResolvedValueOnce({
+      data: {
+        id: 42,
+        type: 'post',
+        content: 'Owner lifecycle update.',
+        author: { id: 101, name: 'Current member' },
+        reactions: { counts: { love: 1 }, user_reaction: 'love' },
+        is_bookmarked: false
+      }
+    });
+    api.getComments.mockResolvedValueOnce({
+      data: { comments: [{ id: 12, content: 'Own comment', author: { id: 101, name: 'Current member' } }] }
+    });
+
+    const detail = await request(app).get('/feed/posts/42').set('Cookie', signedCookieHeader());
+    expect(detail.status).toBe(200);
+    expect(detail.text).toContain('action="/feed/posts/42/react"');
+    expect(detail.text).toContain('action="/feed/posts/42/save"');
+    expect(detail.text).not.toContain('action="/feed/posts/42/share"');
+    expect(detail.text).toContain('action="/feed/comments/12/react"');
+    expect(detail.text).toContain('action="/feed/comments/12/update"');
+    expect(detail.text).toContain('action="/feed/comments/12/delete"');
+  });
+
   it('renders Laravel feed type, order, and listing-subtype filters without the legacy groups filter', async () => {
     const api = require('../src/lib/api');
     api.getFeedPosts.mockResolvedValueOnce({

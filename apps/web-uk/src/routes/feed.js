@@ -15,6 +15,7 @@ const {
 } = require('../lib/api');
 const { withTokenRefresh } = require('../middleware/auth');
 const { asyncRoute } = require('../lib/routeHelpers');
+const { getRequestProfile } = require('../lib/request-profile');
 
 const router = express.Router();
 
@@ -116,6 +117,9 @@ function normalizeFeedPost(row) {
     ? row.media
     : (row && row.image_url ? [{ file_url: row.image_url }] : []);
   const deepLink = feedItemDeepLink(type, id);
+  const reactions = row && row.reactions && typeof row.reactions === 'object' ? row.reactions : {};
+  const reactionCounts = reactions.counts && typeof reactions.counts === 'object' ? reactions.counts : {};
+  const userReaction = trimmed(reactions.user_reaction || row && row.user_reaction, 40);
 
   return {
     id,
@@ -143,8 +147,18 @@ function normalizeFeedPost(row) {
     commentCount,
     likeLabel: pluralLabel(likeCount, 'like'),
     commentLabel: pluralLabel(commentCount, 'comment'),
-    isLiked: !!(row && (row.is_liked || row.isLiked))
+    isLiked: !!(row && (row.is_liked || row.isLiked)),
+    reactionCounts,
+    userReaction,
+    isShared: !!(row && (row.is_shared || row.isShared)),
+    isBookmarked: !!(row && (row.is_bookmarked || row.isBookmarked || row.is_saved || row.isSaved)),
+    shareCount: positiveInteger(row && (row.share_count ?? row.shareCount), 0, 0, Number.MAX_SAFE_INTEGER)
   };
+}
+
+function profileId(result) {
+  const profile = dataFrom(result) || {};
+  return positiveInteger(profile.id || profile.user_id || profile.userId, null, 1, Number.MAX_SAFE_INTEGER);
 }
 
 function feedItemTypeLabel(type) {
@@ -374,6 +388,9 @@ router.get('/posts/:id(\\d+)', asyncRoute(async (req, res) => {
   const comments = token
     ? feedCommentRows(await getComments(token, { target_type: 'post', target_id: id }).catch(() => ({ data: { comments: [] } })))
     : [];
+  const currentUserId = token
+    ? profileId(await getRequestProfile(req, token).catch(() => null))
+    : null;
 
   res.render('feed/post', {
     title: 'Post',
@@ -383,6 +400,7 @@ router.get('/posts/:id(\\d+)', asyncRoute(async (req, res) => {
     item,
     itemUnavailable,
     comments,
+    currentUserId,
     requiresAuth: !token,
     statusMessage: feedPostStatusMessage(trimmed(req.query.status)),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
@@ -500,11 +518,18 @@ router.get('/', asyncRoute(withTokenRefresh(async (req, res) => {
     : { data: [], meta: { per_page: perPage, has_more: false } };
 
   const posts = feedCollectionRows(feedResult).map(normalizeFeedPost).filter((post) => post.id > 0);
+  const currentUserId = token
+    ? profileId(await getRequestProfile(req, token).catch(() => null))
+    : null;
+  for (const post of posts) {
+    post.isOwn = post.type === 'post' && currentUserId !== null && post.authorId === currentUserId;
+  }
   const meta = collectionMeta(feedResult);
 
   res.render('feed/index', {
     title: 'Feed',
     posts,
+    currentUserId,
     typeOptions,
     selectedType,
     selectedMode,
