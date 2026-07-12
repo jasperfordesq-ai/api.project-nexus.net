@@ -143,6 +143,7 @@ function memberHref(member) {
 function normalizeMember(member, options = {}) {
   const hasTranslator = typeof options.t === 'function';
   const t = hasTranslator ? options.t : (key) => key;
+  const formatNumber = typeof options.formatNumber === 'function' ? options.formatNumber : (value) => String(value);
   const timebank = asObject(member && member.timebank);
   const tenantId = member && member.tenant_id !== undefined ? member.tenant_id : timebank.id;
   const name = trimmed(member && member.name)
@@ -155,6 +156,8 @@ function normalizeMember(member, options = {}) {
   const connectionStatus = asObject(member && member.connection_status);
   const serviceReach = trimmed(member && member.service_reach);
   const reachKeys = new Set(['local_only', 'remote_ok', 'travel_ok']);
+  const reputationScore = numberOrNull(member && (member.reputation_score || member.trust_score));
+  const reputationCount = numberOrZero(member && member.reputation_count);
 
   return {
     id: member && member.id !== undefined ? member.id : '',
@@ -174,8 +177,15 @@ function normalizeMember(member, options = {}) {
     tenantName: trimmed((member && member.tenant_name) || timebank.name),
     messagingEnabled: bool(member && member.messaging_enabled),
     transactionsEnabled: bool(member && member.transactions_enabled),
-    reputationScore: numberOrNull(member && (member.reputation_score || member.trust_score)),
-    reputationCount: numberOrZero(member && member.reputation_count),
+    reputationScore,
+    reputationScoreLabel: formatNumber(reputationScore ?? 0, { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+    reputationCount,
+    reputationTagClass: reputationScore !== null && reputationScore >= 4.5
+      ? 'govuk-tag--green'
+      : (reputationScore !== null && reputationScore >= 3.5 ? 'govuk-tag--blue' : 'govuk-tag--yellow'),
+    reputationCountLabel: hasTranslator
+      ? t('fed2.reviews.reputation_count', { count: reputationCount })
+      : String(reputationCount),
     connectionStatus: trimmed(connectionStatus.status || 'none'),
     connectionId: connectionStatus.connection_id || null
   };
@@ -1394,7 +1404,11 @@ router.get('/members/:id/transfer', asyncRoute(async (req, res) => {
     throw error;
   }
 
-  const member = normalizeMember(asObject(dataFrom(memberResult)), { bioLimit: null });
+  const member = normalizeMember(asObject(dataFrom(memberResult)), {
+    bioLimit: null,
+    t: res.locals.t,
+    formatNumber: res.locals.formatLocaleNumber
+  });
   if (!member.transactionsEnabled) {
     return res.status(404).render('errors/404', { title: 'Page not found' });
   }
@@ -1443,7 +1457,11 @@ router.get('/members/:id', asyncRoute(async (req, res) => {
     throw error;
   }
 
-  const member = normalizeMember(asObject(dataFrom(memberResult)), { bioLimit: null });
+  const member = normalizeMember(asObject(dataFrom(memberResult)), {
+    bioLimit: null,
+    t: res.locals.t,
+    formatNumber: res.locals.formatLocaleNumber
+  });
   const settingsData = asObject(dataFrom(settingsResult));
   const settings = asObject(settingsData.settings);
   let reviews = [];

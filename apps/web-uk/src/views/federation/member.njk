@@ -5,14 +5,8 @@
 
 {% extends "layouts/base.njk" %}
 
-{% set reachLabels = {
-  local_only: "Local help only",
-  remote_ok: "Remote help possible",
-  travel_ok: "Can travel"
-} %}
-
 {% block mainContent %}
-  <a href="{{ urlFor('/federation/members') }}" class="govuk-back-link">Back to Federation members</a>
+  <a href="{{ urlFor('/federation/members') }}" class="govuk-back-link">{{ t("federation.member.back") }}</a>
 
   {% if statusBanner %}
     {% if statusBanner.type == "error" %}
@@ -34,7 +28,7 @@
     {% endif %}
   {% endif %}
 
-  <span class="govuk-caption-xl">Federation member</span>
+  <span class="govuk-caption-xl">{{ t("federation.member.caption") }}</span>
   <div class="nexus-alpha-module-row">
     {% if member.avatar %}
       <img class="nexus-alpha-card-thumb" src="{{ member.avatar }}" alt="{{ member.name }}" width="80" height="80" loading="lazy" decoding="async">
@@ -43,12 +37,12 @@
       <h1 class="govuk-heading-xl govuk-!-margin-bottom-2">{{ member.name }}</h1>
       {% if member.reputationCount > 0 %}
         <p class="govuk-body-s govuk-!-margin-bottom-1">
-          <strong class="govuk-tag govuk-tag--green">Reputation: {{ member.reputationScore }}</strong>
-          <span class="nexus-alpha-meta">{{ member.reputationCount }} reviews</span>
+          <strong class="govuk-tag {{ member.reputationTagClass }} govuk-!-margin-right-1">{{ t("fed2.reviews.reputation_label", { score: member.reputationScoreLabel }) }}</strong>
+          <span class="nexus-alpha-meta">{{ member.reputationCountLabel }}</span>
         </p>
       {% endif %}
       {% if member.tenantName %}
-        <p class="govuk-body-l govuk-!-margin-bottom-0">Community: {{ member.tenantName }}</p>
+        <p class="govuk-body-l govuk-!-margin-bottom-0">{{ t("federation.member.community_label") }}: {{ member.tenantName }}</p>
       {% endif %}
     </div>
   </div>
@@ -56,38 +50,36 @@
   {% include "federation/_nav.njk" %}
 
   {% if member.bio %}
-    <h2 class="govuk-heading-l">About this member</h2>
-    <p class="govuk-body">{{ member.bio }}</p>
+    <h2 class="govuk-heading-l">{{ t("federation.member.about_label") }}</h2>
+    <div class="govuk-body">{{ member.bio | nl2br | safe }}</div>
   {% endif %}
 
   <dl class="govuk-summary-list">
-    {% if member.tenantName %}
-      <div class="govuk-summary-list__row">
-        <dt class="govuk-summary-list__key">Community</dt>
-        <dd class="govuk-summary-list__value">{{ member.tenantName }}</dd>
-      </div>
-    {% endif %}
+    <div class="govuk-summary-list__row">
+      <dt class="govuk-summary-list__key">{{ t("federation.member.community_label") }}</dt>
+      <dd class="govuk-summary-list__value">{{ member.tenantName }}</dd>
+    </div>
     {% if member.location %}
       <div class="govuk-summary-list__row">
-        <dt class="govuk-summary-list__key">Location</dt>
+        <dt class="govuk-summary-list__key">{{ t("federation.member.location_label") }}</dt>
         <dd class="govuk-summary-list__value">{{ member.location }}</dd>
       </div>
     {% endif %}
-    {% if reachLabels[member.serviceReach] %}
+    {% if member.serviceReachLabel %}
       <div class="govuk-summary-list__row">
-        <dt class="govuk-summary-list__key">Reach</dt>
-        <dd class="govuk-summary-list__value">{{ reachLabels[member.serviceReach] }}</dd>
+        <dt class="govuk-summary-list__key">{{ t("federation.member.reach_label") }}</dt>
+        <dd class="govuk-summary-list__value">{{ member.serviceReachLabel }}</dd>
       </div>
     {% endif %}
     <div class="govuk-summary-list__row">
-      <dt class="govuk-summary-list__key">Skills</dt>
+      <dt class="govuk-summary-list__key">{{ t("federation.member.skills_label") }}</dt>
       <dd class="govuk-summary-list__value">
         {% if member.skills.length %}
           {% for skill in member.skills %}
             <strong class="govuk-tag govuk-tag--grey govuk-!-margin-right-1">{{ skill }}</strong>
           {% endfor %}
         {% else %}
-          No skills listed
+          {{ t("federation.member.no_skills") }}
         {% endif %}
       </dd>
     </div>

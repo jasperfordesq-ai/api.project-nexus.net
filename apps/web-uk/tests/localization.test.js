@@ -116,6 +116,11 @@ describe('Laravel-first locale resolution', () => {
 });
 
 describe('translation and formatter foundation', () => {
+  it('resolves the nested Laravel federation v2 catalogue', () => {
+    expect(translate('en', 'fed2.reviews.reputation_label', { score: '4.8' }))
+      .toBe('4.8 out of 5');
+  });
+
   it('loads authoritative translated output for every offered locale', () => {
     const englishLogin = translate('en', 'auth.login_title');
     for (const locale of SUPPORTED_LOCALES) {
