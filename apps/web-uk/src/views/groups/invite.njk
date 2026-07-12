@@ -79,7 +79,8 @@
   {% if not pendingInvites.length %}
     <div class="govuk-inset-text"><p class="govuk-body">There are no pending invitations.</p></div>
   {% else %}
-    <table class="govuk-table">
+    <div class="nexus-alpha-table-scroll" role="region" aria-label="Pending group invitations table" tabindex="0">
+    <table class="govuk-table govuk-!-margin-bottom-0">
       <thead class="govuk-table__head">
         <tr class="govuk-table__row">
           <th scope="col" class="govuk-table__header">{{ t("profile.email_label") }}</th>
@@ -110,5 +111,6 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
   {% endif %}
 {% endblock %}

@@ -4954,6 +4954,18 @@ fixture. This certifies the active-owner path only. Non-owner active-member
 authorization, tenant gates, manual assistive-technology depth, and ASP.NET
 compatibility remain open.
 
+## 2026-07-12 Group Invite-Link Lifecycle
+
+The disposable owner gate now generates a seven-day invite link, proves its
+pending row and real ID, revokes it, and proves final absence before deleting
+the parent group. The first live run exposed the four-column pending table
+expanding a 320 CSS pixel page to 345 pixels; it is now contained in a labelled,
+keyboard-focusable horizontal scroll region with source regression coverage.
+The corrected `1/1` run passed in `193.5` seconds with structural, reflow, and
+serious/critical axe assertions and retained no fixture. Email delivery,
+non-owner role behavior, tenant gates, manual assistive-technology depth, and
+ASP.NET compatibility remain open.
+
 ## Documents To Trust
 
 Read these in order:

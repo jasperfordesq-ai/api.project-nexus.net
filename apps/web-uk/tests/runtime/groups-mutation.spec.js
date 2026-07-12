@@ -228,6 +228,25 @@ test('certifies a disposable private group and its owner-managed content through
     await expect(page.locator('#push_enabled')).toBeChecked();
     await expectAccessibleReflow(page);
 
+    await page.goto(`${mountPath}/groups/${groupId}/invite`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
+    await expect(page.locator('h1')).toHaveText('Invite members');
+    await page.locator('#expiry_days').fill('7');
+    const inviteCreateResponse = await submit(page, `/groups/${groupId}/invite/link`, page.locator('form[action$="/invite/link"] button'));
+    expect(inviteCreateResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    const inviteRow = page.locator('tr', { hasText: 'Invite link' });
+    await expect(inviteRow).toHaveCount(1);
+    await expectAccessibleReflow(page);
+
+    const revokeAction = await inviteRow.locator('form[action$="/revoke"]').getAttribute('action');
+    expect(revokeAction).toBeTruthy();
+    const inviteId = Number(revokeAction.match(/\/invite\/(\d+)\/revoke$/)?.[1]);
+    expect(inviteId).toBeGreaterThan(0);
+    const inviteRevokeResponse = await submit(page, `/groups/${groupId}/invite/${inviteId}/revoke`, inviteRow.locator('button'));
+    expect(inviteRevokeResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    await expect(page.locator('tr', { hasText: 'Invite link' })).toHaveCount(0);
+
     await page.goto(`${mountPath}/groups/${groupId}/edit`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
     await expectAccessibleReflow(page);
     await page.locator('#name').fill(updatedName);
