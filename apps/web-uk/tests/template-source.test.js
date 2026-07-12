@@ -2273,3 +2273,24 @@ describe('Laravel-first Jobs sub-navigation source contract', () => {
     expect(source).not.toContain('about.how_it_works.title');
   });
 });
+
+describe('Laravel-first Messages sub-navigation source contract', () => {
+  it('shares the exact direct/group switch with one current page', () => {
+    const viewsRoot = path.join(__dirname, '..', 'src', 'views', 'messages');
+    const subnav = fs.readFileSync(path.join(viewsRoot, '_subnav.njk'), 'utf8');
+
+    expect(subnav).toContain("t('govuk_alpha.messages.tabs_title')");
+    expect(subnav).toContain('t("govuk_alpha_messages.groups.tab_direct")');
+    expect(subnav).toContain('t("govuk_alpha_messages.groups.tab_groups")');
+    expect(subnav).toContain("urlFor('/messages')");
+    expect(subnav).toContain("urlFor('/messages/groups')");
+    expect(subnav).toContain('aria-current="page"');
+
+    for (const [file, activeTab] of [['index.njk', 'direct'], ['groups.njk', 'groups']]) {
+      const source = fs.readFileSync(path.join(viewsRoot, file), 'utf8');
+      expect(source).toContain(`{% set messagesActive = "${activeTab}" %}`);
+      expect(source).toContain('{% include "messages/_subnav.njk" %}');
+      expect(source).not.toContain('govuk-list--inline');
+    }
+  });
+});

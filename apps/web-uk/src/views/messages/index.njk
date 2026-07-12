@@ -24,12 +24,8 @@
       </h1>
       <p class="govuk-body-l">{{ t("messages.description") }}</p>
 
-      <nav class="govuk-!-margin-bottom-4" aria-label="{{ t('messages.tabs_title') }}">
-        <ul class="govuk-list" style="display:flex;gap:1rem;list-style:none;padding:0;margin:0 0 1rem">
-          <li><a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor('/messages') }}" aria-current="page">{{ t("govuk_alpha_messages.groups.tab_direct") }}</a></li>
-          <li><a class="govuk-link" href="{{ urlFor('/messages/groups') }}">{{ t("govuk_alpha_messages.groups.tab_groups") }}</a></li>
-        </ul>
-      </nav>
+      {% set messagesActive = "direct" %}
+      {% include "messages/_subnav.njk" %}
 
       {% if canStart %}
         <div class="nexus-alpha-card govuk-!-margin-bottom-6">
