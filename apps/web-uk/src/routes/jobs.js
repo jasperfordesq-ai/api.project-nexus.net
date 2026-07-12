@@ -1499,14 +1499,9 @@ function bookmarkRedirect(id, from, status) {
   return statusRedirect(from === 'saved' ? '/jobs/saved' : `/jobs/${id}`, status);
 }
 
-function jobFormPayload(body) {
-  const title = trimmed(body.title, 255);
-  if (title === '') {
-    return null;
-  }
-
+function jobFormValues(body = {}) {
   return {
-    title,
+    title: trimmed(body.title, 255),
     description: trimmed(body.description, 20000),
     type: allowed(body.type, JOB_TYPES, 'volunteer'),
     commitment: allowed(body.commitment, JOB_COMMITMENTS, 'flexible'),
@@ -1525,6 +1520,22 @@ function jobFormPayload(body) {
     contact_email: trimmed(body.contact_email, 255),
     status: allowed(body.status, JOB_STATUSES, 'open')
   };
+}
+
+function jobFormPayload(body) {
+  const values = jobFormValues(body);
+  return values.title === '' ? null : values;
+}
+
+function rememberJobForm(req, body) {
+  if (typeof req.flash !== 'function') return;
+  req.flash('jobFormValues', jobFormValues(body));
+}
+
+function recalledJobForm(req) {
+  if (typeof req.flash !== 'function') return {};
+  const values = req.flash('jobFormValues');
+  return values.length > 0 && values[0] && typeof values[0] === 'object' ? values[0] : {};
 }
 
 function applicationStatusPayload(body) {
@@ -1748,7 +1759,7 @@ router.get('/create', (req, res) => res.render('jobs/form', {
   activeNav: 'explore',
   formMode: 'create',
   formAction: '/jobs',
-  jobForm: {},
+  jobForm: recalledJobForm(req),
   jobFormErrors: formErrors(req, req.query.status),
   csrfToken: req.csrfToken ? req.csrfToken() : ''
 }));
@@ -2140,7 +2151,7 @@ router.get('/:id(\\d+)/edit', asyncRoute(async (req, res) => {
     activeNav: 'explore',
     formMode: 'edit',
     formAction: `/jobs/${id}/update`,
-    jobForm: jobFormForEdit(job),
+    jobForm: { ...jobFormForEdit(job), ...recalledJobForm(req) },
     jobFormErrors: formErrors(req, req.query.status),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
@@ -2346,6 +2357,7 @@ router.post('/', asyncRoute(async (req, res) => {
 
   const payload = jobFormPayload(req.body);
   if (payload === null) {
+    rememberJobForm(req, req.body);
     return redirectTo(res, statusRedirect('/jobs/create', 'title-required'));
   }
 
@@ -2354,6 +2366,7 @@ router.post('/', asyncRoute(async (req, res) => {
     result = await callJob(token, 'POST', '', payload);
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
+    rememberJobForm(req, req.body);
     return redirectTo(res, statusRedirect('/jobs/create', 'create-failed'));
   }
 
@@ -2368,6 +2381,7 @@ router.post('/:id(\\d+)/update', asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const payload = jobFormPayload(req.body);
   if (payload === null) {
+    rememberJobForm(req, req.body);
     return redirectTo(res, statusRedirect(`/jobs/${id}/edit`, 'title-required'));
   }
 
@@ -2376,6 +2390,7 @@ router.post('/:id(\\d+)/update', asyncRoute(async (req, res) => {
     return redirectTo(res, jobRedirect(id, 'updated'));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
+    rememberJobForm(req, req.body);
     return redirectTo(res, statusRedirect(`/jobs/${id}/edit`, 'update-failed'));
   }
 }));

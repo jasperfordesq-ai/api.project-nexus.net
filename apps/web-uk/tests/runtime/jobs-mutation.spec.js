@@ -41,6 +41,15 @@ async function submit(page, pathnameSuffix, button) {
   return responsePromise;
 }
 
+async function submitWithoutConstraintValidation(page, pathnameSuffix, form) {
+  const responsePromise = page.waitForResponse(response => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith(pathnameSuffix), { timeout: 300_000 });
+  const navigationPromise = page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 300_000 });
+  await form.evaluate(element => element.submit());
+  const response = await responsePromise;
+  await navigationPromise;
+  return response;
+}
+
 async function findByTitle(token, title) {
   const result = await callJobApi(token, 'GET', '/my-postings?per_page=100');
   return rowsFrom(result).find(job => job?.title === title) || null;
@@ -83,10 +92,21 @@ test('certifies a disposable job owner lifecycle through Web UK', async ({ page 
     await page.goto(`${mountPath}/jobs/create`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
     await expect(page.locator('h1')).toHaveText('Post an opportunity');
     await expect(page.locator('.govuk-caption-xl')).toContainText('Hour Timebank');
-    await page.locator('#title').fill(createdTitle);
     await page.locator('#description').fill('Disposable Laravel job mutation fixture created by the Web UK runtime gate.');
     await page.locator('#type').selectOption('timebank');
     await page.locator('#commitment').selectOption('flexible');
+    await page.locator('#location').fill('Preserved validation location');
+    await page.locator('#status-draft').check();
+    const createValidationResponse = await submitWithoutConstraintValidation(page, '/jobs', page.locator('form:has(#title)'));
+    expect(createValidationResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    await expect(page.locator('.govuk-error-summary a[href="#title"]')).toHaveText('Enter a title for the opportunity.');
+    await expect(page.locator('#description')).toHaveValue('Disposable Laravel job mutation fixture created by the Web UK runtime gate.');
+    await expect(page.locator('#type')).toHaveValue('timebank');
+    await expect(page.locator('#location')).toHaveValue('Preserved validation location');
+    await expect(page.locator('#status-draft')).toBeChecked();
+
+    await page.locator('#title').fill(createdTitle);
     await page.locator('#category').fill('Community support');
     await page.locator('#location').fill('Disposable test location');
     await page.locator('#is_remote').check();
@@ -105,6 +125,14 @@ test('certifies a disposable job owner lifecycle through Web UK', async ({ page 
     await expectAccessibleReflow(page);
 
     await page.goto(`${mountPath}/jobs/${jobId}/edit`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
+    await page.locator('#title').fill('');
+    await page.locator('#location').fill('Preserved invalid edit location');
+    const editValidationResponse = await submitWithoutConstraintValidation(page, `/jobs/${jobId}/update`, page.locator('form:has(#title)'));
+    expect(editValidationResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    await expect(page.locator('.govuk-error-summary a[href="#title"]')).toHaveText('Enter a title for the opportunity.');
+    await expect(page.locator('#location')).toHaveValue('Preserved invalid edit location');
+
     await page.locator('#title').fill(updatedTitle);
     await page.locator('#commitment').selectOption('part_time');
     await page.locator('#location').fill('Updated disposable location');

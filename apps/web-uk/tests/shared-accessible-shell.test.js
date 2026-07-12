@@ -11376,19 +11376,18 @@ describe('shared accessible frontend shell', () => {
     const api = require('../src/lib/api');
     const cookieSignature = require('cookie-signature');
     const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
-    const agent = request.agent(app);
     api.getResourceCategories.mockResolvedValue({
       data: [{ id: 7, name: 'Guides', color: 'green' }]
     });
 
-    const first = await agent
+    const first = await request(app)
       .get('/contact')
       .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
     const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
     const csrfCookies = (first.headers['set-cookie'] || []).map((cookie) => cookie.split(';')[0]);
     const cookieHeader = [`token=${encodeURIComponent(signedToken)}`, ...csrfCookies].join('; ');
 
-    const response = await agent
+    const response = await request(app)
       .post('/resources/upload')
       .set('Cookie', cookieHeader)
       .field('_csrf', csrfMatch[1])
@@ -11400,7 +11399,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.headers.location).toBe('/resources/upload');
     expect(api.uploadResource).not.toHaveBeenCalled();
 
-    const replay = await agent
+    const replay = await request(app)
       .get('/resources/upload')
       .set('Cookie', cookieHeader);
     expect(replay.status).toBe(200);
@@ -16152,6 +16151,58 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('Laravel Blade route');
   });
 
+  it('replays safe create-job input after title validation', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.callJobApi.mockClear();
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const tokenCookie = `token=${encodeURIComponent(signedToken)}`;
+    const first = await request(app).get('/contact').set('Cookie', tokenCookie);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+    const sessionCookies = (first.headers['set-cookie'] || []).map((cookie) => cookie.split(';')[0]);
+    const cookie = [tokenCookie, ...sessionCookies].join('; ');
+
+    const response = await request(app)
+      .post('/jobs')
+      .set('Cookie', cookie)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        title: '  ',
+        description: 'Coordinate the community repair rota.',
+        type: 'paid',
+        commitment: 'part_time',
+        category: 'Community',
+        location: 'Cork',
+        is_remote: '1',
+        skills_required: 'Planning',
+        deadline: '2099-08-15',
+        contact_email: 'jobs@example.org',
+        status: 'draft'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/jobs/create?status=title-required');
+    expect(api.callJobApi).not.toHaveBeenCalled();
+
+    const replay = await request(app)
+      .get('/jobs/create?status=title-required')
+      .set('Cookie', cookie);
+    expect(replay.status).toBe(200);
+    expect(replay.text).toContain('href="#title"');
+    expect(replay.text).toContain('Enter a title for the opportunity.');
+    expect(replay.text).toContain('Coordinate the community repair rota.');
+    expect(replay.text).toContain('value="paid" selected');
+    expect(replay.text).toContain('value="part_time" selected');
+    expect(replay.text).toContain('value="Community"');
+    expect(replay.text).toContain('value="Cork"');
+    expect(replay.text).toContain('name="is_remote" type="checkbox" value="1" checked');
+    expect(replay.text).toContain('value="Planning"');
+    expect(replay.text).toContain('value="2099-08-15"');
+    expect(replay.text).toContain('value="jobs@example.org"');
+    expect(replay.text).toContain('value="draft" checked');
+  });
+
   it('redirects signed-out visitors away from the create job form', async () => {
     const response = await request(app).get('/jobs/create');
 
@@ -16218,6 +16269,54 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('value="draft" checked');
     expect(response.text).toContain('Save changes');
     expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('replays safe edit-job input over stored values after title validation', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.callJobApi.mockClear();
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const tokenCookie = `token=${encodeURIComponent(signedToken)}`;
+    const first = await request(app).get('/contact').set('Cookie', tokenCookie);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+    const sessionCookies = (first.headers['set-cookie'] || []).map((cookie) => cookie.split(';')[0]);
+    const cookie = [tokenCookie, ...sessionCookies].join('; ');
+
+    const response = await request(app)
+      .post('/jobs/501/update')
+      .set('Cookie', cookie)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        title: '',
+        description: 'Preserve the edited description.',
+        type: 'timebank',
+        commitment: 'one_off',
+        location: 'Remote',
+        salary_negotiable: '1',
+        status: 'draft'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/jobs/501/edit?status=title-required');
+    expect(api.callJobApi).not.toHaveBeenCalled();
+
+    api.getJob.mockResolvedValueOnce({
+      data: { id: 501, user_id: 101, title: 'Stored title', description: 'Stored description', status: 'open' }
+    });
+    api.getProfile.mockResolvedValueOnce({ data: { id: 101 } });
+    const replay = await request(app)
+      .get('/jobs/501/edit?status=title-required')
+      .set('Cookie', cookie);
+    expect(replay.status).toBe(200);
+    expect(replay.text).toContain('Enter a title for the opportunity.');
+    expect(replay.text).not.toContain('value="Stored title"');
+    expect(replay.text).toContain('Preserve the edited description.');
+    expect(replay.text).toContain('value="timebank" selected');
+    expect(replay.text).toContain('value="one_off" selected');
+    expect(replay.text).toContain('value="Remote"');
+    expect(replay.text).toContain('name="salary_negotiable" type="checkbox" value="1" checked');
+    expect(replay.text).toContain('value="draft" checked');
   });
 
   it('redirects signed-out visitors away from the edit job form before calling Laravel', async () => {
