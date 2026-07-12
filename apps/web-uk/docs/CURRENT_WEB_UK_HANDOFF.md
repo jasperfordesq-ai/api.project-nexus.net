@@ -5129,16 +5129,14 @@ tenant gates, and ASP.NET compatibility remain open.
 
 ## 2026-07-12 Disposable Volunteering Credential Lifecycle
 
-The dedicated Laravel gate uploads a uniquely named real PDF credential,
-verifies its pending row and rendered filename/status, checks 320 CSS pixel
-structure, reflow, and serious/critical axe findings, deletes it through Web
-UK, and proves final Laravel absence with independent API cleanup. The first
-run exposed a 568px credentials table; the final fix uses a labelled,
-keyboard-focusable horizontal scroll region and removes duplicate visually-
-hidden action text that still extended the document. The corrected `1/1` run
-passed in `44.2` seconds and retained no credential. File download, tenant gate
-depth, localization, manual assistive-technology review, and ASP.NET
-compatibility remain open.
+The dedicated Laravel gate now proves a complete disposable lifecycle: upload a
+uniquely named PDF, verify its pending row, pass 320 CSS pixel structure/reflow
+and serious/critical axe checks, download it through Web UK with byte equality,
+delete it, and prove final Laravel absence. The download extension exposed wide
+table overflow propagation; the reusable scroll region now has layout/paint
+containment while retaining keyboard-focusable horizontal scrolling. The final
+`1/1` run passed in `54.9` seconds and retained no credential. Tenant gate depth,
+manual assistive-technology review, and ASP.NET compatibility remain open.
 
 ## Known Remaining Work
 

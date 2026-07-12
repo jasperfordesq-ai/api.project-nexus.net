@@ -2283,6 +2283,34 @@ describe('API Request Functions', () => {
       expect(options.body).toBeInstanceOf(FormData);
     });
 
+    it('should download a volunteer credential from Laravel as binary data', async () => {
+      const body = Buffer.from('%PDF credential download', 'utf8');
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: {
+          get: (name) => ({
+            'content-type': 'application/pdf',
+            'content-disposition': 'attachment; filename="first-aid.pdf"',
+            'content-length': String(body.length)
+          }[name.toLowerCase()] || '')
+        },
+        arrayBuffer: async () => body
+      });
+
+      const result = await api.downloadVolunteerCredential('test-token', 44);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/volunteering/credentials/44/download',
+        expect.objectContaining({
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
+        })
+      );
+      expect(result.status).toBe(200);
+      expect(result.headers['content-disposition']).toBe('attachment; filename="first-aid.pdf"');
+      expect(result.body.equals(body)).toBe(true);
+    });
+
     it('should upload insurance certificates to Laravel with multipart file data', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,

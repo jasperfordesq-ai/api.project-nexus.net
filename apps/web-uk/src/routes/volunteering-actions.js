@@ -8,6 +8,7 @@ const fs = require('fs/promises');
 const {
   ApiError,
   callVolunteeringApi,
+  downloadVolunteerCredential,
   getVolunteeringCategories,
   uploadVolunteerCredential
 } = require('../lib/api');
@@ -16,6 +17,16 @@ const { getRequestIntlLocale } = require('../lib/request-intl-locale');
 const { isValidEmail } = require('../lib/inputValidator');
 
 const router = express.Router();
+const DOWNLOAD_HEADER_NAMES = [
+  'content-type',
+  'content-disposition',
+  'content-length',
+  'cache-control',
+  'pragma',
+  'expires',
+  'etag',
+  'last-modified'
+];
 const ACCESSIBILITY_NEED_TYPES = [
   { value: 'mobility', label: 'Mobility' },
   { value: 'visual', label: 'Visual or sight' },
@@ -1735,13 +1746,18 @@ function normalizeCredential(row, t = null) {
     : normalTypeLabel;
   const expiry = dateLabel(credential.expires_at ?? credential.expiry_date ?? credential.expiryDate);
 
+  const id = positiveInteger(credential.id);
+
   return {
-    id: positiveInteger(credential.id),
+    id,
     type,
     typeLabel,
     fileName: isLegacyVettingEvidence || manualReviewRequired
       ? ''
       : trimmed(credential.file_name ?? credential.document_name ?? credential.fileName ?? credential.documentName),
+    downloadPath: id && !isLegacyVettingEvidence && !manualReviewRequired
+      ? `/volunteering/credentials/${id}/download`
+      : '',
     status,
     isLegacyVettingEvidence,
     manualReviewRequired,
@@ -2287,6 +2303,35 @@ router.get('/credentials', asyncRoute(async (req, res) => {
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { redirectOn401: loginRedirect() }));
+
+router.get('/credentials/:id(\\d+)/download', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) {
+    return redirectTo(res, loginRedirect());
+  }
+
+  let download;
+  try {
+    download = await downloadVolunteerCredential(token, Number(req.params.id));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    if (error instanceof ApiError && error.status === 404) {
+      return res.status(404).render('errors/404', { title: 'Page not found' });
+    }
+    if (error instanceof ApiError && error.status === 429) {
+      return res.status(429).render('errors/429', { title: 'Too many requests' });
+    }
+    return res.status(503).render('errors/503', { title: 'Service unavailable' });
+  }
+
+  res.status(download.status || 200);
+  DOWNLOAD_HEADER_NAMES.forEach((header) => {
+    if (download.headers && download.headers[header]) {
+      res.set(header, download.headers[header]);
+    }
+  });
+  return res.send(Buffer.isBuffer(download.body) ? download.body : Buffer.from(download.body || ''));
+}, { redirectOn401: loginRedirect(), notFoundTitle: 'Credential download' }));
 
 router.get('/hours', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);

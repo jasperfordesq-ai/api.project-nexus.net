@@ -1225,6 +1225,15 @@ fell from 28 to 0.
 | Report a problem with this page | `/report-a-problem?return=...` | `/report-a-problem?return=...` | Partial Laravel-backed candidate. Signed-out visitors redirect to `/contact?problem_url=...`; signed-in visitors get a structured support report form that posts to Laravel `/api/v2/support/reports`. The shared report-link partial now routes listing-specific reports and generic report-problem return links through `urlFor()` with source regression coverage. |
 | Cookies | `/cookies`, `/cookie-consent` POST | `/cookies`, `/cookie-consent` POST | Partial Blade-style candidate: banner renders before the skip link until `nexus_accessible_cookie_consent` is present, while legacy Laravel `nexus_alpha_cookie_consent` values are still accepted as a read-only dismissal fallback; settings page renders the analytics yes/no form; POST stores local `all` or `essential` values under the cleaner accessible cookie name. Cookie settings plus the banner `/cookies` links and `/cookie-consent` POST action now use `urlFor()` for tenant/custom-domain-aware no-JS controls. The default Laravel runtime smoke now verifies no-JS banner reject, banner accept, and settings-save analytics POSTs store the expected `nexus_accessible_cookie_consent` value and redirect to `/cookies` or `/cookies?status=saved`; a targeted live run against `WEB_UK_BASE_URL=http://127.0.0.1:6242` with `TENANT_ID=2` passed `9/9` checks on 2026-07-08. Laravel `cookie_consents` audit persistence, tenant scoping, localization, and ASP.NET backend compatibility are not certified. |
 
+> **2026-07-12 credential-download correction:** this supersedes the older
+> `credential download ... not certified` wording in both volunteering rows
+> in this file. Web UK now exposes mounted GET
+> `/volunteering/credentials/:id/download`, proxies Laravel GET
+> `/api/v2/volunteering/credentials/{id}/download`, preserves safe binary
+> headers, and passed a disposable upload/render/320px-axe/download-byte-match/
+> delete/final-absence gate (`1/1`, `54.9s`). Tenant feature gates, manual AT,
+> and ASP.NET compatibility remain open.
+
 ## Footer Column Contract
 
 | Column | Blade links | `apps/web-uk` current status |

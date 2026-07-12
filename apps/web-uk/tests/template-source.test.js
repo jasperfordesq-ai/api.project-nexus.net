@@ -626,6 +626,12 @@ describe('tenant-aware template helper conversion', () => {
 
     expect(source).not.toMatch(/(?:href|action)="\/volunteering/);
     expect(source).toMatch(/urlFor\(["']\/volunteering/);
+
+    const styles = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'assets', 'scss', 'main.scss'),
+      'utf8'
+    );
+    expect(styles).toMatch(/\.nexus-alpha-table-scroll\s*\{[^}]*contain:\s*inline-size layout paint;/s);
   });
 
   it('keeps member directory, discovery, nearby, and insights controls behind urlFor()', () => {

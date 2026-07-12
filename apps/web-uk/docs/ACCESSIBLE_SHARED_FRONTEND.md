@@ -1389,11 +1389,11 @@ status banners.
 Laravel POST aliases now
 cover applications, shift signup/cancel, application withdrawal, hours,
 accessibility needs, certificate generation, waitlists, swaps, emergency alert
-responses, credential delete plus safe upload proxying, wellbeing check-ins,
+responses, credential delete plus safe upload/download proxying, wellbeing check-ins,
 donations, group reservations, expenses, training, incidents, opportunity
 creation, and organisation owner application/hour, settings, and wallet actions
-through Laravel v2 volunteering APIs. This remains partial: credential download,
-feature gates, tenant-prefixed routes, localization, deeper volunteering
+through Laravel v2 volunteering APIs. This remains partial: feature gates,
+tenant-prefixed routes, localization, deeper volunteering
 workflow runtime smoke, and ASP.NET backend compatibility are not certified; the
 public `/volunteering` landing/search page is covered by the default Laravel
 runtime smoke.

@@ -323,7 +323,8 @@
   box-sizing: border-box;
   width: 100%;
   max-width: 100%;
-  overflow-x: auto;
+  contain: inline-size layout paint;
+  overflow: auto hidden;
   overscroll-behavior-inline: contain;
 }
 

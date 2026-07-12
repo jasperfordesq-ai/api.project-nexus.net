@@ -5,6 +5,7 @@
 
 const { test, expect } = require('@playwright/test');
 const AxeBuilder = require('@axe-core/playwright').default;
+const fs = require('fs/promises');
 const { resolveOptions } = require('../../scripts/laravel-runtime-smoke');
 const { callVolunteeringApi, login } = require('../../src/lib/api');
 
@@ -83,7 +84,7 @@ async function expectAccessibleReflow(page) {
   expect(results.violations.filter(({ impact }) => impact === 'serious' || impact === 'critical')).toEqual([]);
 }
 
-test('uploads and deletes a disposable volunteering credential', async ({ page }) => {
+test('uploads, downloads and deletes a disposable volunteering credential', async ({ page }) => {
   const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
   const filename = `codex-volunteer-credential-${runId}.pdf`;
   const auth = await login(smoke.email, smoke.password, smoke.tenant);
@@ -124,10 +125,20 @@ test('uploads and deletes a disposable volunteering credential', async ({ page }
     expect(String(credential.status)).toBe('pending');
 
     await expect(page.locator('.govuk-notification-banner')).toContainText('Your credential has been uploaded and is awaiting review.');
-    await expect(page.getByText(filename, { exact: true })).toBeVisible();
+    const downloadLink = page.getByRole('link', { name: filename, exact: true });
+    await expect(downloadLink).toHaveAttribute('href', `${mountPath}/volunteering/credentials/${credentialId}/download`);
     const deleteForm = page.locator(`form[action$="/volunteering/credentials/${credentialId}/delete"]`);
     await expect(deleteForm).toHaveCount(1);
     await expectAccessibleReflow(page);
+
+    const [download] = await Promise.all([
+      page.waitForEvent('download', { timeout: 300_000 }),
+      downloadLink.click()
+    ]);
+    expect(download.suggestedFilename()).toBe(filename);
+    const downloadedPath = await download.path();
+    expect(downloadedPath).toBeTruthy();
+    expect((await fs.readFile(downloadedPath)).equals(pdf)).toBe(true);
 
     await submitPost(page, deleteForm.locator('button'), `/volunteering/credentials/${credentialId}/delete`);
     expect(await findCredential()).toBeNull();

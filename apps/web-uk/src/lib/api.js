@@ -922,6 +922,12 @@ async function getEventCategories(token) {
   });
 }
 
+async function downloadVolunteerCredential(token, id) {
+  return downloadRequest(`/api/v2/volunteering/credentials/${encodeURIComponent(id)}/download`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
 async function getVolunteeringCategories(token) {
   return request('/api/v2/categories?type=volunteering', {
     headers: { Authorization: `Bearer ${token}` }
@@ -3244,6 +3250,7 @@ module.exports = {
   createVolunteerOrganisation,
   callVolunteeringApi,
   uploadVolunteerCredential,
+  downloadVolunteerCredential,
   callMarketplaceApi,
   callCouponApi,
   uploadMarketplaceListingImages,

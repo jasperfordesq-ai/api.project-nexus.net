@@ -185,6 +185,7 @@ jest.mock('../src/lib/api', () => ({
   getResourceCategoryTree: jest.fn().mockResolvedValue({ data: [] }),
   uploadResource: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   uploadVolunteerCredential: jest.fn().mockResolvedValue({ data: { id: 42 } }),
+  downloadVolunteerCredential: jest.fn(),
   uploadInsuranceCertificate: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   downloadResource: jest.fn(),
   deleteResource: jest.fn().mockResolvedValue({ data: { deleted: true } }),
@@ -469,6 +470,7 @@ describe('shared accessible frontend shell', () => {
     api.getResourceCategoryTree.mockReset().mockResolvedValue({ data: [] });
     api.uploadResource.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.uploadVolunteerCredential.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.downloadVolunteerCredential.mockReset();
     api.uploadInsuranceCertificate.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.downloadResource.mockReset();
     api.deleteResource.mockReset().mockResolvedValue({ data: { deleted: true } });
@@ -26359,6 +26361,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Expires');
     expect(response.text).toContain('Uploaded');
     expect(response.text).toContain('Verified');
+    expect(response.text).toContain('nexus-alpha-share-url" href="/volunteering/credentials/44/download" download>first-aid.pdf</a>');
     expect(response.text).toContain('31 January 2027');
     expect(response.text).toContain('1 July 2026');
     expect(response.text).toContain('Retired vetting document');
@@ -26366,11 +26369,44 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('The document details are hidden. Delete this historical upload');
     expect(response.text).toContain('Not applicable');
     expect(response.text).not.toContain('dbs-check.pdf');
+    expect(response.text).not.toContain('href="/volunteering/credentials/45/download"');
     expect(response.text).toContain('Delete historical document');
     expect(response.text).toContain('15 June 2026');
     expect(response.text).toContain('method="post" action="/volunteering/credentials/44/delete"');
     expect(response.text).toContain('Delete the First aid credential');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
+  });
+
+  it('streams an owned Laravel credential download and preserves safe response headers', async () => {
+    const api = require('../src/lib/api');
+    const body = Buffer.from('%PDF-1.4\ncredential fixture\n', 'utf8');
+    api.downloadVolunteerCredential.mockResolvedValueOnce({
+      status: 200,
+      body,
+      headers: {
+        'content-type': 'application/pdf',
+        'content-disposition': 'attachment; filename="first-aid.pdf"',
+        'content-length': String(body.length),
+        'cache-control': 'no-cache, private'
+      }
+    });
+
+    const unsigned = await request(app).get('/volunteering/credentials/44/download');
+    expect(unsigned.status).toBe(302);
+    expect(unsigned.headers.location).toBe('/login?status=auth-required');
+    expect(api.downloadVolunteerCredential).not.toHaveBeenCalled();
+
+    const response = await request(app)
+      .get('/volunteering/credentials/44/download')
+      .set('Cookie', signedCookieHeader());
+
+    expect(api.downloadVolunteerCredential).toHaveBeenCalledWith('test-token', 44);
+    expect(response.status).toBe(200);
+    expect(response.headers['content-type']).toContain('application/pdf');
+    expect(response.headers['content-disposition']).toBe('attachment; filename="first-aid.pdf"');
+    expect(response.headers['content-length']).toBe(String(body.length));
+    expect(response.headers['cache-control']).toBe('no-cache, private');
+    expect(response.body.equals(body)).toBe(true);
   });
 
   it('renders the Laravel volunteering hours page for signed-in members', async () => {
