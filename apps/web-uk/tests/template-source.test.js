@@ -1786,6 +1786,34 @@ describe('tenant-aware template helper conversion', () => {
     expect(source).toMatch(/urlFor\(["']\/courses/);
   });
 
+  it('keeps the course instructor form aligned with the Laravel commerce catalog', () => {
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', 'courses', 'form.njk'),
+      'utf8'
+    );
+
+    const requiredKeys = [
+      'govuk_alpha_commerce.instructor.back_to_dashboard',
+      'govuk_alpha_commerce.instructor.caption',
+      'govuk_alpha_commerce.instructor.title_create',
+      'govuk_alpha_commerce.instructor.title_edit',
+      'govuk_alpha_commerce.instructor.section_about',
+      'govuk_alpha_commerce.instructor.section_settings',
+      'govuk_alpha_commerce.instructor.builder_notice_title',
+      'govuk_alpha_commerce.builder.add_section_heading',
+      'govuk_alpha_commerce.builder.add_lesson_heading',
+      'govuk_alpha_commerce.instructor.delete_warning'
+    ];
+
+    for (const key of requiredKeys) {
+      expect(source).toContain(key);
+    }
+
+    expect(source).not.toContain('t("events.no_category")');
+    expect(source).not.toContain('t("polish_federation.transfer_cancel")');
+    expect(source).not.toContain('t("jobs_t3.delete_button")');
+  });
+
   it('keeps course action redirects behind the active tenant URL helper', () => {
     const route = fs.readFileSync(
       path.join(__dirname, '..', 'src', 'routes', 'courses.js'),

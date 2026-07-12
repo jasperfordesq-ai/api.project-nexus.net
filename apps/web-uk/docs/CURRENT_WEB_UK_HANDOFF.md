@@ -1,6 +1,6 @@
 # Current Web UK Accessible Frontend Handoff
 
-Last reviewed: 2026-07-11
+Last reviewed: 2026-07-12
 
 > **Current audit notice (2026-07-11):** The verified checkpoint below
 > supersedes older counts and completion estimates in this chronological handoff.
@@ -43,13 +43,13 @@ toward Laravel's accessible contracts.
 
 The Laravel repo is read-only reference material from this workspace.
 
-## Current Verified Checkpoint (2026-07-11)
+## Current Verified Checkpoint (2026-07-12)
 
 This is the current evidence boundary. Older dated slices below remain useful
 implementation history, but their suite sizes, route counts, smoke totals, and
 scores must not be reused as current results.
 
-- Jest: `45/45` suites and `1,440/1,440` tests passed.
+- Jest: `45/45` suites and `1,464/1,464` tests passed.
 - Static/build gates: ESLint, brand policy, and CSS compilation passed.
 - Route matrix: `608` Laravel declarations, `610` Web UK declarations, `608`
   matched, `0` missing, `0` extra parity routes, and `3` ignored infrastructure
@@ -59,7 +59,7 @@ scores must not be reused as current results.
   completion: each non-English catalog still has roughly `3,903-3,951` values
   identical to English and `16` namespaces are wholly English in the
   authoritative read-only Laravel source.
-- Conservative template audit: `291` templates and `0` safe exact-value
+- Conservative template audit: `285` templates and `0` safe exact-value
   substitutions remaining. This is deliberately narrower than contextual
   translation review.
 - Latest uninterrupted full automated browser accessibility pass: Chromium/axe
@@ -5608,6 +5608,26 @@ The expanded mutation gate passed `2/2` in `102.1` seconds: the alert case
 created a unique multi-criteria alert, proved active state, paused and resumed
 it through Laravel, deleted it through the visible confirmation, and proved
 final absence. Both Jobs cases retained no fixture.
+
+## 2026-07-12 Disposable Course Authoring Lifecycle
+
+The course create/edit and builder surface now uses Laravel's exact commerce
+catalog for its default-English caption, headings, field labels and hints,
+choices, builder controls, warnings, and actions. No Arabic-specific coverage
+was added.
+
+`npm run smoke:laravel:courses-mutation` passed `1/1` in `180.6` seconds. It
+created and updated a uniquely named course, proved the persisted level,
+visibility, enrolment type, and credit cost, created and renamed a section,
+created and deleted a text lesson, deleted the section and course through the
+visible Web UK controls, passed 320px structure/reflow and serious/critical axe
+checks, and proved final Laravel API absence. Independent cleanup inspection
+found no disposable course residue.
+
+Full Jest passed `45/45` suites and `1,464/1,464` tests; lint and the
+285-template zero-match audit are green. Publish/moderation, learner enrolment/
+completion/review effects, instructor-role variants, manual assistive-
+technology depth, and ASP.NET compatibility remain open.
 
 ## Final Handoff Checklist
 
