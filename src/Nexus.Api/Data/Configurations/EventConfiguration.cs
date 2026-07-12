@@ -216,9 +216,15 @@ public class EventConfiguration : TenantScopedConfiguration
         });
         modelBuilder.Entity<EventAttendance>(entity =>
         {
-            entity.ToTable("event_attendance"); entity.Property(e => e.AttendanceStatus).HasMaxLength(24);
+            entity.ToTable("event_attendance"); entity.Property(e => e.AttendanceStatus).HasMaxLength(32); entity.Property(e => e.HoursCredited).HasPrecision(10, 2); entity.Property(e => e.Notes).HasColumnType("text");
             entity.HasIndex(e => new { e.TenantId, e.EventId, e.UserId }).IsUnique().HasDatabaseName("uq_event_attendance_user");
-            entity.HasIndex(e => new { e.TenantId, e.EventId, e.AttendanceStatus, e.UserId }).HasDatabaseName("idx_event_attendance_audience");
+            entity.HasIndex(e => new { e.TenantId, e.EventId, e.AttendanceStatus, e.Id }).HasDatabaseName("idx_event_attendance_tenant_event_status");
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+        modelBuilder.Entity<EventAttendanceActivity>(entity =>
+        {
+            entity.ToTable("event_attendance_activity"); entity.Property(e => e.Action).HasMaxLength(50); entity.Property(e => e.FromStatus).HasMaxLength(32); entity.Property(e => e.ToStatus).HasMaxLength(32); entity.Property(e => e.IdempotencyKey).HasMaxLength(191); entity.Property(e => e.Reason).HasColumnType("text"); entity.Property(e => e.Metadata).HasColumnType("jsonb");
+            entity.HasIndex(e => new { e.TenantId, e.IdempotencyKey }).IsUnique().HasDatabaseName("uq_event_attendance_activity_key"); entity.HasIndex(e => new { e.TenantId, e.AttendanceId, e.AttendanceVersion }).IsUnique().HasDatabaseName("uq_event_attendance_activity_version"); entity.HasIndex(e => new { e.TenantId, e.EventId, e.CreatedAt, e.Id }).HasDatabaseName("idx_event_attendance_activity_event"); entity.HasIndex(e => new { e.TenantId, e.UserId, e.CreatedAt }).HasDatabaseName("idx_event_attendance_activity_user");
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
         });
         modelBuilder.Entity<EventBroadcast>(entity =>

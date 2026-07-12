@@ -54,6 +54,25 @@ containers from this repo.
 
 ## Latest Verified Backend Slice — 2026-07-12
 
+The latest backend-only slice closes all eight Event People workspace routes:
+redacted roster listing, formula-safe CSV export, bounded bulk operations,
+per-member unified history, attendance transitions, and manager
+approve/reject/cancel. The strict React projections expose no email, notes, or
+other sensitive attendance detail. Attendance writes enforce expected versions,
+action-scoped idempotency, manager/tenant boundaries, and check-in/check-out/
+no-show/undo transition rules; bulk operations return isolated per-row results.
+
+Migration `20260712221737_EventPeopleAttendanceWorkflowParity` safely backfills
+existing attendance facts to version 1 with state/check-in/check-out timestamps
+and adds exact append-only `event_attendance_activity`. All 124 migrations
+replayed on blank disposable PostgreSQL, EF model drift is clean, and focused
+privacy/history/manager/attendance/bulk/CSV/tenant proof passed 4/4.
+
+The live comparator now reports 4,410 ASP.NET operations, 2,490/2,592 matched,
+and 102 missing. The schema comparator reports 377 Laravel migration files, 126
+ASP.NET migration source files, 124 runtime IDs, 356 ASP.NET table names, 165
+exact matches, 290 missing Laravel names, and 191 ASP.NET-only names.
+
 The latest backend-only slice closes canonical event registration confirm and
 withdraw plus waitlist join, leave, and active/tokenized offer acceptance.
 Transitions serialize on tenant/event capacity, maintain monotonic registration
@@ -71,10 +90,9 @@ guards. All 123 migrations replayed on blank disposable PostgreSQL, EF model
 drift is clean, and focused capacity/queue/offer/idempotency/tenant proof passed
 4/4.
 
-The live comparator now reports 4,394 ASP.NET operations, 2,482/2,592 matched,
-and 110 missing. The schema comparator reports 377 Laravel migration files, 125
-ASP.NET migration source files, 123 runtime IDs, 355 ASP.NET table names, 164
-exact matches, 291 missing Laravel names, and 191 ASP.NET-only names.
+The preceding registration/waitlist checkpoint reported 2,482/2,592 matched
+and 110 missing, with 164 exact schema names. The newer Event People baseline
+above supersedes those counts.
 
 The latest backend-only slice closes all eight event-broadcast route shapes:
 list/show/preview/create/revise/schedule/cancel/retry across `/api` and
@@ -174,7 +192,7 @@ idempotency, and first-writer race behavior have focused coverage; frontend
 runtime and notification depth remain open.
 
 The current latest migration is
-`20260712214912_EventRegistrationWaitlistLifecycleParity`, runtime ID 123. The historical
+`20260712221737_EventPeopleAttendanceWorkflowParity`, runtime ID 124. The historical
 checkpoint below describes migrations 112 through 116; later group and event
 workflow evidence is recorded at the start of this section and in the
 maintained runbook.
@@ -507,8 +525,8 @@ Earlier published slice evidence retained for context:
 - earlier volunteering-chain proof reached
   `20260711031959_NullableTransactionLedgerLegs`; the current migration proof
   is recorded above;
-- API route comparator: 2,482/2,592 current Laravel/supplemental operations
-  matched, 110 route-shape gaps after registration/waitlist closure;
+- API route comparator: 2,490/2,592 current Laravel/supplemental operations
+  matched, 102 route-shape gaps after Event People closure;
 - historical schema comparator: 134/361 Laravel tables matched, 227 missing, 194
   ASP.NET-only; the current result above supersedes it and remains a global red
   gate.

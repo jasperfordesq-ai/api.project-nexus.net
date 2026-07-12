@@ -454,6 +454,7 @@ public static class TestDataSeeder
                 event_domain_outbox,
                 event_status_history,
                 event_reminders,
+                event_attendance_activity,
                 event_attendance,
                 event_waitlist_entry_history,
                 event_registration_history,

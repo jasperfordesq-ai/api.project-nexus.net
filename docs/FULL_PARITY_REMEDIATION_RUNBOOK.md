@@ -441,7 +441,7 @@ route coverage is not a completion score.
 
 | Surface | Score | Meaning |
 | --- | ---: | --- |
-| ASP.NET static API method/path inventory | 958/1000 | 2,482 of 2,592 current Laravel operations matched, with 110 route-shape gaps after the five-route registration/waitlist lifecycle closed; this remains route-shape coverage rather than behavioral parity |
+| ASP.NET static API method/path inventory | 961/1000 | 2,490 of 2,592 current Laravel operations matched, with 102 route-shape gaps after all eight Event People workspace shapes closed; this remains route-shape coverage rather than behavioral parity |
 | ASP.NET implementation parity | 640/1000 | Broad implementation with material workflow, schema, integration, and localization gaps |
 | ASP.NET certification confidence | 420/1000 | Current full-suite and frontend-on-ASP proof is insufficient |
 | Web UK Laravel-first implementation | 910/1000 | Route conversion is advanced; several source and presentation gaps remain |
@@ -452,18 +452,18 @@ route coverage is not a completion score.
 
 | Check | Current result or retained historical evidence |
 | --- | --- |
-| ASP.NET static operations | 4,394 |
+| ASP.NET static operations | 4,410 |
 | Laravel source operations | 2,592 |
-| Static method/path matches | 2,482 matched, 110 missing |
+| Static method/path matches | 2,490 matched, 102 missing |
 | Explicit admin compatibility behavior | At least 196 of 329 `AdminExplicitParityController` route declarations reached generic fallbacks at audit time |
-| Schema inventory | Live: 377 Laravel migration files, 125 ASP.NET migration source files, 455 Laravel source tables, 355 ASP.NET tables, 164 exact matches, 291 missing Laravel names, and 191 ASP.NET-only names. EF applied 123 migrations in the latest blank replay. |
+| Schema inventory | Live: 377 Laravel migration files, 126 ASP.NET migration source files, 455 Laravel source tables, 356 ASP.NET tables, 165 exact matches, 290 missing Laravel names, and 191 ASP.NET-only names. EF applied 124 migrations in the latest blank replay. |
 | ASP.NET backend localization comparator | 7/11 locales, 49/605 namespaces, 157 comparable English keys matched, 5,018 missing |
 | Web UK authoritative locale catalogs | 11/11 locales, 24 namespaces, and 7,337 string keys per locale with zero missing or extra keys relative to English |
 | Web UK translation depth | Each non-English Laravel catalog still has 3,903-3,951 English-identical values (53.2%-53.9%); 16 namespaces are wholly English-identical in the read-only source |
 | Web UK conservative template localization | 1,595 safe static substitutions across 257 templates; the post-write audit reports 290 templates and zero remaining conservative matches, which is not a contextual-copy completion claim |
 | ASP.NET API/test builds | Debug API/test and required solution-wide Release builds passed with zero errors; the only warnings are the same four pre-existing `xUnit1031` warnings, and the latest Release build took 4m22s. |
 | Transactional volunteering regression | Prior core 61/61; guardian lifecycle 7/7; recurring-pattern CRUD 13/13 plus route ownership 1/1; recurring-shift generation/scheduler 13/13; volunteer-organisation relationship/lifecycle 13/13; wallet integration 6/6; QR attendance 32/32 plus persistence-failure 1/1; shift-swap assignment/member/admin/concurrency 12/12; affected-module gate 90/90; route/auth 5/5; ambient-transaction regression green. Current focused proof is one 53/53 disposable-Linux run: all 51 `VolunteerHoursParityTests` plus both `V15FeedActivityCompatibilityTests`, with 3,007 tests discovered. The clean affected rerun selected and passed 243/243 with zero failed/skipped in 418.639s. The full 3,007-test suite remains open. |
-| Migration runtime chain | EF applied all 123 migrations through `20260712214912_EventRegistrationWaitlistLifecycleParity` to blank disposable PostgreSQL, and `has-pending-model-changes` is green. The latest migration safely expands canonical audience ledgers with capacity/version/offer evidence and creates exact immutable registration/waitlist history tables. Focused capacity, queue, offer, idempotency, tenant, and immutability proof passed 4/4. Prior broadcast/template/lifecycle, group invite/export/form/Q&A, populated, and invalid-migration evidence remains retained. No production resource was touched. |
+| Migration runtime chain | EF applied all 124 migrations through `20260712221737_EventPeopleAttendanceWorkflowParity` to blank disposable PostgreSQL, and `has-pending-model-changes` is green. The latest migration deterministically versions attendance facts and adds exact append-only `event_attendance_activity` evidence. Focused roster privacy, manager registration, attendance concurrency/undo, unified history, bulk, CSV, tenant, and immutability proof passed 4/4. Prior registration/waitlist, broadcast/template/lifecycle, and retained migration evidence remains green. No production resource was touched. |
 | Web UK route matrix | 608/608 matched, 0 missing, 0 extra application routes, 3 infrastructure routes ignored |
 | Web UK Jest | 31/31 suites and 1,021/1,021 tests passed after the localization/RTL, tenant-boundary, contextual identity/auth/accessibility, Explore, and profile-status slices |
 | Web UK lint and CSS build | Passed |

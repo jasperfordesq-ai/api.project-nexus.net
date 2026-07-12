@@ -15,15 +15,15 @@ blank PostgreSQL replay.
 | Source | Count | Notes |
 | --- | ---: | --- |
 | Laravel migrations | 377 | PHP migration files under `database/migrations`. |
-| ASP.NET migration source files | 125 | Main migration `.cs` files excluding designers and the model snapshot. |
-| ASP.NET runtime migrations | 123 | Blank replay applied every recorded EF migration through `20260712214912_EventRegistrationWaitlistLifecycleParity`; `has-pending-model-changes` is green. |
+| ASP.NET migration source files | 126 | Main migration `.cs` files excluding designers and the model snapshot. |
+| ASP.NET runtime migrations | 124 | Blank replay applied every recorded EF migration through `20260712221737_EventPeopleAttendanceWorkflowParity`; `has-pending-model-changes` is green. |
 | Laravel created tables | 298 | Unique `Schema::create(...)` table names. |
 | Laravel touched tables | 128 | Unique `Schema::table(...)` table names. |
 | Laravel explicit model tables | 267 | Unique `protected/public $table = ...` model declarations. |
 | Laravel source tables | 455 | Union of migration-created, migration-touched, and explicit model tables. |
-| ASP.NET tables | 355 | Static table union after adding canonical registration/waitlist histories. |
-| Exact matched tables | 164 | Current exact table-name matches. |
-| Missing Laravel tables | 291 | Laravel source names not represented exactly in ASP.NET. |
+| ASP.NET tables | 356 | Static table union after adding canonical attendance activity evidence. |
+| Exact matched tables | 165 | Current exact table-name matches. |
+| Missing Laravel tables | 290 | Laravel source names not represented exactly in ASP.NET. |
 | Extra ASP.NET tables | 191 | .NET table names with no exact Laravel table name. |
 
 These counts are not a parity score. Static table-name matching will overstate
@@ -33,7 +33,16 @@ triage and compatibility decisions before any table can be marked equivalent.
 
 ## 2026-07-12 Runtime Migration, Direct-Message, And Safeguarding Evidence Status
 
-`20260712214912_EventRegistrationWaitlistLifecycleParity` is the current latest
+`20260712221737_EventPeopleAttendanceWorkflowParity` is the current latest
+migration and runtime ID 124. It deterministically upgrades existing attendance
+facts to version 1 with state timestamps and inferred check-in/check-out times,
+then creates exact `event_attendance_activity` evidence. PostgreSQL triggers
+make activity append-only, and downgrade refuses to discard evidence. All 124
+migrations applied to blank disposable PostgreSQL 16, EF reports no pending
+model changes, and focused Event People proof passed 4/4. No production
+resource was touched.
+
+`20260712214912_EventRegistrationWaitlistLifecycleParity` is the preceding
 migration and runtime ID 123. It deterministically upgrades existing canonical
 audience rows with `event` capacity-pool keys, version 1, state timestamps, and
 collision-free queue sequences before adding uniqueness constraints. It adds

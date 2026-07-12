@@ -97,8 +97,34 @@ public sealed class EventAttendance : ITenantEntity
     public int EventId { get; set; }
     public int UserId { get; set; }
     public string AttendanceStatus { get; set; } = "attended";
+    public long AttendanceVersion { get; set; } = 1;
+    public DateTime StatusChangedAt { get; set; } = DateTime.UtcNow;
+    public int? StatusChangedBy { get; set; }
+    public DateTime? CheckedInAt { get; set; }
+    public int? CheckedInBy { get; set; }
+    public DateTime? CheckedOutAt { get; set; }
+    public decimal? HoursCredited { get; set; }
+    public string? Notes { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+
+public sealed class EventAttendanceActivity : ITenantEntity
+{
+    public long Id { get; set; }
+    public int TenantId { get; set; }
+    public int EventId { get; set; }
+    public long AttendanceId { get; set; }
+    public int UserId { get; set; }
+    public int ActorUserId { get; set; }
+    public long AttendanceVersion { get; set; }
+    public string Action { get; set; } = string.Empty;
+    public string? FromStatus { get; set; }
+    public string ToStatus { get; set; } = string.Empty;
+    public string IdempotencyKey { get; set; } = string.Empty;
+    public string? Reason { get; set; }
+    public string Metadata { get; set; } = "{}";
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 
 public sealed class EventBroadcast : ITenantEntity
