@@ -28097,11 +28097,13 @@ describe('shared accessible frontend shell', () => {
       });
     expect(accessibilityResponse.headers.location).toBe('/volunteering/accessibility?status=accessibility-saved');
     expect(api.callVolunteeringApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/accessibility-needs', {
-      need_types: ['mobility', 'sensory'],
-      description: 'Step-free access',
-      accommodations_required: 'Ramp',
-      emergency_contact_name: 'Alex',
-      emergency_contact_phone: '12345'
+      needs: [{
+        need_type: 'mobility',
+        description: 'Step-free access',
+        accommodations_required: 'Ramp',
+        emergency_contact_name: 'Alex',
+        emergency_contact_phone: '12345'
+      }]
     });
 
     const certificateResponse = await agent

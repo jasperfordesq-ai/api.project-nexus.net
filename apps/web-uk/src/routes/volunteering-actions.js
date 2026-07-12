@@ -2604,12 +2604,20 @@ router.post('/hours', asyncRoute(async (req, res) => {
 }));
 
 router.post('/accessibility', asyncRoute(async (req, res) => {
-  const payload = {
-    need_types: stringArray(req.body.need_types),
+  const selectedTypes = stringArray(req.body.need_types).filter((value) => (
+    ACCESSIBILITY_NEED_TYPES.some((type) => type.value === value)
+  ));
+  const sharedDetails = {
     description: trimmed(req.body.description) || null,
     accommodations_required: trimmed(req.body.accommodations_required) || null,
     emergency_contact_name: trimmed(req.body.emergency_contact_name) || null,
     emergency_contact_phone: trimmed(req.body.emergency_contact_phone) || null
+  };
+  const payload = {
+    needs: selectedTypes.map((needType) => ({
+      need_type: needType,
+      ...sharedDetails
+    }))
   };
 
   return runAction(
