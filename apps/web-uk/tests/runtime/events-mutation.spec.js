@@ -6,7 +6,7 @@
 const { test, expect } = require('@playwright/test');
 const AxeBuilder = require('@axe-core/playwright').default;
 const { resolveOptions } = require('../../scripts/laravel-runtime-smoke');
-const { deleteEvent, getEvent, getEvents, login } = require('../../src/lib/api');
+const { deleteEvent, getEvent, getEventRsvps, getEvents, login } = require('../../src/lib/api');
 
 const smoke = resolveOptions({}, process.env);
 const mountPath = `/${encodeURIComponent(smoke.tenant)}/accessible`;
@@ -122,6 +122,40 @@ test('creates, updates, and deletes a disposable event through Web UK', async ({
     expect(coverResponse.status()).toBe(200);
     expect(coverResponse.headers()['content-type']).toContain('image/');
     expect((await coverResponse.body()).length).toBeGreaterThan(0);
+
+    const assertRsvpStatus = async (expectedStatus) => {
+      const detail = dataFrom(await getEvent(token, eventId));
+      const rawStatus = detail?.my_rsvp ?? detail?.myRsvp ?? detail?.user_rsvp ?? detail?.rsvp_status;
+      const currentStatus = rawStatus && typeof rawStatus === 'object'
+        ? (rawStatus.status || rawStatus.rsvp_status)
+        : rawStatus;
+      expect(currentStatus).toBe(expectedStatus);
+      const rsvps = rowsFrom(await getEventRsvps(token, eventId));
+      if (expectedStatus === 'not_going') {
+        expect(rsvps).toHaveLength(0);
+      } else {
+        expect(rsvps).toHaveLength(1);
+        expect(rsvps[0]?.status || rsvps[0]?.rsvp_status).toBe(expectedStatus);
+      }
+    };
+    const rsvpForm = page.locator(`form[action$="/events/${eventId}/rsvp"]`);
+    await page.locator('input[name="status"][value="going"]').check();
+    let rsvpResponse = await submit(page, `/events/${eventId}/rsvp`, rsvpForm.locator('button[type="submit"]'));
+    expect(rsvpResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    await assertRsvpStatus('going');
+
+    await page.locator('input[name="status"][value="interested"]').check();
+    rsvpResponse = await submit(page, `/events/${eventId}/rsvp`, rsvpForm.locator('button[type="submit"]'));
+    expect(rsvpResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    await assertRsvpStatus('interested');
+
+    await page.locator('input[name="status"][value="not_going"]').check();
+    rsvpResponse = await submit(page, `/events/${eventId}/rsvp`, rsvpForm.locator('button[type="submit"]'));
+    expect(rsvpResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    await assertRsvpStatus('not_going');
     await expect(page.locator('.govuk-caption-l')).toHaveText('Event details');
     await expect(page.getByRole('heading', { name: 'Description', exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Event information', exact: true })).toBeVisible();

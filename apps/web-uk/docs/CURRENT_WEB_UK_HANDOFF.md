@@ -5110,17 +5110,21 @@ merchant coupons, so that mutation remains fixture-blocked. Hosted checkout,
 offer/order/coupon depth, merchant profile-image uploads, manual assistive-
 technology review, and ASP.NET compatibility remain open.
 
-## 2026-07-12 Disposable Event Cover Lifecycle
+## 2026-07-12 Disposable Event Cover And RSVP Lifecycle
 
 The default-English event gate now uploads a real PNG while creating its
 unique event, verifies Laravel's persisted cover, fetches the image
 successfully, proves rendered visibility, then continues through edit,
-320-pixel structure/reflow/axe, delete, and final absence. The first run exposed
+`going`, `interested`, and `not_going` RSVP transitions, 320-pixel
+structure/reflow/axe, delete, and final absence. Event detail independently
+confirms every persisted status; Laravel's attendee collection intentionally
+contains only `going` and `interested` rows, while `not_going` remains visible
+as the current user's detail state. The first run exposed
 backend-relative `/uploads/...` covers being requested from Web UK's origin;
 event list/detail/edit now resolve them only against the configured backend
-origin. The corrected `1/1` run passed in `55.0` seconds and retained no
+origin. The expanded `1/1` run passed in `86.3` seconds and retained no
 fixture. Cover removal remains blocked because Laravel exposes upload but no
-removal endpoint; polls/waitlist/series/attendee/check-in depth, manual review,
+removal endpoint; polls/waitlist/series/broader attendee/check-in depth, manual review,
 tenant gates, and ASP.NET compatibility remain open.
 
 ## 2026-07-12 Disposable Volunteering Credential Lifecycle
