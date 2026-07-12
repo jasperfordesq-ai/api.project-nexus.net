@@ -51,6 +51,7 @@ function middleware({ insuranceEnabled = true } = {}) {
       }
     };
     res.locals.urlFor = (pathname) => pathname;
+    res.locals.t = req.t;
     res.render = (view, locals = {}) => res.json({ view, locals });
     next();
   };
@@ -241,12 +242,19 @@ describe('Laravel account and settings contract parity', () => {
 
   it('reads Laravel availability from data.weekly, trims time values, and excludes one-off slots', async () => {
     const response = await request(settingsApp()).get('/settings/availability');
+    const unknownStatusResponse = await request(settingsApp()).get('/settings/availability?status=untrusted');
+    const t = createTranslator('en');
 
     expect(response.status).toBe(200);
     expect(api.callUserSettingsApi).toHaveBeenCalledWith('test-token', 'GET', '/availability');
+    expect(response.body.locals.title).toBe(t('govuk_alpha_settings.availability.title'));
+    expect(response.body.locals.dayLabels).toEqual(
+      Array.from({ length: 7 }, (_, index) => t(`govuk_alpha_settings.availability.day_labels.${index}`))
+    );
     expect(response.body.locals.availabilityByDay).toEqual({
       1: [{ start: '09:00', end: '10:30' }]
     });
+    expect(unknownStatusResponse.body.locals.statusMessage).toBe('');
   });
 
   it('submits Laravel bulk availability with the canonical schedule field', async () => {

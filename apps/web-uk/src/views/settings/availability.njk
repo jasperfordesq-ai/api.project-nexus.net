@@ -5,11 +5,11 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="{{ urlFor('/account') }}">Back to account settings</a>
+  <a class="govuk-back-link" href="{{ urlFor('/account') }}">{{ t("govuk_alpha_settings.availability.back_link") }}</a>
 
-  <span class="govuk-caption-xl">{{ t("account.settings_title") }}</span>
-  <h1 class="govuk-heading-xl">Your availability</h1>
-  <p class="govuk-body-l">Set your weekly availability so others can find times that work for both of you. You can set different times for each day.</p>
+  <span class="govuk-caption-xl">{{ t("govuk_alpha_settings.availability.caption") }}</span>
+  <h1 class="govuk-heading-xl">{{ t("govuk_alpha_settings.availability.title") }}</h1>
+  <p class="govuk-body-l">{{ t("govuk_alpha_settings.availability.description") }}</p>
 
   {% if statusMessage and successStatus %}
     <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="availability-status">
@@ -31,7 +31,7 @@
     </div>
   {% endif %}
 
-  <div class="govuk-inset-text" id="availability">Add one or more time slots for each day. Leave a slot blank to skip it. The end time must be after the start time.</div>
+  <div class="govuk-inset-text" id="availability">{{ t("govuk_alpha_settings.availability.instructions") }}</div>
 
   <form method="post" action="{{ urlFor('/settings/availability') }}" novalidate>
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
@@ -46,13 +46,13 @@
           <div class="govuk-grid-row">
             <div class="govuk-grid-column-one-half">
               <div class="govuk-form-group">
-                <label class="govuk-label" for="start-{{ backendDay }}-{{ slotIndex }}">{{ t("events.start_time_label") }}</label>
+                <label class="govuk-label" for="start-{{ backendDay }}-{{ slotIndex }}">{{ t("govuk_alpha_settings.availability.slot_start_label") }}</label>
                 <input class="govuk-input govuk-input--width-5" id="start-{{ backendDay }}-{{ slotIndex }}" name="slots[{{ backendDay }}][{{ slotIndex }}][start]" type="time" value="{{ slot.start or '' }}">
               </div>
             </div>
             <div class="govuk-grid-column-one-half">
               <div class="govuk-form-group">
-                <label class="govuk-label" for="end-{{ backendDay }}-{{ slotIndex }}">{{ t("events.end_time_label") }}</label>
+                <label class="govuk-label" for="end-{{ backendDay }}-{{ slotIndex }}">{{ t("govuk_alpha_settings.availability.slot_end_label") }}</label>
                 <input class="govuk-input govuk-input--width-5" id="end-{{ backendDay }}-{{ slotIndex }}" name="slots[{{ backendDay }}][{{ slotIndex }}][end]" type="time" value="{{ slot.end or '' }}">
               </div>
             </div>
@@ -61,6 +61,6 @@
       </fieldset>
     {% endfor %}
 
-    <button class="govuk-button" data-module="govuk-button">Save availability</button>
+    <button class="govuk-button" data-module="govuk-button">{{ t("govuk_alpha_settings.availability.save_button") }}</button>
   </form>
 {% endblock %}

@@ -74,7 +74,6 @@ const SETTINGS_THEME_HINTS = {
   system: 'Follow the light or dark setting on your device.'
 };
 const SETTINGS_AVAILABILITY_DISPLAY_DAYS = [1, 2, 3, 4, 5, 6, 0];
-const SETTINGS_AVAILABILITY_DAY_LABELS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const SETTINGS_AVAILABILITY_SLOTS_PER_DAY = 3;
 const SETTINGS_LINK_TYPE_LABELS = {
   family: 'Family member',
@@ -557,15 +556,19 @@ router.get('/availability', asyncRoute(async (req, res) => {
   const status = typeof req.query.status === 'string' ? req.query.status : '';
 
   return res.render('settings/availability', {
-    title: 'Your availability',
+    title: res.locals.t('govuk_alpha_settings.availability.title'),
     activeNav: 'account',
     status,
-    statusMessage: SETTINGS_STATUS_MESSAGES[status] || '',
+    statusMessage: SETTINGS_STATUS_MESSAGES[status]
+      ? res.locals.t(`govuk_alpha_settings.states.${status}`)
+      : '',
     successStatus: status === 'availability-saved',
     errorStatus: ['availability-invalid', 'availability-failed'].includes(status),
     availabilityByDay,
     displayDays: SETTINGS_AVAILABILITY_DISPLAY_DAYS,
-    dayLabels: SETTINGS_AVAILABILITY_DAY_LABELS,
+    dayLabels: SETTINGS_AVAILABILITY_DISPLAY_DAYS.map((_, index) => (
+      res.locals.t(`govuk_alpha_settings.availability.day_labels.${index}`)
+    )),
     slotsPerDay: SETTINGS_AVAILABILITY_SLOTS_PER_DAY
   });
 }));
