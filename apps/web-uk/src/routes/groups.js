@@ -1200,12 +1200,12 @@ router.get('/:id(\\d+)/discussions/:discussionId(\\d+)', requireAuth, asyncRoute
   const { id, discussionId } = req.params;
   const [groupResult, discussionResult] = await Promise.all([
     getGroup(req.token, id),
-    callGroup(req.token, 'GET', `/${id}/discussions/${discussionId}/messages`)
+    callGroup(req.token, 'GET', `/${id}/discussions/${discussionId}`)
   ]);
   const group = normalizeGroup(dataFrom(groupResult)?.group || dataFrom(groupResult), Number(id));
   const data = dataFrom(discussionResult) || {};
   const discussion = normalizeDiscussion(data.discussion || data.thread || data);
-  const messages = collectionFrom({ data })
+  const messages = (Array.isArray(data.messages) ? data.messages : collectionFrom({ data }))
     .map(normalizeDiscussion)
     .filter((message) => message.id !== null);
 

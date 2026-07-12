@@ -837,7 +837,7 @@ describe('shared accessible frontend shell', () => {
     api.getExchangeAttentionCount.mockResolvedValue({
       data: {
         count: 2,
-        items: [
+        messages: [
           { id: 88, listing_title: 'Repair help' },
           { id: 89, listing_title: 'Garden swap' }
         ]
@@ -18956,7 +18956,7 @@ describe('shared accessible frontend shell', () => {
     expect(api.getGroup).toHaveBeenCalledTimes(1);
     expect(api.getGroup).toHaveBeenCalledWith('test-token', '42');
     expect(api.callGroupApi).toHaveBeenCalledTimes(1);
-    expect(api.callGroupApi).toHaveBeenCalledWith('test-token', 'GET', '/42/discussions/33/messages');
+    expect(api.callGroupApi).toHaveBeenCalledWith('test-token', 'GET', '/42/discussions/33');
   });
 
   it('renders the Laravel group manage page for signed-in group admins', async () => {

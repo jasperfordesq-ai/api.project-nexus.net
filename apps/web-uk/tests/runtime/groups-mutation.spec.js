@@ -71,6 +71,8 @@ test('certifies a disposable private group and its owner-managed content through
   const fileBody = `Disposable group file ${runId}\n`;
   const announcementTitle = `Disposable announcement ${runId}`;
   const updatedAnnouncementTitle = `${announcementTitle} updated`;
+  const discussionTitle = `Disposable discussion ${runId}`;
+  const discussionReply = `Disposable discussion reply ${runId}`;
   const auth = await login(smoke.email, smoke.password, smoke.tenant);
   const token = auth.access_token;
   let groupId = null;
@@ -185,6 +187,33 @@ test('certifies a disposable private group and its owner-managed content through
     expect(announcementDeleteResponse.status()).toBe(302);
     await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
     await expect(page.getByText(updatedAnnouncementTitle, { exact: true })).toHaveCount(0);
+
+    await page.goto(`${mountPath}/groups/${groupId}/discussions/new`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
+    await expect(page.locator('h1')).toHaveText('Start a discussion');
+    await page.locator('#title').fill(discussionTitle);
+    await page.locator('#content').fill('Disposable discussion content created through the Web UK member workflow.');
+    const discussionCreateResponse = await submit(page, `/groups/${groupId}/discussions/new`, page.locator('form:has(#title) button'));
+    expect(discussionCreateResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    const discussionId = Number(new URL(page.url()).pathname.match(/\/discussions\/(\d+)$/)?.[1]);
+    expect(discussionId).toBeGreaterThan(0);
+    await expect(page.locator('h1')).toHaveText(discussionTitle);
+    await expect(page.getByText('Disposable discussion content created through the Web UK member workflow.', { exact: true })).toHaveCount(2);
+    await expect(page.locator('#discussion-replies')).toHaveText('1 replies');
+    await expectAccessibleReflow(page);
+
+    await page.locator('#content').fill(discussionReply);
+    const discussionReplyResponse = await submit(page, `/groups/${groupId}/discussions/${discussionId}/reply`, page.locator('form[action$="/reply"] button'));
+    expect(discussionReplyResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    await expect(page.locator('#discussion-replies')).toHaveText('2 replies');
+    await expect(page.getByText(discussionReply, { exact: true })).toHaveCount(1);
+
+    await page.goto(`${mountPath}/groups/${groupId}/discussions`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
+    const discussionCard = page.locator('.nexus-alpha-card', { hasText: discussionTitle });
+    await expect(discussionCard).toHaveCount(1);
+    await expect(discussionCard).toContainText('2 replies');
+    await expectAccessibleReflow(page);
 
     await page.goto(`${mountPath}/groups/${groupId}/edit`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
     await expectAccessibleReflow(page);

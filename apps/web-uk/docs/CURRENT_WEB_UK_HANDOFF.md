@@ -4929,6 +4929,20 @@ serious/critical axe assertions and retained no fixture. This certifies the
 owner path only; active-member/non-admin behavior, tenant gates, manual
 assistive-technology depth, and ASP.NET compatibility remain open.
 
+## 2026-07-12 Group Discussion Contract And Lifecycle
+
+The real Laravel-backed discussion journey exposed a mock-hidden contract bug:
+Web UK requested nonexistent `GET /api/v2/groups/{group}/discussions/{id}/messages`
+and expected `items`, while Laravel declares `GET .../discussions/{id}` and
+returns `data.discussion` plus `data.messages`. Web UK now matches that read
+contract; reply POST correctly remains on `.../{id}/messages`. The expanded
+disposable gate passed `1/1` in `249.6` seconds after creating a discussion,
+proving Laravel's initial-message count, posting and proving a reply, checking
+the updated index count, passing 320 CSS pixel structural/reflow/axe checks,
+and deleting the parent group with no retained fixture. Non-owner active-member
+behavior, tenant gates, manual assistive-technology depth, and ASP.NET
+compatibility remain open.
+
 ## Documents To Trust
 
 Read these in order:
