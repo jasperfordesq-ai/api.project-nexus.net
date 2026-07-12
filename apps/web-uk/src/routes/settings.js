@@ -55,6 +55,9 @@ const SETTINGS_STATUS_MESSAGES = {
   'link-exists': 'A link with this member already exists.',
   'link-max': 'You have reached the maximum number of linked accounts.',
   'link-failed': 'Sorry, we could not complete that request. Please try again.',
+  'link-vetting-required': 'Safeguarding check needed',
+  'link-contact-restricted': 'This member has asked for a coordinator to arrange contact on their behalf. Your message has not been sent. Please contact your broker or community administrator so they can help arrange the next safe step.',
+  'link-safeguarding-unavailable': 'We cannot confirm the community safeguarding policy right now. No message has been sent. Please try again shortly.',
   'appearance-saved': 'Your appearance settings have been saved.',
   'appearance-invalid': 'Choose one of the available themes.',
   'appearance-failed': 'Sorry, we could not save your appearance settings. Please try again.',
@@ -432,6 +435,9 @@ function linkedFailureStatus(error) {
   }
 
   const code = apiErrorCode(error);
+  if (code.includes('SAFEGUARDING_POLICY_UNAVAILABLE')) return 'link-safeguarding-unavailable';
+  if (code.includes('VETTING_REQUIRED')) return 'link-vetting-required';
+  if (code.includes('CONTACT_RESTRICTED')) return 'link-contact-restricted';
   if (code.includes('SELF')) return 'link-self';
   if (code.includes('EXIST')) return 'link-exists';
   if (code.includes('MAX') || code.includes('LIMIT')) return 'link-max';
@@ -471,7 +477,17 @@ router.get('/linked-accounts', asyncRoute(async (req, res) => {
     status,
     statusMessage: SETTINGS_STATUS_MESSAGES[status] || '',
     successStatus: ['link-requested', 'link-approved', 'link-revoked', 'link-permissions-saved'].includes(status),
-    errorStatus: ['link-email-invalid', 'link-user-not-found', 'link-self', 'link-exists', 'link-max', 'link-failed'].includes(status),
+    errorStatus: [
+      'link-email-invalid',
+      'link-user-not-found',
+      'link-self',
+      'link-exists',
+      'link-max',
+      'link-failed',
+      'link-vetting-required',
+      'link-contact-restricted',
+      'link-safeguarding-unavailable'
+    ].includes(status),
     children,
     parents,
     maxChildren: 20,

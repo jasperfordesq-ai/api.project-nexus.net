@@ -3900,6 +3900,41 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('preserves Laravel safeguarding failures for linked-account requests', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const cookie = signedAuthCookieHeader();
+    const csrfToken = await csrfTokenFor(agent, '/contact', cookie);
+    const cases = [
+      ['SAFEGUARDING_POLICY_UNAVAILABLE', 'link-safeguarding-unavailable', 'We cannot confirm the community safeguarding policy right now.'],
+      ['VETTING_REQUIRED', 'link-vetting-required', 'Safeguarding check needed'],
+      ['SAFEGUARDING_CONTACT_RESTRICTED', 'link-contact-restricted', 'This member has asked for a coordinator to arrange contact on their behalf.']
+    ];
+
+    for (const [code, status, message] of cases) {
+      api.callUserSettingsApi.mockRejectedValueOnce(new api.ApiError(message, 422, { code }));
+      const response = await agent
+        .post('/settings/linked-accounts/request')
+        .set('Cookie', cookie)
+        .type('form')
+        .send({
+          _csrf: csrfToken,
+          email: 'linked-member@example.org',
+          relationship_type: 'family',
+          perm_can_view_activity: 'on'
+        });
+      expect(response.status).toBe(302);
+      expect(response.headers.location).toBe(`/settings/linked-accounts?status=${status}#request`);
+
+      const rendered = await agent
+        .get(`/settings/linked-accounts?status=${status}`)
+        .set('Cookie', cookie);
+      expect(rendered.status).toBe(200);
+      expect(rendered.text).toContain(message);
+      expect(rendered.text).toContain('href="#request"');
+    }
+  });
+
   it('renders the Laravel-style insurance settings page', async () => {
     const api = require('../src/lib/api');
 
