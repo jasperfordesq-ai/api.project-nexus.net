@@ -22640,6 +22640,7 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('Avery Stone');
     expect(signed.text).toContain('4 March 2099');
     expect(signed.text).toContain('Edited');
+    expect(signed.text).toContain('Avery Stone · 4 March 2099 · Edited');
     expect(signed.text).toContain('Yes, Saturday morning works.');
     expect(signed.text).toContain('Morgan Lee');
     expect(signed.text).toContain('5 March 2099');

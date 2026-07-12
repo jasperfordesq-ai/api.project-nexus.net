@@ -675,12 +675,12 @@ function decorateListingAnalytics(result) {
   };
 }
 
-function listingCommentsStatus(status) {
+function listingCommentsStatus(status, t) {
   const states = {
-    'comment-added': { type: 'success', title: 'Success', message: 'Your comment has been posted.' },
-    'reply-added': { type: 'success', title: 'Success', message: 'Your reply has been posted.' },
-    'comment-invalid': { type: 'error', title: 'There is a problem', message: 'Enter a comment before posting.', anchor: 'body' },
-    'comment-failed': { type: 'error', title: 'There is a problem', message: 'Your comment could not be posted. Please try again.', anchor: 'body' }
+    'comment-added': { type: 'success', title: t('states.success_title'), message: t('govuk_alpha_listings.comments.states.comment-added') },
+    'reply-added': { type: 'success', title: t('states.success_title'), message: t('govuk_alpha_listings.comments.states.reply-added') },
+    'comment-invalid': { type: 'error', title: t('states.error_title'), message: t('govuk_alpha_listings.comments.states.comment-invalid'), anchor: 'body' },
+    'comment-failed': { type: 'error', title: t('states.error_title'), message: t('govuk_alpha_listings.comments.states.comment-failed'), anchor: 'body' }
   };
   return states[trimmed(status)] || null;
 }
@@ -999,12 +999,12 @@ router.get('/:id(\\d+)/comments', asyncRoute(async (req, res) => {
   const listing = dataFrom(listingResult) || {};
   const commentData = commentsPayload(commentsResult);
   return res.render('listings/comments', {
-    title: 'Comments',
+    title: res.locals.t('govuk_alpha_listings.comments.title'),
     listing: { ...listing, id },
     listingTitle: trimmed(listing.title || listing.name) || 'Comments',
     comments: commentData.comments,
     commentsCount: commentData.count,
-    status: listingCommentsStatus(req.query.status),
+    status: listingCommentsStatus(req.query.status, res.locals.t),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { notFoundTitle: 'Listing not found' }));

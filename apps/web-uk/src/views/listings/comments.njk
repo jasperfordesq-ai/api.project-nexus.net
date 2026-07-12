@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="{{ urlFor('/listings/' + (listing.id | string)) }}">Back to listing</a>
+  <a class="govuk-back-link" href="{{ urlFor('/listings/' + (listing.id | string)) }}">{{ t("govuk_alpha_listings.comments.back_to_listing") }}</a>
 
   {% if status and status.type == "error" %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
@@ -31,11 +31,11 @@
   {% endif %}
 
   <span class="govuk-caption-xl">{{ listingTitle }}</span>
-  <h1 class="govuk-heading-xl">Comments <span class="govuk-!-font-weight-regular">({{ commentsCount }})</span></h1>
+  <h1 class="govuk-heading-xl">{{ t("govuk_alpha_listings.comments.title") }} <span class="govuk-!-font-weight-regular">({{ commentsCount }})</span></h1>
 
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
-      <h2 class="govuk-heading-l">Comments</h2>
+      <h2 class="govuk-heading-l">{{ t("govuk_alpha_listings.comments.heading") }}</h2>
 
       {% if comments.length %}
         <ul class="govuk-list nexus-alpha-comments-list">
@@ -44,21 +44,21 @@
           {% endfor %}
         </ul>
       {% else %}
-        <div class="govuk-inset-text"><p class="govuk-body">No comments yet. Be the first to start the conversation.</p></div>
+        <div class="govuk-inset-text"><p class="govuk-body">{{ t("govuk_alpha_listings.comments.empty") }}</p></div>
       {% endif %}
 
-      <h2 class="govuk-heading-m govuk-!-margin-top-6" id="add-comment">{{ t("blog.comment_body_label") }}</h2>
+      <h2 class="govuk-heading-m govuk-!-margin-top-6" id="add-comment">{{ t("govuk_alpha_listings.comments.add_heading") }}</h2>
       <form method="post" action="{{ urlFor('/listings/' + (listing.id | string) + '/comments') }}" class="govuk-!-margin-top-2">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
         <div class="govuk-form-group{% if status and status.anchor == 'body' %} govuk-form-group--error{% endif %}">
-          <label class="govuk-label govuk-label--s" for="body">Your comment</label>
-          <div id="body-hint" class="govuk-hint">Be kind and keep it relevant to this listing.</div>
+          <label class="govuk-label govuk-label--s" for="body">{{ t("govuk_alpha_listings.comments.body_label") }}</label>
+          <div id="body-hint" class="govuk-hint">{{ t("govuk_alpha_listings.comments.body_hint") }}</div>
           {% if status and status.anchor == 'body' %}
             <p id="body-error" class="govuk-error-message"><span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span> {{ status.message }}</p>
           {% endif %}
           <textarea class="govuk-textarea{% if status and status.anchor == 'body' %} govuk-textarea--error{% endif %}" id="body" name="body" rows="4" maxlength="5000" aria-describedby="body-hint{% if status and status.anchor == 'body' %} body-error{% endif %}"></textarea>
         </div>
-        <button type="submit" class="govuk-button" data-module="govuk-button">{{ t("blog.comment_submit") }}</button>
+        <button type="submit" class="govuk-button" data-module="govuk-button">{{ t("govuk_alpha_listings.comments.submit") }}</button>
       </form>
     </div>
   </div>

@@ -73,6 +73,7 @@ test('creates, updates, uploads an image for, and deletes a disposable listing',
   const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
   const createdTitle = `Codex disposable listing ${runId}`;
   const updatedTitle = `${createdTitle} updated`;
+  const comment = `Disposable listing comment ${runId}`;
   const auth = await login(smoke.email, smoke.password, smoke.tenant);
   const token = auth.access_token;
   let listingId = null;
@@ -144,6 +145,26 @@ test('creates, updates, uploads an image for, and deletes a disposable listing',
     await expect(page.locator('h1')).toContainText(updatedTitle);
     expect(await findByTitle(token, createdTitle)).toBeNull();
     expect(await findByTitle(token, updatedTitle)).toBeTruthy();
+
+    await page.goto(`${mountPath}/listings/${listingId}/comments`, {
+      waitUntil: 'domcontentloaded',
+      timeout: 300_000
+    });
+    await page.locator('#body').fill(comment);
+    const commentResponse = await submitListingForm(
+      page,
+      `/listings/${listingId}/comments`,
+      page.locator('form:has(#body) button[type="submit"]')
+    );
+    expect(commentResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    await expect(page.getByText(comment, { exact: true })).toBeVisible();
+    await expectAccessibleReflow(page);
+
+    await page.goto(`${mountPath}/listings/${listingId}`, {
+      waitUntil: 'domcontentloaded',
+      timeout: 300_000
+    });
 
     const deleteResponse = await submitListingForm(
       page,

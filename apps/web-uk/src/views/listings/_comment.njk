@@ -3,9 +3,9 @@
   {% set meta = [] %}
   {% if comment.authorName %}{% set meta = meta.concat([comment.authorName]) %}{% endif %}
   {% if comment.createdAtLabel %}{% set meta = meta.concat([comment.createdAtLabel]) %}{% endif %}
-  {% if comment.edited %}{% set meta = meta.concat(["Edited"]) %}{% endif %}
+  {% if comment.edited %}{% set meta = meta.concat([t("govuk_alpha_listings.comments.edited")]) %}{% endif %}
   {% if meta.length %}
-    <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-2">{{ meta | join(" - ") }}</p>
+    <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-2">{{ meta | join(" · ") }}</p>
   {% endif %}
   {% if comment.replies.length %}
     <ul class="govuk-list nexus-alpha-comments-list--nested">
