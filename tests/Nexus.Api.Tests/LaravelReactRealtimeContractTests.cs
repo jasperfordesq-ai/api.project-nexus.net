@@ -245,18 +245,18 @@ public sealed class LaravelReactRealtimeContractTests : IntegrationTestBase
 
         var addedResponse = await Client.PostAsJsonAsync($"/api/v2/messages/{messageId}/reactions", new
         {
-            emoji = "👍"
+            emoji = "\U0001F44D"
         });
 
         addedResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         var added = await ReadDataAsync(addedResponse);
         added.GetProperty("action").GetString().Should().Be("added");
-        added.GetProperty("emoji").GetString().Should().Be("👍");
+        added.GetProperty("emoji").GetString().Should().Be("\U0001F44D");
         added.GetProperty("message_id").GetInt32().Should().Be(messageId);
 
         var removedResponse = await Client.PostAsJsonAsync($"/api/v2/messages/{messageId}/reactions", new
         {
-            emoji = "👍"
+            emoji = "\U0001F44D"
         });
 
         removedResponse.StatusCode.Should().Be(HttpStatusCode.OK);

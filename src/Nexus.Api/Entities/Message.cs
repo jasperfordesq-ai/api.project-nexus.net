@@ -62,4 +62,5 @@ public class Message : ITenantEntity
     public Conversation? Conversation { get; set; }
     public User? Sender { get; set; }
     public User? DeletedByUser { get; set; }
+    public ICollection<MessageReaction> Reactions { get; set; } = new List<MessageReaction>();
 }

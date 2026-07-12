@@ -8,11 +8,13 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
+using Nexus.Api.Middleware;
 using Nexus.Api.Services;
 
 namespace Nexus.Api.Controllers;
@@ -32,10 +34,10 @@ public class MemberParityController : ControllerBase
     private readonly GamificationService _gamification;
     private readonly IRealTimeMessagingService _realTimeMessaging;
     private readonly ILogger<MemberParityController> _logger;
+    private readonly DirectMessageReactionService _messageReactions;
     private const string LocalAdvertisingCampaignsKey = "local_advertising.campaigns";
     private const string PaidPushCampaignsKey = "paid_push.campaigns";
     private const string MerchantOnboardingProfileKeyPrefix = "merchant_onboarding.profile.";
-    private const string MessageReactionKeyPrefix = "message_reactions.";
     private const string AppreciationsKey = "social.appreciations";
     private static readonly JsonSerializerOptions StoreJsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -50,6 +52,7 @@ public class MemberParityController : ControllerBase
         SafeguardingInteractionPolicy safeguardingInteractionPolicy,
         GamificationService gamification,
         IRealTimeMessagingService realTimeMessaging,
+        DirectMessageReactionService messageReactions,
         ILogger<MemberParityController> logger)
     {
         _db = db;
@@ -58,6 +61,7 @@ public class MemberParityController : ControllerBase
         _safeguardingInteractionPolicy = safeguardingInteractionPolicy;
         _gamification = gamification;
         _realTimeMessaging = realTimeMessaging;
+        _messageReactions = messageReactions;
         _logger = logger;
     }
 
@@ -1018,58 +1022,48 @@ public class MemberParityController : ControllerBase
     }
 
     [HttpPost("messages/{messageId:int}/reactions")]
-    public async Task<IActionResult> MessageReactions(int messageId, [FromBody] JsonElement body)
+    [EnableRateLimiting(RateLimitingExtensions.MessagesReactionPolicy)]
+    public async Task<IActionResult> MessageReactions(
+        int messageId,
+        [FromBody] JsonElement body,
+        CancellationToken cancellationToken)
     {
         var emoji = Str(body, "emoji") ?? Str(body, "reaction");
         if (string.IsNullOrWhiteSpace(emoji))
         {
-            return BadRequest(new
+            return MessageReactionError("VALIDATION_ERROR", "Reaction emoji is required", 400, "emoji");
+        }
+        if (!DirectMessageReactionService.AllowedEmoji.Contains(emoji))
+            return MessageReactionError("VALIDATION_ERROR", "Invalid reaction emoji", 400, "emoji");
+
+        var outcome = await _messageReactions.ToggleAsync(
+            TenantId(), UserId(), messageId, emoji, cancellationToken);
+        if (!outcome.Succeeded)
+        {
+            var error = outcome.Error!;
+            return StatusCode(error.Status, new
             {
                 success = false,
-                code = "VALIDATION_ERROR",
-                error = "emoji is required"
+                errors = new[]
+                {
+                    new
+                    {
+                        code = error.Code,
+                        message = error.Message,
+                        required_vetting_types = error.Decision?.RequiredAttestationCodes ?? [],
+                        required_vetting_labels = error.Decision?.RequiredAttestationLabels ?? [],
+                        can_request_coordinator = error.Decision?.CanRequestCoordinator
+                    }
+                }
             });
         }
-
-        var userId = UserId();
-        var tenantId = TenantId();
-        var message = await _db.Messages
-            .Include(m => m.Conversation)
-            .FirstOrDefaultAsync(m => m.TenantId == tenantId && m.Id == messageId);
-
-        if (message?.Conversation == null
-            || (message.Conversation.Participant1Id != userId && message.Conversation.Participant2Id != userId))
-        {
-            return NotFound(new { success = false, code = "NOT_FOUND", error = "Message not found" });
-        }
-
-        var key = $"{MessageReactionKeyPrefix}{messageId}.{userId}.{Hex(emoji)}";
-        var existing = await _db.TenantConfigs.FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Key == key);
-        var added = false;
-        if (existing == null)
-        {
-            added = true;
-            _db.TenantConfigs.Add(new TenantConfig
-            {
-                TenantId = tenantId,
-                Key = key,
-                Value = JsonSerializer.Serialize(new { message_id = messageId, user_id = userId, emoji }),
-                UpdatedAt = DateTime.UtcNow
-            });
-        }
-        else
-        {
-            _db.TenantConfigs.Remove(existing);
-        }
-
-        await _db.SaveChangesAsync();
 
         return Ok(new
         {
             success = true,
             data = new
             {
-                action = added ? "added" : "removed",
+                action = outcome.Added ? "added" : "removed",
                 emoji,
                 message_id = messageId
             }
@@ -1120,7 +1114,41 @@ public class MemberParityController : ControllerBase
     public IActionResult LegacyMessageReaction([FromBody] JsonElement body) => Ok(new { data = new { reaction = Str(body, "reaction") ?? "like" } });
 
     [HttpGet("messages/reactions/batch")]
-    public IActionResult MessageReactionsBatch() => Ok(new { data = new Dictionary<string, object>() });
+    [EnableRateLimiting(RateLimitingExtensions.MessagesReactionBatchPolicy)]
+    public async Task<IActionResult> MessageReactionsBatch(
+        [FromQuery] string? ids,
+        CancellationToken cancellationToken)
+    {
+        var reactions = await _messageReactions.BatchAsync(
+            TenantId(), UserId(), ParseReactionIds(ids), cancellationToken);
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                reactions = reactions.ToDictionary(
+                    pair => pair.Key,
+                    pair => pair.Value.Select(group => new
+                    {
+                        emoji = group.Emoji,
+                        count = group.Count,
+                        user_ids = group.UserIds
+                    }).ToArray())
+            }
+        });
+    }
+
+    private IActionResult MessageReactionError(string code, string message, int status, string? field)
+        => StatusCode(status, new { success = false, errors = new[] { new { code, message, field } } });
+
+    private static int[] ParseReactionIds(string? ids)
+        => string.IsNullOrWhiteSpace(ids)
+            ? []
+            : ids.Split(',')
+                .Select(value => int.TryParse(value.Trim(), out var id) ? id : 0)
+                .Where(id => id > 0)
+                .Take(100)
+                .ToArray();
 
     [HttpPost("messages/upload-voice")]
     public IActionResult UploadVoiceMessage([FromBody] JsonElement body) => Ok(new { data = new { id = StableId(body), status = "uploaded" } });

@@ -111,6 +111,31 @@ public class MessagingConfiguration : TenantScopedConfiguration
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
         });
 
+        modelBuilder.Entity<MessageReaction>(entity =>
+        {
+            entity.ToTable("message_reactions");
+            entity.HasKey(row => row.Id);
+            entity.Property(row => row.Id).HasColumnName("id");
+            entity.Property(row => row.TenantId).HasColumnName("tenant_id");
+            entity.Property(row => row.MessageId).HasColumnName("message_id");
+            entity.Property(row => row.UserId).HasColumnName("user_id");
+            entity.Property(row => row.Emoji).HasColumnName("emoji").HasMaxLength(10).IsRequired();
+            entity.Property(row => row.CreatedAt).HasColumnName("created_at");
+            entity.HasIndex(row => row.TenantId).HasDatabaseName("idx_mr_tenant_id");
+            entity.HasIndex(row => row.MessageId).HasDatabaseName("idx_mr_message_id");
+            entity.HasIndex(row => row.UserId).HasDatabaseName("idx_mr_user_id");
+            entity.HasIndex(row => new { row.TenantId, row.MessageId, row.UserId, row.Emoji })
+                .IsUnique()
+                .HasDatabaseName("unique_reaction_tenant");
+            entity.HasOne(row => row.Message).WithMany(message => message.Reactions)
+                .HasForeignKey(row => row.MessageId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(row => row.User).WithMany()
+                .HasForeignKey(row => row.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(row => row.Tenant).WithMany()
+                .HasForeignKey(row => row.TenantId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(row => !TenantContext.IsResolved || row.TenantId == TenantContext.TenantId);
+        });
+
         // Voice Messages
         modelBuilder.Entity<VoiceMessage>(entity =>
         {

@@ -35,6 +35,7 @@ public class MessagesController : ControllerBase
     private readonly FileUploadService _fileUploadService;
     private readonly SafeguardingInteractionPolicy _safeguardingInteractionPolicy;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly DirectMessageReactionService _messageReactions;
 
     public MessagesController(
         NexusDbContext db,
@@ -43,6 +44,7 @@ public class MessagesController : ControllerBase
         IRealTimeMessagingService realTimeMessaging,
         FileUploadService fileUploadService,
         SafeguardingInteractionPolicy safeguardingInteractionPolicy,
+        DirectMessageReactionService messageReactions,
         IServiceScopeFactory scopeFactory)
     {
         _db = db;
@@ -51,6 +53,7 @@ public class MessagesController : ControllerBase
         _realTimeMessaging = realTimeMessaging;
         _fileUploadService = fileUploadService;
         _safeguardingInteractionPolicy = safeguardingInteractionPolicy;
+        _messageReactions = messageReactions;
         _scopeFactory = scopeFactory;
     }
 
@@ -1550,26 +1553,39 @@ public class MessagesController : ControllerBase
 
     /// <summary>GET /api/messages/reactions-batch - batch fetch emoji reactions for a list of message IDs</summary>
     [HttpGet("reactions-batch")]
-    public async Task<IActionResult> GetMessageReactionsBatch([FromQuery] string? messageIds)
+    [EnableRateLimiting(RateLimitingExtensions.MessagesReactionBatchPolicy)]
+    public async Task<IActionResult> GetMessageReactionsBatch(
+        [FromQuery] string? messageIds,
+        [FromQuery] string? ids,
+        CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(messageIds))
-            return BadRequest(new { error = "messageIds query parameter is required (comma-separated)" });
-
-        var idList = messageIds.Split(',')
+        var idList = (ids ?? messageIds ?? string.Empty).Split(',')
             .Select(s => int.TryParse(s.Trim(), out var n) ? (int?)n : null)
-            .Where(n => n.HasValue)
+            .Where(n => n is > 0)
             .Select(n => n!.Value)
-            .Distinct()
             .Take(100)
             .ToList();
 
-        // Return empty reactions map per message — reactions are tracked on feed posts, not messages.
-        // This endpoint satisfies the V1 contract; extend when MessageReaction entity is added.
-        var result = idList.ToDictionary(
-            id => id,
-            _ => new { like = 0, love = 0, laugh = 0, total = 0 });
-
-        return Ok(new { data = result, messageCount = idList.Count });
+        var result = await _messageReactions.BatchAsync(
+            _tenantContext.GetTenantIdOrThrow(),
+            GetCurrentUserId()!.Value,
+            idList,
+            cancellationToken);
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                reactions = result.ToDictionary(
+                    pair => pair.Key,
+                    pair => pair.Value.Select(group => new
+                    {
+                        emoji = group.Emoji,
+                        count = group.Count,
+                        user_ids = group.UserIds
+                    }).ToArray())
+            }
+        });
     }
 
     private async Task<User?> LoadActiveMessageUserAsync(

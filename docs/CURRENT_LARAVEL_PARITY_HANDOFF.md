@@ -116,7 +116,7 @@ idempotency, and first-writer race behavior have focused coverage; frontend
 runtime and notification depth remain open.
 
 The current latest migration is
-`20260712060051_DirectMessageStateParity`, runtime ID 115.
+`20260712104503_DurableMessageReactions`, runtime ID 116.
 Migration 112 creates the five safeguarding tables and legacy-redaction/policy-
 review fields; migration 113 adds `messaging_disabled`; migration 114 widens
 preference values, makes consent time required, installs unique
@@ -132,6 +132,13 @@ false/null defaults and a nullable deletion-audit user relationship using
 green; existing content and read timestamps were preserved. It is forward-only,
 and `has-pending-model-changes` is green. No production resource was touched.
 
+Migration 116 adds Laravel's snake_case `message_reactions` table with
+`id`, `tenant_id`, `message_id`, `user_id`, `emoji`, and `created_at`, cascading
+tenant/message/user foreign keys, lookup indexes, and the exact unique
+tenant/message/user/emoji key. A blank all-migrations PostgreSQL replay through
+116 passed, catalog inspection matched, and `has-pending-model-changes` is
+green.
+
 The coordinator-help P1 contract is now real rather than a compatibility stub.
 Both route aliases re-evaluate the current tenant-scoped safeguarding policy,
 reject self/nonpositive, missing/cross-tenant, unrestricted, and unavailable
@@ -145,9 +152,17 @@ request writes an audit row. The independent authenticated limit is 5 requests
 per 300 seconds. Focused PostgreSQL coverage passed 16/16 and route ownership
 passed 1/1; the disposable external test hook was removed after verification.
 
-This is not complete direct-message parity. P1 remains on durable allow-listed
-reactions plus batch aggregation, full typing preflight and canonical Pusher
-event delivery, and exact read/unread envelopes and rate-limit behavior.
+Durable message reactions and batch aggregation are also complete. Adds use the
+exact six-emoji allowlist and current ordinary/safeguarding contact checks;
+withdrawal remains available after a later block or policy closure. Concurrent
+toggles serialize, participant-only batch reads expose Laravel
+`emoji/count/user_ids` groups including soft-deleted messages, and toggle/batch
+use independent 60/minute and 30/minute buckets. Focused PostgreSQL plus route
+ownership coverage passed 9/9.
+
+This is not complete direct-message parity. P1 remains on full typing preflight
+and canonical Pusher event delivery, plus exact read/unread envelopes and
+rate-limit behavior.
 
 The final deterministic direct-message state gate passed 39/39 with zero
 failed or skipped, covering migration/model contracts, edit/delete,
@@ -270,7 +285,7 @@ failures still require independent triage.
 | Area | Verified completed behavior | Explicit remaining gap |
 | --- | --- | --- |
 | Safeguarding metadata and workflows | Five exact metadata-only Laravel tables, append-only event/rotation history, jurisdiction/policy services, onboarding save, member status/review/revoke, admin/broker vetting decisions, and protected option CRUD/reorder use one locked policy domain. Legacy vetting records do not authorize contact and sensitive certificate evidence is prohibited. | Dedicated permission-only roles beyond current broker/admin policy, queued email/provider depth, legacy evidence privacy disposition, non-v2 route-alias reconciliation, and frontend runtime smoke remain. |
-| Messaging safety | Live `messaging_disabled` lifecycle, direct-send policy/attachment/race/side-effect hardening, staff blocked-attempt alerting, transactional detected-audio voice writes, sender-only 24-hour edit, participant-scoped durable delete, partner-ID per-user archive/restore, and restricted-only coordinator-help delivery/dedupe/email/audit are implemented. | P1 durable reactions, typing Pusher delivery, and exact read/unread envelopes/rates remain; provider transcription also remains open. |
+| Messaging safety | Live `messaging_disabled` lifecycle, direct-send policy/attachment/race/side-effect hardening, staff blocked-attempt alerting, transactional detected-audio voice writes, sender-only 24-hour edit, participant-scoped durable delete, partner-ID per-user archive/restore, restricted-only coordinator help, and durable policy-aware reaction toggle/batch are implemented. | P1 typing Pusher delivery and exact read/unread envelopes/rates remain; provider transcription also remains open. |
 | Roles | `CanonicalRoleSemantics` adds `is_admin`, `is_super_admin`, `is_tenant_super_admin`, and `is_god`; named policies read current DB state and reject inactive, deleted, role-drifted, or tenant-drifted users; v2 failures use canonical errors. Role-only `god` never satisfies `GodOnly`, and explicit-God targets cannot be deleted, suspended, banned, reset, or impersonated by lower privilege tiers. | Resource-level SuperPanel/hub rules, notifications, audit side effects, and full application-runtime proof remain. |
 | 2FA | Password login uses opaque 64-character challenges bound to user, tenant, and TOTP enrollment; `/api/totp/verify` supports TOTP and backup codes, limits attempts, consumes successful or drifted challenges, and rechecks account/tenant state. Canonical setup/verify/disable uses a real SVG QR code, atomic enabled-state/backup-code persistence, and password-confirmed disable. Unsupported forced first-login admin enrollment now fails startup when either legacy flag is enabled instead of emitting a lockout challenge. | Challenges are process-local; trusted-device lifecycle, security notifications, a TOTP-specific encryption key, multi-node proof, and a compatible first-login enrollment client remain open. |
 | Passkeys | `PasskeysController` solely owns all nine canonical `/api/webauthn/*` routes. Registration/authentication use real FIDO options; challenges expire after 120 seconds and are atomically consumed once per process; credential management uses opaque IDs scoped to the authenticated user and tenant. | Anonymous discovery can remain tenantless when no tenant resolves; challenge state is process-local; sign-counter concurrency, multi-instance behavior, and browser smoke remain open. |
@@ -360,7 +375,7 @@ Earlier published slice evidence retained for context:
 - exact React cron/security contracts: 3/3;
 - canonical broker persistence contract: 1/1;
 - API comparator fixture: green; live regeneration reports 4,314 ASP.NET
-  controller operations, 2,438/2,449 Laravel source operations matched, and 11
+  controller operations, 2,437/2,583 Laravel source operations matched, and 146
   missing. Seven are the deliberately unresolved document-era admin
   vetting writes (root create, record update/delete, upload/verify/reject, and
   bulk), with the remaining four at PWA manifest, prerender reset/invalidate,
@@ -415,7 +430,7 @@ Earlier published slice evidence retained for context:
 - earlier volunteering-chain proof reached
   `20260711031959_NullableTransactionLedgerLegs`; the current migration proof
   is recorded above;
-- API route comparator: 2,438/2,449 current Laravel/supplemental operations
+- API route comparator: 2,437/2,583 current Laravel/supplemental operations
   matched, 11 route-shape gaps;
 - historical schema comparator: 134/361 Laravel tables matched, 227 missing, 194
   ASP.NET-only; the current result above supersedes it and remains a global red
@@ -576,9 +591,9 @@ A module or endpoint family is not complete until all of these are true:
 Prioritize workflow-complete slices over raw endpoint count. Route declarations
 are mostly closed; the remaining work is contract correctness.
 
-1. Continue the audited direct-message residual after the completed P0 state
-   and coordinator-help slices: implement P1 real reactions/batch, typing
-   preflight plus Pusher delivery, and exact read/unread envelopes/rates.
+1. Continue the audited direct-message residual after the completed P0 state,
+   coordinator-help, and reaction slices: implement typing preflight plus
+   Pusher delivery and exact read/unread envelopes/rates.
    Replace shallow or false-oracle tests rather than accepting route success.
 2. Run the full ASP.NET suite and CI, then complete unchanged-frontend
    member/organisation/admin/Caring runtime smoke. The focused 53/53 and affected

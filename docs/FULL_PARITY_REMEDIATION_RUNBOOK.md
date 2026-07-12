@@ -123,9 +123,11 @@ depth and frontend runtime smoke remain open.
 This checkpoint does not close direct messaging. Execute the remaining audited
 residual in this order:
 
-1. **P1 reactions:** exact emoji allowlist, durable unique reactions, policy on
-   add but withdrawal after policy closes, and participant-scoped batch
-   aggregation.
+1. **P1 reactions completed 2026-07-12:** exact six-emoji allowlist, durable
+   unique reactions, policy on add but withdrawal after closure, serialized
+   toggles, participant-scoped batch aggregation, and independent rate buckets
+   passed focused PostgreSQL and route-owner coverage 9/9. Migration 116 blank
+   replay and model-drift checks are green.
 2. **P1 typing:** full message preflight and a proven canonical Pusher
    pair-channel `typing` event, including first-conversation behavior.
 3. **P1 read/unread:** reconcile exact envelopes and rate-limit behavior for
@@ -433,7 +435,7 @@ route coverage is not a completion score.
 
 | Surface | Score | Meaning |
 | --- | ---: | --- |
-| ASP.NET static API method/path inventory | 995/1000 | 2,438 of 2,449 current Laravel operations matched, with 11 route-shape gaps; this is route-shape coverage, not behavioral parity |
+| ASP.NET static API method/path inventory | 944/1000 | 2,437 of 2,583 current Laravel operations matched, with 146 route-shape gaps after the expanded supplemental inventory; this is route-shape coverage, not behavioral parity |
 | ASP.NET implementation parity | 640/1000 | Broad implementation with material workflow, schema, integration, and localization gaps |
 | ASP.NET certification confidence | 420/1000 | Current full-suite and frontend-on-ASP proof is insufficient |
 | Web UK Laravel-first implementation | 910/1000 | Route conversion is advanced; several source and presentation gaps remain |
@@ -445,8 +447,8 @@ route coverage is not a completion score.
 | Check | Current result or retained historical evidence |
 | --- | --- |
 | ASP.NET static operations | 4,314 |
-| Laravel source operations | 2,449 |
-| Static method/path matches | 2,438 matched, 11 missing |
+| Laravel source operations | 2,583 |
+| Static method/path matches | 2,437 matched, 146 missing |
 | Explicit admin compatibility behavior | At least 196 of 329 `AdminExplicitParityController` route declarations reached generic fallbacks at audit time |
 | Schema inventory | Live: 333 Laravel migration files, 117 ASP.NET migration source files, 115 runtime migrations, 368 Laravel source tables, 336 ASP.NET tables, 142 exact matches, 226 missing names, and 194 ASP.NET-only names |
 | ASP.NET backend localization comparator | 7/11 locales, 49/605 namespaces, 157 comparable English keys matched, 5,018 missing |
@@ -455,7 +457,7 @@ route coverage is not a completion score.
 | Web UK conservative template localization | 1,595 safe static substitutions across 257 templates; the post-write audit reports 290 templates and zero remaining conservative matches, which is not a contextual-copy completion claim |
 | ASP.NET API/test builds | Debug API/test and required solution-wide Release builds passed with zero errors; the only warnings are the same four pre-existing `xUnit1031` warnings, and Release took 4m36s. |
 | Transactional volunteering regression | Prior core 61/61; guardian lifecycle 7/7; recurring-pattern CRUD 13/13 plus route ownership 1/1; recurring-shift generation/scheduler 13/13; volunteer-organisation relationship/lifecycle 13/13; wallet integration 6/6; QR attendance 32/32 plus persistence-failure 1/1; shift-swap assignment/member/admin/concurrency 12/12; affected-module gate 90/90; route/auth 5/5; ambient-transaction regression green. Current focused proof is one 53/53 disposable-Linux run: all 51 `VolunteerHoursParityTests` plus both `V15FeedActivityCompatibilityTests`, with 3,007 tests discovered. The clean affected rerun selected and passed 243/243 with zero failed/skipped in 418.639s. The full 3,007-test suite remains open. |
-| Migration runtime chain | Recorded inventory is 115 EF-discovered/applicable migrations through `20260712060051_DirectMessageStateParity`. Blank 115 and populated 114-to-115 are green with content/read timestamps preserved, false/null defaults, audit FK `SET NULL`, and no model drift. Migration 115 is forward-only. Retained migration-114 atomic-abort/catalog and 110-to-111 feed/privacy/FK proof remain; no production resource was touched. |
+| Migration runtime chain | Recorded inventory is 116 EF-discovered/applicable migrations through `20260712104503_DurableMessageReactions`. Blank 116 is green with exact snake_case reaction columns/indexes/unique key and no model drift; blank/populated migration-115 state proof and retained migration-114 atomic-abort/catalog evidence remain. No production resource was touched. |
 | Web UK route matrix | 608/608 matched, 0 missing, 0 extra application routes, 3 infrastructure routes ignored |
 | Web UK Jest | 31/31 suites and 1,021/1,021 tests passed after the localization/RTL, tenant-boundary, contextual identity/auth/accessibility, Explore, and profile-status slices |
 | Web UK lint and CSS build | Passed |
@@ -742,9 +744,9 @@ sites. Web UK is an additional consumer once Laravel-first conversion is green.
 
 1. **P0 completed 2026-07-12:** sender-only 24-hour edit, scoped participant
    delete, and partner-ID per-user archive/restore now persist durable state.
-   Restricted-only coordinator-help delivery/dedupe/email/audit is also complete.
-   Continue with P1 durable reactions/batch, full typing preflight plus Pusher
-   delivery, and exact read/unread envelopes/rates. Use two-user reload, tenant, policy,
+   Restricted-only coordinator help and durable policy-aware reactions/batch are
+   also complete. Continue with full typing preflight plus Pusher delivery and
+   exact read/unread envelopes/rates. Use two-user reload, tenant, policy,
    cleanup, and side-effect tests; remove false oracles.
 2. Run the full ASP.NET suite and CI, then complete unchanged-frontend
    member, organisation, administrator, and Caring runtime smoke. The focused
@@ -844,10 +846,11 @@ sites. Web UK is an additional consumer once Laravel-first conversion is green.
 > lifecycle/wallet rules, wallet-evidence-preserving delete refusal, the full
 > group-exchange state machine, persisted V15 community-fund/starting-balance
 > reads, privacy-safe wallet search, and linked loyalty/estate evidence. The
-> latest migration is `20260712060051_DirectMessageStateParity`; the recorded
-> EF inventory is 115 migrations. Blank 115, populated 114-to-115, and model-
-> drift gates are green with content/read timestamps preserved, false/null
-> defaults, and audit FK `SET NULL`; the migration is forward-only. Migration
+> latest migration is `20260712104503_DurableMessageReactions`; the recorded
+> EF inventory is 116 migrations. Blank 116 and model-drift gates are green
+> with exact reaction schema; blank 115 and populated 114-to-115 remain green
+> with content/read timestamps preserved, false/null defaults, and audit FK
+> `SET NULL`; migration 115 is forward-only. Migration
 > 114's invalid duplicate `P0001` atomic-abort/no-partial-schema and catalog-
 > containment proof remains retained. Migration 111's
 > feed/privacy/FK replay remains retained evidence. The

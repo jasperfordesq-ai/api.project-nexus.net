@@ -149,6 +149,7 @@ public static class ServiceExtensions
         services.AddScoped<SafeguardingInteractionPolicy>();
         services.AddScoped<DirectMessageMutationService>();
         services.AddScoped<SafeguardingCoordinationService>();
+        services.AddScoped<DirectMessageReactionService>();
         services.AddScoped<BrokerService>();
         services.AddScoped<EnterpriseService>();
         services.AddScoped<EventReminderService>();
