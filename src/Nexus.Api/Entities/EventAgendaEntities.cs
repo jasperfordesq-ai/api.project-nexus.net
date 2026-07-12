@@ -56,3 +56,20 @@ public sealed class EventSessionRegistrationHistory : ITenantEntity
     public string Action { get; set; } = ""; public string IdempotencyKey { get; set; } = ""; public string RequestHash { get; set; } = "";
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
+
+public sealed class EventStaffAssignment : ITenantEntity
+{
+    public long Id { get; set; } public int TenantId { get; set; } public int EventId { get; set; } public int UserId { get; set; }
+    public string Role { get; set; } = "check_in_staff"; public string Status { get; set; } = "active"; public long AssignmentVersion { get; set; } = 1;
+    public DateTime GrantedAt { get; set; } public int GrantedBy { get; set; } public DateTime? RevokedAt { get; set; } public int? RevokedBy { get; set; }
+    public DateTime? ExpiresAt { get; set; } public DateTime CreatedAt { get; set; } = DateTime.UtcNow; public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    public ICollection<EventStaffAssignmentHistory> History { get; set; } = new List<EventStaffAssignmentHistory>();
+}
+
+public sealed class EventStaffAssignmentHistory : ITenantEntity
+{
+    public long Id { get; set; } public int TenantId { get; set; } public int EventId { get; set; } public long AssignmentId { get; set; }
+    public int UserId { get; set; } public string Role { get; set; } = ""; public int ActorUserId { get; set; } public long AssignmentVersion { get; set; }
+    public string Action { get; set; } = ""; public string? IdempotencyKey { get; set; } public string? FromStatus { get; set; } public string ToStatus { get; set; } = "";
+    public DateTime? PreviousExpiresAt { get; set; } public DateTime? NewExpiresAt { get; set; } public string Metadata { get; set; } = "{}"; public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+}

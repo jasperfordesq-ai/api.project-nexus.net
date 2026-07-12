@@ -68,6 +68,8 @@ public class NexusDbContext : DbContext
     public DbSet<EventSessionHistory> EventSessionHistory => Set<EventSessionHistory>();
     public DbSet<EventSessionRegistration> EventSessionRegistrations => Set<EventSessionRegistration>();
     public DbSet<EventSessionRegistrationHistory> EventSessionRegistrationHistory => Set<EventSessionRegistrationHistory>();
+    public DbSet<EventStaffAssignment> EventStaffAssignments => Set<EventStaffAssignment>();
+    public DbSet<EventStaffAssignmentHistory> EventStaffAssignmentHistory => Set<EventStaffAssignmentHistory>();
     public DbSet<FeedPost> FeedPosts => Set<FeedPost>();
     public DbSet<FeedActivity> FeedActivities => Set<FeedActivity>();
     public DbSet<PostLike> PostLikes => Set<PostLike>();
