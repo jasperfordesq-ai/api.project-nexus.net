@@ -12131,12 +12131,19 @@ describe('shared accessible frontend shell', () => {
             content: 'This is brilliant news.',
             user: { id: 88, name: 'Grace Hopper' },
             created_at: '2026-07-02T10:00:00Z',
+            is_own: true,
+            edited: true,
+            reactions: { like: 2 },
+            user_reactions: ['like'],
             replies: [
               {
                 id: 13,
                 content: 'I can help on Saturday.',
                 user: { id: 89, name: 'Alan Turing' },
                 created_at: '2026-07-02T11:00:00Z',
+                is_own: false,
+                reactions: {},
+                user_reactions: [],
                 replies: []
               }
             ]
@@ -12233,6 +12240,12 @@ describe('shared accessible frontend shell', () => {
     expect(comments.text).toContain('action="/blog/community-news/comments/add"');
     expect(comments.text).toContain('action="/blog/comments/12/update"');
     expect(comments.text).toContain('action="/blog/comments/12/delete"');
+    expect(comments.text).not.toContain('action="/blog/comments/13/update"');
+    expect(comments.text).not.toContain('action="/blog/comments/13/delete"');
+    expect(comments.text).toContain(t('govuk_alpha_blogreviews.comments.edited'));
+    expect(comments.text).toContain(t('govuk_alpha_blogreviews.comments.delete_warning'));
+    expect(comments.text).toContain(t('govuk_alpha_blogreviews.reactions.comment_legend'));
+    expect(comments.text).toContain('aria-pressed="true"');
 
     const likers = await request(app)
       .get('/blog/community-news/likers/like?page=1&locale=ar')
@@ -12244,7 +12257,7 @@ describe('shared accessible frontend shell', () => {
       per_page: 20
     });
     expect(likers.text).toContain(t('govuk_alpha_blogreviews.likers.caption'));
-    expect(likers.text).toContain(t('govuk_alpha_blogreviews.likers.heading', { emoji: 'Like' }));
+    expect(likers.text).toContain(t('govuk_alpha_blogreviews.likers.heading', { emoji: '\u{1F44D}' }));
     expect(likers.text).toContain(tc('govuk_alpha_blogreviews.likers.count', 2, { count: 2 }));
     expect(likers.text).toContain('Grace Hopper');
     expect(likers.text).toContain('Alan Turing');

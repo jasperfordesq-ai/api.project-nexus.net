@@ -21,12 +21,12 @@ const { asyncRoute } = require('../lib/routeHelpers');
 const router = express.Router();
 const BLOG_REACTIONS = new Set(['like', 'love', 'laugh', 'wow', 'sad', 'celebrate']);
 const BLOG_REACTION_EMOJI = {
-  like: 'Like',
-  love: 'Love',
-  laugh: 'Haha',
-  wow: 'Wow',
-  sad: 'Sad',
-  celebrate: 'Celebrate'
+  like: '\u{1F44D}',
+  love: '\u2764\uFE0F',
+  laugh: '\u{1F602}',
+  wow: '\u{1F62E}',
+  sad: '\u{1F622}',
+  celebrate: '\u{1F389}'
 };
 
 function tokenFrom(req) {
@@ -122,6 +122,10 @@ function normalizeCategory(category) {
 function normalizeComment(comment, t) {
   const item = asObject(comment);
   const user = asObject(item.user || item.author);
+  const reactions = asObject(item.reactions);
+  const userReactions = asList(item.user_reactions || item.userReactions)
+    .map((reaction) => trimmed(reaction))
+    .filter((reaction) => BLOG_REACTIONS.has(reaction));
   return {
     id: positiveInteger(item.id),
     content: trimmed(item.content || item.body),
@@ -132,6 +136,11 @@ function normalizeComment(comment, t) {
       name: trimmed(user.name || item.user_name || [user.first_name, user.last_name].filter(Boolean).join(' '))
         || t('govuk_alpha_blogreviews.likers.unknown_member')
     },
+    isOwn: Boolean(item.is_own || item.isOwn || item.is_owner || item.isOwner),
+    edited: Boolean(item.edited || item.is_edited || item.isEdited),
+    reactions,
+    reactionTotal: Object.values(reactions).reduce((total, count) => total + (positiveInteger(count) || 0), 0),
+    userReactions,
     replies: asList(item.replies || item.children).map((reply) => normalizeComment(reply, t))
   };
 }

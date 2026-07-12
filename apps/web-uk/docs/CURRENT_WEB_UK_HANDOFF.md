@@ -5629,6 +5629,26 @@ Full Jest passed `45/45` suites and `1,464/1,464` tests; lint and the
 completion/review effects, instructor-role variants, manual assistive-
 technology depth, and ASP.NET compatibility remain open.
 
+## 2026-07-12 Reversible Blog Discussion Lifecycle
+
+The rich Blog discussion now matches Blade's ownership-gated edit/delete
+controls, edited marker, reply-depth rule, warning-protected cascade deletion,
+six emoji reaction controls with counts and pressed state, and exact discussion
+catalog copy.
+
+`npm run smoke:laravel:blog-mutation` passed `1/1` in `204.4` seconds against
+the stable empty discussion for post 42. It created an owned comment, reacted,
+edited, added a reply, toggled the shared post reaction on and back off,
+warning-deleted the parent and cascade reply, passed 320px structure/reflow and
+serious/critical axe checks, and proved final API absence. Independent
+inspection found no disposable comment and the post reaction at its original
+null state.
+
+Full Jest remains `45/45` suites and `1,464/1,464` tests; lint and the
+285-template zero-match audit are green. Feature-gate depth, non-owner live
+variants, exact rich-text/RSS depth, manual assistive-technology review, and
+ASP.NET compatibility remain open.
+
 ## Final Handoff Checklist
 
 Before leaving this job for another agent, write a short note containing:
