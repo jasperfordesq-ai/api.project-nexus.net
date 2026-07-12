@@ -27403,7 +27403,7 @@ describe('shared accessible frontend shell', () => {
     expect(recommendedResponse.text).toContain('value="91"');
     expect(recommendedResponse.text).toContain('Food Share');
     expect(recommendedResponse.text).toContain('Town kitchen');
-    expect(recommendedResponse.text).toContain('20 July 2026');
+    expect(recommendedResponse.text).toContain('20 July 2026, 10:00am');
     expect(recommendedResponse.text).toContain('Spots remaining');
     expect(recommendedResponse.text).toContain('3');
     expect(recommendedResponse.text).toContain('Garden tidy');

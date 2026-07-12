@@ -850,7 +850,7 @@ function moodLabel(value, t = null) {
     : (labels[mood] || trimmed(value));
 }
 
-function wellbeingDateTimeLabel(value) {
+function bladeDateTimeLabel(value) {
   if (!value) return '';
   const text = String(value);
   const isoParts = text.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
@@ -876,7 +876,7 @@ function normalizeCheckin(row, t = null) {
   const mood = Number(checkin.mood);
   return {
     id: positiveInteger(checkin.id),
-    createdAtLabel: wellbeingDateTimeLabel(checkin.created_at ?? checkin.createdAt),
+    createdAtLabel: bladeDateTimeLabel(checkin.created_at ?? checkin.createdAt),
     moodLabel: moodLabel(mood, t),
     note: trimmed(checkin.note)
   };
@@ -1335,17 +1335,18 @@ function normalizeVolunteerOrganizationCard(row) {
   };
 }
 
-function normalizeRecommendedShift(row) {
+function normalizeRecommendedShift(row, t = null) {
   const shift = row && typeof row === 'object' ? row : {};
   const matchScore = Number(shift.match_score ?? shift.matchScore);
   const spotsRemaining = Number(shift.spots_remaining ?? shift.spotsRemaining);
   return {
     id: positiveInteger(shift.shift_id ?? shift.shiftId ?? shift.id),
     opportunityId: positiveInteger(shift.opportunity_id ?? shift.opportunityId),
-    title: trimmed(shift.title ?? shift.opportunity_title ?? shift.opportunityTitle) || 'Volunteering opportunity',
+    title: trimmed(shift.title ?? shift.opportunity_title ?? shift.opportunityTitle)
+      || (t ? t('govuk_alpha.volunteering.detail_title') : 'Volunteering opportunity'),
     organizationName: trimmed(shift.organization_name ?? shift.organizationName),
     location: trimmed(shift.location),
-    startLabel: dateTimeLabel(shift.start_time ?? shift.startTime),
+    startLabel: bladeDateTimeLabel(shift.start_time ?? shift.startTime),
     spotsRemaining: Number.isFinite(spotsRemaining) ? spotsRemaining : 0,
     matchScore: Number.isFinite(matchScore) ? Math.max(0, Math.min(100, Math.round(matchScore))) : 0,
     alreadyApplied: Boolean(shift.already_applied ?? shift.alreadyApplied)
@@ -2059,7 +2060,7 @@ router.get('/recommended-shifts', asyncRoute(async (req, res) => {
   let loadError = null;
   try {
     shifts = collectionFrom(await callApi(token, 'GET', '/recommended-shifts?limit=15&min_score=20'))
-      .map(normalizeRecommendedShift)
+      .map((shift) => normalizeRecommendedShift(shift, res.locals.t))
       .filter((shift) => shift.id || shift.opportunityId);
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
@@ -2067,7 +2068,7 @@ router.get('/recommended-shifts', asyncRoute(async (req, res) => {
   }
 
   return res.render('volunteering/recommended-shifts', {
-    title: 'Recommended for you',
+    title: res.locals.t('govuk_alpha_volunteering.recommended.title'),
     activeNav: 'volunteering',
     shifts,
     loadError
