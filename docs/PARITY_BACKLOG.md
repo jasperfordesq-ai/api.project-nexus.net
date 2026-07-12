@@ -17,12 +17,12 @@ localization artifacts.
 
 | Metric | Count |
 | --- | ---: |
-| Total open backlog items | 6,537 |
+| Total open backlog items | 6,533 |
 | P0 items | 152 |
-| P1 items | 6,381 |
+| P1 items | 6,377 |
 | P2 items | 4 |
 | API items | 123 |
-| Schema items | 304 |
+| Schema items | 300 |
 | Frontend items | 532 |
 | Localization items | 5,578 |
 

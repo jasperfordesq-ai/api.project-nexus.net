@@ -54,6 +54,24 @@ containers from this repo.
 
 ## Latest Verified Backend Slice — 2026-07-12
 
+The latest backend-only slice closes Laravel's event-template workflow across
+both `/api` and `/api/v2`: safe capture preview/capture, list/show/history,
+revision, archive, materialization preview, and materialization. Capture uses a
+strict allowlist; versions, audit, and materialization evidence are immutable;
+mutations are tenant-scoped, idempotent, and optimistic-versioned; and a
+materialized event is always a fresh private non-federated record without
+copied operational state. Migration `20260712191551_EventTemplateWorkflowParity`
+adds the four exact Laravel tables and safe event fields. All 121 migrations
+replayed on blank disposable PostgreSQL, EF model drift is clean, focused proof
+passed 4/4, and the combined event lifecycle/template gate passed 8/8.
+
+The live comparator now reports 4,368 ASP.NET operations, 2,469/2,592 matched,
+and 123 missing. All nine event-template route shapes closed; Laravel gained
+nine operations concurrently, so the absolute remainder did not fall. The
+schema comparator reports 377 Laravel migration files, 123 ASP.NET migration
+source files, 121 runtime IDs, 346 ASP.NET table names, 155 exact matches, 300
+missing Laravel names, and 191 ASP.NET-only names.
+
 The current backend-only slice implements Laravel's metadata-only safeguarding
 attestation model, onboarding/admin/member workflows, message restriction
 lifecycle, direct-send and voice hardening, durable direct-message state, and
@@ -116,7 +134,10 @@ idempotency, and first-writer race behavior have focused coverage; frontend
 runtime and notification depth remain open.
 
 The current latest migration is
-`20260712104503_DurableMessageReactions`, runtime ID 116.
+`20260712191551_EventTemplateWorkflowParity`, runtime ID 121. The historical
+checkpoint below describes migrations 112 through 116; later group and event
+workflow evidence is recorded at the start of this section and in the
+maintained runbook.
 Migration 112 creates the five safeguarding tables and legacy-redaction/policy-
 review fields; migration 113 adds `messaging_disabled`; migration 114 widens
 preference values, makes consent time required, installs unique
@@ -446,8 +467,9 @@ Earlier published slice evidence retained for context:
 - earlier volunteering-chain proof reached
   `20260711031959_NullableTransactionLedgerLegs`; the current migration proof
   is recorded above;
-- API route comparator: 2,460/2,583 current Laravel/supplemental operations
-  matched, 123 route-shape gaps after the expanded event/security inventory;
+- API route comparator: 2,469/2,592 current Laravel/supplemental operations
+  matched, 123 route-shape gaps after event-template closure and concurrent
+  Laravel inventory growth;
 - historical schema comparator: 134/361 Laravel tables matched, 227 missing, 194
   ASP.NET-only; the current result above supersedes it and remains a global red
   gate.

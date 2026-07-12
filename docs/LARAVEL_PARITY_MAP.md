@@ -11,9 +11,9 @@ Canonical source: `C:\platforms\htdocs\staging` (read-only).
 | Controllers | 309 | 225 |
 | Services | 483 | 188 |
 | Models/entities | 200 Laravel models | 191 EF entity files |
-| Migrations | 373 | 122 main EF migration source files; 120 EF-discovered/applied runtime IDs |
-| OpenAPI operations | 891 | 4,346 static controller operations from parity script |
-| Schema tables | 455 Laravel source tables | 342 .NET static table names |
+| Migrations | 377 | 123 main EF migration source files; 121 EF-discovered/applied runtime IDs |
+| OpenAPI operations | 1,022 | 4,368 static controller operations from parity script |
+| Schema tables | 455 Laravel source tables | 346 .NET static table names |
 | Frontend routes | 589 React / 607 accessible in the historical comparator; current Web UK matrix separately reports 608 Laravel accessible declarations | 462 legacy React routes; current `apps/web-uk` matrix reports 612 local declarations, 608 matched Laravel accessible routes, 0 missing, 2 extra exchange workflow routes, and 3 ignored infrastructure routes |
 | Localization | 11 locales / 605 locale namespaces | 7 locales / 280 locale namespaces |
 | Module guides | 24 curated Laravel module guides | maintained .NET parity docs recreated in this pass |
@@ -23,9 +23,11 @@ These counts are directional. They are not a parity score.
 
 `scripts/compare-laravel-api-parity.ps1` generated
 `artifacts/parity/api/api-parity.json` on 2026-07-12 after its fixture passed,
-with 4,346 ASP.NET controller operations, 2,583 Laravel source operations after
-supplemental API route parsing and de-duplication, 2,460 static matches, and 123
-missing operations. Group invite preview/accept and queued export
+with 4,368 ASP.NET controller operations, 2,592 Laravel source operations after
+supplemental API route parsing and de-duplication, 2,469 static matches, and 123
+missing operations. All nine event-template route shapes are now owned; the
+unchanged absolute gap count reflects nine concurrent additions to the live
+Laravel inventory. Group invite preview/accept and queued export
 request/status/download now have canonical V2 owners; focused lifecycle proof
 passed 3/3 and the combined group gate passed 6/6. The expanded remainder is
 dominated by event-product routes and also includes the seven document-era
@@ -39,9 +41,9 @@ planning.
 
 `scripts/compare-laravel-schema-parity.ps1` generated
 `artifacts/parity/schema/schema-parity.json` on 2026-07-12 after its fixture
-passed. The current live table baseline is 373 Laravel migrations, 122 ASP.NET
-migration source files, 120 runtime IDs, 455 Laravel source tables, 342 .NET
-table names, 151 exact matches, 304 missing Laravel-side names, and 191 .NET-
+passed. The current live table baseline is 377 Laravel migrations, 123 ASP.NET
+migration source files, 121 runtime IDs, 455 Laravel source tables, 346 .NET
+table names, 155 exact matches, 300 missing Laravel-side names, and 191 .NET-
 only names. The artifact is ignored by git; regenerate it before using the
 numbers for schema implementation planning.
 

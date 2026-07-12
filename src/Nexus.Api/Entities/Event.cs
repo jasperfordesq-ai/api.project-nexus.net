@@ -58,6 +58,15 @@ public class Event : ITenantEntity
     /// Optional image URL for the event.
     /// </summary>
     public string? ImageUrl { get; set; }
+    public int? CategoryId { get; set; }
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
+    public bool IsOnline { get; set; }
+    public bool AllowRemoteAttendance { get; set; }
+    public string Timezone { get; set; } = "UTC";
+    public bool AllDay { get; set; }
+    public string FederatedVisibility { get; set; } = "none";
+    public long CalendarSequence { get; set; }
 
     /// <summary>
     /// Whether the event has been cancelled.

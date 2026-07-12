@@ -30,6 +30,8 @@ public class EventConfiguration : TenantScopedConfiguration
             entity.Property(e => e.Status).HasMaxLength(32);
             entity.Property(e => e.PublicationStatus).HasMaxLength(32);
             entity.Property(e => e.OperationalStatus).HasMaxLength(32);
+            entity.Property(e => e.Timezone).HasMaxLength(64);
+            entity.Property(e => e.FederatedVisibility).HasMaxLength(16);
 
             // Indexes
             entity.HasIndex(e => e.TenantId);
@@ -146,6 +148,42 @@ public class EventConfiguration : TenantScopedConfiguration
                 .HasDatabaseName("idx_event_outbox_aggregate");
             entity.HasIndex(e => new { e.TenantId, e.EventId, e.AggregateStream, e.AggregateVersion, e.Id })
                 .HasDatabaseName("idx_event_outbox_stream");
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<EventTemplate>(entity =>
+        {
+            entity.ToTable("event_templates"); entity.Property(e => e.Status).HasMaxLength(16); entity.Property(e => e.ArchiveReason).HasMaxLength(500);
+            entity.HasIndex(e => e.PublicId).IsUnique().HasDatabaseName("uq_event_template_public");
+            entity.HasIndex(e => new { e.TenantId, e.Id }).IsUnique().HasDatabaseName("uq_event_template_tenant_id");
+            entity.HasIndex(e => new { e.TenantId, e.Status, e.UpdatedAt, e.Id }).HasDatabaseName("idx_event_template_status");
+            entity.HasIndex(e => new { e.TenantId, e.SourceEventId, e.CreatedAt, e.Id }).HasDatabaseName("idx_event_template_source");
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+        modelBuilder.Entity<EventTemplateVersion>(entity =>
+        {
+            entity.ToTable("event_template_versions"); entity.Property(e => e.Payload).HasColumnType("jsonb"); entity.Property(e => e.CopiedFields).HasColumnType("jsonb"); entity.Property(e => e.SkippedFields).HasColumnType("jsonb");
+            foreach (var property in new[] { nameof(EventTemplateVersion.PayloadHash), nameof(EventTemplateVersion.CaptureIdempotencyHash), nameof(EventTemplateVersion.CaptureRequestHash) }) entity.Property(property).HasMaxLength(64).IsFixedLength();
+            entity.HasIndex(e => new { e.TenantId, e.TemplateId, e.VersionNumber }).IsUnique().HasDatabaseName("uq_event_template_version");
+            entity.HasIndex(e => new { e.TenantId, e.CaptureIdempotencyHash }).IsUnique().HasDatabaseName("uq_event_template_capture_key");
+            entity.HasIndex(e => new { e.TenantId, e.TemplateId, e.Id, e.VersionNumber, e.SourceEventId }).IsUnique().HasDatabaseName("uq_event_template_version_provenance");
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+        modelBuilder.Entity<EventTemplateMaterialization>(entity =>
+        {
+            entity.ToTable("event_template_materializations"); entity.Property(e => e.ScheduleTimezone).HasMaxLength(64); entity.Property(e => e.OverrideFields).HasColumnType("jsonb");
+            foreach (var property in new[] { nameof(EventTemplateMaterialization.TemplatePayloadHash), nameof(EventTemplateMaterialization.EffectivePayloadHash), nameof(EventTemplateMaterialization.IdempotencyHash), nameof(EventTemplateMaterialization.RequestHash) }) entity.Property(property).HasMaxLength(64).IsFixedLength();
+            entity.HasIndex(e => new { e.TenantId, e.IdempotencyHash }).IsUnique().HasDatabaseName("uq_event_template_materialize_key");
+            entity.HasIndex(e => new { e.TenantId, e.CreatedEventId }).IsUnique().HasDatabaseName("uq_event_template_materialized_event");
+            entity.HasIndex(e => new { e.TenantId, e.TemplateId, e.TemplateVersionNumber, e.CreatedAt, e.Id }).HasDatabaseName("idx_event_template_materialized_version");
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+        modelBuilder.Entity<EventTemplateAudit>(entity =>
+        {
+            entity.ToTable("event_template_audit"); entity.Property(e => e.Action).HasMaxLength(24); entity.Property(e => e.Metadata).HasColumnType("jsonb"); entity.Property(e => e.IdempotencyHash).HasMaxLength(64).IsFixedLength(); entity.Property(e => e.RequestHash).HasMaxLength(64).IsFixedLength();
+            entity.HasIndex(e => new { e.TenantId, e.IdempotencyHash }).IsUnique().HasDatabaseName("uq_event_template_audit_key");
+            entity.HasIndex(e => new { e.TenantId, e.TemplateId, e.CreatedAt, e.Id }).HasDatabaseName("idx_event_template_audit_template");
+            entity.HasIndex(e => new { e.TenantId, e.SourceEventId, e.CreatedAt, e.Id }).HasDatabaseName("idx_event_template_audit_source");
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
         });
     }
