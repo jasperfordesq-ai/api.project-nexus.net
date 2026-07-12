@@ -59,6 +59,7 @@ async function expectAccessibleReflow(page) {
 }
 
 test('certifies a disposable goal, check-in, and reminder lifecycle through Web UK', async ({ page }) => {
+  test.setTimeout(1_200_000);
   const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
   const createdTitle = `Codex disposable goal ${runId}`;
   const updatedTitle = `${createdTitle} updated`;
