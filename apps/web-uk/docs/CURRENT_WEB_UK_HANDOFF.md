@@ -5002,6 +5002,19 @@ restoration completed and no poll or group fixture remained. Ranked-vote
 persistence, broader owner authorization, feature gates, manual
 assistive-technology depth, and ASP.NET compatibility remain open.
 
+## 2026-07-12 Disposable Podcast Draft Lifecycle
+
+The guarded gate now creates a uniquely named private draft show through the
+default-English Web UK form, proves the populated manage form, updates the
+title and proves Laravel `/mine` persistence, deletes through the rendered
+warning action, and proves final `/mine` absence. Direct Podcast DELETE is
+nested in `finally` independently of Poll and Group cleanup. The aggregate
+`1/1` run passed in `292.6` seconds at 320 CSS pixels with structural, reflow,
+and serious/critical axe assertions; no Podcast, Poll, or Group fixture
+remained and the shared theme was restored. Episode audio upload/lifecycle,
+publish/moderation, subscribe behavior, author-role depth, manual
+assistive-technology review, and ASP.NET compatibility remain open.
+
 ## Documents To Trust
 
 Read these in order:

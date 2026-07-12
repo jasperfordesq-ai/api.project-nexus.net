@@ -6,7 +6,7 @@
 const { test, expect } = require('@playwright/test');
 const AxeBuilder = require('@axe-core/playwright').default;
 const { resolveOptions } = require('../../scripts/laravel-runtime-smoke');
-const { callUserSettingsApi, deleteGroup, deletePoll, getGroup, getGroups, getPolls, login } = require('../../src/lib/api');
+const { callPodcastApi, callUserSettingsApi, deleteGroup, deletePoll, getGroup, getGroups, getPolls, login } = require('../../src/lib/api');
 
 const smoke = resolveOptions({}, process.env);
 const mountPath = `/${encodeURIComponent(smoke.tenant)}/accessible`;
@@ -75,6 +75,8 @@ test('certifies a disposable private group and its owner-managed content through
   const discussionReply = `Disposable discussion reply ${runId}`;
   const pollQuestion = `Disposable poll ${runId}?`;
   const pollComment = `Disposable poll comment ${runId}`;
+  const podcastTitle = `Disposable podcast ${runId}`;
+  const updatedPodcastTitle = `${podcastTitle} updated`;
   const auth = await login(smoke.email, smoke.password, smoke.tenant);
   const token = auth.access_token;
   let groupId = null;
@@ -83,6 +85,8 @@ test('certifies a disposable private group and its owner-managed content through
   let themeChanged = false;
   let pollId = null;
   let pollDeleted = false;
+  let podcastId = null;
+  let podcastDeleted = false;
 
   expect(token).toBeTruthy();
   console.log(`Disposable group fixture: ${createdName}`);
@@ -337,6 +341,36 @@ test('certifies a disposable private group and its owner-managed content through
     expect(rowsFrom(await getPolls(token, { mine: true, per_page: 100 })).some(poll => Number(poll?.id) === pollId)).toBe(false);
     pollDeleted = true;
 
+    await page.goto(`${mountPath}/podcasts/studio/new`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
+    await expect(page.locator('h1')).toHaveText('Create a podcast');
+    await page.locator('#title').fill(podcastTitle);
+    await page.locator('#summary').fill('Disposable podcast lifecycle fixture.');
+    await page.locator('#description').fill('Created and deleted through the Web UK Laravel runtime gate.');
+    await page.locator('#category').fill('Disposable');
+    await page.locator('#visibility-private').check();
+    const podcastCreateResponse = await submit(page, '/podcasts/studio/new', page.locator('form:has(#title) button'));
+    expect(podcastCreateResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    podcastId = Number(new URL(page.url()).pathname.match(/\/podcasts\/studio\/(\d+)$/)?.[1]);
+    expect(podcastId).toBeGreaterThan(0);
+    await expect(page.locator('#title')).toHaveValue(podcastTitle);
+    await expect(page.locator('#visibility-private')).toBeChecked();
+    await expectAccessibleReflow(page);
+
+    await page.locator('#title').fill(updatedPodcastTitle);
+    const podcastUpdateResponse = await submit(page, `/podcasts/studio/${podcastId}/update`, page.locator('form[action$="/update"] button'));
+    expect(podcastUpdateResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    await expect(page.locator('#title')).toHaveValue(updatedPodcastTitle);
+    const ownedShows = rowsFrom(await callPodcastApi(token, 'GET', '/mine'));
+    expect(ownedShows.some(show => Number(show?.id) === podcastId && show?.title === updatedPodcastTitle)).toBe(true);
+
+    const podcastDeleteResponse = await submit(page, `/podcasts/studio/${podcastId}/delete`, page.locator('form[action$="/delete"] button'));
+    expect(podcastDeleteResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    expect(rowsFrom(await callPodcastApi(token, 'GET', '/mine')).some(show => Number(show?.id) === podcastId)).toBe(false);
+    podcastDeleted = true;
+
     await page.goto(`${mountPath}/groups/${groupId}/edit`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
     await expectAccessibleReflow(page);
     await page.locator('#name').fill(updatedName);
@@ -366,9 +400,13 @@ test('certifies a disposable private group and its owner-managed content through
       try {
         if (pollId && !pollDeleted) await deletePoll(token, pollId);
       } finally {
-        if (!deleted) {
-          const existing = await findByName(token, updatedName) || await findByName(token, createdName);
-          if (existing) await deleteGroup(token, existing.id);
+        try {
+          if (podcastId && !podcastDeleted) await callPodcastApi(token, 'DELETE', `/${podcastId}`);
+        } finally {
+          if (!deleted) {
+            const existing = await findByName(token, updatedName) || await findByName(token, createdName);
+            if (existing) await deleteGroup(token, existing.id);
+          }
         }
       }
     }
