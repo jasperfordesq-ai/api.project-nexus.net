@@ -5006,6 +5006,7 @@ describe('shared accessible frontend shell', () => {
 
   it('renders the Laravel-backed Federation listing detail page', async () => {
     const api = require('../src/lib/api');
+    let viewerMessagingEnabled = true;
     api.callFederationApi.mockImplementation(async (token, method, pathValue) => {
       if (pathValue === '/listings?partner_id=12&per_page=100') {
         return {
@@ -5050,7 +5051,7 @@ describe('shared accessible frontend shell', () => {
             enabled: true,
             settings: {
               federation_optin: true,
-              messaging_enabled_federated: true
+              messaging_enabled_federated: viewerMessagingEnabled
             }
           }
         };
@@ -5081,12 +5082,19 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('2.5 hours');
     expect(response.text).toContain('North Hall');
     expect(response.text).toContain('Avery Stone');
-    expect(response.text).toContain('1 Jul 2026');
+    expect(response.text).toContain('1 July 2026');
     expect(response.text).toContain('Can help diagnose punctures.');
     expect(response.text).toContain('I can also adjust brakes and show you how to patch an inner tube.');
     expect(response.text).toContain('href="/federation/members/77?tenant_id=12"');
-    expect(response.text).toContain('Contact author');
+    expect(response.text).toContain('Send a message');
     expect(response.text).not.toContain('Laravel Blade route');
+
+    viewerMessagingEnabled = false;
+    const messagingDisabled = await request(app)
+      .get('/federation/listings/12/93')
+      .set('Cookie', signedCookieHeader());
+    expect(messagingDisabled.text).toContain('View profile');
+    expect(messagingDisabled.text).not.toContain('data-module="govuk-button">Send a message</a>');
   });
 
   it('renders the Laravel-backed Federation events page', async () => {

@@ -296,6 +296,9 @@ function listingHref(listing) {
 }
 
 function normalizeListing(listing, options = {}) {
+  const t = typeof options.t === 'function' ? options.t : (key) => key;
+  const formatDate = typeof options.formatDate === 'function' ? options.formatDate : (value) => value;
+  const formatNumber = typeof options.formatNumber === 'function' ? options.formatNumber : (value) => String(value);
   const author = asObject(listing && (listing.author || listing.owner));
   const timebank = asObject(listing && listing.timebank);
   const tenantId = listing && listing.tenant_id !== undefined ? listing.tenant_id : timebank.id;
@@ -303,7 +306,7 @@ function normalizeListing(listing, options = {}) {
   const descriptionLimit = Object.prototype.hasOwnProperty.call(options, 'descriptionLimit') ? options.descriptionLimit : 160;
   const normalized = {
     id: listing && listing.id,
-    title: trimmed(listing && listing.title) || 'Federated listing',
+    title: trimmed(listing && listing.title) || t('federation.listings_browse.title'),
     description: trimmed(listing && listing.description, descriptionLimit),
     type,
     categoryName: trimmed((listing && listing.category_name) || (listing && listing.category)),
@@ -315,12 +318,19 @@ function normalizeListing(listing, options = {}) {
       (listing && listing.author_name)
       || author.name
       || `${trimmed(listing && listing.first_name)} ${trimmed(listing && listing.last_name)}`
-    ) || 'Anonymous',
+    ) || t('federation.listings_browse.anonymous_user'),
     tenantId,
     tenantName: trimmed((listing && listing.tenant_name) || timebank.name),
     createdAt: listing && listing.created_at ? listing.created_at : '',
     isExternal: bool(listing && listing.is_external)
   };
+  normalized.typeLabel = t(`federation.listings_browse.type_${type}`);
+  normalized.estimatedHoursLabel = normalized.estimatedHours !== null
+    ? t('federation.listings_browse.hours_estimated', { hours: formatNumber(normalized.estimatedHours) })
+    : '';
+  normalized.createdAtLabel = normalized.createdAt
+    ? formatDate(normalized.createdAt, { day: 'numeric', month: 'long', year: 'numeric' })
+    : '';
 
   normalized.href = listingHref(normalized);
   return normalized;
@@ -537,13 +547,13 @@ function listingDetailQuery(tenantId, cursor = '') {
   return `?${params.toString()}`;
 }
 
-async function loadFederatedListing(token, tenantId, id) {
+async function loadFederatedListing(token, tenantId, id, options = {}) {
   let cursor = '';
 
   for (let page = 0; page < 10; page += 1) {
     const result = await callFederationApi(token, 'GET', `/listings${listingDetailQuery(tenantId, cursor)}`);
     const listing = asList(dataFrom(result))
-      .map((item) => normalizeListing(item, { descriptionLimit: null }))
+      .map((item) => normalizeListing(item, { ...options, descriptionLimit: null }))
       .find((item) => trimmed(item.id) === id && trimmed(item.tenantId) === tenantId);
 
     if (listing) {
@@ -1004,7 +1014,11 @@ router.get('/listings', asyncRoute(async (req, res) => {
     throw error;
   }
 
-  const listings = asList(dataFrom(listingsResult)).map(normalizeListing);
+  const listings = asList(dataFrom(listingsResult)).map((listing) => normalizeListing(listing, {
+    t: res.locals.t,
+    formatDate: res.locals.formatLocaleDate,
+    formatNumber: res.locals.formatLocaleNumber
+  }));
   const partnerOptions = asList(dataFrom(partnersResult)).map(normalizePartner).filter(isInternalPartner);
   const meta = metaFrom(listingsResult);
   const nextCursor = trimmed(meta.cursor || meta.next_cursor);
@@ -1038,7 +1052,11 @@ router.get('/listings/:tenantId/:id', asyncRoute(async (req, res) => {
   let member = null;
   let settingsData = {};
   try {
-    listing = await loadFederatedListing(token, tenantId, id);
+    listing = await loadFederatedListing(token, tenantId, id, {
+      t: res.locals.t,
+      formatDate: res.locals.formatLocaleDate,
+      formatNumber: res.locals.formatLocaleNumber
+    });
     if (!listing) {
       return res.status(404).render('errors/404', { title: 'Page not found' });
     }
@@ -1047,7 +1065,7 @@ router.get('/listings/:tenantId/:id', asyncRoute(async (req, res) => {
       try {
         const tenantQuery = `?tenant_id=${encodeURIComponent(tenantId)}`;
         const memberResult = await callFederationApi(token, 'GET', `/members/${encodeURIComponent(listing.authorId)}${tenantQuery}`);
-        member = normalizeMember(asObject(dataFrom(memberResult)), { bioLimit: null });
+        member = normalizeMember(asObject(dataFrom(memberResult)), { bioLimit: null, t: res.locals.t });
         const settingsResult = await callFederationApi(token, 'GET', '/settings');
         settingsData = asObject(dataFrom(settingsResult));
       } catch (error) {
