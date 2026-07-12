@@ -6,13 +6,13 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a href="{{ urlFor('/federation') }}" class="govuk-back-link">{{ t("polish_federation.groups_back") }}</a>
+  <a href="{{ urlFor('/federation') }}" class="govuk-back-link">{{ t("federation.settings.back") }}</a>
 
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
-      <span class="govuk-caption-xl">Federation settings</span>
-      <h1 class="govuk-heading-xl">Federation settings</h1>
-      <p class="govuk-body-l">Control what partner communities can see and do with your federation profile.</p>
+      <span class="govuk-caption-xl">{{ t("federation.settings.caption", { community: tenantName }) }}</span>
+      <h1 class="govuk-heading-xl">{{ t("federation.settings.title") }}</h1>
+      <p class="govuk-body-l">{{ t("federation.settings.description") }}</p>
 
       {% include "federation/_nav.njk" %}
 
@@ -41,17 +41,17 @@
       {% endif %}
 
       {% if not optedIn %}
-        <div class="govuk-inset-text"><p class="govuk-body">Turn on federation before changing federation visibility, messaging, and transfer settings.</p></div>
-        <a class="govuk-button" data-module="govuk-button" href="{{ urlFor('/federation/opt-in') }}">Turn on federation</a>
+        <div class="govuk-inset-text"><p class="govuk-body">{{ t("federation.settings.not_opted_in") }}</p></div>
+        <a class="govuk-button" data-module="govuk-button" href="{{ urlFor('/federation/opt-in') }}">{{ t("federation.settings.optin_cta") }}</a>
       {% else %}
         <div class="govuk-notification-banner" data-module="govuk-notification-banner" role="region" aria-labelledby="fed-settings-active">
           <div class="govuk-notification-banner__header">
             <h2 class="govuk-notification-banner__title" id="fed-settings-active">
-              <span class="govuk-tag govuk-tag--green">Federation active</span>
+              <span class="govuk-tag govuk-tag--green">{{ t("federation.settings.federation_active_status") }}</span>
             </h2>
           </div>
           <div class="govuk-notification-banner__content">
-            <p class="govuk-body">Your federation profile is active. These settings control cross-community discovery and contact.</p>
+            <p class="govuk-body">{{ t("federation.settings.federation_active_description") }}</p>
           </div>
         </div>
 
@@ -59,79 +59,79 @@
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
           <fieldset class="govuk-fieldset govuk-!-margin-bottom-6">
-            <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">Profile visibility</legend>
+            <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">{{ t("federation.settings.visibility_legend") }}</legend>
             <div class="govuk-checkboxes" data-module="govuk-checkboxes">
               <div class="govuk-checkboxes__item">
                 <input class="govuk-checkboxes__input" id="profile_visible_federated" name="profile_visible_federated" type="checkbox" value="1" aria-describedby="profile_visible_federated-hint"{% if settings.profileVisibleFederated %} checked{% endif %}>
                 <label class="govuk-label govuk-checkboxes__label" for="profile_visible_federated">{{ t("federation.settings.profile_visible_label") }}</label>
-                <div id="profile_visible_federated-hint" class="govuk-hint govuk-checkboxes__hint">Let members in partner communities view your federation profile.</div>
+                <div id="profile_visible_federated-hint" class="govuk-hint govuk-checkboxes__hint">{{ t("federation.settings.profile_visible_hint") }}</div>
               </div>
               <div class="govuk-checkboxes__item">
                 <input class="govuk-checkboxes__input" id="appear_in_federated_search" name="appear_in_federated_search" type="checkbox" value="1" aria-describedby="appear_in_federated_search-hint"{% if settings.appearInFederatedSearch %} checked{% endif %}>
-                <label class="govuk-label govuk-checkboxes__label" for="appear_in_federated_search">Appear in federation search</label>
-                <div id="appear_in_federated_search-hint" class="govuk-hint govuk-checkboxes__hint">Allow partner communities to find you in member search.</div>
+                <label class="govuk-label govuk-checkboxes__label" for="appear_in_federated_search">{{ t("federation.settings.appear_in_search_label") }}</label>
+                <div id="appear_in_federated_search-hint" class="govuk-hint govuk-checkboxes__hint">{{ t("federation.settings.appear_in_search_hint") }}</div>
               </div>
               <div class="govuk-checkboxes__item">
                 <input class="govuk-checkboxes__input" id="show_skills_federated" name="show_skills_federated" type="checkbox" value="1" aria-describedby="show_skills_federated-hint"{% if settings.showSkillsFederated %} checked{% endif %}>
-                <label class="govuk-label govuk-checkboxes__label" for="show_skills_federated">Show skills</label>
-                <div id="show_skills_federated-hint" class="govuk-hint govuk-checkboxes__hint">Share your skills with partner communities.</div>
+                <label class="govuk-label govuk-checkboxes__label" for="show_skills_federated">{{ t("federation.settings.show_skills_label") }}</label>
+                <div id="show_skills_federated-hint" class="govuk-hint govuk-checkboxes__hint">{{ t("federation.settings.show_skills_hint") }}</div>
               </div>
               <div class="govuk-checkboxes__item">
                 <input class="govuk-checkboxes__input" id="show_location_federated" name="show_location_federated" type="checkbox" value="1" aria-describedby="show_location_federated-hint"{% if settings.showLocationFederated %} checked{% endif %}>
-                <label class="govuk-label govuk-checkboxes__label" for="show_location_federated">Show location</label>
-                <div id="show_location_federated-hint" class="govuk-hint govuk-checkboxes__hint">Share your approximate location with partner communities.</div>
+                <label class="govuk-label govuk-checkboxes__label" for="show_location_federated">{{ t("federation.settings.show_location_label") }}</label>
+                <div id="show_location_federated-hint" class="govuk-hint govuk-checkboxes__hint">{{ t("federation.settings.show_location_hint") }}</div>
               </div>
               <div class="govuk-checkboxes__item">
                 <input class="govuk-checkboxes__input" id="show_reviews_federated" name="show_reviews_federated" type="checkbox" value="1" aria-describedby="show_reviews_federated-hint"{% if settings.showReviewsFederated %} checked{% endif %}>
-                <label class="govuk-label govuk-checkboxes__label" for="show_reviews_federated">Show reviews</label>
-                <div id="show_reviews_federated-hint" class="govuk-hint govuk-checkboxes__hint">Show federation reputation and reviews where partner communities can see them.</div>
+                <label class="govuk-label govuk-checkboxes__label" for="show_reviews_federated">{{ t("federation.settings.show_reviews_label") }}</label>
+                <div id="show_reviews_federated-hint" class="govuk-hint govuk-checkboxes__hint">{{ t("federation.settings.show_reviews_hint") }}<br>{{ t("federation.settings.show_reviews_help") }}</div>
               </div>
             </div>
           </fieldset>
 
           <fieldset class="govuk-fieldset govuk-!-margin-bottom-6">
-            <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">{{ t("notifications.title") }}</legend>
+            <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">{{ t("federation.settings.notifications_legend") }}</legend>
             <div class="govuk-checkboxes" data-module="govuk-checkboxes">
               <div class="govuk-checkboxes__item">
                 <input class="govuk-checkboxes__input" id="email_notifications" name="email_notifications" type="checkbox" value="1" aria-describedby="email_notifications-hint"{% if settings.emailNotifications %} checked{% endif %}>
-                <label class="govuk-label govuk-checkboxes__label" for="email_notifications">Email me about federation activity</label>
-                <div id="email_notifications-hint" class="govuk-hint govuk-checkboxes__hint">Receive email updates about federation requests, messages, and transfers.</div>
+                <label class="govuk-label govuk-checkboxes__label" for="email_notifications">{{ t("federation.settings.email_notifications_label") }}</label>
+                <div id="email_notifications-hint" class="govuk-hint govuk-checkboxes__hint">{{ t("federation.settings.email_notifications_hint") }}</div>
               </div>
             </div>
           </fieldset>
 
           <fieldset class="govuk-fieldset govuk-!-margin-bottom-6">
-            <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">Messaging and transfers</legend>
+            <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">{{ t("polish_federation.settings_communications_legend") }}</legend>
             <div class="govuk-checkboxes" data-module="govuk-checkboxes">
               <div class="govuk-checkboxes__item">
                 <input class="govuk-checkboxes__input" id="messaging_enabled_federated" name="messaging_enabled_federated" type="checkbox" value="1" aria-describedby="messaging_enabled_federated-hint"{% if settings.messagingEnabledFederated %} checked{% endif %}>
-                <label class="govuk-label govuk-checkboxes__label" for="messaging_enabled_federated">Allow federation messages</label>
-                <div id="messaging_enabled_federated-hint" class="govuk-hint govuk-checkboxes__hint">Let members in partner communities send you federation messages.</div>
+                <label class="govuk-label govuk-checkboxes__label" for="messaging_enabled_federated">{{ t("polish_federation.settings_messaging_label") }}</label>
+                <div id="messaging_enabled_federated-hint" class="govuk-hint govuk-checkboxes__hint">{{ t("polish_federation.settings_messaging_hint") }}</div>
               </div>
               <div class="govuk-checkboxes__item">
                 <input class="govuk-checkboxes__input" id="transactions_enabled_federated" name="transactions_enabled_federated" type="checkbox" value="1" aria-describedby="transactions_enabled_federated-hint"{% if settings.transactionsEnabledFederated %} checked{% endif %}>
-                <label class="govuk-label govuk-checkboxes__label" for="transactions_enabled_federated">Allow federation time-credit transfers</label>
-                <div id="transactions_enabled_federated-hint" class="govuk-hint govuk-checkboxes__hint">Let members in partner communities send time credits to you.</div>
+                <label class="govuk-label govuk-checkboxes__label" for="transactions_enabled_federated">{{ t("polish_federation.settings_transactions_label") }}</label>
+                <div id="transactions_enabled_federated-hint" class="govuk-hint govuk-checkboxes__hint">{{ t("polish_federation.settings_transactions_hint") }}</div>
               </div>
             </div>
           </fieldset>
 
           <div class="govuk-form-group govuk-!-margin-bottom-6">
-            <label class="govuk-label govuk-label--m" for="service_reach">Service reach</label>
-            <div id="service_reach-hint" class="govuk-hint">Choose whether you can help locally, remotely, or by travelling.</div>
+            <label class="govuk-label govuk-label--m" for="service_reach">{{ t("federation.settings.reach_legend") }}</label>
+            <div id="service_reach-hint" class="govuk-hint">{{ t("federation.settings.reach_hint") }}</div>
             <select class="govuk-select" id="service_reach" name="service_reach" aria-describedby="service_reach-hint">
-              <option value="local_only"{% if settings.serviceReach == "local_only" %} selected{% endif %}>Local help only</option>
-              <option value="remote_ok"{% if settings.serviceReach == "remote_ok" %} selected{% endif %}>Remote help possible</option>
-              <option value="travel_ok"{% if settings.serviceReach == "travel_ok" %} selected{% endif %}>Can travel</option>
+              <option value="local_only"{% if settings.serviceReach == "local_only" %} selected{% endif %}>{{ t("federation.settings.reach_local_only") }}</option>
+              <option value="remote_ok"{% if settings.serviceReach == "remote_ok" %} selected{% endif %}>{{ t("federation.settings.reach_remote_ok") }}</option>
+              <option value="travel_ok"{% if settings.serviceReach == "travel_ok" %} selected{% endif %}>{{ t("federation.settings.reach_travel_ok") }}</option>
             </select>
           </div>
 
           <div class="govuk-form-group govuk-!-margin-bottom-6">
-            <label class="govuk-label govuk-label--m" for="travel_radius_km">Travel radius</label>
-            <div id="travel_radius_km-hint" class="govuk-hint">This applies when you are willing to travel.</div>
+            <label class="govuk-label govuk-label--m" for="travel_radius_km">{{ t("federation.settings.travel_radius_label") }}</label>
+            <div id="travel_radius_km-hint" class="govuk-hint">{{ t("federation.settings.travel_radius_hint") }}</div>
             <div class="govuk-input__wrapper">
               <input class="govuk-input govuk-input--width-5" id="travel_radius_km" name="travel_radius_km" type="number" inputmode="numeric" value="{{ settings.travelRadiusKm }}" aria-describedby="travel_radius_km-hint">
-              <div class="govuk-input__suffix" aria-hidden="true">km</div>
+              <div class="govuk-input__suffix" aria-hidden="true">{{ t("federation.settings.travel_radius_suffix") }}</div>
             </div>
           </div>
 
@@ -141,7 +141,7 @@
         </form>
 
         <div class="govuk-button-group govuk-!-margin-top-6">
-          <a class="govuk-button govuk-button--warning" data-module="govuk-button" href="{{ urlFor('/federation/opt-out') }}">Turn off federation</a>
+          <a class="govuk-button govuk-button--warning" data-module="govuk-button" href="{{ urlFor('/federation/opt-out') }}">{{ t("federation.settings.optout_button") }}</a>
         </div>
       {% endif %}
     </div>

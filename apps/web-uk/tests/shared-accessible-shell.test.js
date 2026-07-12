@@ -4627,15 +4627,17 @@ describe('shared accessible frontend shell', () => {
     expect(api.callFederationApi).toHaveBeenCalledWith('test-token', 'GET', '/settings');
     expect(response.text).toContain('href="/federation"');
     expect(response.text).toContain('Federation settings');
-    expect(response.text).toContain('Control what partner communities can see and do with your federation profile.');
-    expect(response.text).toContain('Federation settings saved');
-    expect(response.text).toContain('Federation active');
+    expect(response.text).toContain('Control how you appear and take part across the community network.');
+    expect(response.text).toContain('Your federation settings have been saved.');
+    expect(response.text).toContain('Federation is active');
     expect(response.text).toContain('action="/federation/settings"');
     expect(response.text).toContain('id="profile_visible_federated" name="profile_visible_federated"');
+    expect(response.text).toContain('Partner communities can see your profile.');
     expect(response.text).toContain('id="appear_in_federated_search" name="appear_in_federated_search"');
     expect(response.text).toContain('id="show_skills_federated" name="show_skills_federated"');
     expect(response.text).toContain('id="show_location_federated" name="show_location_federated"');
     expect(response.text).toContain('id="show_reviews_federated" name="show_reviews_federated"');
+    expect(response.text).toContain('This helps members in other communities trust you.');
     expect(response.text).toContain('id="email_notifications" name="email_notifications"');
     expect(response.text).toContain('id="messaging_enabled_federated" name="messaging_enabled_federated"');
     expect(response.text).toContain('id="transactions_enabled_federated" name="transactions_enabled_federated"');
@@ -4705,6 +4707,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('name="preferences_submitted" value="1"');
     expect(response.text).toContain('id="profile_visible_federated" name="profile_visible_federated"');
     expect(response.text).toContain('id="show_location_federated" name="show_location_federated"');
+    expect(response.text).toContain('Your location is personal data. It stays hidden unless you turn this on.');
     expect(response.text).toContain('id="messaging_enabled_federated" name="messaging_enabled_federated"');
     expect(response.text).toContain('id="transactions_enabled_federated" name="transactions_enabled_federated"');
     expect(response.text).toContain('<option value="local_only" selected>');

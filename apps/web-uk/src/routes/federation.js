@@ -598,19 +598,19 @@ function transferStatusBanner(status, t = (key) => key) {
   } : null;
 }
 
-function settingsStatusBanner(status) {
+function settingsStatusBanner(status, t = (key) => key) {
   const banners = {
-    'settings-saved': { type: 'success', message: 'Federation settings saved' },
-    'settings-failed': { type: 'error', message: 'Federation settings could not be saved' }
+    'settings-saved': { type: 'success', message: t('federation.settings.saved') },
+    'settings-failed': { type: 'error', message: t('federation.settings.failed') }
   };
 
   return banners[trimmed(status)] || null;
 }
 
-function optInStatusBanner(status) {
+function optInStatusBanner(status, t = (key) => key) {
   const banners = {
-    'optin-failed': { type: 'error', message: 'We could not opt you in. Please try again.' },
-    unavailable: { type: 'error', message: 'Federation is not currently available for this community.' }
+    'optin-failed': { type: 'error', message: t('federation.optin.failed') },
+    unavailable: { type: 'error', message: t('federation.optin.unavailable') }
   };
 
   return banners[trimmed(status)] || null;
@@ -835,14 +835,17 @@ router.get('/opt-in', asyncRoute(async (req, res) => {
     throw error;
   }
 
-  const partners = asList(dataFrom(partnersResult)).map(normalizePartner).slice(0, 5);
+  const partners = asList(dataFrom(partnersResult)).map((partner) => normalizePartner(partner, {
+    t: res.locals.t,
+    formatNumber: res.locals.formatLocaleNumber
+  })).slice(0, 5);
 
   return res.render('federation/opt-in', {
-    title: 'Opt in to federation',
+    title: res.locals.t('federation.optin.title'),
     activeNav: 'explore',
     federationActiveTab: 'overview',
     partners,
-    statusBanner: optInStatusBanner(req.query.status)
+    statusBanner: optInStatusBanner(req.query.status, res.locals.t)
   });
 }));
 
@@ -1238,7 +1241,7 @@ router.get('/settings', asyncRoute(async (req, res) => {
   const settings = asObject(settingsData.settings);
 
   return res.render('federation/settings', {
-    title: 'Federation settings',
+    title: res.locals.t('federation.settings.title'),
     activeNav: 'explore',
     federationActiveTab: 'settings',
     optedIn: bool(settings.federation_optin) || bool(settingsData.enabled),
@@ -1254,7 +1257,7 @@ router.get('/settings', asyncRoute(async (req, res) => {
       serviceReach: trimmed(settings.service_reach) || 'local_only',
       travelRadiusKm: numberOrZero(settings.travel_radius_km || 25)
     },
-    statusBanner: settingsStatusBanner(req.query.status)
+    statusBanner: settingsStatusBanner(req.query.status, res.locals.t)
   });
 }));
 
