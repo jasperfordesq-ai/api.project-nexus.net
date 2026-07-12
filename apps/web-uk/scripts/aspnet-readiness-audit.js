@@ -52,8 +52,20 @@ async function runAspNetReadinessAudit(options = {}) {
       headers: tenantHeaders,
       validateBody: (body) => {
         try {
-          const payload = JSON.parse(body);
-          return typeof payload?.data?.compliance?.insurance_enabled === 'boolean';
+          const tenantData = JSON.parse(body)?.data;
+          return Number.isInteger(tenantData?.id)
+            && tenantData.id > 0
+            && typeof tenantData?.name === 'string'
+            && tenantData.name.trim() !== ''
+            && typeof tenantData?.slug === 'string'
+            && tenantData.slug.trim() !== ''
+            && tenantData?.modules !== null
+            && typeof tenantData?.modules === 'object'
+            && !Array.isArray(tenantData.modules)
+            && tenantData?.features !== null
+            && typeof tenantData?.features === 'object'
+            && !Array.isArray(tenantData.features)
+            && typeof tenantData?.compliance?.insurance_enabled === 'boolean';
         } catch {
           return false;
         }
