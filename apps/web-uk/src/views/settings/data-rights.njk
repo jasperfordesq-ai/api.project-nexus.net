@@ -7,7 +7,7 @@
 {% block mainContent %}
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
-      <a class="govuk-back-link" href="{{ urlFor('/profile/settings') }}">Back to settings</a>
+      <a class="govuk-back-link" href="{{ urlFor('/profile/settings') }}">{{ t("govuk_alpha_settings.common.back_to_settings") }}</a>
 
       {% if statusMessage and successStatus %}
         <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="data-rights-status-title">
@@ -40,13 +40,13 @@
         </div>
       {% endif %}
 
-      <span class="govuk-caption-xl">{{ t("account.settings_title") }}</span>
-      <h1 class="govuk-heading-xl">Your data rights</h1>
-      <p class="govuk-body-l">Under data protection law you have rights over the personal data we hold about you. To download a copy of your data, or to close your account, use the data and privacy section of your settings.</p>
+      <span class="govuk-caption-xl">{{ t("govuk_alpha_settings.gdpr.caption") }}</span>
+      <h1 class="govuk-heading-xl">{{ t("govuk_alpha_settings.gdpr.title") }}</h1>
+      <p class="govuk-body-l">{{ t("govuk_alpha_settings.gdpr.description") }}</p>
 
       <section aria-labelledby="data-rights-request-heading" id="request">
-        <h2 class="govuk-heading-l" id="data-rights-request-heading">Make a request</h2>
-        <p class="govuk-body">Choose the type of request you want to make. A member of the team will review it and respond.</p>
+        <h2 class="govuk-heading-l" id="data-rights-request-heading">{{ t("govuk_alpha_settings.gdpr.request_heading") }}</h2>
+        <p class="govuk-body">{{ t("govuk_alpha_settings.gdpr.request_description") }}</p>
 
         <form method="post" action="{{ urlFor('/settings/data-rights') }}" novalidate>
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
@@ -54,7 +54,7 @@
           <div class="govuk-form-group">
             <fieldset class="govuk-fieldset">
               <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
-                <h2 class="govuk-fieldset__heading">What would you like to request?</h2>
+                <h2 class="govuk-fieldset__heading">{{ t("govuk_alpha_settings.gdpr.type_label") }}</h2>
               </legend>
               <div class="govuk-radios" data-module="govuk-radios">
                 {% for type in requestTypes %}
@@ -70,29 +70,29 @@
           </div>
 
           <div class="govuk-form-group">
-            <label class="govuk-label" for="notes">{{ t("ideation.idea_content_label") }}</label>
-            <div id="notes-hint" class="govuk-hint">Add any detail that will help us deal with your request, for example which information is incorrect.</div>
+            <label class="govuk-label" for="notes">{{ t("govuk_alpha_settings.gdpr.notes_label") }}</label>
+            <div id="notes-hint" class="govuk-hint">{{ t("govuk_alpha_settings.gdpr.notes_hint") }}</div>
             <textarea class="govuk-textarea" id="notes" name="notes" rows="4" maxlength="2000" aria-describedby="notes-hint"></textarea>
           </div>
 
-          <button class="govuk-button" data-module="govuk-button">Submit request</button>
+          <button class="govuk-button" data-module="govuk-button">{{ t("govuk_alpha_settings.gdpr.submit_button") }}</button>
         </form>
       </section>
 
       <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
 
       <section aria-labelledby="your-requests-heading" id="your-requests">
-        <h2 class="govuk-heading-l" id="your-requests-heading">Requests you have made</h2>
+        <h2 class="govuk-heading-l" id="your-requests-heading">{{ t("govuk_alpha_settings.gdpr.your_requests_heading") }}</h2>
         {% if not requests.length %}
-          <div class="govuk-inset-text"><p class="govuk-body">You have not made any data rights requests yet.</p></div>
+          <div class="govuk-inset-text"><p class="govuk-body">{{ t("govuk_alpha_settings.gdpr.your_requests_empty") }}</p></div>
         {% else %}
           <table class="govuk-table">
-            <caption class="govuk-table__caption govuk-table__caption--s govuk-visually-hidden">Requests you have made</caption>
+            <caption class="govuk-table__caption govuk-table__caption--s govuk-visually-hidden">{{ t("govuk_alpha_settings.gdpr.your_requests_heading") }}</caption>
             <thead class="govuk-table__head">
               <tr class="govuk-table__row">
-                <th scope="col" class="govuk-table__header">What would you like to request?</th>
-                <th scope="col" class="govuk-table__header">Status</th>
-                <th scope="col" class="govuk-table__header">Requested</th>
+                <th scope="col" class="govuk-table__header">{{ t("govuk_alpha_settings.gdpr.type_label") }}</th>
+                <th scope="col" class="govuk-table__header">{{ t("govuk_alpha_settings.gdpr.request_status_label") }}</th>
+                <th scope="col" class="govuk-table__header">{{ t("govuk_alpha_settings.gdpr.request_date_label") }}</th>
               </tr>
             </thead>
             <tbody class="govuk-table__body">

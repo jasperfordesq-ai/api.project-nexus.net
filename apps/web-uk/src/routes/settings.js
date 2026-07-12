@@ -32,18 +32,6 @@ const SETTINGS_INSURANCE_TYPES = [
   'personal_accident',
   'other'
 ];
-const SETTINGS_GDPR_TYPE_LABELS = {
-  portability: 'Transfer my data to another service',
-  rectification: 'Correct my data',
-  restriction: 'Restrict how my data is used',
-  objection: 'Object to how my data is used'
-};
-const SETTINGS_GDPR_TYPE_HINTS = {
-  portability: 'Receive your data in a portable, machine-readable format you can give to another service.',
-  rectification: 'Ask us to correct personal data that is inaccurate or incomplete.',
-  restriction: 'Ask us to limit how we use your data while a concern is being looked into.',
-  objection: 'Object to us processing your data for a particular purpose.'
-};
 const SETTINGS_STATUS_MESSAGES = {
   'link-requested': 'Your link request has been sent. The other member must approve it.',
   'link-approved': 'You have approved the link.',
@@ -636,17 +624,17 @@ router.get('/data-rights', (req, res) => {
   const requests = [];
 
   return res.render('settings/data-rights', {
-    title: 'Your data rights',
+    title: res.locals.t('govuk_alpha_settings.gdpr.title'),
     activeNav: 'account',
     status,
-    statusMessage: SETTINGS_STATUS_MESSAGES[status] || '',
+    statusMessage: status ? res.locals.t(`govuk_alpha_settings.states.${status}`) : '',
     successStatus: status === 'gdpr-requested',
     infoStatus: status === 'gdpr-duplicate',
     errorStatus: ['gdpr-invalid', 'gdpr-failed'].includes(status),
     requestTypes: SETTINGS_GDPR_TYPES.map((type) => ({
       value: type,
-      label: SETTINGS_GDPR_TYPE_LABELS[type],
-      hint: SETTINGS_GDPR_TYPE_HINTS[type]
+      label: res.locals.t(`govuk_alpha_settings.gdpr.types.${type}`),
+      hint: res.locals.t(`govuk_alpha_settings.gdpr.type_descriptions.${type}`)
     })),
     requests
   });
