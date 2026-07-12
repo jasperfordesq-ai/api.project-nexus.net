@@ -29,11 +29,11 @@
     {% endif %}
   {% endif %}
 
-  <span class="govuk-caption-l">Volunteering</span>
+  <span class="govuk-caption-l">{{ t("govuk_alpha.volunteering.title") }}</span>
   <h1 class="govuk-heading-xl">{{ t("volunteering.hours_title") }}</h1>
 
   <div class="govuk-inset-text" role="note">
-    <p class="govuk-body govuk-!-margin-bottom-0">When an organisation approves your hours, the time credits are added to your wallet automatically - 1 time credit for every hour you give.</p>
+    <p class="govuk-body govuk-!-margin-bottom-0">{{ t("govuk_alpha.vol_clarity.hours_autocredit_note") }}</p>
   </div>
 
   {% if loadError %}
@@ -57,7 +57,7 @@
       <dd>{{ summary.pendingHoursLabel }}</dd>
     </div>
     <div class="nexus-alpha-stat">
-      <dt>This month</dt>
+      <dt>{{ t("govuk_alpha.volunteering.this_month_hours") }}</dt>
       <dd>{{ summary.thisMonthHoursLabel }}</dd>
     </div>
   </dl>
@@ -118,12 +118,12 @@
       <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
         <h2 class="govuk-fieldset__heading">{{ t("volunteering.log_hours_title") }}</h2>
       </legend>
-      <div class="govuk-hint">Record the time you have already volunteered. The organisation reviews each entry, and approved hours become time credits in your wallet automatically.</div>
+      <div class="govuk-hint">{{ t("govuk_alpha.vol_clarity.log_hours_form_hint") }}</div>
       <div class="govuk-grid-row">
         <div class="govuk-grid-column-one-half">
           <div class="govuk-form-group">
             <label class="govuk-label" for="organization_id">{{ t("auth.profile_type_organisation") }}</label>
-            <div id="organization-id-hint" class="govuk-hint">Choose the organisation you volunteered for. They will review and approve the hours.</div>
+            <div id="organization-id-hint" class="govuk-hint">{{ t("govuk_alpha.vol_clarity.log_hours_organisation_hint") }}</div>
             <select class="govuk-select" id="organization_id" name="organization_id" aria-describedby="organization-id-hint" required>
               {% for organization in organizations %}
                 <option value="{{ organization.id }}">{{ organization.name }}</option>
@@ -148,14 +148,14 @@
       <div class="govuk-grid-row">
         <div class="govuk-grid-column-one-half">
           <div class="govuk-form-group">
-            <label class="govuk-label" for="date">Date</label>
-            <div id="date-hint" class="govuk-hint">The day you did the volunteering, not today's date.</div>
+            <label class="govuk-label" for="date">{{ t("govuk_alpha.volunteering.date_label") }}</label>
+            <div id="date-hint" class="govuk-hint">{{ t("govuk_alpha.vol_clarity.log_hours_date_hint") }}</div>
             <input class="govuk-input govuk-input--width-10" id="date" name="date" type="date" value="{{ today }}" aria-describedby="date-hint" required>
           </div>
         </div>
         <div class="govuk-grid-column-one-half">
           <div class="govuk-form-group">
-            <label class="govuk-label" for="hours">Hours</label>
+            <label class="govuk-label" for="hours">{{ t("govuk_alpha.volunteering.hours_label") }}</label>
             <div id="log-hours-hint" class="govuk-hint">{{ t("volunteering.hours_log_hint") }}</div>
             <input class="govuk-input govuk-input--width-5" id="hours" name="hours" type="number" min="0.25" max="24" step="0.25" aria-describedby="log-hours-hint" required>
           </div>
@@ -163,7 +163,7 @@
       </div>
       <div class="govuk-form-group">
         <label class="govuk-label" for="description">{{ t("volunteering.description_label") }}</label>
-        <div id="description-hint" class="govuk-hint">Briefly describe what you did. This helps the organisation recognise and approve your hours.</div>
+        <div id="description-hint" class="govuk-hint">{{ t("govuk_alpha.vol_clarity.log_hours_description_hint") }}</div>
         <textarea class="govuk-textarea" id="description" name="description" rows="5" aria-describedby="description-hint"></textarea>
       </div>
     </fieldset>
@@ -174,10 +174,10 @@
   {% if not logs.length %}
     <div class="govuk-inset-text">
       <p class="govuk-body">{{ t("volunteering.empty_hours") }}</p>
-      <p class="govuk-body govuk-!-margin-bottom-0">When you have given some time, use the form above to log your hours. Once an organisation approves them, the time credits are added to your wallet automatically.</p>
+      <p class="govuk-body govuk-!-margin-bottom-0">{{ t("govuk_alpha.vol_clarity.empty_hours_cta") }}</p>
     </div>
   {% else %}
-    <p class="govuk-body">Each entry shows where your logged hours are: submitted for review, then approved. Approved hours are credited to your wallet automatically - 1 time credit for every hour.</p>
+    <p class="govuk-body">{{ t("govuk_alpha.vol_clarity.status_trail_intro") }}</p>
     <div class="nexus-alpha-card-list">
       {% for log in logs %}
         <article class="nexus-alpha-card">
@@ -190,7 +190,7 @@
           {% endif %}
           <dl class="nexus-alpha-inline-list">
             <div>
-              <dt>Hours</dt>
+              <dt>{{ t("govuk_alpha.volunteering.hours_label") }}</dt>
               <dd>{{ log.hoursLabel }}</dd>
             </div>
             {% if log.organizationName %}

@@ -421,12 +421,20 @@ function certificateStatus(status, t = null) {
   return null;
 }
 
-function hoursStatus(status) {
+function hoursStatus(status, t = null) {
   if (status === 'hours-created') {
-    return { type: 'success', message: 'Your hours have been submitted for review.' };
+    return {
+      type: 'success',
+      message: t ? t('govuk_alpha.volunteering.hours_created') : 'Your hours have been submitted for review.'
+    };
   }
   if (status === 'hours-failed') {
-    return { type: 'error', message: 'Your hours could not be logged. Check the details and try again.' };
+    return {
+      type: 'error',
+      message: t
+        ? t('govuk_alpha.volunteering.hours_failed')
+        : 'Your hours could not be logged. Check the details and try again.'
+    };
   }
   return null;
 }
@@ -1584,44 +1592,50 @@ function hoursOrganizations(organizations, applications) {
   return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }));
 }
 
-function hourStatusPresentation(status) {
+function hourStatusPresentation(status, t = null) {
   const value = trimmed(status) || 'pending';
   if (value === 'pending') {
     return {
       value,
-      label: 'Submitted',
+      label: t ? t('govuk_alpha.vol_clarity.status_submitted') : 'Submitted',
       className: 'govuk-tag--yellow',
-      note: 'Waiting for the organisation to review and approve these hours.'
+      note: t
+        ? t('govuk_alpha.vol_clarity.status_pending_note')
+        : 'Waiting for the organisation to review and approve these hours.'
     };
   }
   if (value === 'approved') {
     return {
       value,
-      label: 'Approved',
+      label: t ? t('govuk_alpha.volunteering.status_values.approved') : 'Approved',
       className: 'govuk-tag--green',
-      note: 'Approved. The time credits for these hours have been added to your wallet automatically.'
+      note: t
+        ? t('govuk_alpha.vol_clarity.status_approved_credited')
+        : 'Approved. The time credits for these hours have been added to your wallet automatically.'
     };
   }
   if (value === 'declined' || value === 'rejected') {
     return {
       value,
-      label: 'Declined',
+      label: t ? t('govuk_alpha.volunteering.status_values.declined') : 'Declined',
       className: 'govuk-tag--red',
       note: ''
     };
   }
+  const key = `govuk_alpha.volunteering.status_values.${value}`;
+  const translated = t ? t(key) : key;
   return {
     value,
-    label: headline(value),
+    label: translated !== key ? translated : headline(value),
     className: 'govuk-tag--grey',
     note: ''
   };
 }
 
-function normalizeHourLog(row) {
+function normalizeHourLog(row, t = null) {
   const log = row && typeof row === 'object' ? row : {};
   const organization = log.organization && typeof log.organization === 'object' ? log.organization : {};
-  const status = hourStatusPresentation(log.status);
+  const status = hourStatusPresentation(log.status, t);
   return {
     id: positiveInteger(log.id),
     dateLabel: dateLabel(log.date ?? log.date_logged ?? log.dateLogged ?? log.logged_at ?? log.loggedAt ?? log.created_at),
@@ -2266,7 +2280,8 @@ router.get('/hours', asyncRoute(async (req, res) => {
   let loadError = null;
   try {
     summary = normalizeHourSummary(await callApi(token, 'GET', '/hours/summary'));
-    logs = collectionFrom(await callApi(token, 'GET', '/hours?per_page=10')).map(normalizeHourLog);
+    logs = collectionFrom(await callApi(token, 'GET', '/hours?per_page=10'))
+      .map((log) => normalizeHourLog(log, res.locals.t));
     applications = collectionFrom(
       await callApi(token, 'GET', '/applications?status=approved&per_page=50')
     ).map(normalizeApplication);
@@ -2282,7 +2297,7 @@ router.get('/hours', asyncRoute(async (req, res) => {
   const nextGoal = summary.approvedTotal > 0 ? Math.ceil(summary.approvedTotal / 50) * 50 : 0;
 
   return res.render('volunteering/hours', {
-    title: 'Volunteering hours',
+    title: res.locals.t('govuk_alpha.volunteering.hours_title'),
     activeNav: 'volunteering',
     summary,
     nextGoal,
@@ -2291,7 +2306,7 @@ router.get('/hours', asyncRoute(async (req, res) => {
     organizations,
     loadError,
     today: new Date().toISOString().slice(0, 10),
-    status: hoursStatus(trimmed(req.query.status)),
+    status: hoursStatus(trimmed(req.query.status), res.locals.t),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { redirectOn401: loginRedirect() }));

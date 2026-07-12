@@ -5460,6 +5460,18 @@ Focused owner-filter/render proof passed. Full Jest remains `45/45` suites and
 `1,456/1,456` tests with green lint and the 285-template zero-match audit. This
 surface is read-only; broader live owner/admin/member tenant variants remain open.
 
+## 2026-07-12 Default-English Volunteer Hours Parity
+
+Volunteer hours now uses Laravel's catalogs for the auto-credit explanation,
+form hints, empty guidance, and pending/approved/declined status trail. Known
+states are request-locale aware; unknown values retain Blade's translated-or-
+headline fallback.
+
+Focused summary/form/log/action proof passed. Full Jest remains `45/45` suites
+and `1,456/1,456` tests with green lint and the 285-template zero-match audit.
+No live log was submitted because Laravel exposes no residue-free hours-record
+deletion path.
+
 ## Final Handoff Checklist
 
 Before leaving this job for another agent, write a short note containing:
