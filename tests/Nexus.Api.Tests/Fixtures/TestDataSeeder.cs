@@ -464,6 +464,7 @@ public static class TestDataSeeder
                 event_sessions,
                 event_staff_assignment_history,
                 event_staff_assignments,
+                event_calendar_feed_tokens,
                 event_waitlist_entry_history,
                 event_registration_history,
                 event_waitlist_entries,

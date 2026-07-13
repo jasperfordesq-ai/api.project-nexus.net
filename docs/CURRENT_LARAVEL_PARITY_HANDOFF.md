@@ -68,10 +68,17 @@ and adds exact append-only `event_attendance_activity`. All 124 migrations
 replayed on blank disposable PostgreSQL, EF model drift is clean, and focused
 privacy/history/manager/attendance/bulk/CSV/tenant proof passed 4/4.
 
-The live comparator now reports 4,420 ASP.NET operations, 2,500/2,592 matched,
-and 92 missing. The schema comparator reports 377 Laravel migration files, 128
-ASP.NET migration source files, 126 runtime IDs, 364 ASP.NET table names, 173
-exact matches, 282 missing Laravel names, and 191 ASP.NET-only names.
+The live comparator now reports 4,427 ASP.NET operations, 2,507/2,592 matched,
+and 85 missing. The schema comparator reports 377 Laravel migration files, 129
+ASP.NET migration source files, 127 runtime IDs, 365 ASP.NET table names, 174
+exact matches, 281 missing Laravel names, and 191 ASP.NET-only names.
+
+Event Calendar is the latest completed backend slice. Its seven calendar,
+ICS/action, feed-token, and anonymous personal-feed routes now share one
+identity-free lifecycle projection; use hashed one-time secrets with owner and
+revocation enforcement; and restrict personal feeds to confirmed canonical
+registrations. Focused proof is 4/4; blank migration replay is 127/127 with no
+EF model drift. No production resource was touched.
 
 Event Staff is the latest completed backend slice. Its list/grant/revoke routes
 now use real tenant-scoped assignments, the canonical capability map, effective
@@ -540,7 +547,7 @@ Earlier published slice evidence retained for context:
 - earlier volunteering-chain proof reached
   `20260711031959_NullableTransactionLedgerLegs`; the current migration proof
   is recorded above;
-- API route comparator: 2,500/2,592 current Laravel/supplemental operations
+- API route comparator: 2,507/2,592 current Laravel/supplemental operations
   matched, 102 route-shape gaps after Event People closure;
 - historical schema comparator: 134/361 Laravel tables matched, 227 missing, 194
   ASP.NET-only; the current result above supersedes it and remains a global red

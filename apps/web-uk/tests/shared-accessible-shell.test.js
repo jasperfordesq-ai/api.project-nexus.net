@@ -21494,6 +21494,97 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('Alex Morgan');
   });
 
+  it('renders the Laravel Event Check-in roster and submits attendance transitions', async () => {
+    const api = require('../src/lib/api');
+    api.callEventApi
+      .mockResolvedValueOnce({ data: { id: 42, title: 'Community garden day' } })
+      .mockResolvedValueOnce({
+        data: [{
+          member: { id: 55, display_name: 'Alex Morgan' },
+          registration: { state: 'confirmed', version: 4 },
+          attendance: { state: 'checked_in', version: 9 },
+          management_actions: { check_out: true, undo_attendance: true }
+        }],
+        meta: {
+          total: 26,
+          total_pages: 2,
+          metrics: { confirmed: 8, checked_in: 3, attended: 2 }
+        }
+      });
+
+    const response = await request(app)
+      .get('/events/42/check-in?search=Alex&attendance_state=checked_in')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Community garden day');
+    expect(response.text).toContain('Alex Morgan');
+    expect(response.text).toContain('name="expected_version" value="9"');
+    expect(response.text).toContain('<option value="check_out"');
+    expect(response.text).toContain('<option value="undo"');
+    expect(response.text).not.toContain('<option value="check_in"');
+    expect(response.text).toContain('href="/events/42/check-in?');
+    expect(api.callEventApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/42');
+    expect(api.callEventApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/42/people?page=1&per_page=25&search=Alex&attendance_state=checked_in&sort=name&direction=asc');
+
+    api.callEventApi.mockResolvedValueOnce({ data: { attendance: { state: 'checked_out', version: 10 } } });
+    const agent = request.agent(app);
+    const shell = await agent.get('/contact').set('Cookie', signedCookieHeader());
+    const csrf = shell.text.match(/name="_csrf" value="([^"]+)"/)[1];
+    const updated = await agent
+      .post('/events/42/check-in/55')
+      .set('Cookie', signedCookieHeader())
+      .type('form')
+      .send({ _csrf: csrf, action: 'check_out', expected_version: '9', confirmation: '1', idempotency_key: 'attendance-test-key' });
+
+    expect(updated.status).toBe(302);
+    expect(updated.headers.location).toBe('/events/42/check-in?status=attendance-updated');
+    expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/people/55/attendance', {
+      action: 'check_out',
+      expected_version: 9,
+      reason: null,
+      idempotency_key: 'attendance-test-key'
+    });
+  });
+
+  it('validates Event Check-in undo and maps Laravel version conflicts', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const shell = await agent.get('/contact').set('Cookie', signedCookieHeader());
+    const csrf = shell.text.match(/name="_csrf" value="([^"]+)"/)[1];
+    const invalid = await agent
+      .post('/events/42/check-in/55')
+      .set('Cookie', signedCookieHeader())
+      .type('form')
+      .send({ _csrf: csrf, action: 'undo', expected_version: '9', confirmation: '1' });
+
+    expect(invalid.headers.location).toBe('/events/42/check-in?status=attendance-invalid');
+    expect(api.callEventApi).not.toHaveBeenCalled();
+
+    api.callEventApi.mockRejectedValueOnce(new api.ApiError('Version conflict', 409));
+    const conflict = await agent
+      .post('/events/42/check-in/55')
+      .set('Cookie', signedCookieHeader())
+      .type('form')
+      .send({ _csrf: csrf, action: 'undo', expected_version: '9', reason: 'Recorded in error', confirmation: '1' });
+
+    expect(conflict.headers.location).toBe('/events/42/check-in?status=attendance-conflict');
+  });
+
+  it('fails the Event Check-in roster closed when Laravel denies attendance access', async () => {
+    const api = require('../src/lib/api');
+    api.callEventApi
+      .mockResolvedValueOnce({ data: { id: 42, title: 'Community garden day' } })
+      .mockRejectedValueOnce(new api.ApiError('Forbidden', 403));
+
+    const response = await request(app)
+      .get('/events/42/check-in')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(403);
+    expect(response.text).not.toContain('attendance-action');
+  });
+
   it('submits Laravel event action aliases and redirects signed-out visitors', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');

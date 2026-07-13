@@ -12,7 +12,7 @@ Canonical source: `C:\platforms\htdocs\staging` (read-only).
 | Services | 483 | 188 |
 | Models/entities | 200 Laravel models | 191 EF entity files |
 | Migrations | 377 | 126 main EF migration source files; 124 EF-discovered/applied runtime IDs |
-| OpenAPI operations | 1,022 | 4,420 static controller operations from parity script |
+| OpenAPI operations | 1,022 | 4,427 static controller operations from parity script |
 | Schema tables | 455 Laravel source tables | 356 .NET static table names |
 | Frontend routes | 589 React / 607 accessible in the historical comparator; current Web UK matrix separately reports 608 Laravel accessible declarations | 462 legacy React routes; current `apps/web-uk` matrix reports 612 local declarations, 608 matched Laravel accessible routes, 0 missing, 2 extra exchange workflow routes, and 3 ignored infrastructure routes |
 | Localization | 11 locales / 605 locale namespaces | 7 locales / 280 locale namespaces |
@@ -23,8 +23,8 @@ These counts are directional. They are not a parity score.
 
 `scripts/compare-laravel-api-parity.ps1` generated
 `artifacts/parity/api/api-parity.json` on 2026-07-12 after its fixture passed,
-with 4,420 ASP.NET controller operations, 2,592 Laravel source operations after
-supplemental API route parsing and de-duplication, 2,500 static matches, and 92
+with 4,427 ASP.NET controller operations, 2,592 Laravel source operations after
+supplemental API route parsing and de-duplication, 2,507 static matches, and 85
 missing operations. All eight Event People workspace shapes are now owned with
 focused proof passing 4/4. Group invite preview/accept and queued export
 request/status/download now have canonical V2 owners; focused lifecycle proof
@@ -40,9 +40,9 @@ planning.
 
 `scripts/compare-laravel-schema-parity.ps1` generated
 `artifacts/parity/schema/schema-parity.json` on 2026-07-12 after its fixture
-passed. The current live table baseline is 377 Laravel migrations, 128 ASP.NET
-migration source files, 126 runtime IDs, 455 Laravel source tables, 364 .NET
-table names, 173 exact matches, 282 missing Laravel-side names, and 191 .NET-
+passed. The current live table baseline is 377 Laravel migrations, 129 ASP.NET
+migration source files, 127 runtime IDs, 455 Laravel source tables, 365 .NET
+table names, 174 exact matches, 281 missing Laravel-side names, and 191 .NET-
 only names. The artifact is ignored by git; regenerate it before using the
 numbers for schema implementation planning.
 

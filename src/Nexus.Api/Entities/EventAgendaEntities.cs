@@ -73,3 +73,11 @@ public sealed class EventStaffAssignmentHistory : ITenantEntity
     public string Action { get; set; } = ""; public string? IdempotencyKey { get; set; } public string? FromStatus { get; set; } public string ToStatus { get; set; } = "";
     public DateTime? PreviousExpiresAt { get; set; } public DateTime? NewExpiresAt { get; set; } public string Metadata { get; set; } = "{}"; public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
+
+public sealed class EventCalendarFeedToken : ITenantEntity
+{
+    public long Id { get; set; } public int TenantId { get; set; } public int UserId { get; set; }
+    public string TokenHash { get; set; } = ""; public string TokenPrefix { get; set; } = ""; public string? Label { get; set; }
+    public string Locale { get; set; } = "en"; public DateTime? LastUsedAt { get; set; } public DateTime? RevokedAt { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow; public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}

@@ -16,14 +16,14 @@ blank PostgreSQL replay.
 | --- | ---: | --- |
 | Laravel migrations | 377 | PHP migration files under `database/migrations`. |
 | ASP.NET migration source files | 126 | Main migration `.cs` files excluding designers and the model snapshot. |
-| ASP.NET runtime migrations | 126 | Blank replay applied every recorded EF migration through `20260712232721_EventStaffWorkflowParity`; `has-pending-model-changes` is green. |
+| ASP.NET runtime migrations | 127 | Blank replay applied every recorded EF migration through `20260713000700_EventCalendarWorkflowParity`; `has-pending-model-changes` is green. |
 | Laravel created tables | 298 | Unique `Schema::create(...)` table names. |
 | Laravel touched tables | 128 | Unique `Schema::table(...)` table names. |
 | Laravel explicit model tables | 267 | Unique `protected/public $table = ...` model declarations. |
 | Laravel source tables | 455 | Union of migration-created, migration-touched, and explicit model tables. |
-| ASP.NET tables | 364 | Static table union after adding canonical event-staff evidence. |
-| Exact matched tables | 173 | Current exact table-name matches. |
-| Missing Laravel tables | 282 | Laravel source names not represented exactly in ASP.NET. |
+| ASP.NET tables | 365 | Static table union after adding canonical calendar-feed-token storage. |
+| Exact matched tables | 174 | Current exact table-name matches. |
+| Missing Laravel tables | 281 | Laravel source names not represented exactly in ASP.NET. |
 | Extra ASP.NET tables | 191 | .NET table names with no exact Laravel table name. |
 
 These counts are not a parity score. Static table-name matching will overstate
@@ -59,6 +59,13 @@ idempotency keys; closed role/status/action domains; revoke-state consistency;
 and two PostgreSQL triggers that reject history updates and deletes. Blank
 replay, model-drift proof, trigger catalog proof at 2/2, and focused Event Staff
 workflow proof at 4/4 are green.
+
+`20260713000700_EventCalendarWorkflowParity` is now the latest migration and
+runtime ID 127. It adds exact `event_calendar_feed_tokens` storage with a global
+hash uniqueness key, owner/revocation index, fixed lowercase SHA-256 hashes,
+redacted token prefixes, locale validation, and use/revocation timestamp
+ordering checks. Blank replay, model-drift proof, and focused calendar/feed
+security proof at 4/4 are green.
 
 `20260712214912_EventRegistrationWaitlistLifecycleParity` is the preceding
 migration and runtime ID 123. It deterministically upgrades existing canonical

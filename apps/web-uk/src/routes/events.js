@@ -365,6 +365,7 @@ function eventPerson(row = {}) {
   const registration = row.registration && typeof row.registration === 'object' ? row.registration : {};
   const waitlist = row.waitlist && typeof row.waitlist === 'object' ? row.waitlist : {};
   const attendance = row.attendance && typeof row.attendance === 'object' ? row.attendance : {};
+  const management = row.management_actions && typeof row.management_actions === 'object' ? row.management_actions : {};
   return {
     id: positiveInteger(member.id || row.user_id),
     name: trimmed(member.display_name || member.name),
@@ -372,7 +373,14 @@ function eventPerson(row = {}) {
     registrationVersion: Math.max(0, Number.parseInt(registration.version ?? registration.registration_version ?? 0, 10) || 0),
     waitlistState: selectedValue(waitlist.state, PEOPLE_FILTERS.waitlist_state, 'none'),
     waitlistPosition: positiveInteger(waitlist.position),
-    attendanceState: selectedValue(attendance.state, PEOPLE_FILTERS.attendance_state, 'not_checked_in')
+    attendanceState: selectedValue(attendance.state, PEOPLE_FILTERS.attendance_state, 'not_checked_in'),
+    attendanceVersion: Math.max(0, Number.parseInt(attendance.version ?? attendance.attendance_version ?? 0, 10) || 0),
+    attendanceActions: {
+      check_in: checked(management.check_in),
+      check_out: checked(management.check_out),
+      no_show: checked(management.no_show),
+      undo: checked(management.undo_attendance)
+    }
   };
 }
 
@@ -471,6 +479,52 @@ router.get('/:id(\\d+)/people', requireAuth, asyncRoute(async (req, res) => {
     csrfToken: req.csrfToken ? req.csrfToken() : '',
     previousHref: query.page > 1 ? eventPeoplePath(id, query, query.page - 1) : '',
     nextHref: query.page < totalPages ? eventPeoplePath(id, query, query.page + 1) : ''
+  });
+}, { notFoundTitle: 'Event not found' }));
+
+router.get('/:id(\\d+)/check-in', requireAuth, asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const token = tokenFrom(req);
+  const query = {
+    page: boundedPositiveInteger(req.query.page, 1),
+    per_page: 25,
+    search: trimmed(req.query.search, 255),
+    attendance_state: selectedValue(req.query.attendance_state, PEOPLE_FILTERS.attendance_state),
+    sort: selectedValue(req.query.sort, ['name', 'attendance'], 'name'),
+    direction: selectedValue(req.query.direction, ['asc', 'desc'], 'asc')
+  };
+  const parameters = new URLSearchParams(Object.entries(query).map(([key, value]) => [key, String(value)]));
+  const [eventResult, peopleResult] = await Promise.all([
+    callApi(token, 'GET', `/${id}`),
+    callApi(token, 'GET', `/${id}/people?${parameters.toString()}`)
+  ]);
+  const event = eventFrom(eventResult);
+  const meta = peopleResult?.meta && typeof peopleResult.meta === 'object' ? peopleResult.meta : {};
+  const people = (Array.isArray(peopleResult?.data) ? peopleResult.data : [])
+    .map(eventPerson)
+    .filter((person) => person.id !== null);
+  const totalPages = Math.max(0, Number.parseInt(meta.total_pages, 10) || 0);
+  const pathForPage = (page) => {
+    const pageQuery = new URLSearchParams();
+    Object.entries({ ...query, page }).forEach(([key, value]) => {
+      if (value !== '' && key !== 'per_page') pageQuery.set(key, String(value));
+    });
+    return eventPath(id, `/check-in?${pageQuery.toString()}`);
+  };
+
+  res.render('events/check-in', {
+    title: res.locals.t('govuk_alpha.events.check_in_title'),
+    activeNav: 'events',
+    event: { id, title: trimmed(event.title) },
+    people,
+    metrics: meta.metrics && typeof meta.metrics === 'object' ? meta.metrics : {},
+    total: Math.max(0, Number.parseInt(meta.total, 10) || 0),
+    query,
+    attendanceStates: PEOPLE_FILTERS.attendance_state,
+    status: trimmed(req.query.status),
+    csrfToken: req.csrfToken ? req.csrfToken() : '',
+    previousHref: query.page > 1 ? pathForPage(query.page - 1) : '',
+    nextHref: query.page < totalPages ? pathForPage(query.page + 1) : ''
   });
 }, { notFoundTitle: 'Event not found' }));
 
@@ -655,6 +709,37 @@ router.post('/:id(\\d+)/people', requireAuth, asyncRoute(async (req, res) => {
     if (redirectOnAuthError(error, res)) return undefined;
     if (error instanceof ApiError && [400, 403, 404, 409, 422].includes(error.status)) {
       return redirectTo(res, eventPath(id, '/people?status=people-failed'));
+    }
+    throw error;
+  }
+}));
+
+router.post('/:id(\\d+)/check-in/:userId(\\d+)', requireAuth, asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const userId = Number(req.params.userId);
+  const action = selectedValue(req.body.action, ['check_in', 'check_out', 'no_show', 'undo']);
+  const expectedVersion = Number.parseInt(req.body.expected_version, 10);
+  const reason = trimmed(req.body.reason, 4000);
+  if (!action || !Number.isInteger(expectedVersion) || expectedVersion < 0 || !checked(req.body.confirmation)
+    || (action === 'undo' && !reason)) {
+    return redirectTo(res, eventPath(id, '/check-in?status=attendance-invalid'));
+  }
+
+  try {
+    await callApi(tokenFrom(req), 'POST', `/${id}/people/${userId}/attendance`, {
+      action,
+      expected_version: expectedVersion,
+      reason: reason || null,
+      idempotency_key: trimmed(req.body.idempotency_key, 191) || randomUUID()
+    });
+    return redirectTo(res, eventPath(id, '/check-in?status=attendance-updated'));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    if (error instanceof ApiError && error.status === 409) {
+      return redirectTo(res, eventPath(id, '/check-in?status=attendance-conflict'));
+    }
+    if (error instanceof ApiError && [400, 403, 404, 422].includes(error.status)) {
+      return redirectTo(res, eventPath(id, '/check-in?status=attendance-failed'));
     }
     throw error;
   }
