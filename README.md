@@ -11,6 +11,13 @@ production source of truth.
 
 Current local Laravel parity source: `C:\platforms\htdocs\staging`.
 
+`apps/web-uk` is a distinct shared accessible frontend implementation stored in
+this repository. Laravel Blade defines its browser experience and the Laravel
+backend defines its API contract. The experimental ASP.NET backend is not a
+source of truth for Web UK; a separate parity workstream must make ASP.NET
+compatible before the same unchanged frontend can switch to it. See
+[`apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md`](apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md).
+
 ## Credits and Origins
 
 ### Creator

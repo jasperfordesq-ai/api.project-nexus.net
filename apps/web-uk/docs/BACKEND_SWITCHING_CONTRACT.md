@@ -4,11 +4,17 @@ Last reviewed: 2026-07-13
 
 ## Decision
 
-`apps/web-uk` may become a shared accessible frontend for Laravel and ASP.NET in
-the future. Its default backend contract is now Laravel-first, but this does not
-certify completed page workflows or production traffic. The Laravel Blade
-accessible frontend remains the source of truth, and ASP.NET must become
-compatible with that behavior.
+`apps/web-uk` is being completed as one shared accessible frontend. Laravel
+Blade defines the browser experience and the Laravel backend defines the HTTP
+and workflow contract. Laravel is the only current implementation and
+certification backend. ASP.NET is incomplete, is not a source of truth, and is
+owned by a separate parity workstream. It may become a second backend only by
+matching Laravel closely enough for the same unchanged Web UK frontend and
+evidence suite.
+
+The repository containing Web UK is not an architectural authority: locating
+`apps/web-uk` inside `asp.net-backend` does not make ASP.NET the frontend's
+backend source of truth.
 
 Backend target resolution lives in:
 
@@ -16,12 +22,12 @@ Backend target resolution lives in:
 src/lib/backend-contract.js
 ```
 
-## Future Modes
+## Backend Modes
 
 | Mode | Meaning | Current status |
 | --- | --- | --- |
-| Laravel-compatible | The frontend talks to endpoints and page workflows matching the Laravel accessible frontend. | Default target. Source of truth, but individual workflows still require route/data/form certification. |
-| ASP.NET-compatible | The frontend talks to ASP.NET endpoints that intentionally mimic Laravel accessible contracts. | Development-only; selectable for future work, not certified. |
+| Laravel | The frontend reproduces Laravel Blade workflows and calls Laravel-defined backend contracts. | Current default and certification target. |
+| ASP.NET-compatible | The unchanged frontend talks to ASP.NET endpoints that reproduce the same Laravel contracts. | Future verification target only; incomplete and not certified. |
 
 ## Local Backend Defaults
 
@@ -38,7 +44,12 @@ src/lib/backend-contract.js
 `API_BASE_URL` reports `api-base-url` so override-driven runs cannot be mistaken
 for certified backend readiness.
 
-## ASP.NET Readiness Audit
+## Separate ASP.NET Readiness Evidence
+
+This section records evidence produced by the separate backend parity
+workstream. It is not a Web UK implementation queue and does not authorize this
+frontend workstream to modify ASP.NET code, migrations, schema, fixtures, or
+runtime data.
 
 Run `npm run audit:aspnet:readiness` before attempting an unchanged Web UK
 session against ASP.NET. The audit is intentionally strict: it requires a
@@ -1168,8 +1179,8 @@ Keep three local surfaces distinct:
 | Surface | Path | Role |
 | --- | --- | --- |
 | Laravel source | `C:\platforms\htdocs\staging` | Production source of truth; read-only from this repo. |
-| ASP.NET backend | `C:\platforms\htdocs\asp.net-backend` | Development backend that must match Laravel contracts. |
-| Accessible candidate | `C:\platforms\htdocs\asp.net-backend\apps\web-uk` | Future shared accessible frontend candidate. |
+| ASP.NET backend | `C:\platforms\htdocs\asp.net-backend` | Separate incomplete backend implementation that must match Laravel contracts; not authoritative for Web UK. |
+| Shared accessible frontend | `C:\platforms\htdocs\asp.net-backend\apps\web-uk` | Web UK implementation target; repository location does not make it ASP.NET-specific. |
 
 Future extraction should move `apps/web-uk` into its own repository only after
 it has independent `AGENTS.md`, `CLAUDE.md`, README, docs, tests, route matrix,
@@ -1178,8 +1189,12 @@ and backend contract notes.
 ## Non-Negotiable Guardrails
 
 - Do not make ASP.NET route gaps disappear by weakening the accessible frontend.
+- Do not modify ASP.NET source, tests, migrations, schema, fixtures, or runtime
+  data from the Web UK workstream.
+- Do not use current ASP.NET behaviour to resolve ambiguity in Web UK; trace the
+  Laravel Blade workflow and Laravel backend contract instead.
 - Do not point React utility-bar traffic at `apps/web-uk` until route/workflow
   certification and rollback planning are complete.
-- Do not claim shared readiness from static route counts or skeleton pages.
-- Prefer making ASP.NET match Laravel accessible behavior over adding
-  backend-specific branches in Nunjucks views.
+- Do not claim shared readiness from static route counts or incomplete pages.
+- Make ASP.NET match Laravel accessible behaviour; never add backend-specific
+  branches in Nunjucks views, browser routes, validation, or redirects.

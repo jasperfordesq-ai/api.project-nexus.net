@@ -1,6 +1,6 @@
 # Frontend Route Parity Map
 
-Last reviewed: 2026-07-05
+Last reviewed: 2026-07-13
 
 Laravel source of truth:
 
@@ -9,10 +9,12 @@ Laravel source of truth:
 - `C:\platforms\htdocs\staging\routes\govuk-alpha.php`
 - `C:\platforms\htdocs\staging\routes\govuk-alpha-parity`
 
-.NET targets:
+Repository surfaces:
 
 - `apps/react-frontend` is now legacy/frozen and kept as historical reference.
-- `apps/web-uk` is the future shared accessible frontend candidate.
+- `apps/web-uk` is the implementation target for the future shared accessible
+  frontend. Its location in this repository does not make ASP.NET authoritative
+  for its behaviour.
 - `apps/admin` remains secondary unless a task explicitly targets it.
 
 Canonical React frontend target:
@@ -60,10 +62,11 @@ exchange workflow routes, and 3 ignored infrastructure/helper routes. It still
 does not prove rendered UI, workflow, tenant/auth, localization, API side
 effects, or live Laravel runtime behavior.
 
-## Accessible Frontend Direction
+## Accessible Frontend Direction And Authority
 
-The Laravel Blade accessible frontend is the current visual/workflow source of
-truth:
+Laravel Blade is the product/UI source of truth for browser routes, links,
+layout, navigation, content hierarchy, forms, validation presentation,
+redirects, tenant behaviour, and workflows:
 
 ```text
 C:\platforms\htdocs\staging\accessible-frontend
@@ -71,13 +74,25 @@ C:\platforms\htdocs\staging\routes\govuk-alpha.php
 C:\platforms\htdocs\staging\routes\govuk-alpha-parity
 ```
 
-`apps/web-uk` keeps the preferred Express/Nunjucks/GOV.UK Frontend stack and is
-being prepared as the future shared accessible frontend. Shell and Explore
-skeleton work does not change the route counts above and does not prove
-production readiness. The React utility-bar accessible link must continue
+The Laravel backend/API is separately authoritative for HTTP methods and paths,
+payloads, response envelopes, status codes, auth, roles, modules, uploads,
+downloads, persistence, and side effects.
+
+`apps/web-uk` keeps Express/Nunjucks/GOV.UK Frontend and is being completed as
+the future shared accessible frontend. ASP.NET is an incomplete future second
+backend, not a frontend source of truth. It must be made contract-compatible by
+the separate backend workstream; Web UK must not acquire backend-specific page
+or workflow branches. Current implementation does not itself prove production
+readiness. The React utility-bar accessible link must continue
 pointing at the production Laravel accessible frontend until `apps/web-uk` has
 passed route, workflow, tenant-domain, auth, localization, accessibility, and
 runtime smoke certification.
+
+The Laravel repository, schema, and ordinary local database are read-only from
+the Web UK workstream. Laravel mutations used for certification require a
+dedicated disposable environment or explicit user authorization with verified
+cleanup. Web UK work must not modify ASP.NET backend source, tests, migrations,
+schema, fixtures, or runtime data.
 
 ## Generated Artifacts
 

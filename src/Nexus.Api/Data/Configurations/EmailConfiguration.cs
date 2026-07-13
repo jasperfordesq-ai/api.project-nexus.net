@@ -44,11 +44,18 @@ public class EmailConfiguration : TenantScopedConfiguration
             entity.Property(e => e.ToEmail).HasMaxLength(255).IsRequired();
             entity.Property(e => e.Subject).HasMaxLength(500).IsRequired();
             entity.Property(e => e.TemplateKey).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.Provider).HasMaxLength(50).IsRequired().HasDefaultValue("local");
+            entity.Property(e => e.ProviderMessageId).HasMaxLength(500);
+            entity.Property(e => e.IdempotencyKey).HasMaxLength(191);
+            entity.Property(e => e.Source).HasMaxLength(255);
             entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
             entity.Property(e => e.ErrorMessage).HasMaxLength(2000);
             entity.HasIndex(e => e.TenantId);
             entity.HasIndex(e => e.UserId);
             entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => new { e.TenantId, e.IdempotencyKey })
+                .IsUnique()
+                .HasFilter("\"IdempotencyKey\" IS NOT NULL");
             entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.SetNull);
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);

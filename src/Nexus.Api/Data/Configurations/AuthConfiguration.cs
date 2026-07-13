@@ -46,6 +46,14 @@ public class AuthConfiguration : TenantScopedConfiguration
             entity.Property(e => e.IsGod)
                 .HasColumnName("is_god")
                 .HasDefaultValue(false);
+            entity.Property(e => e.IsApproved)
+                .HasColumnName("is_approved")
+                .HasDefaultValue(false);
+            entity.Property(e => e.PreferredLanguage)
+                .HasColumnName("preferred_language")
+                .HasMaxLength(5)
+                .HasDefaultValue("en")
+                .IsRequired();
             entity.Property(e => e.NotificationPreferences)
                 .HasColumnName("notification_preferences")
                 .HasColumnType("text");
@@ -65,6 +73,7 @@ public class AuthConfiguration : TenantScopedConfiguration
             entity.HasIndex(e => e.IsSuperAdmin).HasDatabaseName("idx_users_is_super_admin");
             entity.HasIndex(e => e.IsGod).HasDatabaseName("idx_users_is_god");
             entity.HasIndex(e => new { e.TenantId, e.Role }).HasDatabaseName("idx_users_tenant_role");
+            entity.HasIndex(e => new { e.TenantId, e.IsApproved, e.CreatedAt }).HasDatabaseName("idx_users_created_tenant");
 
             // Relationship
             entity.HasOne(e => e.Tenant)

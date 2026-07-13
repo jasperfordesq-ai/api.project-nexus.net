@@ -40,6 +40,15 @@ public class GmailEmailService : IEmailService
         string htmlBody,
         string? textBody = null,
         CancellationToken ct = default)
+        => (await SendEmailWithEvidenceAsync(to, subject, htmlBody, textBody, null, ct)).Accepted;
+
+    public async Task<EmailDeliveryResult> SendEmailWithEvidenceAsync(
+        string to,
+        string subject,
+        string htmlBody,
+        string? textBody = null,
+        string? idempotencyKey = null,
+        CancellationToken ct = default)
     {
         // Create safe log identifiers upfront to avoid logging user-provided values directly
         var safeRecipient = MaskEmail(to);
@@ -49,13 +58,13 @@ public class GmailEmailService : IEmailService
         {
             _logger.LogWarning("Email sending is disabled. Would have sent to: {To}, SubjectLength: {SubjectLength}",
                 safeRecipient, safeSubjectLength);
-            return true; // Return success since this is intentional
+            return new EmailDeliveryResult(false, "gmail-disabled", null, "gmail_disabled");
         }
 
         if (!_options.IsConfigured)
         {
             _logger.LogError("Gmail is not properly configured. Missing required credentials.");
-            return false;
+            return new EmailDeliveryResult(false, "gmail", null, "gmail_not_configured");
         }
 
         try
@@ -64,13 +73,15 @@ public class GmailEmailService : IEmailService
             if (string.IsNullOrEmpty(accessToken))
             {
                 _logger.LogError("Failed to get Gmail API access token");
-                return false;
+                return new EmailDeliveryResult(false, "gmail", null, "gmail_access_token_unavailable");
             }
 
             using var message = new MimeMessage();
             message.From.Add(new MailboxAddress(_options.SenderName, _options.SenderEmail));
             message.To.Add(new MailboxAddress(string.Empty, to));
             message.Subject = subject!;
+            if (!string.IsNullOrWhiteSpace(idempotencyKey))
+                message.MessageId = $"<{Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(idempotencyKey))).ToLowerInvariant()}@project-nexus.invalid>";
 
             var builder = new BodyBuilder();
             builder.HtmlBody = htmlBody;
@@ -90,32 +101,43 @@ public class GmailEmailService : IEmailService
                 Encoding.UTF8,
                 "application/json");
 
-            var response = await _httpClient.SendAsync(request, ct);
+            using var response = await _httpClient.SendAsync(request, ct);
+            var responseBody = await response.Content.ReadAsStringAsync(ct);
 
             if (!response.IsSuccessStatusCode)
             {
-                var errorContent = await response.Content.ReadAsStringAsync(ct);
-                _logger.LogError("Gmail API error ({StatusCode}): {Error}", response.StatusCode, errorContent);
-                return false;
+                _logger.LogError("Gmail API error ({StatusCode}): {Error}", response.StatusCode, responseBody);
+                return new EmailDeliveryResult(false, "gmail", null, $"gmail_http_{(int)response.StatusCode}");
             }
 
+            string? providerMessageId = null;
+            try
+            {
+                using var result = JsonDocument.Parse(responseBody);
+                providerMessageId = result.RootElement.TryGetProperty("id", out var id) ? id.GetString() : null;
+            }
+            catch (JsonException)
+            {
+                // A successful provider response without JSON is still accepted,
+                // but the durable email log will show that no remote id was returned.
+            }
             _logger.LogInformation("Email sent successfully to {To}", safeRecipient);
-            return true;
+            return new EmailDeliveryResult(true, "gmail", providerMessageId);
         }
         catch (HttpRequestException ex)
         {
             _logger.LogError(ex, "HTTP error sending email to {To}", safeRecipient);
-            return false;
+            return new EmailDeliveryResult(false, "gmail", null, "gmail_http_error");
         }
         catch (InvalidOperationException ex)
         {
             _logger.LogError(ex, "Configuration error sending email to {To}", safeRecipient);
-            return false;
+            return new EmailDeliveryResult(false, "gmail", null, "gmail_configuration_error");
         }
         catch (TaskCanceledException ex)
         {
             _logger.LogError(ex, "Timeout sending email to {To}", safeRecipient);
-            return false;
+            return new EmailDeliveryResult(false, "gmail", null, "gmail_timeout");
         }
     }
 

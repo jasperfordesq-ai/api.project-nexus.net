@@ -18,6 +18,19 @@ namespace Nexus.Api.Tests.Services;
 public class ProviderDispatchParityServiceTests
 {
     [Fact]
+    public void EventInvitationEvidenceHasher_BindsEvidenceToTenantAndEvent()
+    {
+        var hasher = new EventInvitationEvidenceHasher(CreateConfiguration(new()
+        {
+            ["EventRegistration:EvidenceHashKey"] = "test-evidence-key-with-at-least-32-characters"
+        }));
+
+        hasher.Email(10, " Member@Example.Test ").Should().Be(hasher.Email(10, "member@example.test"));
+        hasher.Email(10, "member@example.test").Should().NotBe(hasher.Email(11, "member@example.test"));
+        hasher.Token(10, 20, "nxi1_secret").Should().NotBe(hasher.Token(10, 21, "nxi1_secret"));
+    }
+
+    [Fact]
     public async Task NewsletterProcessQueuedLogs_WithoutProvider_MarksLogsFailedHonestly()
     {
         using var db = CreateDbContext();
@@ -231,6 +244,59 @@ public class ProviderDispatchParityServiceTests
         var log = await db.PushNotificationLogs.SingleAsync();
         log.Status.Should().Be(PushStatus.Failed);
         log.ErrorMessage.Should().Be("provider_http_500");
+    }
+
+    [Fact]
+    public async Task PushChannelQueue_SeparatesWebPushAndFcmSubscriptions()
+    {
+        using var db = CreateDbContext();
+        var service = new PushNotificationService(
+            db,
+            CreateTenantContext(),
+            CreateConfiguration(),
+            NullLogger<PushNotificationService>.Instance);
+
+        var web = await service.RegisterDeviceAsync(7, "https://push.example.test/subscription", "web", "Browser", "p256dh", "auth");
+        var android = await service.RegisterDeviceAsync(7, "fcm-token", "android", "Phone");
+
+        (await service.SendPushChannelAsync(7, "Web", "Body", "{}", "web-push")).Should().Be(1);
+        (await service.SendPushChannelAsync(7, "Native", "Body", "{}", "fcm")).Should().Be(1);
+
+        var logs = await db.PushNotificationLogs.OrderBy(x => x.Id).ToListAsync();
+        logs.Should().HaveCount(2);
+        logs[0].SubscriptionId.Should().Be(web.Id);
+        logs[0].Data.Should().Contain("web-push");
+        logs[1].SubscriptionId.Should().Be(android.Id);
+        logs[1].Data.Should().Contain("fcm");
+    }
+
+    [Fact]
+    public async Task PushProcessPending_UsesTheProviderFrozenIntoEachLog()
+    {
+        using var db = CreateDbContext();
+        var handler = new RecordingHttpHandler((_, _) => new HttpResponseMessage(HttpStatusCode.Accepted)
+        {
+            Content = new StringContent("{\"success\":1,\"failure\":0}")
+        });
+        var service = new PushNotificationService(
+            db,
+            CreateTenantContext(),
+            CreateConfiguration(new Dictionary<string, string?>
+            {
+                ["Firebase:ServerKey"] = "test-server-key"
+            }),
+            NullLogger<PushNotificationService>.Instance,
+            new StubHttpClientFactory(handler));
+
+        await service.RegisterDeviceAsync(7, "fcm-token", "android", "Phone");
+        await service.SendPushChannelAsync(7, "Native", "Body", "{}", "fcm");
+
+        var result = await service.ProcessPendingPushNotificationsAsync();
+
+        result.Provider.Should().Be("fcm");
+        result.ProviderConfigured.Should().BeTrue();
+        result.Sent.Should().Be(1);
+        handler.Requests.Should().ContainSingle().Which.Uri.Should().Be("https://fcm.googleapis.com/fcm/send");
     }
 
     [Fact]

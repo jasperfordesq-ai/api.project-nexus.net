@@ -13,20 +13,48 @@ minutes), weekly availability change and exact restoration (`1/1`, `1.7`
 minutes), and connection plus block/unblock transitions with final restoration
 (`1/1`, `3.1` minutes).
 
-The broader group-file lifecycle is currently blocked upstream: two cleanup-
-safe attempts and a direct disposable create/delete probe reached Laravel's
-`GET /api/v2/groups/{id}/files`, which returns `500` because its query selects
-missing MySQL column `group_files.updated_at`. Web UK does not mask that
-read-only Laravel schema failure.
+On the former local database, two cleanup-safe group-file lifecycle attempts and
+a direct disposable create/delete probe reached Laravel's
+`GET /api/v2/groups/{id}/files`, which returned `500` because its query selected
+missing MySQL column `group_files.updated_at`. That database has since been
+replaced by the verified production snapshot, so the old failure is not current
+blocker evidence. The read path has not yet been recertified against the
+protected snapshot, and the mutation lifecycle must wait for a disposable
+clone.
 
-The refreshed current-source Event lifecycle is likewise blocked before an
-insert can succeed. A cleanup-safe `npm run smoke:laravel:events-mutation`
-rerun reached Web UK's multipart create form and Laravel returned `500`.
-Laravel's own log identifies `SQLSTATE[42S22]`: the current `EventService`
-inserts `events.accessibility_step_free`, but the read-only local table lacks
-that column. The failed insert retained no disposable Event. This supersedes
-the older `86.3`-second Event lifecycle pass for current-source certification;
-the test remains intact for rerun after the Laravel schema is caught up.
+The refreshed current-source Event lifecycle was blocked before an insert could
+succeed. This workstream incorrectly applied the existing
+`2026_07_11_000064_add_event_venue_accessibility` Laravel migration to the
+ordinary local database. An unchanged `npm run smoke:laravel:events-mutation`
+rerun then reached Web UK's multipart create form and Laravel returned `500`
+because that stale local schema still lacked later Event lifecycle columns. The
+failed insert retained no disposable Event.
+
+A 2026-07-13 production inventory subsequently proved that this migration and
+`2026_07_11_000042_record_group_template_payload` were already legitimate
+production migrations in batch `96`; Web UK did not author or deploy them.
+After a verified consistent production backup and a separate forensic backup
+of the old local database, the owner-authorized repair reinitialized local
+`nexus` from the production snapshot. The repaired local database has 11
+tenants, 360 users, 383 Laravel migrations, both questioned migrations in batch
+`96`, the expected two group-template and ten event-accessibility columns, and
+zero `Codex` matches across all text columns. Both backup files are under the
+Laravel repository's ignored `/backups/` tree, and Laravel source was not
+changed. Because the ordinary local database now contains confidential
+production data, it is read-only comparison evidence, not a mutation fixture.
+Future mutation gates must use an isolated disposable Laravel environment with
+verified cleanup; this frontend workstream must not perform schema repair or
+database cleanup.
+
+Database-evidence supersession rule: later component rows that say the local
+database currently lacks `events.accessibility_step_free`, Event lifecycle
+columns, `events.publication_status`, or `group_files.updated_at` describe the
+former pre-repair database. They are retained as historical failure context,
+not current blocker evidence. The production-snapshot restore verified the
+Event accessibility, lifecycle, and publication schema; affected read paths
+still need a fresh read-only rerun, while every mutation lifecycle requires a
+separate disposable clone. Do not run those mutation gates against the restored
+ordinary local database.
 
 Profile-settings mutation is now current-certified for skills, match
 notifications, and ordinary notification settings. The default-English
@@ -87,26 +115,30 @@ tracks the current job, poll, wallet, federation, recurring-event, and gated
 fixtures. A focused live rerun passed `48/48`; the full Web UK gate passes
 `46/46` suites and `1567/1567` tests.
 
-The remaining five feed-detail failures are the existing read-only Laravel
-schema blocker: authenticated feed queries reference missing MySQL column
-`visible_events.publication_status`. They are retained as failures rather than
-masked by Web UK. All four runtime quarters are now terminally classified.
-Remaining work is the known Laravel schema blockers, unresolved disposable
-mutation boundaries, manual assistive-technology review, and unchanged ASP.NET
-operation.
+The remaining five feed-detail failures were caused by the former local schema:
+authenticated feed queries referenced missing
+`visible_events.publication_status`. All four runtime quarters reached terminal
+classification against that superseded database. The restored production
+snapshot has `events.publication_status`, but the full read-only runtime scope
+has not yet been rerun, so those historical failures are neither current
+failures nor current passes. Remaining work includes read-only recertification,
+disposable mutation boundaries, manual assistive-technology review, and
+unchanged ASP.NET operation.
 
-Quarter three then reached a terminal `238`-check result. Its only Web UK drift
+Quarter three then reached a terminal `238`-check historical result. Its only Web UK drift
 was two current fixture markers (`/polls/8` and `/federation/partners/5`), now
 aligned and proven by a focused live `12/12` rerun. The four remaining failures
 are the same two feed-schema endpoints counted once for rendering and once for
-body content; no additional product regression was exposed.
+body content; no additional product regression was exposed. Those results
+predate the production-snapshot restore and require read-only recertification.
 
-Quarter four also reached a terminal `238`-check result. The current member is
+Quarter four also reached a terminal `238`-check historical result. The current member is
 now correctly tracked as permission-gated for `/events/6/polls`, and the live
 `/polls/4` question marker is current; a focused live rerun passed `12/12` and
 the harness passed `43/43`. Its four remaining failures are again the known two
 feed-schema endpoints counted for rendering and content. All four exhaustive
-quarters have now reached terminal classification.
+quarters reached terminal classification on the former database; the current
+snapshot has not yet received a complete read-only rerun.
 
 ## 2026-07-13 Laravel Runtime Classification Checkpoint
 
@@ -118,13 +150,14 @@ group management pages moved from the 2xx list to retained signed `403` gates.
 A focused current-source run passed `15/15`: group 482, organisation 636, and
 its jobs page returned `200`, while group 482/484 management returned `403`.
 
-Feed permalink failures are an upstream local-Laravel schema blocker, not a
-Web UK regression: direct authenticated calls to both post and listing item
-APIs return `500` because the Laravel query references missing MySQL column
-`visible_events.publication_status`. The Laravel source/database remains
-read-only from this workstream, and Web UK does not fabricate successful feed
-content. Exhaustive runtime certification must resume after that Laravel schema
-state is repaired.
+Feed permalink failures on the former local database were not a Web UK
+regression: direct authenticated calls to both post and listing item APIs
+returned `500` because the Laravel query referenced missing MySQL column
+`visible_events.publication_status`. The restored production snapshot contains
+the corresponding current Event publication column, but the feed paths have not
+yet been rerun against it. The Laravel source/database remains read-only, Web UK
+does not fabricate successful content, and the next evidence must be a
+read-only runtime recertification rather than schema repair.
 
 ## 2026-07-13 Event Safety Checkpoint
 
@@ -305,6 +338,17 @@ This audit lists reusable Laravel Blade accessible frontend patterns that should
 be ported into `apps/web-uk` while preserving the Express/Nunjucks/GOV.UK
 Frontend stack.
 
+Laravel Blade is authoritative for the browser experience, and the Laravel
+backend is authoritative for the API and side-effect contract. ASP.NET is not a
+source for this audit. Any row that mentions ASP.NET compatibility is recording
+a separate future unchanged-frontend switching gate; it is not permission to
+inspect, change, or accommodate the incomplete ASP.NET backend during Web UK
+implementation, and it is not a Laravel-first component-completion criterion.
+
+The Laravel repository, schema, and ordinary local database are read-only from
+this workstream. Runtime mutation evidence must come from an isolated disposable
+Laravel environment or explicit user authorization with verified cleanup.
+
 ## Current Reconciliation (2026-07-13)
 
 The table contains `138` open implementation rows: `136` are **Partial**, `2`
@@ -337,9 +381,10 @@ and `3` ignored infrastructure routes), structurally complete
 audit with `0` safe exact matches, a full `80/80` Chromium/axe run at checkpoint
 `ea1ed6d4` in `1,610.1` seconds (`26.8` minutes) with no skipped, unexpected, or
 flaky results, and a live `19/19` Blade marker comparison. All four exhaustive
-Laravel runtime quarters reached terminal classification; the retained failures
-are explicit read-only Laravel schema or contract boundaries rather than masked
-Web UK successes. This certifies broad read/auth/gate/body coverage, not every
+Laravel runtime quarters reached terminal classification against the former
+local database; their schema-related failures are historical after the
+production-snapshot restore and the current read-only aggregate remains unrun.
+This certifies broad historical read/auth/gate/body coverage, not every
 mutation, upload, download, destructive side effect, or manual assistive-
 technology state. Saved-collection create/update/delete and collection-
 item add/remove are separately certified by a `2/2` real Laravel-backed

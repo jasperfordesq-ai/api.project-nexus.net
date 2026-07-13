@@ -7,11 +7,20 @@ patterns.
 
 ## Shared Accessible Frontend Status
 
-`apps/web-uk` is the future shared accessible frontend candidate for Project
-NEXUS. It is not production-ready and does not replace the Laravel Blade
-accessible frontend yet.
+`apps/web-uk` is the implementation target for Project NEXUS's future shared
+accessible frontend. It is not production-ready and does not replace the
+Laravel Blade accessible frontend yet.
 
-The Laravel accessible frontend remains the visual and workflow source of truth:
+The implementation has two Laravel sources of truth:
+
+- Laravel Blade defines browser routes, links, layout, navigation, content
+  hierarchy, forms, validation presentation, redirects, tenant behaviour, and
+  workflows.
+- The Laravel backend/API defines HTTP methods and paths, payloads, envelopes,
+  status codes, auth, roles, modules, uploads, downloads, persistence, and side
+  effects.
+
+Authoritative Laravel paths:
 
 ```text
 C:\platforms\htdocs\staging\accessible-frontend
@@ -22,9 +31,10 @@ C:\platforms\htdocs\staging\routes\govuk-alpha-parity
 See [docs/ACCESSIBLE_SHARED_FRONTEND.md](docs/ACCESSIBLE_SHARED_FRONTEND.md) and
 the root [docs/ACCESSIBLE_SHARED_FRONTEND.md](../../docs/ACCESSIBLE_SHARED_FRONTEND.md).
 
-Preparation docs:
+Maintained implementation and certification docs:
 
-- [docs/CURRENT_WEB_UK_HANDOFF.md](docs/CURRENT_WEB_UK_HANDOFF.md) - start here when resuming interrupted accessible parity work.
+- [docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md](docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md) - start here for the current architecture, boundaries, evidence and queue.
+- [docs/CURRENT_WEB_UK_HANDOFF.md](docs/CURRENT_WEB_UK_HANDOFF.md) - chronological implementation history; current status supersedes old counts and wording.
 - [docs/LARAVEL_ACCESSIBLE_ROUTE_MATRIX.md](docs/LARAVEL_ACCESSIBLE_ROUTE_MATRIX.md)
 - [docs/BLADE_COMPONENT_PORT_AUDIT.md](docs/BLADE_COMPONENT_PORT_AUDIT.md)
 - [docs/BACKEND_SWITCHING_CONTRACT.md](docs/BACKEND_SWITCHING_CONTRACT.md)
@@ -65,7 +75,7 @@ See the [NOTICE](NOTICE) file for attribution requirements.
 ## Prerequisites
 
 - **Docker and Docker Compose** (required)
-- ASP.NET Core API running (see the root [API parity map](../../docs/API_PARITY.md))
+- Laravel API running for the default Laravel-first workflow
 
 **Note:** Docker is the only supported development environment. Do not use native Node.js, XAMPP, or other local setups.
 
@@ -103,7 +113,12 @@ The application will be available at **http://localhost:5180**
 | `SESSION_SECRET` | - | Secret for sessions (defaults to COOKIE_SECRET) |
 | `NODE_ENV` | `development` | Environment (development/production) |
 
-## Available Routes
+## Representative Routes
+
+This hand-maintained table is an orientation aid, not the route source of truth
+or a completion claim. Use `docs/generated/accessible-route-matrix.*` and
+`npm run route:matrix` for the current exhaustive declaration inventory, then
+use `docs/BLADE_COMPONENT_PORT_AUDIT.md` for workflow certification.
 
 ### Public Routes
 
@@ -124,7 +139,7 @@ The application will be available at **http://localhost:5180**
 | `GET /privacy` | Privacy policy |
 | `GET /terms` | Terms and conditions |
 | `GET /contact` | Contact page |
-| `GET /explore` | Shared accessible frontend Explore skeleton |
+| `GET /explore` | Laravel Blade-aligned Explore gateway; current certification limits are tracked in the component audit |
 | `GET /volunteering` | Blade-style volunteering landing candidate; reads Laravel `/api/v2/volunteering/opportunities` with search/category/remote filters, with applications/hours/auth/tenant workflow still not certified |
 | `GET /volunteering/opportunities/:id` | Blade-style volunteering opportunity detail candidate; reads Laravel `/api/v2/volunteering/opportunities/:id`, with apply POST/shift signup/auth/tenant workflow still not certified |
 | `GET /organisations` | Blade-style accessible organisations candidate; reads Laravel `/api/v2/volunteering/organisations`, with auth/form workflow still not certified |
@@ -132,17 +147,17 @@ The application will be available at **http://localhost:5180**
 | `GET /organisations/register` | Blade-style organisation registration form candidate; POST persistence/auth/tenant workflow still not certified |
 | `GET /organisations/manage` | Blade-style manage organisations candidate; reads Laravel `/api/v2/volunteering/my-organisations` when signed in, with auth/tenant workflow still not certified |
 | `GET /organisations/:id` | Blade-style organisation detail candidate; reads Laravel `/api/v2/volunteering/organisations/{id}?include=public_contract`, `/api/v2/volunteering/opportunities?organization_id=:id`, and `/api/v2/volunteering/reviews/organization/:id`, with auth/tenant workflow still not certified |
-| `GET /organisations/:id/jobs` | Blade-style organisation jobs candidate; reads Laravel `/api/v2/jobs?organization_id=:id&status=open` when signed in, with auth/tenant workflow still not certified |
+| `GET /organisations/:id/jobs` | Blade-style organisation jobs placeholder after proving the volunteering organisation exists; it deliberately does not pass that ID to the separate job-vacancy organisation domain |
 | `GET /organisations/opportunities/:id/apply` | Blade-style opportunity apply confirmation candidate; reads Laravel `/api/v2/volunteering/opportunities/:id`, with POST/auth/tenant workflow still not certified |
-| `GET /help` | Shared accessible frontend preparation skeleton |
-| `GET /kb` | Shared accessible frontend preparation skeleton |
-| `GET /trust-and-safety` | Shared accessible frontend preparation skeleton |
+| `GET /help` | Laravel Blade-aligned Help Centre page |
+| `GET /kb` | Laravel-backed Knowledge Base index |
+| `GET /trust-and-safety` | Laravel Blade-aligned Trust and Safety page |
 | `GET /cookies` | Blade-style cookie settings candidate using the Laravel `nexus_alpha_cookie_consent` choice cookie; backend consent audit persistence/tenant certification still not complete |
 | `POST /cookie-consent` | No-JS cookie choice handler matching Laravel accept/reject/save form behavior; sets `all` or `essential` locally, without certifying backend consent storage parity |
-| `GET /report-a-problem` | Shared accessible frontend preparation skeleton |
-| `GET /accessibility` | Shared accessible frontend preparation skeleton |
-| `GET /legal` | Shared accessible frontend preparation skeleton |
-| `GET /legal/*` | Shared accessible frontend preparation skeleton |
+| `GET /report-a-problem` | Laravel Blade-aligned support-report workflow |
+| `GET /accessibility` | Laravel Blade-aligned accessibility statement |
+| `GET /legal` | Laravel Blade-aligned legal hub |
+| `GET /legal/*` | Laravel Blade-aligned legal documents |
 | `GET /service-unavailable` | 503 error page |
 
 ### Protected Routes (require authentication)

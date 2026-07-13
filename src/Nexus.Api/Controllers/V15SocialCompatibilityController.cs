@@ -92,6 +92,7 @@ public class V15SocialCompatibilityController : ControllerBase
         "email_org_membership",
         "email_org_admin",
         "caring_smart_nudges",
+        "email_events",
         "push_enabled",
         "push_campaigns_opted_in"
     ];
@@ -110,6 +111,7 @@ public class V15SocialCompatibilityController : ControllerBase
         ["email_org_membership"] = true,
         ["email_org_admin"] = true,
         ["caring_smart_nudges"] = true,
+        ["email_events"] = true,
         ["push_enabled"] = true,
         ["push_campaigns_opted_in"] = false,
         ["federation_notifications_enabled"] = true
@@ -3463,6 +3465,12 @@ public class V15SocialCompatibilityController : ControllerBase
         if (TryGet(body, "push_enabled", out var pushValue))
         {
             var enabled = ReadBool(body, "push_enabled") ?? (pushValue.ValueKind == JsonValueKind.Number && pushValue.GetInt32() != 0);
+            var user = await CurrentUserAsync();
+            var bag = ParseNotificationPreferenceBag(user.NotificationPreferences);
+            bag["push_enabled"] = enabled;
+            user.NotificationPreferences = bag.ToJsonString(StoreJsonOptions);
+            user.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
             return Ok(new { success = true, data = new { push_enabled = enabled } });
         }
 

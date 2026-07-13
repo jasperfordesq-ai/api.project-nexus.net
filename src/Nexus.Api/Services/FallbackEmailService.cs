@@ -34,10 +34,28 @@ public class FallbackEmailService : IEmailService
     }
 
     public async Task<bool> SendEmailAsync(string to, string subject, string htmlBody, string? textBody = null, CancellationToken ct = default)
+        => (await SendEmailWithEvidenceAsync(to, subject, htmlBody, textBody, null, ct)).Accepted;
+
+    public async Task<EmailDeliveryResult> SendEmailWithEvidenceAsync(
+        string to,
+        string subject,
+        string htmlBody,
+        string? textBody = null,
+        string? idempotencyKey = null,
+        CancellationToken ct = default)
     {
-        if (await TryPrimaryAsync(svc => svc.SendEmailAsync(to, subject, htmlBody, textBody, ct), nameof(SendEmailAsync)))
-            return true;
-        return await _fallback.SendEmailAsync(to, subject, htmlBody, textBody, ct);
+        try
+        {
+            var primary = await _primary.SendEmailWithEvidenceAsync(to, subject, htmlBody, textBody, idempotencyKey, ct);
+            if (primary.Accepted) return primary;
+            _logger.LogInformation("Primary email transport (SendGrid) rejected {Op} â€” falling back to Gmail", nameof(SendEmailWithEvidenceAsync));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Primary email transport (SendGrid) threw for {Op} â€” falling back to Gmail", nameof(SendEmailWithEvidenceAsync));
+        }
+
+        return await _fallback.SendEmailWithEvidenceAsync(to, subject, htmlBody, textBody, idempotencyKey, ct);
     }
 
     public async Task<bool> SendPasswordResetEmailAsync(string to, string resetToken, string userName, string resetUrl, CancellationToken ct = default)

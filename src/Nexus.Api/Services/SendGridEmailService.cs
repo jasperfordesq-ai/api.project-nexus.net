@@ -27,11 +27,20 @@ public class SendGridEmailService : IEmailService
     }
 
     public async Task<bool> SendEmailAsync(string to, string subject, string htmlBody, string? textBody = null, CancellationToken ct = default)
+        => (await SendEmailWithEvidenceAsync(to, subject, htmlBody, textBody, null, ct)).Accepted;
+
+    public async Task<EmailDeliveryResult> SendEmailWithEvidenceAsync(
+        string to,
+        string subject,
+        string htmlBody,
+        string? textBody = null,
+        string? idempotencyKey = null,
+        CancellationToken ct = default)
     {
         if (string.IsNullOrEmpty(_apiKey))
         {
             _logger.LogWarning("SendGrid API key not configured. Email to {To} not sent.", to);
-            return false;
+            return new EmailDeliveryResult(false, "sendgrid", null, "sendgrid_not_configured");
         }
 
         try
@@ -40,22 +49,27 @@ public class SendGridEmailService : IEmailService
             var from = new EmailAddress(_senderEmail, _senderName);
             var toAddress = new EmailAddress(to);
             var msg = MailHelper.CreateSingleEmail(from, toAddress, subject, textBody ?? "", htmlBody);
+            if (!string.IsNullOrWhiteSpace(idempotencyKey))
+                msg.AddCustomArg("idempotency_key", idempotencyKey);
             var response = await client.SendEmailAsync(msg, ct);
 
             if (response.IsSuccessStatusCode)
             {
+                var providerMessageId = response.Headers.TryGetValues("X-Message-Id", out var values)
+                    ? values.FirstOrDefault()
+                    : null;
                 _logger.LogInformation("Email sent via SendGrid to {To}: {Subject}", to, subject);
-                return true;
+                return new EmailDeliveryResult(true, "sendgrid", providerMessageId);
             }
 
             var body = await response.Body.ReadAsStringAsync(ct);
             _logger.LogError("SendGrid failed ({StatusCode}): {Body}", response.StatusCode, body);
-            return false;
+            return new EmailDeliveryResult(false, "sendgrid", null, $"sendgrid_http_{(int)response.StatusCode}");
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException)
         {
             _logger.LogError(ex, "SendGrid error sending email to {To}", to);
-            return false;
+            return new EmailDeliveryResult(false, "sendgrid", null, "sendgrid_send_failed");
         }
     }
 

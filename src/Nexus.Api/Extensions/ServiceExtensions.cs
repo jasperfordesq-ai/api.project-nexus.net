@@ -163,6 +163,12 @@ public static class ServiceExtensions
         services.AddScoped<EventOfflineCheckinService>();
         services.AddScoped<EventSafetyService>();
         services.AddScoped<EventTicketService>();
+        services.AddScoped<EventRegistrationProductService>();
+        services.AddScoped<EventInvitationRecipientAuthorizer>();
+        services.AddSingleton<EventInvitationEvidenceHasher>();
+        services.AddScoped<EventNotificationPreferenceResolver>();
+        services.AddScoped<EventInvitationDeliveryProcessor>();
+        services.AddHostedService<EventInvitationDeliveryWorker>();
         services.AddScoped<DirectMessageMutationService>();
         services.AddScoped<SafeguardingCoordinationService>();
         services.AddScoped<DirectMessageReactionService>();

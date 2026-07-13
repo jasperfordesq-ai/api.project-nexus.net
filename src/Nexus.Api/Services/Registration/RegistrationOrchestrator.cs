@@ -134,6 +134,7 @@ public class RegistrationOrchestrator
             LastName = lastName,
             Role = "member",
             IsActive = isActive,
+            IsApproved = initialStatus == RegistrationStatus.Active,
             RegistrationStatus = initialStatus,
             CreatedAt = DateTime.UtcNow
         };
@@ -372,6 +373,7 @@ public class RegistrationOrchestrator
 
         user.RegistrationStatus = RegistrationStatus.Active;
         user.IsActive = true;
+        user.IsApproved = true;
         user.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
@@ -409,6 +411,7 @@ public class RegistrationOrchestrator
 
         user.RegistrationStatus = RegistrationStatus.Rejected;
         user.IsActive = false;
+        user.IsApproved = false;
         user.SuspensionReason = reason;
         user.SuspendedByUserId = adminUserId;
         user.UpdatedAt = DateTime.UtcNow;
@@ -452,17 +455,21 @@ public class RegistrationOrchestrator
                     case PostVerificationAction.ActivateAutomatically:
                         session.User.RegistrationStatus = RegistrationStatus.Active;
                         session.User.IsActive = true;
+                        session.User.IsApproved = true;
                         break;
                     case PostVerificationAction.SendToAdminForApproval:
                         session.User.RegistrationStatus = RegistrationStatus.PendingAdminReview;
+                        session.User.IsApproved = false;
                         break;
                     case PostVerificationAction.GrantLimitedAccess:
                         session.User.RegistrationStatus = RegistrationStatus.LimitedAccess;
                         session.User.IsActive = true;
+                        session.User.IsApproved = false;
                         break;
                     case PostVerificationAction.RejectOnFailure:
                         session.User.RegistrationStatus = RegistrationStatus.Active;
                         session.User.IsActive = true;
+                        session.User.IsApproved = true;
                         break;
                 }
             }
@@ -472,6 +479,7 @@ public class RegistrationOrchestrator
                 {
                     session.User.RegistrationStatus = RegistrationStatus.Rejected;
                     session.User.IsActive = false;
+                    session.User.IsApproved = false;
                 }
                 else
                 {

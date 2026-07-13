@@ -22,15 +22,13 @@ $env:ACCESSIBILITY_TENANT_SLUG = 'alpha'
 npm run test:accessibility
 ```
 
-Latest verification on 2026-07-12 exercised the current 87-case Chromium
-scope against fresh current-checkout listeners and Laravel at
-`http://127.0.0.1:8088`. The first serial run reached `79/87` before exposing a
-missing bearer token on the member-only Knowledge Base API calls; that case
-failed and seven later serial cases did not run. After the contract fix, focused
-route checks passed `3/3`, the corrected Knowledge Base browser journey passed
-`1/1`, and the complete eight-case serial tail passed `8/8`. Every case now has
-a passing current-source result, but this is not represented as a new
-uninterrupted `87/87` run. Generated evidence remains below the ignored
+Latest verification on 2026-07-12 exercised the complete 87-case Chromium scope
+against a fresh current-checkout listener and Laravel at
+`http://127.0.0.1:8088`. After a missing bearer token on member-only Knowledge
+Base calls was corrected and focused proof passed, the uninterrupted aggregate
+passed `87/87` in `1,344.8` seconds with no skipped or failed cases. This is an
+automated release signal, not manual keyboard or assistive-technology
+certification. Generated evidence remains below the ignored
 `artifacts/accessibility/` directory.
 
 ## Current automated scope

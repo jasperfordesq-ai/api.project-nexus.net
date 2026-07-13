@@ -953,6 +953,7 @@ public class AuthController : ControllerBase
         {
             user.RegistrationStatus = RegistrationStatus.Active;
             user.IsActive = true;
+            user.IsApproved = true;
         }
 
         await _db.SaveChangesAsync();

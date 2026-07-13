@@ -27,6 +27,24 @@ public interface IEmailService
         CancellationToken ct = default);
 
     /// <summary>
+    /// Sends an email and returns provider evidence when the transport exposes it.
+    /// Implementations that have not yet adopted the richer contract retain their
+    /// existing behavior through this default adapter.
+    /// </summary>
+    async Task<EmailDeliveryResult> SendEmailWithEvidenceAsync(
+        string to,
+        string subject,
+        string htmlBody,
+        string? textBody = null,
+        string? idempotencyKey = null,
+        CancellationToken ct = default)
+    {
+        var accepted = await SendEmailAsync(to, subject, htmlBody, textBody, ct);
+        return new EmailDeliveryResult(accepted, GetType().Name, null,
+            accepted ? null : "email_provider_rejected");
+    }
+
+    /// <summary>
     /// Sends a password reset email.
     /// </summary>
     /// <param name="to">Recipient email address.</param>
@@ -59,3 +77,9 @@ public interface IEmailService
     /// </summary>
     Task<bool> IsHealthyAsync(CancellationToken ct = default);
 }
+
+public sealed record EmailDeliveryResult(
+    bool Accepted,
+    string Provider,
+    string? ProviderMessageId,
+    string? FailureReason = null);

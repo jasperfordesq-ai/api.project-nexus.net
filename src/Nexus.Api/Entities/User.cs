@@ -43,6 +43,20 @@ public class User : ITenantEntity
     public bool IsGod { get; set; }
 
     public bool IsActive { get; set; } = true;
+    /// <summary>
+    /// Laravel-compatible tenant approval flag. This is distinct from account
+    /// activation because an active account can still be awaiting community
+    /// approval in the canonical contract.
+    /// </summary>
+    public bool IsApproved { get; set; } = true;
+
+    /// <summary>
+    /// Laravel-compatible preferred language used by declarative audience
+    /// filters. The richer language-preference record remains the writable
+    /// settings source and is kept in sync by TranslationService.
+    /// </summary>
+    public string PreferredLanguage { get; set; } = "en";
+
     public int TrustTier { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }

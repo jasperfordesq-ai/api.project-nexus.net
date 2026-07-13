@@ -163,15 +163,26 @@ canonical React frontend is the Laravel repo frontend at
   only. Do not modify it unless explicitly approved.
 - `apps/react-frontend/src/admin/` may be inspected to understand old .NET
   adapter work, but it is not the forward development target.
-- `apps/web-uk/` is no longer dismissed from parity. It is the future shared
-  accessible frontend candidate and must be mapped against Laravel
-  `accessible-frontend/` and `routes/govuk-alpha*`.
+- `apps/web-uk/` is the explicitly approved implementation target for the
+  future shared accessible frontend. Laravel Blade defines its browser routes,
+  links, layout, content hierarchy, forms, redirects, tenant behaviour and
+  workflows; the Laravel backend defines its HTTP/auth/module/upload/download/
+  side-effect contract. Its location in this repository does not make ASP.NET
+  authoritative.
 - If resuming the accessible frontend work after an interrupted session, start
   with `apps/web-uk/docs/CURRENT_WEB_UK_HANDOFF.md`.
 - The Laravel Blade accessible frontend remains the current visual/workflow
   source of truth. Port its shell, information architecture, footer, card-list,
   and Explore patterns into `apps/web-uk` while keeping the Express/Nunjucks/GOV.UK
   Frontend stack.
+- Web UK work must not modify ASP.NET backend source, tests, migrations, schema,
+  fixtures or runtime data. It must not edit Laravel source, run Laravel
+  migrations, alter/query/clean its ordinary local database, or touch
+  production. Mutation certification requires a dedicated disposable Laravel
+  environment or explicit user authorization with verified cleanup.
+- ASP.NET switching is a separate future gate: once that backend is ready, rerun
+  the same unchanged Web UK suite by changing configuration only. Never add
+  ASP.NET-specific page, template, validation, redirect or workflow branches.
 - Do not point production utility-bar traffic at `apps/web-uk` until accessible
   route, workflow, tenant-domain, auth, localization, accessibility, and runtime
   smoke certification passes.

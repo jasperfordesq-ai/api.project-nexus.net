@@ -1,13 +1,22 @@
-# CLAUDE.md - Project NEXUS Accessible Frontend Candidate
+# CLAUDE.md - Project NEXUS Shared Accessible Frontend
 
 ## Shared Accessible Frontend Direction
 
-`apps/web-uk` is the future shared accessible frontend candidate for Project
-NEXUS. It is not production-ready and must not replace the Laravel Blade
-accessible frontend yet.
+`apps/web-uk` is the implementation target for Project NEXUS's future shared
+accessible frontend. It is not production-ready and must not replace the
+Laravel Blade accessible frontend until the maintained certification gate is
+complete.
 
-The current visual and workflow source of truth is the Laravel accessible
-frontend:
+Two Laravel surfaces are authoritative, for different responsibilities:
+
+1. The Laravel Blade accessible frontend is the product/UI source of truth for
+   browser routes, links, layout, navigation, content hierarchy, forms,
+   validation presentation, redirects, tenant behaviour, and workflows.
+2. The Laravel backend/API is the contract source of truth for HTTP methods and
+   paths, request/response shapes, status codes, auth, roles, modules, uploads,
+   downloads, persistence, and side effects.
+
+Authoritative Laravel locations:
 
 ```text
 C:\platforms\htdocs\staging\accessible-frontend
@@ -15,11 +24,27 @@ C:\platforms\htdocs\staging\routes\govuk-alpha.php
 C:\platforms\htdocs\staging\routes\govuk-alpha-parity
 ```
 
-This app should keep the ASP.NET repo's preferred accessible stack
-(Express/Nunjucks/GOV.UK Frontend), but its shell, information architecture,
-footer, card list, and Explore page should visually follow the Laravel Blade
-accessible frontend. See `docs/ACCESSIBLE_SHARED_FRONTEND.md` and the root
+This app keeps Express/Nunjucks/GOV.UK Frontend because that is the chosen Web
+UK implementation stack, not because ASP.NET defines its behaviour. Every page
+must reproduce the Laravel Blade observable behaviour and communicate through
+Laravel-identical backend contracts. ASP.NET is a future second backend only;
+it must conform to those contracts and must not cause frontend forks. See
+`docs/ACCESSIBLE_SHARED_FRONTEND.md` and the root
 `../../docs/ACCESSIBLE_SHARED_FRONTEND.md`.
+
+## Non-Negotiable Repository And Data Boundary
+
+- Work only in `apps/web-uk/**` and approved documentation pointers.
+- Do not modify ASP.NET controllers, services, entities, tests, or migrations.
+- Do not modify the frozen `apps/react-frontend` copy.
+- Treat `C:\platforms\htdocs\staging` and its ordinary local database as
+  read-only. Do not edit Laravel source, run Laravel migrations, alter Laravel
+  schema, query the database directly, or perform database cleanup.
+- Runtime mutation, upload, download, and destructive certification must use a
+  dedicated disposable Laravel test environment. Using an ordinary/shared
+  Laravel development database requires explicit user authorization and a
+  proven cleanup plan.
+- Never touch production containers or production data.
 
 Route and backend preparation docs live beside this app:
 
@@ -91,11 +116,11 @@ for this gate.
 
 ## Project Purpose
 
-This is the Laravel-primary accessible frontend candidate for **Project NEXUS
-Community**. It currently consumes the Laravel backend and treats Laravel's
-accessible routes, Blade views, controllers, and API contracts as the source of
-truth. ASP.NET remains a future, not-yet-certified compatible backend target;
-it must match Laravel rather than define this frontend's behavior.
+This is the Laravel-defined shared accessible frontend implementation for
+**Project NEXUS Community**. It currently consumes the Laravel backend. Laravel
+Blade defines the browser experience and Laravel APIs define the backend
+contract. ASP.NET remains a future, not-yet-certified compatible backend; it
+must match Laravel rather than define this frontend's behaviour.
 
 ## License and Attribution (MANDATORY)
 
@@ -325,18 +350,18 @@ Reusable shell data lives in `src/lib/accessible-shell.js`. Keep shared nav,
 footer, locale, and Explore link contracts there rather than hardcoding new
 copies into individual templates.
 
-Header and footer links should mirror the Laravel Blade accessible frontend
-labels and information architecture. If a Laravel destination is not implemented
-yet, prefer an honest preparation skeleton over a dead link, and document the
-missing backend/workflow contract in `docs/LARAVEL_ACCESSIBLE_ROUTE_MATRIX.md`.
+Header and footer links must mirror the Laravel Blade accessible frontend labels
+and information architecture. If a Laravel destination is not implemented yet,
+record it as an incomplete route/workflow and implement the real page; do not
+substitute a generic preparation page as parity evidence.
 
-## Backend Switching Preparation
+## Backend Switching Contract
 
-Do not build real backend-specific adapters until ASP.NET accessible route and
-workflow parity is proved module by module. The future direction is one
-accessible frontend capable of talking to Laravel-compatible or
-ASP.NET-compatible backends, but ASP.NET must bend toward Laravel's Blade
-contract first. See `docs/BACKEND_SWITCHING_CONTRACT.md`.
+Build one backend-neutral accessible frontend against Laravel's contract. Do
+not add ASP.NET-specific Nunjucks, route, validation, redirect, or workflow
+branches. When the separate ASP.NET parity workstream is ready, change only the
+backend configuration and rerun the same unchanged Web UK evidence suite. See
+`docs/BACKEND_SWITCHING_CONTRACT.md`.
 
 ## Backend API
 
@@ -354,8 +379,9 @@ contract first. See `docs/BACKEND_SWITCHING_CONTRACT.md`.
 
 ### Current Laravel Contracts Used
 
-`src/lib/api.js` is authoritative. This table records the core contracts that
-are easy to regress; module-specific helpers in that file cover the rest. Most
+`src/lib/api.js` inventories Web UK's current consumers; Laravel remains
+authoritative for the contracts themselves. This table records core contracts
+that are easy to regress, while module-specific helpers cover the rest. Most
 authenticated calls send `Authorization: Bearer {token}`. Request-scoped tenant
 authority adds `X-Tenant-Slug` when there is no bearer, explicit tenant header,
 or Host/Origin tenant context. The fallback order is routed lowercase slug,

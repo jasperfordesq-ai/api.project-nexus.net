@@ -1,6 +1,6 @@
 # Full Laravel Parity Remediation Runbook
 
-Last reviewed: 2026-07-12
+Last reviewed: 2026-07-13
 
 This is the maintained execution map for completing both parity workstreams:
 
@@ -42,6 +42,105 @@ Before any production deployment or production-container action, stop and read
 `.claude/production-containers.md`. This runbook does not authorize production
 deployment or touching production containers. Never modify the Laravel repo or
 Laravel Edition containers from this worktree.
+
+## 2026-07-13 ASP.NET Event Registration Product Checkpoint (Locally Verified; Publication Pending)
+
+This uncommitted backend-only slice replaces the event-registration product
+stubs with durable settings/forms/submissions, audited answer access and export,
+campaign/invitation state, guest identity/consent/attendance/cancellation, and
+retention workflows. It also installs Laravel-aligned role capabilities and
+independent privacy projections: registration managers can manage registration,
+view roster, and export non-sensitive answers, while sensitive answers and
+retention remain owner/tenant-administrator only. Guest email and phone remain
+owner/administrator-only even when roster names are visible. Active, unexpired
+staff assignments and active linked-group audience membership are required.
+
+All mutation replays now bind the tenant/event aggregate, action, revision, and
+request payload. Reusing an idempotency key for changed settings, form content,
+answers, submission state, invitation acceptance, or revocation fails closed.
+Guest cancellation writes one deterministic revision-bound outbox event and
+only replays the same actor/reason. Organizer and attendee reads now follow the
+canonical draft/published boundaries, ordering, registration ownership, and
+invitation timestamps. Guest locales normalize to Laravel's exact 11-locale
+allowlist. Export is owner/role authorized, sensitive-gated, capped at 10,000
+effective submitted/withdrawn attempts, audited, decoded, and spreadsheet-
+formula safe with stable member/attempt/question headers.
+
+Migrations 131 and 132 create and harden the product tables. Migration 134 adds
+the per-channel delivery ledger and its evidence relationship; migration 133 is
+the concurrent fresh-database compatibility repair. Migration 135 adds the
+canonical user approval/preferred-language audience fields, exact Laravel
+defaults, an existing-active-user backfill, and its supporting audience index.
+Migration 136 adds durable email provider, provider-message, source, and
+idempotency evidence plus a unique tenant/delivery-key index. Migration 137
+adds canonical per-event and per-category notification preferences with scoped
+unique indexes, cadence constraints, and tenant/user/event/category foreign
+keys. A fresh blank PostgreSQL replay applied migrations through 135 before
+migration 136 was added; the retained fully migrated replay database then
+upgraded through 136 and 137. Catalog
+inspection proves all four new columns, the `local` provider default, and the
+correct partial unique index. `has-pending-model-changes` passes. Debug API and
+test builds pass with zero errors; the latest API build has zero warnings and
+the test build has four pre-existing `xUnit1031` warnings. No production
+resource or frontend file was touched.
+
+Invitation preview now expands member, email, group, CSV, and declarative
+audience sources into an encrypted immutable snapshot. Group source authority
+is rechecked at issuance, while the frozen recipient list does not drift when
+membership changes. Preview, issuance, and delivery all recheck active tenant
+subjects, event visibility, blocks against the issuer and organizer,
+safeguarding contact policy against both actors, and external-event/public-group
+rules. An email target that resolves to a registered member cannot bypass these
+member checks. Neither initial issue nor idempotent replay exposes the bearer
+secret; it remains encrypted delivery-only outbox material. External email links
+carry the secret invitation token in an absolute tenant-qualified frontend URL.
+Invitation email and token evidence uses keyed HMAC bound to the tenant and,
+for tokens, the event; member invitations prefer the member's normalized locale.
+Issuance creates five-channel preference and locale evidence plus durable child
+delivery rows. The registered minute worker claims pending parents, validates
+payload/token/subject evidence, performs in-app, email, push, and realtime work,
+records suppression, retries with backoff, dead-letters after five attempts,
+appends immutable terminal evidence, and completes the parent only when every
+child is terminal. The focused processor test proves one notification, five
+ledger rows, five initial evidence rows, five terminal evidence rows, and a
+processed parent. Conditional database claims prove that only one of two
+competing processors wins; claims abandoned for five minutes are reclaimed.
+Malformed parents dead-letter after five claims. External email is tested both
+for successful terminal delivery and for five provider rejections ending in a
+terminal failed child with immutable failure evidence. Successful email is
+recorded by delivery key before retry, with provider and provider-message
+evidence when the transport exposes it. Web Push and FCM now select and dispatch
+their own subscription families and maintain independent child-ledger evidence.
+Live channel preferences are resolved at issue time and rechecked immediately
+before delivery across event, category, global-user, and tenant-default layers;
+explicit false values veto broader defaults and malformed/unavailable state
+fails closed. Email also requires instant cadence. Declarative audiences
+implement all canonical criteria, including approval,
+preferred-language, and inclusive joined-date filters.
+
+The final focused gate passed 18/18 with zero skipped: all 16 product tests plus
+two provider-isolation/dispatch tests. The broader migrated-database filter
+initially exposed missing `DeliveredAt` on terminal delivered evidence; after
+the runtime row was corrected without weakening the migration constraint, the
+two exact regressions passed 2/2 and the clean aggregate passed 21/21 with zero
+skipped in 14m57s. This also proves the migration-installed waitlist history
+trigger that `EnsureCreated` cannot install.
+
+After the second independent review, four review-critical PostgreSQL checks
+passed 4/4: API secret redaction plus absolute tenant delivery URL, tenant/event
+HMAC binding, recipient-locale evidence, and live canonical preference
+suppression. The complete product-class rerun then passed 16/16 with zero
+skipped on the fully migrated PostgreSQL database in 8m17s.
+
+Do not call global event-registration certification complete. The hosted
+minute-loop itself still lacks a clock-controlled integration test. Full-suite,
+route/runtime frontend, live-provider credential, and CI evidence also remain.
+
+Current provisional global scores are **760/1000 implementation** and
+**620/1000 certification confidence**. These supersede the 2026-07-10
+64%/42% baseline but are not release-readiness claims. Route inventory remains
+2,541/2,592 Laravel routes represented (98%); route representation is not
+semantic workflow parity.
 
 ## 2026-07-12 ASP.NET Safeguarding And Messaging Checkpoint
 

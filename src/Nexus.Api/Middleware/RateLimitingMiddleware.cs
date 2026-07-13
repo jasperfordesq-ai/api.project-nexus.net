@@ -94,6 +94,12 @@ public static class RateLimitingExtensions
     public const string MessagesUnreadCountPolicy = "messages-unread-count";
     public const string WebAuthnSecurityConfirmPolicy = "webauthn-security-confirm";
     public const string PwaManifestPolicy = "pwa-manifest";
+    public const string EventRegistrationReadPolicy = "event-registration-read";
+    public const string EventRegistrationMutationPolicy = "event-registration-mutation";
+    public const string EventRegistrationSubmissionPolicy = "event-registration-submission";
+    public const string EventRegistrationAnswerReadPolicy = "event-registration-answer-read";
+    public const string EventRegistrationRestrictedPolicy = "event-registration-restricted";
+    public const string EventRegistrationRetentionApplyPolicy = "event-registration-retention-apply";
 
     public static IReadOnlyList<SafeguardingVettingRateLimitContract> SafeguardingVettingRateLimitContracts { get; } =
     [
@@ -188,6 +194,29 @@ public static class RateLimitingExtensions
                         PermitLimit = config.GetValue("RateLimiting:General:PermitLimit", 100),
                         Window = TimeSpan.FromSeconds(config.GetValue("RateLimiting:General:WindowSeconds", 60))
                     }));
+
+            // Laravel assigns independent authenticated one-minute buckets to
+            // the Event Registration Product route groups. Keeping the buckets
+            // separate prevents a high-volume attendee read from consuming an
+            // organizer mutation, export, or retention allowance.
+            AddAuthenticatedFixedWindowPolicy(
+                options, EventRegistrationReadPolicy, config, trustedProxies,
+                "RateLimiting:EventRegistration:ReadPermitLimit", 120);
+            AddAuthenticatedFixedWindowPolicy(
+                options, EventRegistrationMutationPolicy, config, trustedProxies,
+                "RateLimiting:EventRegistration:MutationPermitLimit", 20);
+            AddAuthenticatedFixedWindowPolicy(
+                options, EventRegistrationSubmissionPolicy, config, trustedProxies,
+                "RateLimiting:EventRegistration:SubmissionPermitLimit", 30);
+            AddAuthenticatedFixedWindowPolicy(
+                options, EventRegistrationAnswerReadPolicy, config, trustedProxies,
+                "RateLimiting:EventRegistration:AnswerReadPermitLimit", 60);
+            AddAuthenticatedFixedWindowPolicy(
+                options, EventRegistrationRestrictedPolicy, config, trustedProxies,
+                "RateLimiting:EventRegistration:RestrictedPermitLimit", 10);
+            AddAuthenticatedFixedWindowPolicy(
+                options, EventRegistrationRetentionApplyPolicy, config, trustedProxies,
+                "RateLimiting:EventRegistration:RetentionApplyPermitLimit", 5);
 
             // Laravel uses an independent authenticated 30/minute bucket for
             // the live messaging restriction-status read.
@@ -812,7 +841,21 @@ public static class RateLimitingExtensions
                     return;
                 }
 
-                var canonicalLimit = isVolunteerOrganisationCreatePath
+                var eventRegistrationPolicy = context.HttpContext.GetEndpoint()?
+                    .Metadata.GetMetadata<EnableRateLimitingAttribute>()?.PolicyName;
+                var eventRegistrationLimit = eventRegistrationPolicy switch
+                {
+                    EventRegistrationReadPolicy => config.GetValue("RateLimiting:EventRegistration:ReadPermitLimit", 120),
+                    EventRegistrationMutationPolicy => config.GetValue("RateLimiting:EventRegistration:MutationPermitLimit", 20),
+                    EventRegistrationSubmissionPolicy => config.GetValue("RateLimiting:EventRegistration:SubmissionPermitLimit", 30),
+                    EventRegistrationAnswerReadPolicy => config.GetValue("RateLimiting:EventRegistration:AnswerReadPermitLimit", 60),
+                    EventRegistrationRestrictedPolicy => config.GetValue("RateLimiting:EventRegistration:RestrictedPermitLimit", 10),
+                    EventRegistrationRetentionApplyPolicy => config.GetValue("RateLimiting:EventRegistration:RetentionApplyPermitLimit", 5),
+                    _ => (int?)null
+                };
+
+                var canonicalLimit = eventRegistrationLimit
+                    ?? (isVolunteerOrganisationCreatePath
                     ? config.GetValue("RateLimiting:VolunteerOrganisation:CreatePermitLimit", 5)
                     : isVolunteerOrganisationListPath
                     ? config.GetValue("RateLimiting:VolunteerOrganisation:ListPermitLimit", 60)
@@ -889,7 +932,7 @@ public static class RateLimitingExtensions
                     ? 30
                     : path.StartsWithSegments("/api/ai/test-provider") || path.StartsWithSegments("/api/v2/ai/test-provider")
                         ? 10
-                        : (int?)null;
+                        : (int?)null);
 
                 if (canonicalLimit.HasValue)
                 {
@@ -1019,6 +1062,24 @@ public static class RateLimitingExtensions
     {
         return GetAuthenticatedUserPartitionKey(context)
             ?? $"client:{GetClientIdentifier(context, trustedProxies)}";
+    }
+
+    private static void AddAuthenticatedFixedWindowPolicy(
+        RateLimiterOptions options,
+        string policyName,
+        IConfiguration configuration,
+        string[] trustedProxies,
+        string permitLimitConfigurationKey,
+        int defaultPermitLimit)
+    {
+        options.AddPolicy(policyName, context =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                factory: _ => FixedWindow(
+                    configuration.GetValue(permitLimitConfigurationKey, defaultPermitLimit),
+                    TimeSpan.FromSeconds(configuration.GetValue(
+                        "RateLimiting:EventRegistration:WindowSeconds",
+                        60)))));
     }
 
     /// <summary>

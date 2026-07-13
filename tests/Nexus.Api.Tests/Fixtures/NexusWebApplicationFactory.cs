@@ -21,6 +21,7 @@ namespace Nexus.Api.Tests.Fixtures;
 /// </summary>
 public class NexusWebApplicationFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
+    private static readonly string? ExternalTestConnection = Environment.GetEnvironmentVariable("NEXUS_TEST_POSTGRES");
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder()
         .WithImage("postgres:16.4-bookworm")
         .WithDatabase("nexus_test")
@@ -34,8 +35,19 @@ public class NexusWebApplicationFactory : WebApplicationFactory<Program>, IAsync
     // production connection settings untouched, but give this disposable test
     // database enough time to distinguish a slow local handshake from a real
     // endpoint failure.
-    public string ConnectionString =>
-        $"{_postgres.GetConnectionString()};Timeout=60;Command Timeout=60";
+    public string ConnectionString
+    {
+        get
+        {
+            var connection = ExternalTestConnection ?? _postgres.GetConnectionString();
+            var parsed = new NpgsqlConnectionStringBuilder(connection);
+            if (ExternalTestConnection is not null && !(parsed.Database ?? string.Empty).StartsWith("nexus_", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("NEXUS_TEST_POSTGRES must target an explicitly disposable nexus_* database.");
+            parsed.Timeout = 60;
+            parsed.CommandTimeout = 60;
+            return parsed.ConnectionString;
+        }
+    }
 
     // Test JWT secret - generated deterministically to avoid hardcoded secrets in source control
     private static readonly string TestJwtSecret = Convert.ToBase64String(
@@ -142,7 +154,8 @@ public class NexusWebApplicationFactory : WebApplicationFactory<Program>, IAsync
 
     public async Task InitializeAsync()
     {
-        await _postgres.StartAsync();
+        if (ExternalTestConnection is null)
+            await _postgres.StartAsync();
 
         // Create the disposable schema once, after PostgreSQL is ready and before
         // any test host is built. Derived WithWebHostBuilder factories share this
@@ -172,7 +185,8 @@ public class NexusWebApplicationFactory : WebApplicationFactory<Program>, IAsync
 
     public new async Task DisposeAsync()
     {
-        await _postgres.DisposeAsync();
+        if (ExternalTestConnection is null)
+            await _postgres.DisposeAsync();
         await base.DisposeAsync();
     }
 }

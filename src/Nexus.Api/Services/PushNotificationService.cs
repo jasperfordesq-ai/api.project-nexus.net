@@ -143,6 +143,38 @@ public class PushNotificationService
         string body,
         string? data = null,
         int? tenantId = null)
+        => await QueuePushAsync(userId, title, body, data, tenantId, requestedProvider: null);
+
+    /// <summary>
+    /// Queues a notification only for subscriptions owned by the requested native
+    /// provider. This keeps Web Push and FCM delivery ledgers independent instead
+    /// of treating one provider send as evidence for both channels.
+    /// </summary>
+    public async Task<int> SendPushChannelAsync(
+        int userId,
+        string title,
+        string body,
+        string? data,
+        string provider,
+        int? tenantId = null)
+    {
+        var normalizedProvider = provider.Trim().ToLowerInvariant() switch
+        {
+            "web_push" or "web-push" => "web-push",
+            "fcm" => "fcm",
+            _ => throw new ArgumentOutOfRangeException(nameof(provider), provider, "Only web-push and fcm are supported channel providers.")
+        };
+
+        return await QueuePushAsync(userId, title, body, data, tenantId, normalizedProvider);
+    }
+
+    private async Task<int> QueuePushAsync(
+        int userId,
+        string title,
+        string body,
+        string? data,
+        int? tenantId,
+        string? requestedProvider)
     {
         IQueryable<PushSubscription> subscriptions = _db.Set<PushSubscription>();
         if (tenantId.HasValue)
@@ -152,8 +184,19 @@ public class PushNotificationService
                 .Where(subscription => subscription.TenantId == tenantId.Value);
         }
 
+        subscriptions = subscriptions.Where(s => s.UserId == userId && s.IsActive);
+        if (requestedProvider == "web-push")
+        {
+            subscriptions = subscriptions.Where(s => s.Platform == "web"
+                && s.P256dh != null && s.P256dh != ""
+                && s.Auth != null && s.Auth != "");
+        }
+        else if (requestedProvider == "fcm")
+        {
+            subscriptions = subscriptions.Where(s => s.Platform == "android" || s.Platform == "ios");
+        }
+
         var devices = await subscriptions
-            .Where(s => s.UserId == userId && s.IsActive)
             .ToListAsync();
 
         if (devices.Count == 0)
@@ -162,7 +205,7 @@ public class PushNotificationService
             return 0;
         }
 
-        var providerStatus = GetProviderStatusInternal();
+        var providerStatus = GetProviderStatusInternal(requestedProvider);
         var queuedCount = 0;
 
         foreach (var device in devices)
@@ -220,7 +263,6 @@ public class PushNotificationService
         int maxLogs = 100,
         CancellationToken ct = default)
     {
-        var providerStatus = GetProviderStatusInternal();
         var logs = await _db.Set<PushNotificationLog>()
             .Include(l => l.Subscription)
             .Where(l => l.Status == PushStatus.Pending)
@@ -230,13 +272,17 @@ public class PushNotificationService
 
         var result = new PushDispatchProcessResult
         {
-            Provider = providerStatus.Provider,
-            ProviderConfigured = providerStatus.Configured,
             Attempted = logs.Count
         };
 
+        var providers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var allProvidersConfigured = true;
+
         foreach (var log in logs)
         {
+            var providerStatus = GetProviderStatusInternal(ReadProviderFromLogData(log.Data));
+            providers.Add(providerStatus.Provider);
+            allProvidersConfigured &= providerStatus.Configured;
             log.Data = BuildProviderLogData(log.Data, providerStatus.Provider, providerStatus.Configured);
 
             if (!providerStatus.CanDispatch)
@@ -255,6 +301,16 @@ public class PushNotificationService
                 result.Failed++;
             }
         }
+
+        result.Provider = providers.Count switch
+        {
+            0 => GetProviderStatusInternal().Provider,
+            1 => providers.Single(),
+            _ => "mixed"
+        };
+        result.ProviderConfigured = logs.Count == 0
+            ? GetProviderStatusInternal().Configured
+            : allProvidersConfigured;
 
         await _db.SaveChangesAsync(ct);
 
@@ -369,7 +425,7 @@ public class PushNotificationService
         return count;
     }
 
-    private PushProviderStatus GetProviderStatusInternal()
+    private PushProviderStatus GetProviderStatusInternal(string? requestedProvider = null)
     {
         var endpointValue = FirstConfiguredValue(
             "Push:Http:Endpoint",
@@ -380,7 +436,7 @@ public class PushNotificationService
         var endpoint = TryCreateHttpUri(endpointValue);
         var endpointWasConfigured = !string.IsNullOrWhiteSpace(endpointValue);
 
-        var provider = _configuration["Push:Provider"];
+        var provider = requestedProvider ?? _configuration["Push:Provider"];
         if (string.IsNullOrWhiteSpace(provider))
         {
             if (endpoint != null || endpointWasConfigured)
@@ -444,6 +500,22 @@ public class PushNotificationService
             provider_configured = providerConfigured,
             original_data = data
         });
+    }
+
+    private static string? ReadProviderFromLogData(string? data)
+    {
+        if (string.IsNullOrWhiteSpace(data)) return null;
+        try
+        {
+            using var document = JsonDocument.Parse(data);
+            return document.RootElement.TryGetProperty("provider", out var provider)
+                ? provider.GetString()
+                : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private async Task<bool> DispatchPushLogAsync(

@@ -9,12 +9,21 @@ test, localization, and readiness counts in narrative handoffs, while
 
 ## Goal And Source Of Truth
 
-`apps/web-uk` must become an observable-behavior clone of the Laravel
-accessible frontend while retaining the Express/Nunjucks/GOV.UK Frontend stack.
+`apps/web-uk` must become a complete observable-behaviour clone of the Laravel
+Blade accessible frontend while retaining the Express/Nunjucks/GOV.UK Frontend
+stack. In this documentation, "full-stack frontend" means the server-rendered
+web application owns browser routes, Nunjucks rendering, sessions, CSRF,
+progressive enhancement, form handling, redirects, and backend API mediation.
+It does not own backend business logic, database schema, or persistence.
 
-- Laravel logic/API source: `C:\platforms\htdocs\staging`
-- Laravel layout, structure, copy, and workflow source:
+- Product/UI source of truth: Laravel Blade defines browser routes, links,
+  layout, navigation, content hierarchy, forms, validation presentation,
+  redirects, tenant behaviour, and workflows:
   `C:\platforms\htdocs\staging\accessible-frontend`
+- Backend-contract source of truth: the Laravel backend defines HTTP methods and
+  paths, request/response shapes, status codes, auth, roles, modules, uploads,
+  downloads, persistence, and side effects:
+  `C:\platforms\htdocs\staging`
 - Target frontend: `C:\platforms\htdocs\asp.net-backend\apps\web-uk`
 - Canonical public mount: `/{tenantSlug}/accessible`
 - Canonical Hour Timebank evidence URL: `/hour-timebank/accessible` (and nested
@@ -22,12 +31,24 @@ accessible frontend while retaining the Express/Nunjucks/GOV.UK Frontend stack.
 - Legacy `/{tenantSlug}/alpha`: redirect compatibility only
 - Never use `/hour-timebank/alpha` as a comparison, browser-test, or evidence
   URL; it exists only to verify the legacy redirect.
-- Primary backend now: Laravel
-- Future backend: ASP.NET, not ready and not certified
+- Current and certification backend: Laravel
+- Future second backend: ASP.NET, incomplete, not authoritative, and not
+  certified
 
-Laravel is read-only from this repo. Do not solve a missing Laravel API by
-inventing frontend-only behavior, querying Laravel's database directly, or
-editing `C:\platforms\htdocs\staging` from this workstream.
+Laravel source and its ordinary local database are read-only from this
+workstream. Do not solve a missing Laravel API by inventing frontend-only
+behaviour, editing Laravel, running Laravel migrations, altering its schema,
+querying its database directly, or performing database cleanup. Real mutation,
+upload, download, and destructive certification requires a dedicated disposable
+Laravel test environment or explicit user authorization with verified cleanup.
+
+ASP.NET is not a source of truth for this frontend and is not part of the
+frontend implementation loop. Do not inspect it to decide frontend behaviour
+and do not modify its controllers, services,
+entities, tests, or migrations. The separate ASP.NET parity workstream must
+make that backend satisfy the already-established Laravel contract. Later
+switching proof must change backend configuration only and rerun the same
+unchanged Web UK suite.
 
 ## Concurrent-Session Ownership
 
@@ -47,6 +68,41 @@ session owns backend work, including `src/Nexus.Api/**`,
 7. Do not modify the frozen `apps/react-frontend` copy or any production
    container.
 
+## Local Laravel Boundary Incident
+
+This workstream previously violated the read-only boundary by applying two
+existing Laravel migrations to the ordinary local MySQL database and leaving
+disposable mutation residue. A production read-only inventory on 2026-07-13
+established that both migrations were already legitimate production schema,
+recorded there in batch `96`; this workstream did not create or deploy either
+production schema change.
+
+With explicit owner authorization, production was dumped consistently to
+`/opt/nexus-php/backups/incident-production-20260713T145005Z.sql.gz`. The dump
+passed gzip, completion-marker, SHA-256, and isolated restore checks, was copied
+to Laravel's Git-ignored `backups/incident-recovery/` directory, and did not
+alter production rows or schema. The pre-repair local database was separately
+preserved there as `incident-local-before-repair-20260713T150209Z.sql.gz`.
+
+The local `nexus` database was then reinitialized from the verified production
+dump. It now matches the audited production snapshot: 11 tenants, 360 users,
+383 Laravel migration rows, both questioned migrations in batch `96`, both
+group-template columns, all ten event-accessibility columns, and zero matches
+for `Codex` across every text column. Laravel and MariaDB returned healthy after
+restart. The Laravel repository remained unchanged apart from its pre-existing
+`react-frontend/package-lock.json` and untracked `.codex/` state; neither backup
+is eligible for Git staging because `/backups/` is ignored.
+
+Consequences for this workstream:
+
+- do not apply or roll back any Laravel migration;
+- do not delete or repair any Laravel row;
+- treat the ordinary local Laravel database as a confidential, production-data
+  snapshot for read-only comparison, never as a disposable certification
+  fixture;
+- run future mutation certification only against an isolated disposable Laravel
+  environment whose complete cleanup can be verified.
+
 Do not append another general progress narrative to
 `CURRENT_WEB_UK_HANDOFF.md`. Update this file only when the source SHAs,
 blocker set, route-gap set, or certification state materially changes. Put
@@ -55,9 +111,11 @@ commit as the implementation it describes.
 
 ## Audited Baseline
 
-The audit was refreshed from ASP.NET-repo commit `e03fa427` plus the scoped
-Clubs component-evidence reconciliation recorded below, and Laravel-repo commit `c2cf4fa`. Refresh both
-repositories before relying on these numbers after either source moves.
+The committed frontend baseline was refreshed through ASP.NET-repository commit
+`5c1db32d`, and the Laravel source baseline is `c2cf4fa`. The first SHA names the
+repository snapshot containing Web UK; it does not make ASP.NET authoritative.
+Refresh the Laravel Blade/API source and Web UK implementation before relying on
+these numbers after either source moves.
 
 | Measure | Audited result | Meaning |
 |---|---:|---|
@@ -150,10 +208,12 @@ success, unsafe orchestration, or a generic preparation page.
 
 After the localization P0, the remaining priority order is:
 
-1. Repair the local Laravel schema drift around
-   `events.accessibility_step_free`, then rerun the complete exhaustive
-   Laravel smoke. "All quarters classified" is not the same as all checks
-   passing.
+1. The repaired ordinary local Laravel database is a contract-current but
+   confidential production snapshot, not a destructive test fixture. Provision
+   a dedicated disposable clone before rerunning the Event mutation gate or
+   exhaustive Laravel mutation smoke; never run those gates against the
+   production-derived local database. "All quarters classified" is not the same
+   as all checks passing.
 2. Reconcile low-overlap Blade/Nunjucks families, especially feed, listings,
    search, messages, group create/detail, saved jobs, and recent Event flows.
 3. Compare significant states per route: guest, member, owner, tenant admin,
@@ -169,8 +229,9 @@ After the localization P0, the remaining priority order is:
 7. Harden production concerns separately: persistent sessions, production-only
    secrets/configuration, and request timeouts/abort handling.
 
-ASP.NET proof is deliberately last. First certify the unchanged frontend
-against Laravel. When ASP.NET is ready, change only backend configuration and
+ASP.NET proof is a separate later gate, not remaining frontend implementation
+work. First certify the frontend against Laravel. When the separate backend
+parity workstream declares ASP.NET ready, change only backend configuration and
 run the same evidence suite; do not introduce an ASP.NET-specific frontend
 adapter.
 

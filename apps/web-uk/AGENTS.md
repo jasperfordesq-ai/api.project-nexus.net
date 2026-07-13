@@ -5,13 +5,28 @@ Authoritative instructions for this accessible frontend live in
 
 Urgent first-read rules:
 
-- `apps/web-uk` is the future shared accessible frontend candidate, not the
-  current production accessible frontend.
-- The Laravel Blade accessible frontend is the visual and workflow source of
-  truth:
+- `apps/web-uk` is the implementation target for the future shared accessible
+  frontend. It is not yet the production accessible frontend.
+- The Laravel Blade accessible frontend is the product/UI source of truth for
+  browser routes, links, layout, navigation, content hierarchy, forms,
+  validation presentation, redirects, tenant behaviour, and workflows:
   `C:\platforms\htdocs\staging\accessible-frontend`.
-- The Laravel backend is the default backend target. ASP.NET backend switching is
-  future work and not certified.
+- The Laravel backend/API is the contract source of truth for methods, paths,
+  payloads, envelopes, status codes, auth, roles, modules, uploads, downloads,
+  and side effects.
+- The ASP.NET backend is not a source of truth for this frontend and is not
+  owned by this workstream. Another workstream must make it contract-compatible
+  with Laravel before it can be used as a second backend.
+- Implement one backend-neutral Express/Nunjucks frontend. Do not add
+  ASP.NET-specific page, template, route, validation, or workflow branches.
+- `C:\platforms\htdocs\staging` and its ordinary local database are read-only
+  from this workstream. Never edit Laravel source, run Laravel migrations,
+  alter its schema, query its database directly, or perform database cleanup.
+  Mutation/upload/download certification requires a dedicated disposable test
+  environment or explicit user authorization, with verified cleanup.
+- Work only under `apps/web-uk/**` and approved documentation pointers. Do not
+  modify `src/Nexus.Api/**`, `tests/Nexus.Api.Tests/**`, ASP.NET migrations, or
+  the frozen `apps/react-frontend` copy.
 - Do not claim production readiness or shared-frontend readiness from skeleton
   work.
 - Use GOV.UK Frontend and GOV.UK Design System patterns, but do not use GOV.UK
@@ -21,7 +36,7 @@ Urgent first-read rules:
   client-side routing.
 - Run brand checks and focused tests after shell/layout changes.
 
-Preparation docs that future agents must keep current:
+Maintained docs that future agents must keep current:
 
 - `docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md` (read first)
 - `docs/LARAVEL_ACCESSIBLE_ROUTE_MATRIX.md`

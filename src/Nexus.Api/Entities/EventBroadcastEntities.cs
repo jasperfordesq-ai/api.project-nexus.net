@@ -13,6 +13,7 @@ public sealed class EventRegistration : ITenantEntity
     public string? AllocationKey { get; set; }
     public string RegistrationState { get; set; } = "confirmed";
     public long RegistrationVersion { get; set; } = 1;
+    public int PartySize { get; set; } = 1;
     public DateTime StateChangedAt { get; set; } = DateTime.UtcNow;
     public int? StateChangedBy { get; set; }
     public DateTime? InvitedAt { get; set; }

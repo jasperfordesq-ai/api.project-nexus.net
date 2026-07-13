@@ -1,14 +1,15 @@
 # apps/web-uk Shared Accessible Frontend Notes
 
-Last reviewed: 2026-07-10
+Last reviewed: 2026-07-13
 
-`apps/web-uk` is the ASP.NET repo's future shared accessible frontend candidate.
-It is not production-ready, does not certify production readiness, and must not
-replace the Laravel Blade accessible frontend until certification is complete.
+`apps/web-uk` is the implementation target for the future shared accessible
+frontend. Its location in the ASP.NET repository does not make ASP.NET a source
+of truth. It is not production-ready and must not replace the Laravel Blade
+accessible frontend until certification is complete.
 
 ## Source Of Truth
 
-Visual and workflow source:
+Product/UI source of truth:
 
 ```text
 C:\platforms\htdocs\staging\accessible-frontend
@@ -22,7 +23,24 @@ Local implementation:
 apps/web-uk
 ```
 
-Backend target resolution is Laravel-first and lives in:
+Backend contract source of truth:
+
+```text
+C:\platforms\htdocs\staging\routes
+C:\platforms\htdocs\staging\app\Http\Controllers
+C:\platforms\htdocs\staging\app\Services
+C:\platforms\htdocs\staging\openapi.json
+```
+
+Laravel Blade defines browser routes, links, layout, navigation, content
+hierarchy, forms, validation presentation, redirects, tenant behaviour, and
+workflows. The Laravel backend/API defines methods, paths, payloads, envelopes,
+status codes, auth, roles, modules, uploads, downloads, persistence, and side
+effects. When the two need to be traced together, the observable Blade workflow
+and the Laravel implementation behind it form one authoritative product
+contract.
+
+Backend target resolution lives in:
 
 ```text
 apps/web-uk\src\lib\backend-contract.js
@@ -30,11 +48,29 @@ apps/web-uk\src\lib\backend-contract.js
 
 By default, `apps/web-uk` resolves API calls to the local Laravel staging base
 URL `http://127.0.0.1:8088`. `ACCESSIBLE_BACKEND_TARGET=aspnet` remains future
-work and must not be treated as certified compatibility.
+work and must not be treated as certified compatibility. ASP.NET is not an
+input to frontend design or workflow decisions; the separate backend parity
+workstream must make it conform to the Laravel contract.
 
-## Current Evidence Boundary (2026-07-10)
+## Repository And Data Boundary
 
-The current checkout has passed `45/45` Jest suites (`1,411/1,411` tests),
+- Change only `apps/web-uk/**` and approved documentation pointers from this
+  workstream.
+- Do not change ASP.NET controllers, services, entities, tests, or migrations.
+- Do not change the frozen `apps/react-frontend` copy.
+- Treat the Laravel repository and its ordinary local database as read-only.
+  Never edit Laravel source, run Laravel migrations, alter its schema, query its
+  database directly, or perform database cleanup.
+- Mutation, upload, download, and destructive certification must use a dedicated
+  disposable Laravel test environment. An ordinary/shared Laravel development
+  database requires explicit user authorization and verified cleanup.
+- Do not touch production containers or production data.
+
+## Historical Evidence Boundary (2026-07-10)
+
+This section preserves the 2026-07-10 checkpoint and is superseded by
+`CURRENT_LARAVEL_FIRST_PARITY_STATUS.md`. At that checkpoint the checkout had
+passed `45/45` Jest suites (`1,411/1,411` tests),
 ESLint, the brand-policy gate, CSS compilation, the `62/62` Chromium/axe gate
 in `749.3` seconds (`12.3` minutes),
 and the live `19/19` Blade marker comparison. The generated route matrix reports

@@ -27,6 +27,14 @@ same methods, paths, `/api/v2` aliases where expected, request/response shapes,
 auth/tenant/upload behavior, status codes, and validation/error envelopes.
 Prove compatibility with a route/API matrix and runtime smoke tests.
 
+The separate `apps/web-uk/` surface is the explicitly approved shared
+accessible frontend implementation target. For that workstream, Laravel Blade
+defines the browser experience and the Laravel backend defines the API
+contract. ASP.NET is incomplete and is not a source of truth for Web UK. Web UK
+work must not modify ASP.NET backend source/migrations or Laravel source/schema/
+ordinary local database, and it must not introduce backend-specific frontend
+branches.
+
 Before starting or resuming `apps/web-uk` work, read
 [`apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md`](./apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md).
 It contains the current blocker set, concurrent-session ownership boundaries,

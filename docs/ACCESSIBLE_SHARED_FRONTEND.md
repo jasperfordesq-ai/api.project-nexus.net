@@ -1,11 +1,11 @@
 # Accessible Shared Frontend Direction
 
-Last reviewed: 2026-07-05
+Last reviewed: 2026-07-13
 
 ## Decision
 
-`apps/web-uk/` is the future shared accessible frontend candidate for Project
-NEXUS. It should keep the ASP.NET repo's preferred accessible stack:
+`apps/web-uk/` is the implementation target for Project NEXUS's future shared
+accessible frontend. It keeps the chosen Web UK stack:
 
 - Express
 - Nunjucks
@@ -13,9 +13,19 @@ NEXUS. It should keep the ASP.NET repo's preferred accessible stack:
 - server-rendered HTML
 - progressive enhancement only
 
-The production Laravel Blade accessible frontend remains the source of truth for
-look, layout, information architecture, routes, and workflows until this
-candidate has been certified module by module.
+There are two Laravel sources of truth, separated by responsibility:
+
+- Laravel Blade is the product/UI source for browser routes, links, layout,
+  navigation, content hierarchy, forms, validation presentation, redirects,
+  tenant behaviour, and workflows.
+- The Laravel backend/API is the contract source for HTTP methods and paths,
+  payloads, envelopes, status codes, auth, roles, modules, uploads, downloads,
+  persistence, and side effects.
+
+Together they define the observable product contract Web UK must reproduce.
+ASP.NET is not authoritative for this frontend; its separate parity workstream
+must make it satisfy the Laravel contract before unchanged-frontend switching
+can be certified.
 
 Laravel source of truth:
 
@@ -25,7 +35,7 @@ C:\platforms\htdocs\staging\routes\govuk-alpha.php
 C:\platforms\htdocs\staging\routes\govuk-alpha-parity
 ```
 
-ASP.NET candidate:
+Web UK implementation target:
 
 ```text
 C:\platforms\htdocs\asp.net-backend\apps\web-uk
@@ -33,9 +43,10 @@ C:\platforms\htdocs\asp.net-backend\apps\web-uk
 
 ## Current Status
 
-This work prepares the skeleton and guardrails only. It does not certify
-production readiness, route parity, workflow parity, tenant-domain parity, auth
-parity, localization parity, or API compatibility.
+Implementation is advanced but certification is incomplete. Static route or
+test counts do not certify production readiness, workflow parity,
+tenant-domain parity, auth parity, localization parity, manual accessibility,
+or complete API/side-effect compatibility.
 
 Current local preparation docs in `apps/web-uk/docs/`:
 
@@ -46,6 +57,20 @@ Current local preparation docs in `apps/web-uk/docs/`:
 The React utility-bar link must continue pointing at the production Laravel
 accessible frontend until `apps/web-uk` has passed route, workflow, accessibility,
 tenant, auth, and runtime smoke certification.
+
+## Repository And Data Boundary
+
+- Web UK work changes `apps/web-uk/**` and approved documentation pointers only.
+- Do not modify ASP.NET controllers, services, entities, tests, migrations,
+  schema, fixtures, or runtime data from this workstream.
+- Do not modify the frozen `apps/react-frontend` copy.
+- Treat `C:\platforms\htdocs\staging` and its ordinary local database as
+  read-only: no source edits, migrations, schema repair, direct database
+  queries, or cleanup.
+- Mutation/upload/download/destructive certification requires a dedicated
+  disposable Laravel environment or explicit user authorization with verified
+  cleanup.
+- Never touch production containers or production data.
 
 ## Official GOV.UK Sources
 
@@ -78,9 +103,9 @@ Do use:
 - custom Project NEXUS header and footer
 - AGPL/source attribution required by this project
 
-## Visual Source Of Truth
+## Product/UI Source Of Truth
 
-The ASP.NET accessible frontend should visually follow the Laravel Blade
+The Web UK accessible frontend must visually and behaviourally follow the Laravel Blade
 accessible frontend, especially:
 
 - custom `nexus-alpha-header`
@@ -98,7 +123,7 @@ Do not invent a separate visual language in `apps/web-uk`.
 
 ## Future Repository Plan
 
-When route/workflow parity matures, `apps/web-uk` should move into its own
+When route/workflow parity matures, `apps/web-uk` may move into its own
 repository as the shared accessible frontend. Before that move, this folder must
 have its own `AGENTS.md`, `CLAUDE.md`, README, docs, tests, and versioned
 contract notes so agents can work safely after extraction.
@@ -110,7 +135,8 @@ contract notes so agents can work safely after extraction.
 - Runtime smoke tests cover tenant resolution, auth redirects, CSRF forms,
   feature gates, and key workflows.
 - Rendered pages pass accessibility smoke checks.
-- API calls used by `apps/web-uk` match the canonical Laravel contracts or are
-  backed by documented ASP.NET compatibility endpoints.
+- API calls used by `apps/web-uk` match the canonical Laravel contracts.
+- After separate ASP.NET parity is complete, the same unchanged Web UK suite
+  passes against ASP.NET by changing backend configuration only.
 - The React utility-bar link is changed only after the shared accessible frontend
   has a production deployment path and rollback plan.

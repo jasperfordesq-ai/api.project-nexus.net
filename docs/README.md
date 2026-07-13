@@ -1,6 +1,6 @@
 # Project NEXUS .NET Documentation
 
-Last reviewed: 2026-07-05
+Last reviewed: 2026-07-13
 
 This directory contains the maintained documentation for the Project NEXUS .NET
 Edition. The canonical Laravel source for parity is
@@ -18,7 +18,7 @@ Edition. The canonical Laravel source for parity is
 | [PARITY_BACKLOG.md](PARITY_BACKLOG.md) | Generated backlog rollup, priority semantics, and implementation consumption rules. |
 | [API_PARITY.md](API_PARITY.md) | API contract inventory and comparison policy. |
 | [REACT_FRONTEND_RETIREMENT.md](REACT_FRONTEND_RETIREMENT.md) | Retirement policy for the old ASP.NET React fork and contract-compatibility rules for the Laravel React frontend. |
-| [ACCESSIBLE_SHARED_FRONTEND.md](ACCESSIBLE_SHARED_FRONTEND.md) | Direction, GOV.UK upstream references, and guardrails for `apps/web-uk` as the future shared accessible frontend candidate. |
+| [ACCESSIBLE_SHARED_FRONTEND.md](ACCESSIBLE_SHARED_FRONTEND.md) | Current architecture, two Laravel sources of truth, repository/data boundaries, GOV.UK upstream references, and guardrails for the shared Web UK implementation. |
 | [../apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md](../apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md) | Current Laravel-first status, cross-session ownership boundaries, blockers, and ordered completion queue. Read this before older Web UK handoffs. |
 | [../apps/web-uk/docs/CURRENT_WEB_UK_HANDOFF.md](../apps/web-uk/docs/CURRENT_WEB_UK_HANDOFF.md) | Resume protocol, route-matrix refresh commands, certification rules, and next-step checklist for the accessible Web UK rewrite. |
 | [SCHEMA_PARITY.md](SCHEMA_PARITY.md) | Database table/entity/migration parity inventory and generated report policy. |
@@ -42,9 +42,14 @@ Edition. The canonical Laravel source for parity is
   frontend contract target for ASP.NET backend compatibility.
 - Do not modify frontend files unless the user explicitly approves that specific
   frontend change.
-- Treat `apps/web-uk/` as the .NET accessible frontend candidate and map it
-  against Laravel `accessible-frontend/`.
-- Treat the Laravel Blade accessible frontend as the current visual/workflow
-  source of truth for `apps/web-uk/`.
+- Treat `apps/web-uk/` as the shared accessible frontend implementation target;
+  its repository location does not make ASP.NET authoritative.
+- Treat Laravel Blade as the product/UI source of truth and the Laravel
+  backend/API as the backend-contract source of truth for `apps/web-uk/`.
+- Do not modify ASP.NET backend code, migrations, schema, fixtures, or runtime
+  data from the Web UK workstream.
+- Treat the Laravel repository, schema, and ordinary local database as read-only
+  from Web UK work. Mutation certification requires a dedicated disposable
+  environment or explicit authorization with verified cleanup.
 - Do not point production utility-bar traffic at `apps/web-uk/` until accessible
   route/workflow/tenant/auth/accessibility certification passes.

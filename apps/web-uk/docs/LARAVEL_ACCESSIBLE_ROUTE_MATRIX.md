@@ -5,7 +5,7 @@ Last reviewed: 2026-07-13
 ## Purpose
 
 This matrix tracks how `apps/web-uk` lines up with the Laravel Blade accessible
-frontend. It is preparation evidence only. The current method/path declaration
+frontend. It is structural inventory evidence only. The current method/path declaration
 gaps are explicitly classified below, but this does not certify workflow
 parity, backend compatibility, visual parity, or production readiness.
 It does not certify route parity beyond static method/path declarations.
@@ -18,7 +18,8 @@ Laravel source of truth:
 - `C:\platforms\htdocs\staging\routes\govuk-alpha-parity`
 - `C:\platforms\htdocs\staging\accessible-frontend\views`
 
-ASP.NET candidate:
+Web UK implementation target (its repository location does not make the
+frontend ASP.NET-specific):
 
 - `C:\platforms\htdocs\asp.net-backend\apps\web-uk\src\server.js`
 - `C:\platforms\htdocs\asp.net-backend\apps\web-uk\src\routes`
@@ -43,7 +44,7 @@ npm run route:matrix
 | Surface | Static route declarations | Meaning |
 | --- | ---: | --- |
 | Laravel `govuk-alpha*` | 687 | Laravel Blade accessible source route declarations scanned from route files, including the tenant chooser/root route. |
-| ASP.NET `apps/web-uk` | 688 | Express app/router/static-page declarations scanned from local source; this includes preparation skeletons and route modules that may not be certified workflows yet. |
+| Web UK `apps/web-uk` | 688 | Express app/router/static-page declarations scanned from local source; this includes route modules that may not be certified workflows yet. |
 | Exact method/path matches | 681 | Static matches only. This does not prove workflow, auth, tenant, API, localization, or visual parity. |
 | Missing Laravel routes | 6 | Five tenant-admin Event moderation declarations and the signed offline check-in-code POST remain unmatched because Laravel exposes no tenant-scoped API v2 contract for Web UK to call. Three missing GETs receive generated preparation pages only. |
 | Extra `apps/web-uk` routes | 5 | Four are deliberate legacy `404` tombstones (`GET /events/my`, `POST /events/{id}/rsvp/remove`, `GET /listings/{id}/delete`, and `POST /members/{id}/connect`); the fifth is the bearer-safe volunteering credential download proxy. None is a claim of an extra Laravel workflow. |
@@ -51,8 +52,9 @@ npm run route:matrix
 
 These are declaration counts, not a parity score. Laravel registers the route
 set in slug and custom-domain modes, and many route families still need visual,
-workflow, auth, tenant, localization, runtime, and backend-switching
-certification.
+workflow, auth, tenant, localization, and Laravel-runtime certification. Later
+ASP.NET switching is a separate unchanged-frontend gate owned by the backend
+parity workstream.
 
 Runtime note, 2026-07-09: after this matrix was refreshed green, the full
 default Laravel runtime-smoke scope was recertified against a dedicated
@@ -1209,7 +1211,7 @@ fell from 28 to 0.
 
 ## Header And Footer Contract
 
-| Blade link | Laravel path | `apps/web-uk` path | Current ASP.NET status |
+| Blade link | Laravel path | `apps/web-uk` path | Current Web UK status |
 | --- | --- | --- | --- |
 | Brand | `/` or `/{tenantSlug}/accessible` | `/` | Implemented local equivalent. `/alpha` is legacy redirect compatibility only. |
 | My account | `/account` | `/account` | Partial Blade-style candidate: unsigned users redirect to `/login`; signed-in users see local wallet, messages, connections, notifications, profile, and settings cards plus CSRF sign-out. Account card links and the CSRF-protected logout form action now pass through the tenant-aware `urlFor()` helper, with a source-level regression guarding against literal root-relative account hub links/forms returning to the template. The default Laravel runtime smoke now verifies POST `/logout` redirects to `/login` and clears the signed account session; a targeted live run against `WEB_UK_BASE_URL=http://127.0.0.1:6243` with `TENANT_ID=2` passed this on 2026-07-08. Notification group-read/delete-all, wallet donate/manage/recipients/export, saved-item removal, saved-collection CRUD/item-remove, match-dismiss, appreciation send/react, onboarding step, settings, message group GET pages, and message POST aliases call Laravel-compatible endpoints. Saved item, collection, and saved social source templates now use `urlFor()` for tenant-aware links/forms, with focused render tests and Laravel runtime smoke. Laravel feature gating, full account-link coverage, backend data, tenant routing, realtime behavior, and ASP.NET backend compatibility are not complete. |
@@ -1245,7 +1247,7 @@ fell from 28 to 0.
 
 ## Explore Contract
 
-| Blade Explore card | Laravel route | `apps/web-uk` path | Current ASP.NET status |
+| Blade Explore card | Laravel route | `apps/web-uk` path | Current Web UK status |
 | --- | --- | --- | --- |
 | Exchanges | `/exchanges`, `/exchanges/{id}` | `/exchanges`, `/exchanges/:id` | Partial Laravel-backed candidate: signed GET pages call Laravel `/api/v2/exchanges/config`, `/api/v2/exchanges`, `/api/v2/exchanges/{id}`, and `/api/v2/exchanges/{id}/ratings` for completed exchanges, then render Blade-style tabs, exchange cards, detail summary, member link, role-appropriate no-JS actions, review form, ratings, and timeline. Exchange list/detail source templates now route filter tabs, detail links, pagination, listing/message links, exchange action forms, and rating form controls through `urlFor()` with source regression, focused render coverage, and scoped Laravel runtime smoke for signed `/exchanges`; exchange action/rating POST redirects now route through `res.locals.urlFor` with focused shared-mount coverage. Feature/module gates, exact authorization edge cases, localization, workflow side effects, broader tenant behavior, and full runtime smoke tests are not certified. |
 | AI assistant | `/chat` | `/chat` | Partial Laravel-backed candidate: signed GET renders the Blade-style AI assistant layout with conversation list, selected thread, warning text, empty/error states, and no-JS message form using Laravel `/api/ai/conversations`; POST `/chat` sends the no-JS form message to Laravel `/api/ai/chat` and redirects with Laravel `empty`, `sent`, or `auth-required` status keys. The signed GET is covered by targeted Laravel runtime smoke evidence against `WEB_UK_BASE_URL=http://127.0.0.1:5354` and the default `AI assistant` body-marker contract check against `WEB_UK_BASE_URL=http://127.0.0.1:5356`. AI feature gates, provider-enabled notice parity, POST workflow runtime behavior, localization, and ASP.NET backend compatibility are not certified. |

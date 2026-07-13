@@ -16,6 +16,10 @@ public class EmailLog : ITenantEntity
     public string ToEmail { get; set; } = string.Empty;
     public string Subject { get; set; } = string.Empty;
     public string TemplateKey { get; set; } = string.Empty;
+    public string Provider { get; set; } = "local";
+    public string? ProviderMessageId { get; set; }
+    public string? IdempotencyKey { get; set; }
+    public string? Source { get; set; }
     public EmailSendStatus Status { get; set; } = EmailSendStatus.Pending;
     public string? ErrorMessage { get; set; }
     public int RetryCount { get; set; }

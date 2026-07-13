@@ -2,6 +2,13 @@
 
 This document tracks the implementation progress of the NEXUS UK Frontend.
 
+> **Historical implementation log:** Phase labels and completion statements in
+> this file describe their original slices only. They do not certify the current
+> Laravel-first goal. Read `CURRENT_LARAVEL_FIRST_PARITY_STATUS.md` for current
+> architecture, boundaries, evidence, and remaining work. Laravel Blade defines
+> the browser experience, the Laravel backend defines the API contract, and
+> ASP.NET is a separate future compatibility target.
+
 ---
 
 ## Phase 1 - Foundation (COMPLETE)

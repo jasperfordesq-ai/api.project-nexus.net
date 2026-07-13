@@ -314,6 +314,15 @@ public static class TestDataSeeder
             DECLARE
                 tbl TEXT;
                 tables TEXT[] := ARRAY[
+                    'event_registration_retention_items','event_registration_retention_runs',
+                    'event_registration_guest_attendance_history','event_registration_guest_attendance',
+                    'event_registration_guests','event_invitation_delivery_evidence',
+                    'event_invitation_history','event_invitations',
+                    'event_invitation_campaign_history','event_invitation_campaigns',
+                    'event_registration_answer_access_audits','event_registration_submission_history',
+                    'event_registration_form_answers','event_registration_form_submissions',
+                    'event_registration_form_questions','event_registration_form_versions',
+                    'event_registration_settings_history','event_registration_settings',
                     'federation_external_partner_logs','federation_external_partners',
                     'federation_webhook_nonces','federation_system_control',
                     'federation_tenant_whitelist','federation_tenant_features',

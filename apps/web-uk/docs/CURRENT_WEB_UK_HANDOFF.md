@@ -4,9 +4,20 @@ Last reviewed: 2026-07-13
 
 > **Current audit notice (2026-07-13):** The source-refresh checkpoint below
 > supersedes older counts and completion estimates in this chronological handoff.
-> Read `../../../docs/FULL_PARITY_REMEDIATION_RUNBOOK.md` before issuing a score.
+> Read `CURRENT_LARAVEL_FIRST_PARITY_STATUS.md` first for the current
+> architecture, ownership boundary, database incident, counts, and queue, then
+> use `../../../docs/FULL_PARITY_REMEDIATION_RUNBOOK.md` for the broader
+> cross-workstream gate.
 > Route equality is current, but it is not workflow, localization, runtime, or
 > shared-backend certification.
+>
+> Historical references in this file to a "candidate", "skeleton", ASP.NET
+> compatibility work, or direct mutation of the ordinary Laravel development
+> database are not current instructions. Web UK is the implementation target;
+> Laravel Blade defines the browser experience, the Laravel backend defines the
+> API contract, and ASP.NET is a separate future backend that must conform to
+> Laravel. The Laravel repository, schema, and ordinary local database are
+> read-only from this workstream.
 
 This is the first file to read if an agent needs to resume the accessible
 frontend rewrite after a session interruption. The previous parallel `main`
@@ -16,19 +27,22 @@ state before editing, scoring, or claiming completion.
 
 ## Objective
 
-Rewrite `apps/web-uk` so it can become the shared accessible frontend candidate
-for Project NEXUS. It must use:
+Complete `apps/web-uk` as the future shared accessible frontend for Project
+NEXUS. It must use:
 
-- the Laravel backend as the current default source of truth for data and
-  workflow contracts;
-- the Laravel accessible frontend as the visual, layout, route, and page-flow
-  source of truth;
-- the existing ASP.NET repo accessible stack: Express, Nunjucks, GOV.UK
-  Frontend, server-rendered HTML, no React.
+- the Laravel accessible frontend as the product/UI source of truth for browser
+  routes, links, layout, navigation, content hierarchy, forms, validation
+  presentation, redirects, tenant behaviour, and workflows;
+- the Laravel backend as the contract source of truth for methods, paths,
+  payloads, envelopes, statuses, auth, roles, modules, uploads, downloads,
+  persistence, and side effects;
+- Express, Nunjucks, GOV.UK Frontend, server-rendered HTML, and progressive
+  enhancement as the chosen Web UK implementation stack, with no React.
 
-The result must eventually be able to serve Laravel-compatible and
-ASP.NET-compatible backends without page-level adapters. ASP.NET must bend
-toward Laravel's accessible contracts.
+The result must serve Laravel first. When the separate backend parity workstream
+is complete, it must also be able to serve ASP.NET by changing configuration
+only and running the same unchanged frontend. ASP.NET must bend toward
+Laravel's contracts; it must not define or fork Web UK behaviour.
 
 ## Source Of Truth
 
@@ -41,7 +55,10 @@ toward Laravel's accessible contracts.
 | Web UK target | `C:\platforms\htdocs\asp.net-backend\apps\web-uk` |
 | Previous parity worktree | `C:\Users\jaspe\.config\superpowers\worktrees\asp.net-backend\codex-web-uk-laravel-parity` |
 
-The Laravel repo is read-only reference material from this workspace.
+The Laravel repository, schema, and ordinary local database are read-only from
+this workstream. Mutation certification must use an isolated disposable Laravel
+environment or explicit user authorization with verified cleanup. ASP.NET
+backend files and migrations belong to the separate backend workstream.
 
 ## 2026-07-13 Laravel Source and Independent-Audit Refresh
 

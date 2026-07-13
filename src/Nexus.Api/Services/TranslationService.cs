@@ -242,6 +242,15 @@ public class TranslationService
             return pref.PreferredLocale;
         }
 
+        var userLocale = await _db.Users.IgnoreQueryFilters()
+            .Where(candidate => candidate.Id == userId)
+            .Select(candidate => candidate.PreferredLanguage)
+            .FirstOrDefaultAsync();
+        if (!string.IsNullOrWhiteSpace(userLocale))
+        {
+            return userLocale;
+        }
+
         // Fall back to tenant default
         var defaultLocale = await _db.Set<SupportedLocale>()
             .FirstOrDefaultAsync(l => l.IsDefault && l.IsActive);
@@ -275,6 +284,14 @@ public class TranslationService
                 FallbackLocale = fallback
             };
             _db.Set<UserLanguagePreference>().Add(pref);
+        }
+
+        var user = await _db.Users.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(candidate => candidate.TenantId == tenantId && candidate.Id == userId);
+        if (user != null)
+        {
+            user.PreferredLanguage = locale;
+            user.UpdatedAt = DateTime.UtcNow;
         }
 
         await _db.SaveChangesAsync();

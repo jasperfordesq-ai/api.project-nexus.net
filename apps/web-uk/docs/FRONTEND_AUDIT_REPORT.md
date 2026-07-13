@@ -1,8 +1,15 @@
 # Frontend Audit Report - Project NEXUS UK
 
+> **Historical snapshot:** This February 2026 report is retained as audit
+> history. It is not current architecture, completion, route, or certification
+> evidence. Read `CURRENT_LARAVEL_FIRST_PARITY_STATUS.md` first. Laravel Blade
+> defines the browser experience, the Laravel backend defines the API contract,
+> and ASP.NET is a separate incomplete future backend rather than a Web UK
+> source of truth.
+
 **Date:** February 2026
 **Auditor:** Claude Code
-**Status:** Completed with fixes applied
+**Status:** Historical audit completed with fixes applied; current Web UK goal remains incomplete
 
 ---
 

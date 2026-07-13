@@ -73,6 +73,12 @@ the host machine. This is configured in `.env.docker` and **should not be
 changed to ASP.NET** unless doing explicit future compatibility work. ASP.NET is
 not certified as a shared accessible backend.
 
+This frontend workstream must not modify either backend. Laravel Blade and the
+Laravel API define Web UK behaviour and contracts; ASP.NET is a separate future
+compatibility target owned by another workstream. The ordinary Laravel database
+is not a disposable mutation fixture and must not be migrated or repaired from
+Web UK work.
+
 ## File Structure
 
 ```
