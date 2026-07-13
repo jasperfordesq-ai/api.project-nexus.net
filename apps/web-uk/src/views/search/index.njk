@@ -1,266 +1,76 @@
 {% extends "layouts/base.njk" %}
 
-{% from "govuk/components/input/macro.njk" import govukInput %}
-{% from "govuk/components/button/macro.njk" import govukButton %}
-{% from "govuk/components/tag/macro.njk" import govukTag %}
-{% from "govuk/components/tabs/macro.njk" import govukTabs %}
-{% from "govuk/components/pagination/macro.njk" import govukPagination %}
-
 {% block mainContent %}
-  <div class="govuk-grid-row">
-    <div class="govuk-grid-column-full">
+  <span class="govuk-caption-xl">{{ t("search.caption", { community: tenantName }) }}</span>
+  <h1 class="govuk-heading-xl">{{ t("search.title") }}</h1>
+  <p class="govuk-body-l">{{ t("search.description") }}</p>
 
-      {% if errorMessage %}
-        {% set notificationMessage = errorMessage %}
-        {% set notificationType = null %}
-        {% include "partials/notification-banner.njk" %}
-      {% endif %}
+  <p class="govuk-body govuk-!-margin-bottom-6">
+    <a class="govuk-link" href="{{ urlFor('/search/advanced') }}">{{ t("govuk_alpha_search.nav.advanced") }}</a>
+  </p>
 
-      <span class="govuk-caption-xl">{{ t("search.caption", { community: tenantName }) }}</span>
-      <h1 class="govuk-heading-xl">{{ t("search.title") }}</h1>
-      <p class="govuk-body-l">{{ t("search.description") }}</p>
+  <form method="get" action="{{ urlFor('/search') }}" class="govuk-!-margin-bottom-6">
+    <fieldset class="govuk-fieldset">
+      <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
+        <h2 class="govuk-fieldset__heading">{{ t("govuk_alpha.polish_core_a.search_filters_legend") }}</h2>
+      </legend>
+      <div class="govuk-form-group">
+        <label class="govuk-label" for="q">{{ t("search.label") }}</label>
+        <div id="q-hint" class="govuk-hint">{{ t("search.hint") }}</div>
+        <input class="govuk-input govuk-!-width-two-thirds" id="q" name="q" type="search" value="{{ query }}" aria-describedby="q-hint">
+      </div>
+      <div class="govuk-form-group">
+        <label class="govuk-label" for="type">{{ t("search.type_label") }}</label>
+        <select class="govuk-select" id="type" name="type">
+          <option value="all"{% if type == 'all' %} selected{% endif %}>{{ t("search.type_all") }}</option>
+          <option value="listing"{% if type == 'listing' %} selected{% endif %}>{{ t("search.type_listing") }}</option>
+          <option value="user"{% if type == 'user' %} selected{% endif %}>{{ t("search.type_user") }}</option>
+          <option value="event"{% if type == 'event' %} selected{% endif %}>{{ t("search.type_event") }}</option>
+          <option value="group"{% if type == 'group' %} selected{% endif %}>{{ t("search.type_group") }}</option>
+        </select>
+      </div>
+    </fieldset>
+    <button type="submit" class="govuk-button" data-module="govuk-button">{{ t("search.button") }}</button>
+  </form>
 
-      <form action="{{ urlFor('/search') }}" method="get" class="govuk-!-margin-bottom-6">
-        <div class="govuk-form-group">
-          <div class="app-search-box">
-            {{ govukInput({
-              id: "search-query",
-              name: "q",
-              value: query,
-              label: {
-                text: t("search.label"),
-                classes: "govuk-label--m"
-              },
-              hint: {
-                text: t("search.hint")
-              },
-              classes: "govuk-!-width-two-thirds",
-              attributes: {
-                minlength: "2"
-              }
-            }) }}
+  {% if not query %}
+    <div class="govuk-inset-text"><p class="govuk-body">{{ t("search.no_query") }}</p></div>
+  {% elif not results or results.length == 0 %}
+    <div class="govuk-inset-text"><p class="govuk-body">{{ t("search.empty") }}</p></div>
+  {% else %}
+    <p class="govuk-body">{{ t("search.results_count", { count: totalResults }) }}</p>
+    {% for item in results %}
+      {% set itemTitle = item.title or item.name %}
+      {% if itemTitle %}
+        {% set itemHref = null %}
+        {% set itemTag = null %}
+        {% set itemTagClass = null %}
+        {% if item.type == 'listing' %}
+          {% set itemHref = '/listings/' + (item.id | string) %}
+          {% set itemTag = t("search.tag_listing") %}
+          {% set itemTagClass = 'govuk-tag--blue' %}
+        {% elif item.type == 'user' %}
+          {% set itemHref = '/members/' + (item.id | string) %}
+          {% set itemTag = t("search.tag_user") %}
+          {% set itemTagClass = 'govuk-tag--purple' %}
+        {% elif item.type == 'event' %}
+          {% set itemHref = '/events/' + (item.id | string) %}
+          {% set itemTag = t("search.tag_event") %}
+          {% set itemTagClass = 'govuk-tag--green' %}
+        {% elif item.type == 'group' %}
+          {% set itemHref = '/groups/' + (item.id | string) %}
+          {% set itemTag = t("search.tag_group") %}
+          {% set itemTagClass = 'govuk-tag--turquoise' %}
+        {% endif %}
+        <div class="nexus-alpha-card govuk-!-margin-bottom-3">
+          <div class="nexus-alpha-module-row">
+            <h2 class="govuk-heading-s govuk-!-margin-bottom-0">
+              {% if itemHref and item.id %}<a class="govuk-link" href="{{ urlFor(itemHref) }}">{{ itemTitle }}</a>{% else %}{{ itemTitle }}{% endif %}
+            </h2>
+            {% if itemTag %}<strong class="govuk-tag {{ itemTagClass }}">{{ itemTag }}</strong>{% endif %}
           </div>
         </div>
-        <input type="hidden" name="type" value="{{ type }}">
-        {{ govukButton({
-          text: t("search.button"),
-          classes: "govuk-!-margin-bottom-0"
-        }) }}
-      </form>
-
-      {% if results %}
-        {# Type filter tabs #}
-        <nav class="govuk-tabs govuk-!-margin-bottom-6" data-module="govuk-tabs">
-          <ul class="govuk-tabs__list">
-            <li class="govuk-tabs__list-item {% if type == 'all' %}govuk-tabs__list-item--selected{% endif %}">
-              <a class="govuk-tabs__tab" href="{{ urlFor('/search?q=' + (query | urlencode) + '&type=all') }}">
-                {{ t("search.type_all") }}
-              </a>
-            </li>
-            <li class="govuk-tabs__list-item {% if type == 'listings' %}govuk-tabs__list-item--selected{% endif %}">
-              <a class="govuk-tabs__tab" href="{{ urlFor('/search?q=' + (query | urlencode) + '&type=listings') }}">
-                {{ t("search.type_listing") }}
-                {% if results.listings and results.listings.length > 0 %}
-                  <span class="govuk-tag govuk-tag--grey govuk-!-margin-left-1">{{ results.listings.length }}</span>
-                {% endif %}
-              </a>
-            </li>
-            <li class="govuk-tabs__list-item {% if type == 'users' %}govuk-tabs__list-item--selected{% endif %}">
-              <a class="govuk-tabs__tab" href="{{ urlFor('/search?q=' + (query | urlencode) + '&type=users') }}">
-                {{ t("search.type_user") }}
-                {% if results.users and results.users.length > 0 %}
-                  <span class="govuk-tag govuk-tag--grey govuk-!-margin-left-1">{{ results.users.length }}</span>
-                {% endif %}
-              </a>
-            </li>
-            <li class="govuk-tabs__list-item {% if type == 'groups' %}govuk-tabs__list-item--selected{% endif %}">
-              <a class="govuk-tabs__tab" href="{{ urlFor('/search?q=' + (query | urlencode) + '&type=groups') }}">
-                {{ t("search.type_group") }}
-                {% if results.groups and results.groups.length > 0 %}
-                  <span class="govuk-tag govuk-tag--grey govuk-!-margin-left-1">{{ results.groups.length }}</span>
-                {% endif %}
-              </a>
-            </li>
-            <li class="govuk-tabs__list-item {% if type == 'events' %}govuk-tabs__list-item--selected{% endif %}">
-              <a class="govuk-tabs__tab" href="{{ urlFor('/search?q=' + (query | urlencode) + '&type=events') }}">
-                {{ t("search.type_event") }}
-                {% if results.events and results.events.length > 0 %}
-                  <span class="govuk-tag govuk-tag--grey govuk-!-margin-left-1">{{ results.events.length }}</span>
-                {% endif %}
-              </a>
-            </li>
-          </ul>
-        </nav>
-
-        <p class="govuk-body govuk-!-margin-bottom-4">
-          <strong>{{ t("search.results_count", { count: totalResults }) }}</strong> — “<strong>{{ query }}</strong>”
-        </p>
-
-        {# Listings Results #}
-        {% if (type == 'all' or type == 'listings') and results.listings and results.listings.length > 0 %}
-          {% if type == 'all' %}
-            <h2 class="govuk-heading-m">{{ t("search.type_listing") }}</h2>
-          {% endif %}
-          <ul class="govuk-list">
-            {% for listing in results.listings %}
-              <li class="app-search-result govuk-!-margin-bottom-4">
-                <h3 class="govuk-heading-s govuk-!-margin-bottom-1">
-                  <a href="{{ urlFor('/listings/' + (listing.id | string)) }}" class="govuk-link">{{ listing.title }}</a>
-                </h3>
-                <p class="govuk-body-s govuk-!-margin-bottom-1">
-                  {% if listing.listing_type == 'offer' %}
-                    {{ govukTag({ text: t("govuk_alpha_search.results.listing_offering"), classes: "govuk-tag--green" }) }}
-                  {% else %}
-                    {{ govukTag({ text: t("govuk_alpha_search.results.listing_requesting"), classes: "govuk-tag--blue" }) }}
-                  {% endif %}
-                  {% if listing.status %}
-                    {{ govukTag({ text: listing.status | capitalize, classes: "govuk-tag--grey" }) }}
-                  {% endif %}
-                </p>
-                {% if listing.description %}
-                  <p class="govuk-body-s govuk-!-margin-bottom-0 app-search-result__description">
-                    {{ listing.description | truncate(150) }}
-                  </p>
-                {% endif %}
-              </li>
-            {% endfor %}
-          </ul>
-          {% if type == 'all' and results.listings.length >= 5 %}
-            <p class="govuk-body">
-              <a href="{{ urlFor('/search?q=' + (query | urlencode) + '&type=listings') }}" class="govuk-link">{{ t("search.type_listing") }}</a>
-            </p>
-          {% endif %}
-        {% endif %}
-
-        {# Users Results #}
-        {% if (type == 'all' or type == 'users') and results.users and results.users.length > 0 %}
-          {% if type == 'all' %}
-            <h2 class="govuk-heading-m govuk-!-margin-top-6">{{ t("search.type_user") }}</h2>
-          {% endif %}
-          <ul class="govuk-list">
-            {% for user in results.users %}
-              <li class="app-search-result govuk-!-margin-bottom-4">
-                <div class="app-member-cell">
-                  {% include "partials/avatar.njk" %}
-                  <div>
-                    <h3 class="govuk-heading-s govuk-!-margin-bottom-1">
-                      <a href="{{ urlFor('/members/' + (user.id | string)) }}" class="govuk-link">
-                        {{ user.name or ((user.first_name or '') + ' ' + (user.last_name or '')) }}
-                      </a>
-                    </h3>
-                    {% if user.bio %}
-                      <p class="govuk-body-s govuk-!-margin-bottom-0">{{ user.bio | truncate(100) }}</p>
-                    {% endif %}
-                  </div>
-                </div>
-              </li>
-            {% endfor %}
-          </ul>
-          {% if type == 'all' and results.users.length >= 5 %}
-            <p class="govuk-body">
-              <a href="{{ urlFor('/search?q=' + (query | urlencode) + '&type=users') }}" class="govuk-link">{{ t("search.type_user") }}</a>
-            </p>
-          {% endif %}
-        {% endif %}
-
-        {# Groups Results #}
-        {% if (type == 'all' or type == 'groups') and results.groups and results.groups.length > 0 %}
-          {% if type == 'all' %}
-            <h2 class="govuk-heading-m govuk-!-margin-top-6">{{ t("search.type_group") }}</h2>
-          {% endif %}
-          <ul class="govuk-list">
-            {% for group in results.groups %}
-              <li class="app-search-result govuk-!-margin-bottom-4">
-                <h3 class="govuk-heading-s govuk-!-margin-bottom-1">
-                  <a href="{{ urlFor('/groups/' + (group.id | string)) }}" class="govuk-link">{{ group.name }}</a>
-                </h3>
-                <p class="govuk-body-s govuk-!-margin-bottom-1">
-                  {% if group.visibility == 'public' or group.is_public %}
-                    {{ govukTag({ text: t("groups.visibility_public"), classes: "govuk-tag--green" }) }}
-                  {% else %}
-                    {{ govukTag({ text: t("groups.visibility_private"), classes: "govuk-tag--grey" }) }}
-                  {% endif %}
-                  {% set groupMemberCount = group.members_count or 0 %}
-                  <span class="govuk-!-margin-left-2">{{ tc("govuk_alpha_search.results.members_count", groupMemberCount, { count: groupMemberCount }) }}</span>
-                </p>
-                {% if group.description %}
-                  <p class="govuk-body-s govuk-!-margin-bottom-0 app-search-result__description">
-                    {{ group.description | truncate(150) }}
-                  </p>
-                {% endif %}
-              </li>
-            {% endfor %}
-          </ul>
-          {% if type == 'all' and results.groups.length >= 5 %}
-            <p class="govuk-body">
-              <a href="{{ urlFor('/search?q=' + (query | urlencode) + '&type=groups') }}" class="govuk-link">{{ t("search.type_group") }}</a>
-            </p>
-          {% endif %}
-        {% endif %}
-
-        {# Events Results #}
-        {% if (type == 'all' or type == 'events') and results.events and results.events.length > 0 %}
-          {% if type == 'all' %}
-            <h2 class="govuk-heading-m govuk-!-margin-top-6">{{ t("search.type_event") }}</h2>
-          {% endif %}
-          <ul class="govuk-list">
-            {% for event in results.events %}
-              <li class="app-search-result govuk-!-margin-bottom-4">
-                <h3 class="govuk-heading-s govuk-!-margin-bottom-1">
-                  <a href="{{ urlFor('/events/' + (event.id | string)) }}" class="govuk-link">{{ event.title }}</a>
-                </h3>
-                <p class="govuk-body-s govuk-!-margin-bottom-1">
-                  {% if event.start_time %}
-                    <time datetime="{{ event.start_time }}">{{ event.start_time | date }}</time>
-                  {% endif %}
-                  {% if event.location %}
-                    <span class="govuk-!-margin-left-2">{{ event.location }}</span>
-                  {% endif %}
-                </p>
-                {% if event.description %}
-                  <p class="govuk-body-s govuk-!-margin-bottom-0 app-search-result__description">
-                    {{ event.description | truncate(150) }}
-                  </p>
-                {% endif %}
-              </li>
-            {% endfor %}
-          </ul>
-          {% if type == 'all' and results.events.length >= 5 %}
-            <p class="govuk-body">
-              <a href="{{ urlFor('/search?q=' + (query | urlencode) + '&type=events') }}" class="govuk-link">{{ t("search.type_event") }}</a>
-            </p>
-          {% endif %}
-        {% endif %}
-
-        {# Blade renders one catalog empty state regardless of the selected type. #}
-        {% if totalResults == 0 %}
-          <div class="govuk-inset-text">
-            <p class="govuk-body">{{ t("search.empty") }}</p>
-          </div>
-        {% endif %}
-
-        {# Pagination #}
-        {% if pagination and pagination.nextHref %}
-          {{ govukPagination({
-            next: {
-              labelText: t("actions.load_more"),
-              href: urlFor(pagination.nextHref)
-            }
-          }) }}
-        {% endif %}
-
-      {% elif not query %}
-        {# Initial search page state #}
-        <div class="app-search-hints govuk-!-margin-top-6">
-          <h2 class="govuk-heading-m">{{ t("govuk_alpha_search.states.no_query_title") }}</h2>
-          <ul class="govuk-list govuk-list--bullet">
-            <li>{{ t("govuk_alpha_search.states.no_query_tip_services") }}</li>
-            <li>{{ t("govuk_alpha_search.states.no_query_tip_people") }}</li>
-            <li>{{ t("govuk_alpha_search.states.no_query_tip_events") }}</li>
-          </ul>
-        </div>
       {% endif %}
-
-    </div>
-  </div>
+    {% endfor %}
+  {% endif %}
 {% endblock %}

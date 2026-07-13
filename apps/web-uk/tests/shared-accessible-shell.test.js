@@ -9733,7 +9733,6 @@ describe('shared accessible frontend shell', () => {
   it('renders simple search from the flat Laravel v2 envelope inside the active tenant mount', async () => {
     const api = require('../src/lib/api');
     const t = createTranslator('ar');
-    const tc = createChoiceTranslator('ar');
     api.searchV2.mockResolvedValueOnce({
       data: [
         {
@@ -9783,20 +9782,28 @@ describe('shared accessible frontend shell', () => {
     expect(api.searchV2).toHaveBeenCalledWith('test-token', {
       q: 'garden',
       type: 'all',
-      per_page: 30,
-      cursor: 'opaque-current'
+      per_page: 30
     });
     expect(response.text).toContain(t('search.title'));
     expect(response.text).toContain(t('search.caption', { community: 'Project NEXUS Accessible' }));
     expect(response.text).toContain(t('search.label'));
     expect(response.text).toContain(t('search.results_count', { count: 9 }));
+    expect(response.text).toContain('href="/acme/accessible/search/advanced"');
+    expect(response.text).toContain(t('govuk_alpha_search.nav.advanced'));
+    expect(response.text).toContain(t('govuk_alpha.polish_core_a.search_filters_legend'));
+    expect(response.text).toContain('<select class="govuk-select" id="type" name="type">');
+    expect(response.text).toContain('<option value="all" selected>');
     expect(response.text).toContain('Garden help');
-    expect(response.text).toContain(t('govuk_alpha_search.results.listing_offering'));
+    expect(response.text).toContain(t('search.tag_listing'));
     expect(response.text).toContain('Avery Garden Services');
-    expect(response.text).toContain('datetime="2026-07-20T10:00:00Z"');
-    expect(response.text).toContain(tc('govuk_alpha_search.results.members_count', 6, { count: 6 }));
+    expect(response.text).toContain(t('search.tag_user'));
+    expect(response.text).toContain(t('search.tag_event'));
+    expect(response.text).toContain(t('search.tag_group'));
     expect(response.text).toContain('href="/acme/accessible/listings/42"');
-    expect(response.text).toContain('href="/acme/accessible/search?q=garden&amp;type=all&amp;cursor=opaque-next"');
+    expect(response.text.indexOf('Garden help')).toBeLessThan(response.text.indexOf('Avery Garden Services'));
+    expect(response.text.indexOf('Avery Garden Services')).toBeLessThan(response.text.indexOf('Seed swap'));
+    expect(response.text).not.toContain('app-search-result__description');
+    expect(response.text).not.toContain('href="/acme/accessible/search?q=garden&amp;type=all&amp;cursor=opaque-next"');
   });
 
   it('renders one Blade catalog inset for a type-filtered empty search', async () => {
@@ -9810,13 +9817,34 @@ describe('shared accessible frontend shell', () => {
     });
 
     const response = await request(app)
-      .get('/search?q=missing&type=events')
+      .get('/search?q=missing&type=event')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.searchV2).toHaveBeenCalledWith('test-token', {
+      q: 'missing',
+      type: 'events',
+      per_page: 30
+    });
+    expect(response.text).toContain('<option value="event" selected>');
+    expect(response.text.split('No results found. Try a different search.')).toHaveLength(2);
+    expect(response.text).not.toContain('app-empty-state');
+    expect(response.text).not.toContain('href="/listings">Browse listings</a>');
+  });
+
+  it('matches Blade empty results when the simple search service fails', async () => {
+    const api = require('../src/lib/api');
+    api.searchV2.mockRejectedValueOnce(new api.ApiError('Search unavailable', 503));
+
+    const response = await request(app)
+      .get('/search?q=missing&type=listing')
       .set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(200);
     expect(response.text.split('No results found. Try a different search.')).toHaveLength(2);
-    expect(response.text).not.toContain('app-empty-state');
-    expect(response.text).not.toContain('href="/listings">Browse listings</a>');
+    expect(response.text).toContain('<option value="listing" selected>');
+    expect(response.text).not.toContain('Search unavailable');
+    expect(response.text).not.toContain('There was a problem searching. Please try again.');
   });
 
   it('renders the Laravel-style advanced search page', async () => {
