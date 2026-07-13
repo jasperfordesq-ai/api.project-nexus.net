@@ -1714,7 +1714,7 @@ app.post('/members/:id(\\d+)/connect', renderLegacyNotFound);
 
 // Protected routes with CSRF and rate limiting
 app.use('/dashboard', doubleCsrfProtection, dashboardRoutes);
-app.use('/listings', requireAuth, doubleCsrfProtection, postOnly(formLimiter), listingsRoutes);
+app.use('/listings', doubleCsrfProtection, postOnly(formLimiter), listingsRoutes);
 app.use('/profile', doubleCsrfProtection, profileRoutes);
 app.use('/activity', doubleCsrfProtection, activityRoutes);
 app.use('/wallet', doubleCsrfProtection, postOnly(walletLimiter), walletRoutes);

@@ -1158,36 +1158,87 @@ router.get('/:id(\\d+)/report', asyncRoute(async (req, res) => {
 // List all listings with search/filter/pagination
 router.get('/', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  const search = trimmed(req.query.search || req.query.q);
+  const search = trimmed(req.query.q || req.query.search);
   const type = ['offer', 'request'].includes(String(req.query.type || '')) ? String(req.query.type) : '';
+  const categoryId = positiveInteger(req.query.category_id);
+  const hours = ['any', 'quick', 'short', 'half_day', 'full_day'].includes(String(req.query.hours || 'any')) ? String(req.query.hours || 'any') : 'any';
+  const service = ['any', 'remote', 'in_person'].includes(String(req.query.service || 'any')) ? String(req.query.service || 'any') : 'any';
+  const posted = ['any', '1', '7', '30'].includes(String(req.query.posted || 'any')) ? String(req.query.posted || 'any') : 'any';
+  const sort = ['newest', 'recommended'].includes(String(req.query.sort || 'newest')) ? String(req.query.sort || 'newest') : 'newest';
+  const near = ['any', '5', '10', '25', '50'].includes(String(req.query.near || 'any')) ? String(req.query.near || 'any') : 'any';
   const cursor = trimmed(req.query.cursor);
   const params = {
-    per_page: 20,
+    limit: 12,
     ...(search ? { q: search } : {}),
     ...(type ? { type } : {}),
+    ...(categoryId ? { category_id: categoryId } : {}),
     ...(cursor ? { cursor } : {})
   };
+  const hoursMap = {
+    quick: { max_hours: 1 },
+    short: { min_hours: 1, max_hours: 3 },
+    half_day: { min_hours: 3, max_hours: 6 },
+    full_day: { min_hours: 6 }
+  };
+  Object.assign(params, hoursMap[hours] || {});
+  if (service === 'remote') params.service_type = 'remote_only,hybrid';
+  if (service === 'in_person') params.service_type = 'physical_only';
+  if (posted !== 'any') params.posted_within = Number(posted);
+  if (sort === 'recommended') params.featured_first = true;
+  const currentUserResult = token ? await getRequestProfile(req, token).catch(() => null) : null;
+  const currentUser = profileFrom(currentUserResult);
+  const latitude = Number(currentUser.latitude);
+  const longitude = Number(currentUser.longitude);
+  const nearNoLocation = near !== 'any' && Boolean(token) && (!Number.isFinite(latitude) || !Number.isFinite(longitude));
+  if (near !== 'any' && Number.isFinite(latitude) && Number.isFinite(longitude)) {
+    params.near_lat = latitude;
+    params.near_lng = longitude;
+    params.radius_km = Number(near);
+  }
 
-  const [result, currentUserResult] = await Promise.all([
-    getListings(token, params),
-    token ? getRequestProfile(req, token).catch(() => null) : Promise.resolve(null)
+  const [listingResult, categoriesResult] = await Promise.all([
+    getListings(token, params).then(result => ({ result, error: false })).catch(() => ({ result: { data: [], meta: {} }, error: true })),
+    getListingCategories(token).catch(() => ({ data: [] }))
   ]);
-  const listings = collectionFrom(result);
+  const result = listingResult.result;
+  const listings = collectionFrom(result).map(listing => ({
+    ...listing,
+    imageUrl: resolveBackendAssetUrl(listing && (listing.image_url || listing.imageUrl)),
+    authorName: trimmed(listing && ((listing.user && listing.user.name) || listing.author_name)),
+    categoryName: trimmed(listing && (listing.category_name || (listing.category && listing.category.name))),
+    hoursEstimate: listing && (listing.hours_estimate ?? listing.hoursEstimate)
+  }));
+  const categories = collectionFrom(categoriesResult)
+    .map(category => ({ id: positiveInteger(category && category.id), name: trimmed(category && category.name) }))
+    .filter(category => category.id && category.name);
   const meta = result?.meta || {};
   const pagination = {
     hasMore: Boolean(meta.has_more),
     cursor: trimmed(meta.cursor || meta.next_cursor),
     total: Number(meta.total_items ?? meta.total ?? listings.length) || 0
   };
+  const nextQuery = new URLSearchParams();
+  if (search) nextQuery.set('q', search);
+  if (type) nextQuery.set('type', type);
+  if (categoryId) nextQuery.set('category_id', String(categoryId));
+  if (hours !== 'any') nextQuery.set('hours', hours);
+  if (service !== 'any') nextQuery.set('service', service);
+  if (near !== 'any') nextQuery.set('near', near);
+  if (posted !== 'any') nextQuery.set('posted', posted);
+  if (sort !== 'newest') nextQuery.set('sort', sort);
+  if (pagination.cursor) nextQuery.set('cursor', pagination.cursor);
 
   res.render('listings/index', {
     title: 'Listings',
     listings,
+    categories,
     pagination,
-    filters: { search, type },
-    hasFilters: Boolean(search || type),
-    currentUser: profileFrom(currentUserResult),
+    nextHref: pagination.hasMore && pagination.cursor ? `/listings?${nextQuery.toString()}` : null,
+    filters: { search, type, categoryId, hours, service, posted, sort, near, nearNoLocation },
+    hasFilters: Boolean(search || type || categoryId || hours !== 'any' || service !== 'any' || posted !== 'any'),
+    currentUser,
     isAuthenticated: Boolean(token),
+    loadError: listingResult.error,
     successMessage: (req.flash ? req.flash('success')[0] : null) || listingStatusMessage(req.query.status),
     errorMessage: (req.flash ? req.flash('error')[0] : null) || listingStatusErrorMessage(req.query.status),
     csrfToken: req.csrfToken ? req.csrfToken() : ''

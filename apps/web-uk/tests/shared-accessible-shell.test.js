@@ -24844,9 +24844,10 @@ describe('shared accessible frontend shell', () => {
 
     expect(response.status).toBe(200);
     expect(api.getListings).toHaveBeenCalledWith('test-token', {
-      per_page: 20
+      limit: 12
     });
     expect(response.text).toContain('Borrow a ladder');
+    expect(response.text).toContain('class="nexus-alpha-card-list"');
     expect(response.text).not.toContain('href="/listings/42/edit"');
   });
 
@@ -24871,9 +24872,26 @@ describe('shared accessible frontend shell', () => {
     expect(filtered.text).toContain('href="/listings">Clear filters</a>');
   });
 
+  it('renders the Blade guest creation handoff and guarded listing-load failure', async () => {
+    const api = require('../src/lib/api');
+    api.getListings.mockRejectedValueOnce(new api.ApiError('Unavailable', 503, {}));
+    api.getListingCategories.mockResolvedValueOnce({ data: [] });
+
+    const response = await request(app).get('/listings');
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('href="/login?status=auth-required"');
+    expect(response.text).toContain('Sign in to create a listing');
+    expect(response.text).toContain('class="govuk-error-summary"');
+    expect(response.text).toContain('Listings could not be loaded. Try again.');
+    expect(response.text).not.toContain('class="nexus-alpha-card-list"');
+  });
+
   it('renders signed Laravel listing browse and detail with exact cursor filters', async () => {
     const api = require('../src/lib/api');
     api.getProfile.mockClear();
+    api.getProfile.mockResolvedValueOnce({ id: 101, latitude: 51.9, longitude: -8.5 });
+    api.getListingCategories.mockResolvedValueOnce({ data: [{ id: 9, name: 'Home and garden' }] });
     api.getListings.mockResolvedValueOnce({
       data: [{
         id: 42,
@@ -24886,18 +24904,28 @@ describe('shared accessible frontend shell', () => {
     });
 
     const index = await request(app)
-      .get('/listings?search=ladder&type=offer&cursor=current-page')
+      .get('/listings?q=ladder&type=offer&category_id=9&hours=short&service=remote&near=10&posted=7&sort=recommended&cursor=current-page')
       .set('Cookie', signedCookieHeader());
 
     expect(index.status).toBe(200);
     expect(api.getListings).toHaveBeenCalledWith('test-token', {
-      per_page: 20,
+      limit: 12,
       q: 'ladder',
       type: 'offer',
-      cursor: 'current-page'
+      category_id: 9,
+      cursor: 'current-page',
+      min_hours: 1,
+      max_hours: 3,
+      service_type: 'remote_only,hybrid',
+      posted_within: 7,
+      featured_first: true,
+      near_lat: 51.9,
+      near_lng: -8.5,
+      radius_km: 10
     });
     expect(index.text).toContain('Public ladder offer');
-    expect(index.text).toContain('href="/listings?search=ladder&amp;type=offer&amp;cursor=next-page"');
+    expect(index.text).toContain('<option value="9" selected>Home and garden</option>');
+    expect(index.text).toContain('href="/listings?q=ladder&amp;type=offer&amp;category_id=9&amp;hours=short&amp;service=remote&amp;near=10&amp;posted=7&amp;sort=recommended&amp;cursor=next-page"');
     expect(index.text).toContain('href="/listings/new"');
 
     api.getListing.mockResolvedValueOnce({
@@ -24987,7 +25015,7 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', signedCookieHeader());
 
     expect(index.status).toBe(200);
-    expect(index.text).toContain('href="/listings/42/edit"');
+    expect(index.text).not.toContain('href="/listings/42/edit"');
     expect(index.text).not.toContain('method="post" action="/listings/42/delete"');
     expect(index.text).not.toContain('href="/listings/42/delete"');
 
