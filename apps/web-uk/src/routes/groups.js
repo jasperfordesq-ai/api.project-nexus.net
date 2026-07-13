@@ -1161,15 +1161,15 @@ router.get('/:id(\\d+)/edit', requireAuth, asyncRoute(async (req, res) => {
 
 router.get('/:id(\\d+)/invite', requireAuth, asyncRoute(async (req, res) => {
   const id = req.params.id;
-  const [groupResult, invitesResult] = await Promise.all([
-    getGroup(req.token, id),
-    callGroup(req.token, 'GET', `/${id}/invites`).catch((error) => {
-      if (isAuthError(error)) throw error;
-      return { data: { items: [] } };
-    })
-  ]);
+  const { group, profile } = await groupAccessContext(req, id);
+  if (isKnownGroupAdmin(group, profile) !== true) {
+    return renderForbidden(res);
+  }
 
-  const group = normalizeGroup(dataFrom(groupResult)?.group || dataFrom(groupResult), Number(id));
+  const invitesResult = await callGroup(req.token, 'GET', `/${id}/invites`).catch((error) => {
+    if (isAuthError(error)) throw error;
+    return { data: { items: [] } };
+  });
   const pendingInvites = collectionFrom(invitesResult)
     .map(normalizeInvite)
     .filter((invite) => invite.id !== null);

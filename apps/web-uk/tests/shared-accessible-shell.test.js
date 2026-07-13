@@ -19913,7 +19913,8 @@ describe('shared accessible frontend shell', () => {
     api.getGroup.mockReset().mockResolvedValueOnce({
       data: {
         id: 42,
-        name: 'Garden Helpers'
+        name: 'Garden Helpers',
+        viewer_membership: { role: 'admin', status: 'active' }
       }
     });
     api.callGroupApi.mockReset().mockResolvedValueOnce({
@@ -19973,6 +19974,22 @@ describe('shared accessible frontend shell', () => {
     expect(api.getGroup).toHaveBeenCalledWith('test-token', '42');
     expect(api.callGroupApi).toHaveBeenCalledTimes(1);
     expect(api.callGroupApi).toHaveBeenCalledWith('test-token', 'GET', '/42/invites');
+
+    api.getGroup.mockResolvedValueOnce({
+      data: {
+        id: 42,
+        name: 'Garden Helpers',
+        viewer_membership: { role: 'member', status: 'active' }
+      }
+    });
+    api.callGroupApi.mockClear();
+    const member = await request(app)
+      .get('/groups/42/invite')
+      .set('Cookie', signedCookieHeader());
+
+    expect(member.status).toBe(403);
+    expect(member.text).toContain(englishForbiddenTitle);
+    expect(api.callGroupApi).not.toHaveBeenCalled();
   });
 
   it('renders the Laravel group notification preferences page for signed-in members', async () => {
