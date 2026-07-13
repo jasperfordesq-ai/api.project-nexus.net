@@ -19,6 +19,15 @@ safe attempts and a direct disposable create/delete probe reached Laravel's
 missing MySQL column `group_files.updated_at`. Web UK does not mask that
 read-only Laravel schema failure.
 
+The refreshed current-source Event lifecycle is likewise blocked before an
+insert can succeed. A cleanup-safe `npm run smoke:laravel:events-mutation`
+rerun reached Web UK's multipart create form and Laravel returned `500`.
+Laravel's own log identifies `SQLSTATE[42S22]`: the current `EventService`
+inserts `events.accessibility_step_free`, but the read-only local table lacks
+that column. The failed insert retained no disposable Event. This supersedes
+the older `86.3`-second Event lifecycle pass for current-source certification;
+the test remains intact for rerun after the Laravel schema is caught up.
+
 A manual in-app browser inspection of the default-English login page confirmed
 the skip link, banner/main/footer landmarks, labelled email and password
 controls, and a visible `3px` yellow focus outline on the skip link and email

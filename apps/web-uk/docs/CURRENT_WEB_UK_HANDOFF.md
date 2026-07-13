@@ -74,6 +74,15 @@ already mounts `/events` behind `requireAuth`; a live unsigned request to
 `/hour-timebank/accessible/events` returned `302` to the mounted login. Do not
 weaken that boundary or invent a public catalogue contract.
 
+A current-source disposable Event rerun now supersedes the historical Event
+mutation pass as the certification boundary. Web UK reached its authenticated
+multipart create submission, but Laravel returned `500`; the Laravel log records
+`SQLSTATE[42S22]` because `EventService` inserts
+`events.accessibility_step_free` while the read-only local table lacks that
+column. The insert failed atomically and retained no disposable Event. Keep the
+runtime test unchanged and rerun it after the Laravel schema is caught up; do
+not mask this upstream schema state in Web UK.
+
 ## Current Verified Checkpoint (2026-07-12)
 
 This is the current evidence boundary. Older dated slices below remain useful
