@@ -24271,7 +24271,9 @@ describe('shared accessible frontend shell', () => {
         is_favorited: true,
         is_liked: true,
         likes_count: 3,
-        comments_count: 2
+        comments_count: 2,
+        member_offers: [{ id: 51, title: 'Help assembling shelves' }],
+        member_requests: [{ id: 52, title: 'Need a paint roller' }]
       }
     });
 
@@ -24294,6 +24296,12 @@ describe('shared accessible frontend shell', () => {
     expect(detail.text).toContain('View and add comments (2)');
     expect(detail.text).toContain('href="/listings/42/report"');
     expect(detail.text).toContain('href="/members/77"');
+    expect(detail.text).toContain('More offers from this member');
+    expect(detail.text).toContain('href="/listings/51"');
+    expect(detail.text).toContain('Help assembling shelves');
+    expect(detail.text).toContain('More requests from this member');
+    expect(detail.text).toContain('href="/listings/52"');
+    expect(detail.text).toContain('Need a paint roller');
     expect(detail.text).not.toContain('action="/listings/42/delete"');
   });
 

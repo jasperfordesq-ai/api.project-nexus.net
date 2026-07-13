@@ -475,6 +475,16 @@ function listingAuthorFrom(listing) {
   };
 }
 
+function relatedListingsFrom(value) {
+  if (!Array.isArray(value)) return [];
+  return value.map((listing) => {
+    const item = listing && typeof listing === 'object' ? listing : {};
+    const id = positiveInteger(item.id);
+    const title = trimmed(item.title || item.name);
+    return id !== null && title ? { id, title } : null;
+  }).filter(Boolean);
+}
+
 async function exchangeWorkflowEnabled(token) {
   const payload = await getExchangeConfig(token);
   const data = dataFrom(payload) || {};
@@ -1290,6 +1300,8 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
     listingGallery: listingGalleryFrom(listing),
     listingSkillTags: listingSkillTagsFrom(listing),
     listingAuthor: listingAuthorFrom(listing),
+    memberOffers: relatedListingsFrom(listing.member_offers || listing.memberOffers),
+    memberRequests: relatedListingsFrom(listing.member_requests || listing.memberRequests),
     isSaved: listing.is_favorited === true || listing.isFavorited === true,
     hasLiked: listing.is_liked === true || listing.isLiked === true,
     likeCount: Math.max(0, Number(listing.likes_count ?? listing.likesCount) || 0),

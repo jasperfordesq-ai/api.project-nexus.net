@@ -236,6 +236,20 @@
         {% endif %}
       </section>
 
+      {% for section in [
+        { title: t("listings.member_offers"), items: memberOffers },
+        { title: t("listings.member_requests"), items: memberRequests }
+      ] %}
+        {% if section.items.length %}
+          <h2 class="govuk-heading-m">{{ section.title }}</h2>
+          <ul class="govuk-list govuk-list--spaced">
+            {% for related in section.items %}
+              <li><a class="govuk-link" href="{{ urlFor('/listings/' + (related.id | string)) }}">{{ related.title }}</a></li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      {% endfor %}
+
     </div>
   </div>
 {% endblock %}
