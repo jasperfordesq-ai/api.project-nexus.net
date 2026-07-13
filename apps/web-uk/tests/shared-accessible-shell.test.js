@@ -24510,6 +24510,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Posted by Ada Member');
     expect(response.text).toContain('Working bee on Friday.');
     expect(response.text).toContain('Bring gloves.');
+    expect(response.text).toContain('13 July 2026, 10:30');
     expect(response.text).not.toContain('&lt;p&gt;');
     expect(response.text).toContain(`src="${getApiBaseUrl()}/uploads/avatars/ada.png" alt=""`);
     expect(response.text).toContain(`href="${getApiBaseUrl()}/uploads/feed/garden.jpg"`);

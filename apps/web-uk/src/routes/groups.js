@@ -365,6 +365,24 @@ function normalizeGroup(item, fallbackId = null) {
   };
 }
 
+function bladeDateTime24Label(value) {
+  const text = trimmed(value);
+  if (!text) return '';
+  const date = new Date(text);
+  if (Number.isNaN(date.getTime())) return '';
+  const parts = new Intl.DateTimeFormat(getRequestIntlLocale(), {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  }).formatToParts(date);
+  const part = (type) => parts.find((item) => item.type === type)?.value || '';
+  const hour = part('hour') === '24' ? '00' : part('hour');
+  return `${part('day')} ${part('month')} ${part('year')}, ${hour}:${part('minute')}`;
+}
+
 function normalizeAnnouncement(item) {
   const raw = item && typeof item === 'object' ? item : {};
   const author = raw.author && typeof raw.author === 'object' ? raw.author : {};
@@ -494,13 +512,7 @@ function normalizeGroupFeedPost(item, unknownAuthor) {
     authorAvatar: resolveBackendAssetUrl(author.avatar_url || author.avatarUrl || raw.author_avatar_url || raw.authorAvatarUrl),
     createdAt: createdDate && !Number.isNaN(createdDate.getTime()) ? createdDate.toISOString() : '',
     createdAtLabel: createdDate && !Number.isNaN(createdDate.getTime())
-      ? createdDate.toLocaleString(getRequestIntlLocale(), {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      })
+      ? bladeDateTime24Label(createdAt)
       : '',
     contentParagraphs: plainParagraphs(raw.content),
     media: mediaRows.slice(0, 4).map((media) => {
