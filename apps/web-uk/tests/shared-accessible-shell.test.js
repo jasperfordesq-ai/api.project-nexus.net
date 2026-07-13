@@ -21608,11 +21608,11 @@ describe('shared accessible frontend shell', () => {
 
     const waitlistResponse = await post('/events/7/waitlist');
     expect(waitlistResponse.headers.location).toBe('/events/7?status=waitlist-joined');
-    expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', '/7/waitlist');
+    expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', '/7/registration/waitlist', undefined, { headers: { 'Idempotency-Key': expect.any(String) } });
 
     const leaveResponse = await post('/events/7/waitlist/leave');
     expect(leaveResponse.headers.location).toBe('/events/7?status=waitlist-left');
-    expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/7/waitlist');
+    expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', '/7/registration/waitlist/leave', undefined, { headers: { 'Idempotency-Key': expect.any(String) } });
 
     const acceptResponse = await post('/events/7/waitlist/accept', { idempotency_key: 'offer-test-key' });
     expect(acceptResponse.headers.location).toBe('/events/7?status=waitlist-offer-accepted');
@@ -21719,7 +21719,7 @@ describe('shared accessible frontend shell', () => {
 
     expect(waitlistResponse.status).toBe(302);
     expect(waitlistResponse.headers.location).toBe('/acme/accessible/events/7?status=waitlist-joined');
-    expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', '/7/waitlist');
+    expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', '/7/registration/waitlist', undefined, { headers: { 'Idempotency-Key': expect.any(String) } });
 
     const translateResponse = await agent
       .post('/acme/accessible/events/7/translate')

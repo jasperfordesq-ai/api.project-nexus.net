@@ -934,12 +934,10 @@ router.post('/:id(\\d+)/check-in/:userId(\\d+)', requireAuth, asyncRoute(async (
 
 router.post('/:id(\\d+)/waitlist', asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
-  return runEventAction(
+  return runCanonicalEventAction(
     req,
     res,
-    'POST',
-    `/${id}/waitlist`,
-    undefined,
+    `/${id}/registration/waitlist`,
     eventRedirect(id, 'waitlist-joined'),
     eventRedirect(id, 'waitlist-failed')
   );
@@ -947,12 +945,10 @@ router.post('/:id(\\d+)/waitlist', asyncRoute(async (req, res) => {
 
 router.post('/:id(\\d+)/waitlist/leave', asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
-  return runEventAction(
+  return runCanonicalEventAction(
     req,
     res,
-    'DELETE',
-    `/${id}/waitlist`,
-    undefined,
+    `/${id}/registration/waitlist/leave`,
     eventRedirect(id, 'waitlist-left'),
     eventRedirect(id, 'waitlist-leave-failed')
   );
@@ -1062,6 +1058,18 @@ async function transitionEventPublication(req, res, action) {
     if (redirectOnAuthError(error, res)) return undefined;
     if (error instanceof ApiError && [400, 403, 404, 409, 422, 429, 503].includes(error.status)) return redirectTo(res, eventPath(id, '?status=event-publication-failed'));
     throw error;
+  }
+}
+
+async function runCanonicalEventAction(req, res, path, successRedirect, failureRedirect) {
+  const token = tokenFrom(req);
+  if (!token) return redirectTo(res, loginRedirect());
+  try {
+    await callEventMutation(token, 'POST', path, undefined, randomUUID());
+    return redirectTo(res, successRedirect);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    return redirectTo(res, failureRedirect);
   }
 }
 
