@@ -816,7 +816,7 @@ router.get('/groups/:conversationId(\\d+)', requireAuth, asyncRoute(async (req, 
   const messages = listFrom(dataFrom(messagesResult)).map(message => ({
     ...message,
     displaySenderName: senderName(message, currentUserId, res.locals.t)
-  }));
+  })).reverse();
   const visibleMessages = searchQuery
     ? messages.filter(message => String(message.body || message.content || '').toLowerCase().includes(searchQuery.toLowerCase()))
     : messages;

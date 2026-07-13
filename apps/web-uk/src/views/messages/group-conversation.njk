@@ -105,7 +105,7 @@
               {% if message.is_deleted %}
                 <p class="govuk-body govuk-hint">{{ t("govuk_alpha_messages.conversation.deleted_placeholder") }}</p>
               {% else %}
-                <p class="govuk-body">{{ message.body or message.content }}</p>
+                <div class="govuk-body">{{ (message.body or message.content) | nl2br | safe }}</div>
               {% endif %}
 
               {% if canSend and not message.is_deleted %}

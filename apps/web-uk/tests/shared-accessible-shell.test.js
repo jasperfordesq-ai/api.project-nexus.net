@@ -26380,11 +26380,11 @@ describe('shared accessible frontend shell', () => {
         return {
           data: [
             {
-              id: 12,
-              sender_id: 55,
-              body: 'Hello team, the rota is ready.',
-              created_at: '2026-07-06T12:15:00Z',
-              sender: { id: 55, name: 'Casey Quinn' }
+              id: 14,
+              sender_id: 101,
+              body: 'Hello again — I have published the final rota.',
+              created_at: '2026-07-06T12:25:00Z',
+              sender: { id: 101, name: 'Avery Stone' }
             },
             {
               id: 13,
@@ -26392,6 +26392,13 @@ describe('shared accessible frontend shell', () => {
               body: 'This should be hidden by the query.',
               created_at: '2026-07-06T12:20:00Z',
               sender: { id: 101, name: 'Avery Stone' }
+            },
+            {
+              id: 12,
+              sender_id: 55,
+              body: 'Hello team,\nthe rota is ready.',
+              created_at: '2026-07-06T12:15:00Z',
+              sender: { id: 55, name: 'Casey Quinn' }
             }
           ],
           meta: {
@@ -26426,7 +26433,10 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('You');
     expect(response.text).toContain('Administrator');
     expect(response.text).toContain('Casey Quinn');
-    expect(response.text).toContain('Hello team, the rota is ready.');
+    expect(response.text).toContain('Hello team,<br>the rota is ready.');
+    expect(response.text).toContain('Hello again — I have published the final rota.');
+    expect(response.text.indexOf('Hello team,<br>the rota is ready.'))
+      .toBeLessThan(response.text.indexOf('Hello again — I have published the final rota.'));
     expect(response.text).not.toContain('This should be hidden by the query.');
     expect(response.text).toContain('action="/messages/groups/33"');
     expect(response.text).toContain('action="/messages/groups/33/members"');
