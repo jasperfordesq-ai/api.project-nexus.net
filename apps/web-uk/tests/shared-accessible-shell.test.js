@@ -16428,12 +16428,16 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Your application has been withdrawn.');
     expect(response.text).toContain('name="status_filter"');
     expect(response.text).toContain('Interview');
+    expect(response.text).not.toContain('<option value="shortlisted"');
     expect(response.text).toContain('href="/jobs/501"');
     expect(response.text).toContain('Volunteer Coordinator');
     expect(response.text).toContain('Applied on 1 July 2026');
+    expect(response.text).toContain('View application timeline');
+    expect(response.text).toContain('Withdrawing your application cannot be undone.');
     expect(response.text).toContain('Withdraw application');
     expect(response.text).toContain('action="/jobs/applications/91/withdraw"');
     expect(response.text).toContain('Load more');
+    expect(response.text).toContain('govuk-pagination__icon--next');
     expect(response.text).toContain('cursor=next-apps');
     expect(response.text).not.toContain('Laravel Blade route');
   });
@@ -16447,6 +16451,21 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe('/login?status=auth-required');
     expect(api.callJobApi).not.toHaveBeenCalled();
+  });
+
+  it('uses the Blade empty state when job applications cannot be loaded', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.callJobApi.mockRejectedValueOnce(new Error('temporary applications failure'));
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/jobs/applications')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('You have not applied for any opportunities yet.');
+    expect(response.text).not.toContain('Applications could not be loaded.');
   });
 
   it('renders the Laravel-backed my job postings page with owner actions', async () => {

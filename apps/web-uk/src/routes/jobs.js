@@ -729,6 +729,7 @@ function decorateApplication(application) {
     title: trimmed(vacancy.title, 255) || 'Jobs',
     status,
     statusLabel: JOB_APPLICATION_LABELS[status] || JOB_APPLICATION_LABELS.applied,
+    statusTranslationKey: `jobs_t2.app_status_${status}`,
     appliedOnLabel: formatDateLong(application.created_at || application.applied_at),
     canWithdraw: !JOB_TERMINAL_APPLICATION_STATUSES.includes(status)
   };
@@ -1676,13 +1677,11 @@ router.get('/applications', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   const filters = applicationFilters(req.query);
   let result = null;
-  let loadError = false;
 
   try {
     result = await callJob(token, 'GET', applicationsPath(filters));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    loadError = true;
   }
 
   const applications = collectionItems(result).map(decorateApplication);
@@ -1694,7 +1693,7 @@ router.get('/applications', asyncRoute(async (req, res) => {
     activeNav: 'explore',
     applications,
     filters,
-    statusOptions: JOB_APPLICATION_STATUSES.map((status) => ({
+    statusOptions: JOB_APPLICATION_STATUSES.filter((status) => status !== 'shortlisted').map((status) => ({
       value: status,
       label: JOB_APPLICATION_LABELS[status] || status
     })),
@@ -1703,7 +1702,6 @@ router.get('/applications', asyncRoute(async (req, res) => {
     status: req.query.status || '',
     successMessage: statusMessage(req, req.query.status),
     errorMessage: applicationErrorMessage(req, req.query.status),
-    loadError,
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }));
