@@ -112,7 +112,7 @@ commit as the implementation it describes.
 ## Audited Baseline
 
 The committed frontend baseline was refreshed through ASP.NET-repository commit
-`e7dacabd`, and the Laravel source baseline is `903d03d3`. The first SHA names the
+`1a51aa8d`, and the Laravel source baseline is `903d03d3`. The first SHA names the
 repository snapshot containing Web UK; it does not make ASP.NET authoritative.
 Refresh the Laravel Blade/API source and Web UK implementation before relying on
 these numbers after either source moves.
