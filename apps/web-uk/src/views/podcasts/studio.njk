@@ -34,7 +34,9 @@
   <h1 class="govuk-heading-xl">{{ t("govuk_alpha_commerce.podcast_studio.title") }}</h1>
   <p class="govuk-body-l">{{ t("govuk_alpha_commerce.podcast_studio.description") }}</p>
 
-  <a class="govuk-button" href="{{ urlFor('/podcasts/studio/new') }}" data-module="govuk-button">{{ t("govuk_alpha_commerce.podcast_studio.create_button") }}</a>
+  {% if canCreateShow %}
+    <a class="govuk-button" href="{{ urlFor('/podcasts/studio/new') }}" data-module="govuk-button">{{ t("govuk_alpha_commerce.podcast_studio.create_button") }}</a>
+  {% endif %}
 
   {% if not shows.length %}
     <p class="govuk-inset-text">{{ t("govuk_alpha_commerce.podcast_studio.empty") }}</p>

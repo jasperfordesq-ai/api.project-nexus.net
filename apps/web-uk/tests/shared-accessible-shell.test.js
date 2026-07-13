@@ -27365,26 +27365,32 @@ describe('shared accessible frontend shell', () => {
 
   it('renders the Laravel-backed podcast index page', async () => {
     const api = require('../src/lib/api');
-    api.callPodcastApi.mockResolvedValueOnce({
-      data: [
-        {
-          id: 7,
-          title: 'Community voices',
-          description: 'Weekly audio updates from the community.',
-          owner: { name: 'Aisha Khan' },
-          approved_episode_count: 4,
-          artwork_url: '/uploads/podcast.png'
-        }
-      ],
-      meta: { total: 1, page: 1, per_page: 30 }
+    api.callPodcastApi.mockImplementation(async (_token, _method, pathName) => {
+      if (pathName === '/mine') {
+        return { data: [], meta: { can_create_show: true, can_manage_existing_shows: true } };
+      }
+      return {
+        data: [
+          {
+            id: 7,
+            title: 'Community voices',
+            description: 'Weekly audio updates from the community.',
+            owner: { name: 'Aisha Khan' },
+            approved_episode_count: 4,
+            artwork_url: '/uploads/podcast.png'
+          }
+        ],
+        meta: { total: 61, current_page: 2, per_page: 30, total_pages: 3, categories: ['Community', 'Environment'] }
+      };
     });
 
     const response = await request(app)
-      .get('/podcasts?q=climate&sort=followers')
+      .get('/podcasts?q=climate&sort=followers&category=Environment&page=2')
       .set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(200);
-    expect(api.callPodcastApi).toHaveBeenCalledWith('test-token', 'GET', '?per_page=30&sort=followers&q=climate');
+    expect(api.callPodcastApi).toHaveBeenCalledWith('test-token', 'GET', '?page=2&per_page=30&sort=followers&q=climate&category=Environment');
+    expect(api.callPodcastApi).toHaveBeenCalledWith('test-token', 'GET', '/mine');
     expect(response.text).toContain('Podcasts');
     expect(response.text).toContain('Listen to podcasts from your community.');
     expect(response.text).toContain('Find a podcast');
@@ -27392,7 +27398,52 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('By Aisha Khan');
     expect(response.text).toContain('4 episodes');
     expect(response.text).toContain('href="/podcasts/7"');
+    expect(response.text).toContain('href="/podcasts/studio"');
+    expect(response.text).toContain('<option value="Environment" selected>Environment</option>');
+    expect(response.text).toContain('referrerpolicy="no-referrer"');
+    expect(response.text).toMatch(/href="\/podcasts\?q=climate&amp;sort=followers&amp;category=Environment&amp;page=2" aria-current="page">2<\/a>/);
+    expect(response.text).toContain('>3</a>');
     expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('hides the podcast studio entry point when Laravel denies author access', async () => {
+    const api = require('../src/lib/api');
+    api.callPodcastApi.mockImplementation(async (_token, _method, pathName) => {
+      if (pathName === '/mine') {
+        return { data: [], meta: { can_create_show: false, can_manage_existing_shows: true, current_show_count: 0 } };
+      }
+      return { data: [], meta: { total: 0, current_page: 1, per_page: 30, categories: [] } };
+    });
+
+    const response = await request(app)
+      .get('/podcasts')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).not.toContain('href="/podcasts/studio"');
+  });
+
+  it('clears an unknown podcast category using Laravel browse metadata', async () => {
+    const api = require('../src/lib/api');
+    api.callPodcastApi.mockImplementation(async (_token, _method, pathName) => {
+      if (pathName === '/mine') {
+        return { data: [], meta: { can_create_show: false, current_show_count: 0 } };
+      }
+      return {
+        data: [],
+        meta: { total: 0, current_page: 1, per_page: 30, categories: ['Community'] }
+      };
+    });
+
+    const response = await request(app)
+      .get('/podcasts?category=Forged')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callPodcastApi).toHaveBeenCalledWith('test-token', 'GET', '?page=1&per_page=30&sort=newest&category=Forged');
+    expect(api.callPodcastApi).toHaveBeenCalledWith('test-token', 'GET', '?page=1&per_page=30&sort=newest');
+    expect(response.text).toContain('<option value="">All categories</option>');
+    expect(response.text).not.toContain('<option value="Forged"');
   });
 
   it('redirects flat signed-out podcast pages and gates tenant-mounted disabled podcast pages before calling Laravel', async () => {
@@ -27422,6 +27473,7 @@ describe('shared accessible frontend shell', () => {
         title: 'Community voices',
         description: 'Stories from local members.',
         owner: { name: 'Aisha Khan' },
+        artwork_url: 'https://media.example.test/podcast.png',
         rss_enabled: true,
         rss_url: 'https://example.test/feed.xml',
         episodes: [
@@ -27451,6 +27503,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Subscribe to this podcast');
     expect(response.text).toContain('First update');
     expect(response.text).toContain('href="/podcasts/7/episodes/99"');
+    expect(response.text).toContain('referrerpolicy="no-referrer"');
     expect(response.text).not.toContain('Laravel Blade route');
   });
 
@@ -27493,7 +27546,8 @@ describe('shared accessible frontend shell', () => {
           status: 'draft',
           episodes_count: 2
         }
-      ]
+      ],
+      meta: { can_create_show: true, can_manage_existing_shows: true }
     });
 
     const response = await request(app)
@@ -27509,19 +27563,23 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Draft');
     expect(response.text).toContain('2 episodes');
     expect(response.text).toContain('href="/podcasts/studio/42"');
+    expect(response.text).toContain('href="/podcasts/studio/new"');
     expect(response.text).not.toContain('Laravel Blade route');
   });
 
   it('renders the Laravel-backed podcast create form', async () => {
     const api = require('../src/lib/api');
-    api.callPodcastApi.mockClear();
+    api.callPodcastApi.mockResolvedValueOnce({
+      data: [],
+      meta: { can_create_show: true, can_manage_existing_shows: true }
+    });
 
     const response = await request(app)
       .get('/podcasts/studio/new')
       .set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(200);
-    expect(api.callPodcastApi).not.toHaveBeenCalled();
+    expect(api.callPodcastApi).toHaveBeenCalledWith('test-token', 'GET', '/mine');
     expect(response.text).toContain('Back to podcast studio');
     expect(response.text).toContain('Create a podcast');
     expect(response.text).toContain('Show title');
@@ -29075,6 +29133,26 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('href="/marketplace/42/offer"');
     expect(response.text).toContain('href="/marketplace/42/report"');
     expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('hides studio creation and rejects the create form when the show limit is reached', async () => {
+    const api = require('../src/lib/api');
+    api.callPodcastApi.mockResolvedValue({
+      data: [{ id: 42, title: 'Existing show', status: 'draft' }],
+      meta: { can_create_show: false, can_manage_existing_shows: true, current_show_count: 1, max_shows_per_user: 1 }
+    });
+
+    const studio = await request(app)
+      .get('/podcasts/studio')
+      .set('Cookie', signedCookieHeader());
+    expect(studio.status).toBe(200);
+    expect(studio.text).not.toContain('href="/podcasts/studio/new"');
+
+    const create = await request(app)
+      .get('/podcasts/studio/new')
+      .set('Cookie', signedCookieHeader());
+    expect(create.status).toBe(403);
+    expect(create.text).toContain(englishForbiddenTitle);
   });
 
   it('matches Laravel hybrid marketplace prices and buy eligibility', async () => {

@@ -91,6 +91,17 @@ function rowsFrom(result) {
   return [];
 }
 
+function metaFrom(result) {
+  if (result && result.meta && typeof result.meta === 'object' && !Array.isArray(result.meta)) {
+    return result.meta;
+  }
+  const data = dataFrom(result);
+  if (data && data.meta && typeof data.meta === 'object' && !Array.isArray(data.meta)) {
+    return data.meta;
+  }
+  return {};
+}
+
 function objectFrom(result) {
   const data = dataFrom(result);
   return data && typeof data === 'object' && !Array.isArray(data) ? data : null;
@@ -157,6 +168,7 @@ function sortFrom(query) {
 
 function indexPath(query) {
   const params = new URLSearchParams();
+  params.set('page', String(positiveInteger(query.page) || 1));
   params.set('per_page', '30');
   params.set('sort', sortFrom(query));
 
@@ -169,8 +181,46 @@ function indexPath(query) {
   return `?${params.toString()}`;
 }
 
+function positiveCount(value, fallback) {
+  const number = Number(value);
+  return Number.isInteger(number) && number > 0 ? number : fallback;
+}
+
+function paginationItems(query, meta) {
+  const currentPage = positiveCount(meta.current_page ?? meta.page, positiveInteger(query.page) || 1);
+  const perPage = positiveCount(meta.per_page, 30);
+  const total = Math.max(0, Number(meta.total) || 0);
+  const pageCount = Math.max(1, positiveCount(meta.total_pages, Math.ceil(total / perPage) || 1));
+  if (pageCount <= 1) return [];
+
+  return Array.from({ length: pageCount }, (_unused, index) => {
+    const number = index + 1;
+    const params = new URLSearchParams();
+    const search = trimmed(query.q);
+    if (search) params.set('q', search);
+    params.set('sort', sortFrom(query));
+    const category = trimmed(query.category);
+    if (category) params.set('category', category);
+    params.set('page', String(number));
+    return {
+      number,
+      current: number === currentPage,
+      href: `/podcasts?${params.toString()}`
+    };
+  });
+}
+
+function podcastStudioAccessible(meta) {
+  return meta.can_create_show === true || positiveCount(meta.current_show_count, 0) > 0;
+}
+
 function stripHtml(value) {
   return String(value || '').replace(/<[^>]+>/g, '');
+}
+
+function limitedText(value, limit) {
+  const text = stripHtml(value).trim();
+  return text.length > limit ? `${text.slice(0, Math.max(0, limit - 3)).trimEnd()}...` : text;
 }
 
 function episodeCountLabel(count) {
@@ -194,6 +244,7 @@ function decorateShow(show, t = null) {
     id,
     title,
     description: stripHtml(row.description || ''),
+    browseDescription: limitedText(row.description || '', 160),
     summary: stripHtml(row.summary || ''),
     ownerName,
     byLabel: ownerName
@@ -226,6 +277,7 @@ function decorateEpisode(episode, showId = null, t = null) {
     showId: positiveInteger(row.show_id) || showId,
     title: trimmed(row.title) || (t ? t('govuk_alpha.podcasts.episodes_title') : 'Episodes'),
     description: stripHtml(row.description || row.summary || ''),
+    cardDescription: limitedText(row.description || row.summary || '', 240),
     audioUrl: safeRelativeOrAbsoluteUrl(row.audio_url),
     transcript: String(row.transcript || '').trim(),
     status,
@@ -287,18 +339,45 @@ router.get('/', asyncRoute(async (req, res) => {
 
   const path = indexPath(req.query);
   try {
-    const result = await callPodcast(token, 'GET', path);
+    let result = await callPodcast(token, 'GET', path);
+    let meta = metaFrom(result);
+    const requestedCategory = trimmed(req.query.category);
+    const firstCategories = Array.isArray(meta.categories)
+      ? meta.categories.map((category) => trimmed(category)).filter(Boolean)
+      : [];
+    if (requestedCategory && !firstCategories.includes(requestedCategory)) {
+      result = await callPodcast(token, 'GET', indexPath({ ...req.query, category: '' }));
+      meta = metaFrom(result);
+    }
     const shows = rowsFrom(result)
       .map((show) => decorateShow(show, res.locals.t))
       .filter((show) => show.id !== null);
+
+    let canAccessPodcastStudio = false;
+    try {
+      const studioResult = await callPodcast(token, 'GET', '/mine');
+      canAccessPodcastStudio = podcastStudioAccessible(metaFrom(studioResult));
+    } catch (error) {
+      if (!isForbidden(error) && !isAuthError(error)) {
+        canAccessPodcastStudio = false;
+      }
+    }
+
+    const categories = Array.isArray(meta.categories)
+      ? meta.categories.map((category) => trimmed(category)).filter(Boolean)
+      : [];
+    const category = categories.includes(trimmed(req.query.category)) ? trimmed(req.query.category) : '';
 
     return res.render('podcasts/index', {
       title: res.locals.t('govuk_alpha.podcasts.title'),
       activeNav: 'explore',
       shows,
+      canAccessPodcastStudio,
       query: trimmed(req.query.q),
       sort: sortFrom(req.query),
-      category: trimmed(req.query.category)
+      category,
+      categories,
+      paginationItems: paginationItems({ ...req.query, category }, meta)
     });
   } catch (error) {
     return renderPodcastError(error, res);
@@ -311,6 +390,7 @@ router.get('/studio', asyncRoute(async (req, res) => {
 
   try {
     const result = await callPodcast(token, 'GET', '/mine');
+    const meta = metaFrom(result);
     const shows = rowsFrom(result)
       .map((show) => decorateShow(show, res.locals.t))
       .filter((show) => show.id !== null);
@@ -319,6 +399,7 @@ router.get('/studio', asyncRoute(async (req, res) => {
       title: res.locals.t('govuk_alpha_commerce.podcast_studio.title'),
       activeNav: 'explore',
       shows,
+      canCreateShow: meta.can_create_show === true,
       status: statusEntry(req.query.status, res.locals.t)
     });
   } catch (error) {
@@ -326,25 +407,35 @@ router.get('/studio', asyncRoute(async (req, res) => {
   }
 }));
 
-router.get('/studio/new', (req, res) => {
+router.get('/studio/new', asyncRoute(async (req, res) => {
   const token = requireToken(req, res);
   if (!token) return undefined;
 
-  return res.render('podcasts/form', {
-    title: res.locals.t('govuk_alpha_commerce.podcast_studio.title_create'),
-    activeNav: 'explore',
-    mode: 'create',
-    action: '/podcasts/studio/new',
-    show: {
-      title: '',
-      summary: '',
-      description: '',
-      category: '',
-      visibility: 'public'
-    },
-    status: statusEntry(req.query.status, res.locals.t)
-  });
-});
+  try {
+    const result = await callPodcast(token, 'GET', '/mine');
+    if (metaFrom(result).can_create_show !== true) {
+      res.status(403).render('errors/403', { title: 'Access denied' });
+      return undefined;
+    }
+
+    return res.render('podcasts/form', {
+      title: res.locals.t('govuk_alpha_commerce.podcast_studio.title_create'),
+      activeNav: 'explore',
+      mode: 'create',
+      action: '/podcasts/studio/new',
+      show: {
+        title: '',
+        summary: '',
+        description: '',
+        category: '',
+        visibility: 'public'
+      },
+      status: statusEntry(req.query.status, res.locals.t)
+    });
+  } catch (error) {
+    return renderPodcastError(error, res, 'Create a podcast');
+  }
+}));
 
 router.get('/studio/:id(\\d+)', asyncRoute(async (req, res) => {
   const token = requireToken(req, res);

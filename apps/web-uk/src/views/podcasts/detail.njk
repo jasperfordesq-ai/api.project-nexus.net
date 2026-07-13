@@ -33,7 +33,7 @@
   {% endif %}
 
   {% if show.artworkUrl %}
-    <img class="nexus-alpha-avatar nexus-alpha-avatar--xl govuk-!-margin-bottom-4" src="{{ show.artworkUrl }}" alt="" aria-hidden="true" loading="lazy" decoding="async">
+    <img class="nexus-alpha-avatar nexus-alpha-avatar--xl govuk-!-margin-bottom-4" src="{{ show.artworkUrl }}" alt="" aria-hidden="true" loading="lazy" decoding="async" referrerpolicy="no-referrer">
   {% endif %}
 
   <span class="govuk-caption-xl">{% if show.byLabel %}{{ show.byLabel }}{% else %}{{ tenantName }}{% endif %}</span>
@@ -68,8 +68,8 @@
           <h3 class="govuk-heading-s govuk-!-margin-bottom-1">
             <a class="govuk-link" href="{{ urlFor('/podcasts/' + (show.id | string) + '/episodes/' + (episode.id | string)) }}">{{ episode.title }}</a>
           </h3>
-          {% if episode.description %}
-            <p class="govuk-body govuk-!-margin-bottom-2">{{ episode.description }}</p>
+          {% if episode.cardDescription %}
+            <p class="govuk-body govuk-!-margin-bottom-2">{{ episode.cardDescription }}</p>
           {% endif %}
           {% if episode.audioUrl %}
             <audio controls preload="none" class="nexus-alpha-audio" src="{{ episode.audioUrl }}" aria-label="{{ t('govuk_alpha.polish_commerce.podcast_episode_audio_label', { title: episode.title }) }}">

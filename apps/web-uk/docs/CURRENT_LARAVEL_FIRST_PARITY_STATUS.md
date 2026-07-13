@@ -126,7 +126,7 @@ these numbers after either source moves.
 | Missing Laravel routes | 6 | All are Event workflows |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 47/47 suites, 1,600/1,600 tests | Fresh green code gate |
+| Jest | 47/47 suites, 1,603/1,603 tests | Fresh green code gate |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
 | Blade marker check | 19/19 | Text-marker spotcheck, not visual certification |
 | Automated accessibility | Latest recorded 87/87 | Manual AT review remains open |
@@ -159,6 +159,26 @@ use uppercase stored currency codes, comma grouping, and the same Stripe
 zero-decimal currency list. Focused proof covers `JPY 1,200` without a false
 `.00` suffix alongside the existing GBP and hybrid cases.
 
+## Podcast Browse And Studio Capability Refresh
+
+Current Laravel podcast browse metadata now drives Web UK category choices and
+numeric pagination. Search, sort, validated category, and page filters survive
+every tenant-safe page link; an unknown category is removed and the browse is
+reissued without the invalid filter, matching Blade's tenant category
+allow-list. Browse and detail artwork now carry Blade's
+`referrerpolicy="no-referrer"`, and card descriptions use the same bounded
+plain-text presentation.
+
+The browse Studio link and Studio create button are no longer unconditional.
+Web UK consumes `/api/v2/podcasts/mine` capability metadata, preserves access
+for an existing author, and rejects a direct create-form request when the
+backend says another show cannot be created. Focused default-English proof
+covers permitted and denied states, invalid categories, preserved pagination,
+and artwork hardening. The full non-mutating gate passes 47/47 suites and
+1,603/1,603 tests; brand, lint, CSS, locale shape, static-key resolution,
+template localization, route matrix, and `git diff --check` are green. No local
+Laravel smoke or live mutation ran against the production-derived database.
+
 ## Localization P0 Closed In Current Slice
 
 The previously identified raw-key risk is fixed and guarded. The generator now
@@ -175,12 +195,12 @@ A fresh proof run records:
 
 - 11 locales, 36 namespaces, and 8,837 keys per locale;
 - zero missing or extra keys in every locale;
-- 6,852 complete static references and 5,229 unique referenced keys;
+- 6,854 complete static references and 5,230 unique referenced keys;
 - zero unresolved complete static references;
 - 315 templates and zero conservative hard-coded-copy matches;
 - an English and Irish Event-template library render with no raw key leakage;
 - focused Event and Jobs-response localization/operation proof and full
-  47/47-suite, 1,600/1,600-test proof;
+  47/47-suite, 1,603/1,603-test proof;
 - green brand, lint, CSS, and `git diff --check` gates.
 
 The live Blade marker comparator also uses the canonical

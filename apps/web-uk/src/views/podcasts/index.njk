@@ -10,9 +10,11 @@
   <h1 class="govuk-heading-xl">{{ t("govuk_alpha.podcasts.title") }}</h1>
   <p class="govuk-body-l">{{ t("govuk_alpha.podcasts.description") }}</p>
 
-  <p class="govuk-body">
-    <a class="govuk-link" href="{{ urlFor('/podcasts/studio') }}">{{ t("govuk_alpha_commerce.podcast_studio.title") }}</a>
-  </p>
+  {% if canAccessPodcastStudio %}
+    <p class="govuk-body">
+      <a class="govuk-link" href="{{ urlFor('/podcasts/studio') }}">{{ t("govuk_alpha_commerce.podcast_studio.title") }}</a>
+    </p>
+  {% endif %}
 
   <form method="get" action="{{ urlFor('/podcasts') }}" class="govuk-!-margin-bottom-6">
     <div class="govuk-grid-row">
@@ -34,11 +36,16 @@
           </select>
         </div>
       </div>
-      {% if category %}
+      {% if categories.length %}
         <div class="govuk-grid-column-one-third">
           <div class="govuk-form-group">
             <label class="govuk-label" for="category">{{ t("govuk_alpha.polish_commerce.podcast_category_label") }}</label>
-            <input class="govuk-input" id="category" name="category" type="text" value="{{ category }}">
+            <select class="govuk-select" id="category" name="category">
+              <option value="">{{ t("govuk_alpha.polish_commerce.podcast_category_all") }}</option>
+              {% for item in categories %}
+                <option value="{{ item }}" {% if category == item %}selected{% endif %}>{{ item }}</option>
+              {% endfor %}
+            </select>
           </div>
         </div>
       {% endif %}
@@ -55,13 +62,13 @@
       {% for show in shows %}
         <article class="nexus-alpha-card">
           {% if show.artworkUrl %}
-            <img class="nexus-alpha-avatar" src="{{ show.artworkUrl }}" alt="" aria-hidden="true" loading="lazy" decoding="async">
+            <img class="nexus-alpha-avatar" src="{{ show.artworkUrl }}" alt="" aria-hidden="true" loading="lazy" decoding="async" referrerpolicy="no-referrer">
           {% endif %}
           <h2 class="govuk-heading-s govuk-!-margin-bottom-1">
             <a class="govuk-link" href="{{ urlFor('/podcasts/' + (show.id | string)) }}">{{ show.title }}</a>
           </h2>
-          {% if show.description %}
-            <p class="govuk-body govuk-!-margin-bottom-1">{{ show.description }}</p>
+          {% if show.browseDescription %}
+            <p class="govuk-body govuk-!-margin-bottom-1">{{ show.browseDescription }}</p>
           {% elseif show.summary %}
             <p class="govuk-body govuk-!-margin-bottom-1">{{ show.summary }}</p>
           {% endif %}
@@ -71,5 +78,17 @@
         </article>
       {% endfor %}
     </div>
+  {% endif %}
+
+  {% if paginationItems.length %}
+    <nav class="govuk-pagination govuk-!-margin-top-6" aria-label="{{ t('govuk_alpha.podcasts.title') }}">
+      <ul class="govuk-pagination__list">
+        {% for item in paginationItems %}
+          <li class="govuk-pagination__item{% if item.current %} govuk-pagination__item--current{% endif %}">
+            <a class="govuk-link govuk-pagination__link" href="{{ urlFor(item.href) }}"{% if item.current %} aria-current="page"{% endif %}>{{ item.number }}</a>
+          </li>
+        {% endfor %}
+      </ul>
+    </nav>
   {% endif %}
 {% endblock %}
