@@ -607,6 +607,14 @@ function acceptedOfferSessionKey(id) {
   return `marketplaceAcceptedOffer:${id}`;
 }
 
+function acceptedOfferCompletedSessionKey(id) {
+  return `marketplaceAcceptedOfferCompleted:${id}`;
+}
+
+function acceptedOfferErrorSessionKey(id) {
+  return `marketplaceAcceptedOfferError:${id}`;
+}
+
 function directBuySessionKey(id) {
   return `marketplaceDirectBuy:${id}`;
 }
@@ -1310,8 +1318,14 @@ router.get('/offers/:id(\\d+)/buy', asyncRoute(async (req, res) => {
   try {
     const checkout = await acceptedOfferCheckout(token, id);
     if (checkout.existingOrder) return redirectTo(res, '/marketplace/orders?status=ordered');
-    const idempotencyKey = `accessible-marketplace-offer-${randomUUID()}`;
-    req.session[acceptedOfferSessionKey(id)] = idempotencyKey;
+    let idempotencyKey = trimmed(req.session[acceptedOfferSessionKey(id)], 100);
+    if (idempotencyKey.length < 16 || req.session[acceptedOfferCompletedSessionKey(id)]) {
+      idempotencyKey = `accessible-marketplace-offer-${randomUUID()}`;
+      req.session[acceptedOfferSessionKey(id)] = idempotencyKey;
+      req.session[acceptedOfferCompletedSessionKey(id)] = false;
+    }
+    const buyError = req.session[acceptedOfferErrorSessionKey(id)] || null;
+    delete req.session[acceptedOfferErrorSessionKey(id)];
     return res.render('marketplace/buy', {
       title: res.locals.t('govuk_alpha_commerce.buy.accepted_offer_title'),
       activeNav: 'explore',
@@ -1320,6 +1334,8 @@ router.get('/offers/:id(\\d+)/buy', asyncRoute(async (req, res) => {
       shippingOptions: checkout.shippingOptions,
       pickupSlots: checkout.pickupSlots,
       idempotencyKey,
+      buyError,
+      oldInput: buyError?.oldInput || {},
       formAction: `/marketplace/offers/${id}/buy`,
       backUrl: '/marketplace/offers?tab=sent',
       backLabel: res.locals.t('govuk_alpha_commerce.common.back_to_offers'),

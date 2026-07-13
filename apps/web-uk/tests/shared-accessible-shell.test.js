@@ -29542,12 +29542,25 @@ describe('shared accessible frontend shell', () => {
     const csrf = checkout.text.match(/name="_csrf" value="([^"]+)"/)[1];
     const key = checkout.text.match(/name="idempotency_key" value="([^"]+)"/)[1];
 
-    api.callMarketplaceApi.mockClear().mockResolvedValueOnce({ data: { id: 91 } });
+    api.callMarketplaceApi.mockClear().mockImplementation(async (_token, method, pathName) => {
+      if (method === 'GET' && pathName === '/my-offers/sent?per_page=50') return { data: [{ id: 12, status: 'accepted', amount: 13.25, currency: 'GBP', listing_id: 42 }] };
+      if (method === 'GET' && pathName === '/listings/42?offer_id=12') return { data: { id: 42, title: 'Community bike', delivery_method: 'pickup', user: { id: 77 } } };
+      if (method === 'GET' && pathName === '/listings/42/pickup-slots?offer_id=12') return { data: [{ id: 8 }] };
+      return { data: { id: 91 } };
+    });
+    const invalidSlot = await agent
+      .post('/marketplace/offers/12/buy')
+      .set('Cookie', signedCookieHeader())
+      .type('form')
+      .send({ _csrf: csrf, idempotency_key: key, listing_id: '999', delivery_choice: 'pickup', pickup_slot_id: '999' });
+    expect(invalidSlot.headers.location).toBe('/marketplace/offers/12/buy');
+    expect(api.callMarketplaceApi).not.toHaveBeenCalledWith('test-token', 'POST', '/orders', expect.anything());
+
     const submitted = await agent
       .post('/marketplace/offers/12/buy')
       .set('Cookie', signedCookieHeader())
       .type('form')
-      .send({ _csrf: csrf, idempotency_key: key, listing_id: '42', delivery_choice: 'pickup', pickup_slot_id: '8', delivery_notes: 'Ring bell' });
+      .send({ _csrf: csrf, idempotency_key: key, listing_id: '999', delivery_choice: 'pickup', pickup_slot_id: '8', delivery_notes: 'Ring bell' });
 
     expect(submitted.status).toBe(302);
     expect(submitted.headers.location).toBe('/marketplace/orders?status=ordered');

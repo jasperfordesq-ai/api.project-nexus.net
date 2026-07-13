@@ -149,6 +149,11 @@ times and remaining capacity, and suppresses confirmation when a shipping-only
 listing has no option. Focused mocked contract proof covers the successful and
 failure paths; no live order or database mutation was run.
 
+The accepted-offer POST now applies the same trust boundary: it derives the
+listing from the authenticated accepted-offer collection, ignores a forged
+submitted listing ID, and revalidates offer-scoped shipping and pickup choices
+before creating an order.
+
 ## Localization P0 Closed In Current Slice
 
 The previously identified raw-key risk is fixed and guarded. The generator now
