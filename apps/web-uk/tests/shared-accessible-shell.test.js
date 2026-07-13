@@ -2493,6 +2493,7 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('Blocked members');
     expect(signed.text).toContain('Members you block cannot see your profile or contact you');
     expect(signed.text).toContain('Grace Hopper');
+    expect(signed.text).toContain(`src="${getApiBaseUrl()}/avatars/grace.jpg"`);
     expect(signed.text).toContain('Community member');
     expect(signed.text).not.toContain('Unknown member');
     expect(signed.text).toContain('Blocked after repeated unwanted messages');

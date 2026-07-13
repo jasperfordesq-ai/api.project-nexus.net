@@ -136,6 +136,11 @@ test('certifies reversible connection and block lifecycles through Web UK', asyn
 
     const blockedCard = page.locator('.nexus-alpha-card', { hasText: targetName });
     await expect(blockedCard).toHaveCount(1);
+    const blockedAvatar = blockedCard.locator('img.nexus-alpha-avatar');
+    if (await blockedAvatar.count()) {
+      const avatarUrl = await blockedAvatar.getAttribute('src');
+      expect(new URL(avatarUrl).origin).toBe(new URL(smoke.laravelBaseUrl).origin);
+    }
     await expectAccessibleReflow(page);
     const unblockResponse = await submit(page, `/members/${targetId}/unblock`, blockedCard.locator('form[action$="/unblock"] button'));
     expect(unblockResponse.status()).toBe(302);

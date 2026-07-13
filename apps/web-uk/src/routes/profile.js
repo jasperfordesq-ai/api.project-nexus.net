@@ -20,7 +20,7 @@ const {
   ApiError
 } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
-const { flagEnabled } = require('../lib/accessible-shell');
+const { flagEnabled, resolveBackendAssetUrl } = require('../lib/accessible-shell');
 const { createChoiceTranslator, createTranslator, SUPPORTED_LOCALES } = require('../lib/localization');
 const { getRequestIntlLocale } = require('../lib/request-intl-locale');
 const { getRequestProfile } = require('../lib/request-profile');
@@ -1051,7 +1051,7 @@ function normalizeBlockedUsers(payload, t) {
       user_id: Number(blockedUser.user_id || blockedUser.id || blockedUser.blocked_user_id || 0),
       name,
       initial: (name || 'U').slice(0, 1).toUpperCase(),
-      avatar_url: blockedUser.avatar_url || blockedUser.avatarUrl || '',
+      avatar_url: resolveBackendAssetUrl(blockedUser.avatar_url || blockedUser.avatarUrl),
       reason: blockedUser.reason || ''
     };
   });
