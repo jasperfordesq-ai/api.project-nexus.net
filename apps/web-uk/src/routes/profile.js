@@ -252,6 +252,7 @@ const PROFILE_NOTIFICATION_KEYS = [
   'email_connections',
   'caring_smart_nudges',
   'email_listings',
+  'email_events',
   'email_transactions',
   'email_reviews',
   'email_gamification_digest',
@@ -522,6 +523,13 @@ function translateStatusMessage(req, key, fallbackMessage = '') {
   return typeof english === 'string' && english !== '' && english !== key ? english : fallbackMessage;
 }
 
+function digestFrequencyFrom(payload) {
+  const source = payload && typeof payload === 'object' ? payload : {};
+  const frequency = trimmed(source.global_frequency || source.frequency);
+  if (frequency === 'weekly') return 'monthly';
+  return allowedValue(frequency, PROFILE_DIGEST_FREQUENCIES, 'off');
+}
+
 function localizedOptions(req, values, keyForValue, fallbackLabels, selectedValue) {
   return values.map((value) => ({
     value,
@@ -554,6 +562,7 @@ function normalizeNotificationPrefs(payload) {
     email_connections: boolValue(source.email_connections),
     caring_smart_nudges: boolValue(source.caring_smart_nudges),
     email_listings: boolValue(source.email_listings),
+    email_events: boolValue(source.email_events),
     email_transactions: boolValue(source.email_transactions),
     email_reviews: boolValue(source.email_reviews),
     email_gamification_digest: boolValue(source.email_gamification_digest),
@@ -566,7 +575,7 @@ function normalizeNotificationPrefs(payload) {
     push_enabled: boolValue(source.push_enabled),
     push_campaigns_opted_in: boolValue(source.push_campaigns_opted_in),
     federation_notifications_enabled: boolValue(source.federation_notifications_enabled),
-    digest_frequency: allowedValue(source.digest_frequency, PROFILE_DIGEST_FREQUENCIES, 'monthly')
+    digest_frequency: allowedValue(source.digest_frequency, PROFILE_DIGEST_FREQUENCIES, 'off')
   };
 }
 
@@ -969,7 +978,7 @@ function buildProfileSettingsViewModel(req, data) {
     ].filter(Boolean),
     notificationGroups: Object.entries({
       messages: ['email_messages', 'email_connections', 'caring_smart_nudges', 'federation_notifications_enabled'],
-      activity: ['email_listings', 'email_transactions', 'email_reviews'],
+      activity: ['email_listings', 'email_events', 'email_transactions', 'email_reviews'],
       achievements: ['email_gamification_digest', 'email_gamification_milestones', 'email_digest'],
       organisation: ['email_org_payments', 'email_org_transfers', 'email_org_membership', 'email_org_admin'],
       push: ['push_enabled', 'push_campaigns_opted_in']
@@ -1098,6 +1107,13 @@ router.get('/settings', asyncRoute(async (req, res) => {
     data.notificationPrefs = normalizeNotificationPrefs(
       payloadFrom(await callUserSettings(token, 'GET', '/notifications'))
     );
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+  }
+
+  try {
+    const digestSettings = payloadFrom(await callProfile(token, 'GET', '/notifications/settings'));
+    data.notificationPrefs.digest_frequency = digestFrequencyFrom(digestSettings);
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
   }
@@ -1291,7 +1307,17 @@ router.post('/notifications', asyncRoute(async (req, res) => {
 
   let status = 'notifications-saved';
   try {
-    await callUserSettings(token, 'PUT', '/notifications', notificationPayload(req.body));
+    const payload = notificationPayload(req.body);
+    const digestFrequency = payload.digest_frequency;
+    delete payload.digest_frequency;
+    await callUserSettings(token, 'PUT', '/notifications', payload);
+    if (digestFrequency) {
+      await callProfile(token, 'POST', '/notifications/settings', {
+        context_type: 'global',
+        context_id: 0,
+        frequency: digestFrequency
+      });
+    }
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
     status = 'notifications-failed';

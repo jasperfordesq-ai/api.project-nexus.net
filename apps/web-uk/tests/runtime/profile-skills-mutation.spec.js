@@ -6,10 +6,29 @@
 const { test, expect } = require('@playwright/test');
 const AxeBuilder = require('@axe-core/playwright').default;
 const { resolveOptions } = require('../../scripts/laravel-runtime-smoke');
-const { callUserSettingsApi, login } = require('../../src/lib/api');
+const { callProfileApi, callUserSettingsApi, login } = require('../../src/lib/api');
 
 const smoke = resolveOptions({}, process.env);
 const mountPath = `/${encodeURIComponent(smoke.tenant)}/accessible`;
+const notificationKeys = [
+  'email_messages',
+  'email_connections',
+  'caring_smart_nudges',
+  'email_listings',
+  'email_events',
+  'email_transactions',
+  'email_reviews',
+  'email_gamification_digest',
+  'email_gamification_milestones',
+  'email_digest',
+  'email_org_payments',
+  'email_org_transfers',
+  'email_org_membership',
+  'email_org_admin',
+  'push_enabled',
+  'push_campaigns_opted_in',
+  'federation_notifications_enabled'
+];
 
 function rowsFrom(result) {
   const data = result?.data ?? result;
@@ -25,6 +44,42 @@ function matchPreferencesFrom(result) {
     notify_hot_matches: Boolean(data.notify_hot_matches),
     notify_mutual_matches: Boolean(data.notify_mutual_matches)
   };
+}
+
+function notificationPreferencesFrom(result) {
+  const data = result?.data ?? result ?? {};
+  return Object.fromEntries([
+    ...notificationKeys.map(key => [key, Boolean(data[key])]),
+    ['digest_frequency', String(data.digest_frequency || 'off')]
+  ]);
+}
+
+async function readNotificationPreferences(token) {
+  const preferences = notificationPreferencesFrom(await callUserSettingsApi(token, 'GET', '/notifications'));
+  const settingsResult = await callProfileApi(token, 'GET', '/notifications/settings');
+  const settings = settingsResult?.data ?? settingsResult ?? {};
+  const frequency = String(settings.global_frequency || 'off');
+  preferences.digest_frequency = frequency === 'weekly' ? 'monthly' : frequency;
+  return preferences;
+}
+
+async function restoreNotificationPreferences(token, preferences) {
+  const payload = { ...preferences };
+  const frequency = payload.digest_frequency;
+  delete payload.digest_frequency;
+  await callUserSettingsApi(token, 'PUT', '/notifications', payload);
+  await callProfileApi(token, 'POST', '/notifications/settings', {
+    context_type: 'global',
+    context_id: 0,
+    frequency
+  });
+}
+
+async function fillNotificationPreferences(page, preferences) {
+  for (const key of notificationKeys) {
+    await page.locator(`#notif_${key}`).setChecked(preferences[key]);
+  }
+  await page.locator('#digest_frequency').selectOption(preferences.digest_frequency);
 }
 
 async function authenticate(page) {
@@ -160,5 +215,48 @@ test('changes and restores match notification preferences through Web UK', async
       await callUserSettingsApi(token, 'PUT', '/match-preferences', initial);
     }
     expect(matchPreferencesFrom(await callUserSettingsApi(token, 'GET', '/match-preferences'))).toEqual(initial);
+  }
+});
+
+test('changes and restores ordinary notification preferences through Web UK', async ({ page }) => {
+  const auth = await login(smoke.email, smoke.password, smoke.tenant);
+  const token = auth.access_token;
+  const initial = await readNotificationPreferences(token);
+  const digestFrequencies = ['off', 'instant', 'daily', 'monthly'];
+  const changed = {
+    ...initial,
+    email_digest: !initial.email_digest,
+    digest_frequency: digestFrequencies.find(value => value !== initial.digest_frequency)
+  };
+  let preferencesChanged = false;
+
+  expect(token).toBeTruthy();
+  expect(changed.digest_frequency).toBeTruthy();
+
+  try {
+    await page.setViewportSize({ width: 320, height: 640 });
+    await authenticate(page);
+    await page.goto(`${mountPath}/profile/settings`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
+    await expect(page.locator('h1')).toHaveText('Edit your profile');
+
+    await fillNotificationPreferences(page, changed);
+    preferencesChanged = true;
+    await submit(page, '/profile/notifications', page.locator(`form[action$="/profile/notifications"] button`));
+
+    await expect(page.getByText('Your notification settings have been saved.', { exact: true })).toHaveCount(1);
+    await expect(page.locator('#notif_email_digest')).toBeChecked({ checked: changed.email_digest });
+    await expect(page.locator('#digest_frequency')).toHaveValue(changed.digest_frequency);
+    expect(await readNotificationPreferences(token)).toEqual(changed);
+    await expectAccessibleReflow(page);
+
+    await fillNotificationPreferences(page, initial);
+    await submit(page, '/profile/notifications', page.locator(`form[action$="/profile/notifications"] button`));
+    expect(await readNotificationPreferences(token)).toEqual(initial);
+    preferencesChanged = false;
+  } finally {
+    if (preferencesChanged) {
+      await restoreNotificationPreferences(token, initial);
+    }
+    expect(await readNotificationPreferences(token)).toEqual(initial);
   }
 });

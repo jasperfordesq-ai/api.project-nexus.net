@@ -2231,6 +2231,9 @@ describe('shared accessible frontend shell', () => {
           }
         };
       }
+      if (method === 'GET' && pathValue === '/notifications/settings') {
+        return { data: { global_frequency: 'daily', per_group: [], per_thread: [] } };
+      }
       return { data: { id: 42 } };
     });
     api.callWebAuthnApi.mockResolvedValue({
@@ -26316,6 +26319,7 @@ describe('shared accessible frontend shell', () => {
     const notificationsResponse = await post('/profile/notifications', {
       email_messages: 'on',
       email_connections: 'on',
+      email_events: 'on',
       email_reviews: 'on',
       email_digest: 'on',
       push_enabled: 'on',
@@ -26328,6 +26332,7 @@ describe('shared accessible frontend shell', () => {
       email_connections: true,
       caring_smart_nudges: false,
       email_listings: false,
+      email_events: true,
       email_transactions: false,
       email_reviews: true,
       email_gamification_digest: false,
@@ -26339,8 +26344,12 @@ describe('shared accessible frontend shell', () => {
       email_org_admin: false,
       push_enabled: true,
       push_campaigns_opted_in: false,
-      federation_notifications_enabled: true,
-      digest_frequency: 'daily'
+      federation_notifications_enabled: true
+    });
+    expect(api.callProfileApi).toHaveBeenLastCalledWith('test-token', 'POST', '/notifications/settings', {
+      context_type: 'global',
+      context_id: 0,
+      frequency: 'daily'
     });
 
     const renamePasskeyResponse = await post('/profile/passkeys/rename', {

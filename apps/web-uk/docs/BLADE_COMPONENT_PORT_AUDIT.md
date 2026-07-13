@@ -28,17 +28,20 @@ that column. The failed insert retained no disposable Event. This supersedes
 the older `86.3`-second Event lifecycle pass for current-source certification;
 the test remains intact for rerun after the Laravel schema is caught up.
 
-Profile-settings mutation is now current-certified for skills and match
-notifications. The default-English aggregate passed `2/2` in `7.9` minutes. It
-added a uniquely named member skill through the rendered form, proved offering
-and requesting state in both Web UK and Laravel, removed it through the rendered
-action, and independently proved final API absence. It also changed notification
-cadence and both match toggles through Web UK, proved the redirected form and
-Laravel projection, then restored the exact starting tuple through Web UK.
-Both cases passed one-main/H1/unique-ID/320px reflow/axe checks and have API
-cleanup/restoration fallbacks. Avatar upload remains open because Laravel
-exposes no bearer cleanup contract that also removes the stored file; nulling
-only `avatar_url` is not accepted as residue-free evidence.
+Profile-settings mutation is now current-certified for skills, match
+notifications, and ordinary notification settings. The default-English
+aggregate passed `3/3` in `7.5` minutes. It added and removed a uniquely named
+member skill; changed and restored the exact match-preference tuple; and changed
+and restored the exact ordinary notification and digest settings. The third
+case exposed and fixed Web UK posting digest cadence to Laravel's general
+preference endpoint, where it was silently ignored. Web UK now uses the
+separate global notification-settings contract and includes the source's event-
+email preference. All cases passed one-main/H1/unique-ID/320px reflow/axe checks
+and have API cleanup/restoration fallbacks. Full verification passed `46/46`
+suites, `1,567/1,567` tests, ESLint, the branding guard, and the `315`-template
+localization audit. Avatar upload remains open because Laravel exposes no bearer
+cleanup contract that also removes the stored file; nulling only `avatar_url`
+is not accepted as residue-free evidence.
 
 A manual in-app browser inspection of the default-English login page confirmed
 the skip link, banner/main/footer landmarks, labelled email and password

@@ -83,15 +83,20 @@ column. The insert failed atomically and retained no disposable Event. Keep the
 runtime test unchanged and rerun it after the Laravel schema is caught up; do
 not mask this upstream schema state in Web UK.
 
-Profile-settings skills and match notifications now have fresh reversible
-evidence: `npm run smoke:laravel:profile-skills-mutation` passed `2/2` in `7.9`
-minutes. It created and removed a uniquely named offering/requesting skill,
-verified the Laravel row and rendered state, changed notification cadence and
-both match toggles, and restored the exact starting preference tuple through
-Web UK. Both cases passed 320px structure/reflow/axe checks and independent
-API absence/restoration checks. Avatar upload is deliberately still
-uncertified because the current Laravel bearer API can null the profile field
-but cannot prove deletion of the stored file.
+Profile-settings skills, match notifications, and ordinary notification
+settings now have fresh reversible evidence:
+`npm run smoke:laravel:profile-skills-mutation` passed `3/3` in `7.5` minutes.
+It created and removed a uniquely named offering/requesting skill, changed and
+restored the exact match-preference tuple, and changed and restored the exact
+ordinary notification and digest settings. The run exposed and fixed Web UK
+sending digest cadence to the general preference endpoint, where Laravel
+silently ignored it; Web UK now uses Laravel's separate global notification-
+settings contract and includes the source's event-email preference. All three
+cases passed 320px structure/reflow/axe checks and independent API absence or
+restoration checks. The full gate passed `46/46` suites and `1,567/1,567`
+tests, ESLint, the branding guard, and the `315`-template localization audit.
+Avatar upload remains uncertified because the current Laravel bearer API can
+null the profile field but cannot prove deletion of the stored file.
 
 ## Current Verified Checkpoint (2026-07-12)
 
