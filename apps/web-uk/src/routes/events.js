@@ -487,6 +487,7 @@ router.get('/:id(\\d+)/people', requireAuth, asyncRoute(async (req, res) => {
     event: { id, title: trimmed(event.title) },
     people,
     metrics: meta.metrics && typeof meta.metrics === 'object' ? meta.metrics : {},
+    canManageRegistration: meta.capabilities?.manage_registration === true,
     canManageAttendance: meta.capabilities?.manage_attendance === true,
     total: Math.max(0, Number.parseInt(meta.total, 10) || 0),
     query,

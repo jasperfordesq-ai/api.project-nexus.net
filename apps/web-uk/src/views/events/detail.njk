@@ -35,6 +35,13 @@
       <div class="app-page-header">
         <span class="govuk-caption-l">{{ t("events.detail_title") }}</span>
         <h1 class="govuk-heading-xl">{{ event.title }}</h1>
+        {% set permissions = event.permissions or {} %}
+        {% if permissions.manage_people or permissions.check_in %}
+          <nav class="govuk-button-group" aria-label="{{ t('govuk_alpha.events.operations_navigation') }}">
+            {% if permissions.manage_people %}<a class="govuk-button govuk-button--secondary" href="{{ urlFor('/events/' + (event.id | string) + '/people') }}">{{ t("govuk_alpha.events.people_title") }}</a>{% endif %}
+            {% if permissions.check_in %}<a class="govuk-button govuk-button--secondary" href="{{ urlFor('/events/' + (event.id | string) + '/check-in') }}">{{ t("govuk_alpha.events.check_in_title") }}</a>{% endif %}
+          </nav>
+        {% endif %}
         {% set attendeeCount = event.attendeeCount or event.attendee_count or 0 %}
         {% set interestedCount = event.interestedCount or event.interested_count or 0 %}
         {% set maxAttendees = event.maxAttendees or event.max_attendees %}

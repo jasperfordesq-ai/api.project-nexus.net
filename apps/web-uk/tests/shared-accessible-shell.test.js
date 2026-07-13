@@ -21409,7 +21409,7 @@ describe('shared accessible frontend shell', () => {
           total: 26,
           total_pages: 2,
           metrics: { confirmed: 8, waitlisted: 3, checked_in: 1 },
-          capabilities: { manage_attendance: true }
+          capabilities: { manage_registration: true, manage_attendance: true }
         }
       });
 
@@ -22758,7 +22758,8 @@ describe('shared accessible frontend shell', () => {
         location: 'Village hall',
         attendee_count: 3,
         max_attendees: 20,
-        start_time: '2026-08-01T10:00:00'
+        start_time: '2026-08-01T10:00:00',
+        permissions: { manage_people: true, check_in: true }
       }
     });
     api.getEventRsvps.mockResolvedValueOnce({ data: [] });
@@ -22782,6 +22783,27 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('govuk-grid-column-one-third');
     expect(response.text).not.toContain('app-sidebar-card');
     expect(response.text).not.toContain('No RSVPs yet. Be the first to respond!');
+    expect(response.text).toContain('href="/events/42/people"');
+    expect(response.text).toContain('href="/events/42/check-in"');
+  });
+
+  it('hides registration mutations from attendance-only Event People staff', async () => {
+    const api = require('../src/lib/api');
+    api.callEventApi
+      .mockResolvedValueOnce({ data: { id: 42, title: 'Community garden day' } })
+      .mockResolvedValueOnce({
+        data: [{ member: { id: 55, display_name: 'Alex Morgan' }, registration: { state: 'confirmed' }, attendance: { state: 'checked_in' } }],
+        meta: { total: 1, total_pages: 1, capabilities: { manage_registration: false, manage_attendance: true } }
+      });
+
+    const response = await request(app).get('/events/42/people').set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Alex Morgan');
+    expect(response.text).toContain('href="/events/42/check-in"');
+    expect(response.text).not.toContain('name="user_ids[]"');
+    expect(response.text).not.toContain('id="people-action"');
+    expect(response.text).not.toContain('id="people-confirmation"');
   });
 
   it('keeps the event attendee roster in Blade\'s main reading column', async () => {
