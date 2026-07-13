@@ -23280,7 +23280,11 @@ describe('shared accessible frontend shell', () => {
         title: 'Public repair cafe',
         description: 'Bring a broken household item.',
         start_time: '2026-08-01T10:00:00Z',
-        can_edit: false
+        can_edit: false,
+        relationship: {
+          engagement: { state: 'none', can_change: true },
+          registration: { state: 'none', can_register: true, can_withdraw: false }
+        }
       }
     });
     api.getEventRsvps.mockResolvedValueOnce({ data: [] });
@@ -23403,7 +23407,11 @@ describe('shared accessible frontend shell', () => {
         attendee_count: 3,
         max_attendees: 20,
         start_time: '2026-08-01T10:00:00',
-        my_rsvp: 'going'
+        my_rsvp: 'going',
+        relationship: {
+          engagement: { state: 'none', can_change: true },
+          registration: { state: 'confirmed', can_register: false, can_withdraw: true }
+        }
       }
     });
     api.getEventRsvps.mockResolvedValueOnce({ data: [] });
@@ -23416,14 +23424,28 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('action="/events/42/rsvp"');
     expect(response.text).not.toContain('action="/events/42/rsvp/remove"');
     expect(response.text).not.toContain('Remove RSVP');
-    expect(response.text).toContain('name="status" type="radio" value="going" checked');
+    expect(response.text).not.toContain('name="status" type="radio" value="going"');
     expect(response.text).toContain('name="status" type="radio" value="interested"');
+    expect(response.text).toContain('name="status" value="not_going"');
     expect(response.text).not.toContain('value="maybe"');
   });
 
-  it('submits the canonical Laravel interested RSVP and surfaces waitlist success', async () => {
+  it('uses canonical Laravel confirm and withdraw mutations while retaining compatible interest', async () => {
     const api = require('../src/lib/api');
     const agent = request.agent(app);
+    api.getEvent.mockResolvedValue({
+      data: {
+        id: 42,
+        title: 'Community garden day',
+        description: 'Planting and tea',
+        start_time: '2026-08-01T10:00:00Z',
+        relationship: {
+          engagement: { state: 'none', can_change: true },
+          registration: { state: 'none', can_register: true, can_withdraw: false }
+        }
+      }
+    });
+    api.getEventRsvps.mockResolvedValue({ data: [] });
     api.rsvpToEvent.mockResolvedValueOnce({
       data: { status: 'interested', rsvp_counts: { going: 20, interested: 1 } }
     });
@@ -23450,22 +23472,37 @@ describe('shared accessible frontend shell', () => {
     expect(interestedPage.status).toBe(200);
     expect(interestedPage.text).toContain('marked yourself as interested');
 
-    api.rsvpToEvent.mockResolvedValueOnce({
-      data: { status: 'waitlisted', waitlist_position: 3, rsvp_counts: { going: 20, interested: 1 } }
-    });
-    const waitlisted = await agent
+    api.callEventApi.mockResolvedValueOnce({ data: { relationship: { registration: { state: 'confirmed' } } } });
+    const confirmed = await agent
       .post('/events/42/rsvp')
       .set('Cookie', signedCookieHeader())
       .type('form')
       .send({ _csrf: csrfMatch[1], status: 'going' });
-    expect(waitlisted.status).toBe(302);
-    expect(api.rsvpToEvent).toHaveBeenLastCalledWith('test-token', '42', 'going');
+    expect(confirmed.status).toBe(302);
+    expect(api.callEventApi).toHaveBeenCalledWith(
+      'test-token',
+      'POST',
+      '/42/registration/confirm',
+      undefined,
+      { headers: { 'Idempotency-Key': expect.any(String) } }
+    );
 
-    const waitlistPage = await agent
-      .get('/events/42')
-      .set('Cookie', signedCookieHeader());
-    expect(waitlistPage.status).toBe(200);
-    expect(waitlistPage.text).toContain('The event is full. You have joined the waitlist at position 3.');
+    const freshForm = await agent.get('/events/42').set('Cookie', signedCookieHeader());
+    const freshCsrf = freshForm.text.match(/name="_csrf" value="([^"]+)"/);
+    api.callEventApi.mockResolvedValueOnce({ data: { relationship: { registration: { state: 'cancelled' } } } });
+    const declined = await agent
+      .post('/events/42/rsvp')
+      .set('Cookie', signedCookieHeader())
+      .type('form')
+      .send({ _csrf: freshCsrf[1], status: 'not_going' });
+    expect(declined.status).toBe(302);
+    expect(api.callEventApi).toHaveBeenCalledWith(
+      'test-token',
+      'POST',
+      '/42/registration/withdraw',
+      undefined,
+      { headers: { 'Idempotency-Key': expect.any(String) } }
+    );
   });
 
   it('renders Laravel v2 event detail payloads on the event detail page', async () => {
@@ -23487,7 +23524,7 @@ describe('shared accessible frontend shell', () => {
     });
     api.getEventRsvps.mockResolvedValueOnce({ data: [] });
     api.callEventApi
-      .mockResolvedValueOnce({ data: { registration: { state: 'confirmed' } } })
+      .mockResolvedValueOnce({ data: { registration: { state: 'confirmed' }, actions: { withdraw: true } } })
       .mockResolvedValueOnce({ data: { engine: 'v2', schema_ready: true, supports_definition_blueprints: true, rollout_state: 'v2_rolling' } });
 
     const response = await request(app)

@@ -545,19 +545,25 @@ async function renderOfflineCredential(req, res, id, options = {}) {
   });
 }
 
-function eventRelationship(result) {
+function eventRelationship(result, event = {}) {
+  const current = event.relationship && typeof event.relationship === 'object' ? event.relationship : {};
   const row = dataFrom(result);
-  if (!row || typeof row !== 'object') return null;
-  const registration = row.registration && typeof row.registration === 'object' ? row.registration : {};
-  const waitlist = row.waitlist && typeof row.waitlist === 'object' ? row.waitlist : {};
-  const actions = row.actions && typeof row.actions === 'object' ? row.actions : {};
+  const projection = row && typeof row === 'object' ? row : {};
+  if (Object.keys(projection).length === 0 && Object.keys(current).length === 0) return null;
+  const currentRegistration = current.registration && typeof current.registration === 'object' ? current.registration : {};
+  const currentEngagement = current.engagement && typeof current.engagement === 'object' ? current.engagement : {};
+  const registration = projection.registration && typeof projection.registration === 'object' ? projection.registration : currentRegistration;
+  const waitlist = projection.waitlist && typeof projection.waitlist === 'object' ? projection.waitlist : {};
+  const actions = projection.actions && typeof projection.actions === 'object' ? projection.actions : {};
   return {
     registrationState: trimmed(registration.state),
+    engagementState: trimmed(currentEngagement.state),
     waitlistState: selectedValue(waitlist.state, PEOPLE_FILTERS.waitlist_state, 'none'),
     waitlistPosition: positiveInteger(waitlist.position),
     offerActive: checked(waitlist.offer_active),
-    canConfirm: checked(actions.confirm),
-    canWithdraw: checked(actions.withdraw),
+    canConfirm: checked(actions.confirm) || checked(currentRegistration.can_register),
+    canWithdraw: checked(actions.withdraw) || checked(currentRegistration.can_withdraw),
+    canChangeEngagement: checked(currentEngagement.can_change),
     canJoinWaitlist: checked(actions.join_waitlist),
     canLeaveWaitlist: checked(actions.leave_waitlist),
     canAcceptOffer: checked(actions.accept_offer)
@@ -2378,7 +2384,13 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
       if (isAuthError(error)) throw error;
     }
   }
-  const rawRsvp = event.myRsvp ?? event.my_rsvp ?? event.user_rsvp ?? event.rsvp_status;
+  const relationship = eventRelationship(relationshipResult, event);
+  const relationshipRsvp = relationship?.registrationState === 'confirmed'
+    ? 'going'
+    : (['declined', 'cancelled'].includes(relationship?.registrationState)
+      ? 'not_going'
+      : (relationship?.engagementState === 'interested' ? 'interested' : ''));
+  const rawRsvp = relationshipRsvp || event.myRsvp || event.my_rsvp || event.user_rsvp || event.rsvp_status;
   const myRsvpStatus = trimmed(
     rawRsvp && typeof rawRsvp === 'object' ? rawRsvp.status : rawRsvp
   ).toLowerCase();
@@ -2394,7 +2406,6 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
     not_going: rsvps.filter(r => (r.status || r.rsvp_status) === 'not_going')
   };
 
-  const relationship = eventRelationship(relationshipResult);
   const scheduleLabels = eventScheduleLabels(event, res.locals.formatLocaleDate);
   res.render('events/detail', {
     title: event.title,
@@ -2631,7 +2642,11 @@ router.post('/:id(\\d+)/rsvp', requireAuth, audit.eventRsvp(), asyncRoute(async 
     : 'going';
 
   try {
-    const result = await rsvpToEvent(req.token, id, status);
+    const result = status === 'going'
+      ? await callEventMutation(req.token, 'POST', `/${id}/registration/confirm`, undefined, randomUUID())
+      : (status === 'not_going'
+        ? await callEventMutation(req.token, 'POST', `/${id}/registration/withdraw`, undefined, randomUUID())
+        : await rsvpToEvent(req.token, id, status));
     const response = dataFrom(result) || {};
 
     if (req.flash) {

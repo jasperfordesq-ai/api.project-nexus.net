@@ -300,38 +300,26 @@
           <section aria-labelledby="waitlist-heading"><h2 class="govuk-heading-m" id="waitlist-heading">{{ t("govuk_alpha.events.waitlist_heading") }}</h2><p class="govuk-body">{{ t("govuk_alpha.events.waitlist_full_note") }}</p><form method="post" action="{{ urlFor('/events/' + (event.id | string) + '/waitlist') }}"><input type="hidden" name="_csrf" value="{{ csrfToken }}"><button class="govuk-button">{{ t("govuk_alpha.events.waitlist_join") }}</button></form></section>
         {% endif %}
 
-        {% if not relationship or not (relationship.offerActive or relationship.waitlistState == "offered") %}<form action="{{ urlFor('/events/' + (event.id | string) + '/rsvp') }}" method="post">
+        {% set canConfirm = relationship and relationship.canConfirm %}
+        {% set canChangeEngagement = relationship and relationship.canChangeEngagement %}
+        {% set canWithdraw = relationship and relationship.canWithdraw %}
+        {% set currentRsvp = myRsvp.status if myRsvp else "" %}
+        {% set confirmCancellation = currentRsvp in ["going", "interested"] and (canWithdraw or canChangeEngagement) %}
+        {% if relationship and not (relationship.offerActive or relationship.waitlistState == "offered") and (canConfirm or canChangeEngagement or (canWithdraw and not confirmCancellation)) %}<form action="{{ urlFor('/events/' + (event.id | string) + '/rsvp') }}" method="post" class="govuk-!-margin-top-7">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-          {{ govukRadios({
-            name: "status",
-            fieldset: {
-              legend: {
-                text: t("events.rsvp_title"),
-                classes: "govuk-fieldset__legend--m",
-                isPageHeading: false
-              }
-            },
-            hint: { text: t("events.rsvp_hint") },
-            items: [
-              {
-                value: "going",
-                text: t("events.rsvp_status.going"),
-                checked: not myRsvp or myRsvp.status == "going"
-              },
-              {
-                value: "interested",
-                text: t("events.rsvp_status.interested"),
-                checked: myRsvp and myRsvp.status == "interested"
-              },
-              {
-                value: "not_going",
-                text: t("events.rsvp_status.not_going"),
-                checked: myRsvp and myRsvp.status == "not_going"
-              }
-            ]
-          }) }}
+          <fieldset class="govuk-fieldset" aria-describedby="rsvp-hint">
+            <legend class="govuk-fieldset__legend govuk-fieldset__legend--m"><h2 class="govuk-fieldset__heading">{{ t("events.rsvp_title") }}</h2></legend>
+            <div id="rsvp-hint" class="govuk-hint">{{ t("events.rsvp_hint") }}</div>
+            <div class="govuk-radios" data-module="govuk-radios">
+              {% if canConfirm %}<div class="govuk-radios__item"><input class="govuk-radios__input" id="status-going" name="status" type="radio" value="going" required{% if currentRsvp == "going" %} checked{% endif %}><label class="govuk-label govuk-radios__label" for="status-going">{{ t("events.rsvp_status.going") }}</label></div>{% endif %}
+              {% if canChangeEngagement %}<div class="govuk-radios__item"><input class="govuk-radios__input" id="status-interested" name="status" type="radio" value="interested" required{% if currentRsvp == "interested" %} checked{% endif %}><label class="govuk-label govuk-radios__label" for="status-interested">{{ t("events.rsvp_status.interested") }}</label></div>{% endif %}
+              {% if canWithdraw and not confirmCancellation %}<div class="govuk-radios__item"><input class="govuk-radios__input" id="status-not_going" name="status" type="radio" value="not_going" required{% if currentRsvp == "not_going" %} checked{% endif %}><label class="govuk-label govuk-radios__label" for="status-not_going">{{ t("events.rsvp_status.not_going") }}</label></div>{% endif %}
+            </div>
+          </fieldset>
           {{ govukButton({ text: t("actions.rsvp") }) }}
         </form>{% endif %}
+
+        {% if confirmCancellation %}<details class="govuk-details govuk-!-margin-top-7" data-module="govuk-details"><summary class="govuk-details__summary"><span class="govuk-details__summary-text">{{ t("events.rsvp_status.not_going") }}</span></summary><div class="govuk-details__text"><p class="govuk-body">{{ t("events.rsvp_hint") }}</p><form action="{{ urlFor('/events/' + (event.id | string) + '/rsvp') }}" method="post"><input type="hidden" name="_csrf" value="{{ csrfToken }}"><input type="hidden" name="status" value="not_going"><button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0">{{ t("actions.rsvp") }}</button></form></div></details>{% endif %}
       {% elif not isAuthenticated and not (event.isCancelled or event.is_cancelled) and not (event.isPast or event.is_past) %}
         <div class="govuk-inset-text">
           <a class="govuk-link" href="{{ urlFor('/login') }}">{{ t("nav.login") }}</a>. {{ t("events.auth_required_detail", { community: tenantName or serviceName }) }}
