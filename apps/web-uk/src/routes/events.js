@@ -65,6 +65,7 @@ function boundedPositiveInteger(value, fallback, max = null) {
 }
 
 function checked(value) {
+  if (Array.isArray(value)) return value.some((item) => checked(item));
   return value === true || ['1', 'true', 'on', 'yes'].includes(String(value || '').toLowerCase());
 }
 
@@ -392,6 +393,29 @@ function eventPerson(row = {}) {
       undo: checked(management.undo_attendance)
     }
   };
+}
+
+function dateTimeLocalInZone(value, timezone = 'UTC', subtractDay = false) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return dateTimeLocal(value);
+  if (subtractDay) date.setUTCDate(date.getUTCDate() - 1);
+  try {
+    const parts = Object.fromEntries(new Intl.DateTimeFormat(undefined, {
+      timeZone: trimmed(timezone) || 'UTC',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+    }).formatToParts(date).map((part) => [part.type, part.value]));
+    return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+  } catch {
+    return dateTimeLocal(value);
+  }
+}
+
+function triState(value) {
+  if (value === true || value === 1) return 'yes';
+  if (value === false || value === 0) return 'no';
+  return 'unknown';
 }
 
 async function callEventMutation(token, method, path, data, idempotencyKey) {
@@ -735,6 +759,14 @@ router.get('/:id(\\d+)/recurring-edit', asyncRoute(async (req, res) => {
     return redirectTo(res, eventPath(id, '/edit'));
   }
 
+  const [categoriesResult, capabilitiesResult] = await Promise.all([
+    getEventCategories(token),
+    callApi(token, 'GET', '/recurrence-capabilities')
+  ]);
+  const categories = collectionFrom(categoriesResult).map(eventCategoryFrom).filter(Boolean);
+  const timezone = trimmed(event.timezone) || 'UTC';
+  const allDay = checked(event.all_day ?? event.allDay);
+
   const occurrences = collectionFrom(event.series_occurrences ?? event.seriesOccurrences)
     .map((occurrence) => occurrenceFrom(occurrence, id))
     .filter(Boolean);
@@ -747,9 +779,31 @@ router.get('/:id(\\d+)/recurring-edit', asyncRoute(async (req, res) => {
       title: trimmed(event.title) || res.locals.t('govuk_alpha_events.recurring_edit.caption'),
       description: trimmed(event.description, 8000),
       location: trimmed(event.location),
-      startTime: dateTimeLocal(event.start_time ?? event.startTime ?? event.starts_at ?? event.startsAt),
-      endTime: dateTimeLocal(event.end_time ?? event.endTime ?? event.ends_at ?? event.endsAt)
+      categoryId: positiveInteger(event.category_id ?? event.categoryId),
+      startTime: dateTimeLocalInZone(event.start_time ?? event.startTime ?? event.starts_at ?? event.startsAt, timezone),
+      endTime: dateTimeLocalInZone(event.end_time ?? event.endTime ?? event.ends_at ?? event.endsAt, timezone, allDay),
+      timezone,
+      allDay,
+      isOnline: checked(event.is_online ?? event.isOnline),
+      onlineLink: trimmed(event.online_link ?? event.onlineLink),
+      allowRemoteAttendance: checked(event.allow_remote_attendance ?? event.allowRemoteAttendance),
+      videoUrl: trimmed(event.video_url ?? event.videoUrl),
+      maxAttendees: positiveInteger(event.max_attendees ?? event.maxAttendees),
+      accessibility: {
+        stepFree: triState(event.accessibility_step_free),
+        toilet: triState(event.accessibility_toilet),
+        hearingLoop: triState(event.accessibility_hearing_loop),
+        quietSpace: triState(event.accessibility_quiet_space),
+        seating: triState(event.accessibility_seating),
+        parking: triState(event.accessibility_parking),
+        parkingDetails: trimmed(event.accessibility_parking_details),
+        transitDetails: trimmed(event.accessibility_transit_details),
+        assistanceContact: trimmed(event.accessibility_assistance_contact),
+        notes: trimmed(event.accessibility_notes)
+      }
     },
+    categories,
+    supportsEffectiveRevisions: supportsEffectiveRevisions(capabilitiesResult),
     occurrences,
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
@@ -836,7 +890,101 @@ function eventScopedPayload(body) {
   if (Object.prototype.hasOwnProperty.call(body, 'group_id')) {
     payload.group_id = positiveInteger(body.group_id);
   }
+  for (const field of [
+    'accessibility_step_free', 'accessibility_toilet', 'accessibility_hearing_loop',
+    'accessibility_quiet_space', 'accessibility_seating', 'accessibility_parking'
+  ]) {
+    if (Object.prototype.hasOwnProperty.call(body, field)) {
+      payload[field] = trimmed(body[field]) === 'yes' ? true : (trimmed(body[field]) === 'no' ? false : null);
+    }
+  }
+  for (const field of [
+    'accessibility_parking_details', 'accessibility_transit_details',
+    'accessibility_assistance_contact', 'accessibility_notes'
+  ]) {
+    if (Object.prototype.hasOwnProperty.call(body, field)) payload[field] = trimmed(body[field]) || null;
+  }
+  if (Object.prototype.hasOwnProperty.call(body, 'timezone')) payload.timezone = trimmed(body.timezone) || 'UTC';
+  if (Object.prototype.hasOwnProperty.call(body, 'all_day')) payload.all_day = checked(body.all_day);
   return payload;
+}
+
+const RECURRING_REVISION_FIELDS = [
+  'accessibility_assistance_contact', 'accessibility_hearing_loop', 'accessibility_notes',
+  'accessibility_parking', 'accessibility_parking_details', 'accessibility_quiet_space',
+  'accessibility_seating', 'accessibility_step_free', 'accessibility_toilet',
+  'accessibility_transit_details', 'allow_remote_attendance', 'category_id', 'description',
+  'is_online', 'latitude', 'local_end_time', 'local_start_time', 'location', 'longitude',
+  'max_attendees', 'online_link', 'title', 'video_url'
+];
+
+function supportsEffectiveRevisions(result) {
+  return (dataFrom(result) || {}).supports_effective_revisions === true;
+}
+
+function recurringRevisionPatch(body, event) {
+  const submitted = eventScopedPayload(body);
+  const patch = {};
+  const nullableIntegerFields = ['category_id', 'max_attendees'];
+  const booleanFields = ['is_online', 'allow_remote_attendance'];
+  const nullableTextFields = [
+    'location', 'online_link', 'video_url', 'accessibility_parking_details',
+    'accessibility_transit_details', 'accessibility_assistance_contact', 'accessibility_notes'
+  ];
+  const triStateFields = [
+    'accessibility_step_free', 'accessibility_toilet', 'accessibility_hearing_loop',
+    'accessibility_quiet_space', 'accessibility_seating', 'accessibility_parking'
+  ];
+
+  for (const field of ['title', 'description']) {
+    if (submitted[field] !== trimmed(event[field])) patch[field] = submitted[field];
+  }
+  for (const field of nullableIntegerFields) {
+    if (!Object.prototype.hasOwnProperty.call(body, field)) continue;
+    const current = positiveInteger(event[field]);
+    if (submitted[field] !== current) patch[field] = submitted[field];
+  }
+  for (const field of booleanFields) {
+    if (!Object.prototype.hasOwnProperty.call(body, field)) continue;
+    if (submitted[field] !== checked(event[field])) patch[field] = submitted[field];
+  }
+  for (const field of nullableTextFields) {
+    if (!Object.prototype.hasOwnProperty.call(body, field) && field.startsWith('accessibility_')) continue;
+    const current = trimmed(event[field]) || null;
+    if (submitted[field] !== current) patch[field] = submitted[field];
+  }
+  for (const field of triStateFields) {
+    if (!Object.prototype.hasOwnProperty.call(body, field)) continue;
+    const current = event[field] === true || event[field] === 1
+      ? true
+      : (event[field] === false || event[field] === 0 ? false : null);
+    if (submitted[field] !== current) patch[field] = submitted[field];
+  }
+
+  const timezone = trimmed(event.timezone) || 'UTC';
+  if ((trimmed(body.timezone) || 'UTC') !== timezone || checked(body.all_day) !== checked(event.all_day)) {
+    return null;
+  }
+  const currentStart = dateTimeLocalInZone(event.start_time ?? event.startTime, timezone);
+  const submittedStart = trimmed(body.start_time);
+  if (!submittedStart || submittedStart.slice(0, 10) !== currentStart.slice(0, 10)) return null;
+  if (!checked(event.all_day) && submittedStart.slice(11, 16) !== currentStart.slice(11, 16)) {
+    patch.local_start_time = submittedStart.slice(11, 16);
+  }
+  const currentEnd = dateTimeLocalInZone(event.end_time ?? event.endTime, timezone, checked(event.all_day));
+  const submittedEnd = trimmed(body.end_time);
+  if (checked(event.all_day)) {
+    if (submittedEnd !== currentEnd) return null;
+  } else if (!submittedEnd) {
+    if (currentEnd) patch.local_end_time = null;
+  } else {
+    const expectedDate = currentEnd ? currentEnd.slice(0, 10) : currentStart.slice(0, 10);
+    if (submittedEnd.slice(0, 10) !== expectedDate) return null;
+    if (!currentEnd || submittedEnd.slice(11, 16) !== currentEnd.slice(11, 16)) {
+      patch.local_end_time = submittedEnd.slice(11, 16);
+    }
+  }
+  return Object.fromEntries(Object.entries(patch).sort(([left], [right]) => left.localeCompare(right)));
 }
 
 function recurrencePayload(body) {
@@ -2055,14 +2203,26 @@ router.post('/:id(\\d+)/recurring-edit', asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const scope = trimmed(req.body.scope) === 'all' ? 'all' : 'single';
   if (scope === 'all') {
-    const start = trimmed(req.body.start_time); const end = trimmed(req.body.end_time); const patch = { title: trimmed(req.body.title, 255), description: trimmed(req.body.description, 10000), location: trimmed(req.body.location, 255) || null };
-    if (start.includes('T')) patch.local_start_time = start.split('T')[1];
-    if (end.includes('T')) patch.local_end_time = end.split('T')[1];
-    if (patch.title.length < 3 || !patch.description || !patch.local_start_time) return redirectTo(res, eventPath(id, '/recurring-edit?status=invalid'));
+    const token = tokenFrom(req);
+    if (!token) return redirectTo(res, loginRedirect());
     try {
-      const preview = dataFrom(await callApi(tokenFrom(req), 'POST', `/${id}/recurrence-revisions/preview`, { patch })) || {};
+      const [eventResult, capabilitiesResult] = await Promise.all([
+        callApi(token, 'GET', `/${id}`),
+        callApi(token, 'GET', '/recurrence-capabilities')
+      ]);
+      if (!supportsEffectiveRevisions(capabilitiesResult)) return redirectTo(res, eventPath(id, '/recurring-edit?status=unavailable'));
+      const event = eventFrom(eventResult);
+      if (!eventIsSeries(event) || checked(event.is_recurring_template) || positiveInteger(event.parent_event_id) === null) {
+        return redirectTo(res, eventPath(id, '/recurring-edit?status=concrete-required'));
+      }
+      const patch = recurringRevisionPatch(req.body, event);
+      if (!patch || trimmed(req.body.title).length < 1 || trimmed(req.body.title).length > 255
+        || !trimmed(req.body.description) || !Object.keys(patch).length) {
+        return redirectTo(res, eventPath(id, `/recurring-edit?status=${patch && !Object.keys(patch).length ? 'no-changes' : 'invalid'}`));
+      }
+      const preview = dataFrom(await callApi(token, 'POST', `/${id}/recurrence-revisions/preview`, { patch })) || {};
       res.set('Cache-Control', 'private, no-store'); res.set('Pragma', 'no-cache'); res.set('Referrer-Policy', 'no-referrer');
-      return res.render('events/recurring-preview', { title: res.locals.t('govuk_alpha_events.recurring_edit.confirm_title'), activeNav: 'events', event: { id, title: patch.title }, patch, preview, patchJson: JSON.stringify(patch), idempotencyKey: randomUUID(), csrfToken: req.csrfToken ? req.csrfToken() : '' });
+      return res.render('events/recurring-preview', { title: res.locals.t('govuk_alpha_events.recurring_edit.confirm_title'), activeNav: 'events', event: { id, title: patch.title || trimmed(event.title) }, patch, preview, patchJson: JSON.stringify(patch), idempotencyKey: randomUUID(), csrfToken: req.csrfToken ? req.csrfToken() : '' });
     } catch (error) {
       if (redirectOnAuthError(error, res)) return undefined;
       if (error instanceof ApiError && [400, 403, 404, 409, 413, 422, 429, 503].includes(error.status)) return redirectTo(res, eventPath(id, '/recurring-edit?status=preview-failed'));
@@ -2086,8 +2246,7 @@ router.post('/:id(\\d+)/recurring-edit', asyncRoute(async (req, res) => {
 router.post('/:id(\\d+)/recurring-edit/commit', requireAuth, asyncRoute(async (req, res) => {
   const id = Number(req.params.id); const key = trimmed(req.body.idempotency_key, 191); const token = trimmed(req.body.preview_token, 8192); let patch = null;
   try { patch = JSON.parse(trimmed(req.body.patch_json, 20000)); } catch { patch = null; }
-  const allowed = ['title', 'description', 'location', 'local_start_time', 'local_end_time'];
-  if (!key || !token || !patch || Array.isArray(patch) || !Object.keys(patch).length || Object.keys(patch).some((field) => !allowed.includes(field))) return redirectTo(res, eventPath(id, '/recurring-edit?status=preview-invalid'));
+  if (!key || !token || !patch || Array.isArray(patch) || !Object.keys(patch).length || Object.keys(patch).some((field) => !RECURRING_REVISION_FIELDS.includes(field))) return redirectTo(res, eventPath(id, '/recurring-edit?status=preview-invalid'));
   try { await callEventMutation(tokenFrom(req), 'POST', `/${id}/recurrence-revisions/commit`, { patch, preview_token: token }, key); return redirectTo(res, eventPath(id, '?status=event-updated')); }
   catch (error) { if (redirectOnAuthError(error, res)) return undefined; if (error instanceof ApiError && [400, 403, 404, 409, 413, 422, 429, 503].includes(error.status)) return redirectTo(res, eventPath(id, '/recurring-edit?status=commit-failed')); throw error; }
 }));

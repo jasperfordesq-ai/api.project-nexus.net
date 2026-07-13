@@ -16,6 +16,8 @@
 
       <form method="post" action="{{ urlFor('/events/' + (event.id | string) + '/recurring-edit') }}" novalidate>
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+        <input type="hidden" name="timezone" value="{{ event.timezone }}">
+        <input type="hidden" name="all_day" value="{{ '1' if event.allDay else '0' }}">
 
         <fieldset class="govuk-fieldset">
           <legend class="govuk-fieldset__legend govuk-fieldset__legend--l">
@@ -31,6 +33,16 @@
             <label class="govuk-label" for="description">{{ t("govuk_alpha_events.recurring_edit.description_label") }}</label>
             <div id="description-hint" class="govuk-hint">{{ t("govuk_alpha_events.recurring_edit.description_hint") }}</div>
             <textarea class="govuk-textarea" id="description" name="description" rows="6" aria-describedby="description-hint" required>{{ event.description }}</textarea>
+          </div>
+
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="category_id">{{ t("govuk_alpha.events.category_label") }}</label>
+            <select class="govuk-select" id="category_id" name="category_id">
+              <option value="">{{ t("govuk_alpha.events.no_category") }}</option>
+              {% for category in categories %}
+                <option value="{{ category.id }}"{% if category.id == event.categoryId %} selected{% endif %}>{{ category.name }}</option>
+              {% endfor %}
+            </select>
           </div>
 
           <div class="govuk-form-group">
@@ -56,6 +68,94 @@
           </div>
         </fieldset>
 
+        <fieldset class="govuk-fieldset govuk-!-margin-top-7">
+          <legend class="govuk-fieldset__legend govuk-fieldset__legend--l">
+            <h2 class="govuk-fieldset__heading">{{ t("govuk_alpha.events.create_place_title") }}</h2>
+          </legend>
+          <div class="govuk-form-group">
+            <div class="govuk-checkboxes" data-module="govuk-checkboxes">
+              <div class="govuk-checkboxes__item">
+                <input type="hidden" name="is_online" value="0">
+                <input class="govuk-checkboxes__input" id="is_online" name="is_online" type="checkbox" value="1"{% if event.isOnline %} checked{% endif %} data-aria-controls="is-online-conditional">
+                <label class="govuk-label govuk-checkboxes__label" for="is_online">{{ t("govuk_alpha.events.is_online_label") }}</label>
+              </div>
+              <div class="govuk-checkboxes__conditional{% if not event.isOnline %} govuk-checkboxes__conditional--hidden{% endif %}" id="is-online-conditional">
+                <label class="govuk-label" for="online_link">{{ t("govuk_alpha.events.online_link_label") }}</label>
+                <input class="govuk-input" id="online_link" name="online_link" type="url" value="{{ event.onlineLink }}">
+              </div>
+            </div>
+          </div>
+          <div class="govuk-form-group">
+            <div class="govuk-checkboxes" data-module="govuk-checkboxes">
+              <div class="govuk-checkboxes__item">
+                <input type="hidden" name="allow_remote_attendance" value="0">
+                <input class="govuk-checkboxes__input" id="allow_remote_attendance" name="allow_remote_attendance" type="checkbox" value="1"{% if event.allowRemoteAttendance %} checked{% endif %} data-aria-controls="remote-attendance-conditional">
+                <label class="govuk-label govuk-checkboxes__label" for="allow_remote_attendance">{{ t("govuk_alpha.events.polish_events.allow_remote_label") }}</label>
+                <div class="govuk-hint govuk-checkboxes__hint">{{ t("govuk_alpha.events.polish_events.allow_remote_hint") }}</div>
+              </div>
+              <div class="govuk-checkboxes__conditional{% if not event.allowRemoteAttendance %} govuk-checkboxes__conditional--hidden{% endif %}" id="remote-attendance-conditional">
+                <label class="govuk-label" for="video_url">{{ t("govuk_alpha.events.polish_events.video_url_label") }}</label>
+                <div id="video-url-hint" class="govuk-hint">{{ t("govuk_alpha.events.polish_events.video_url_hint") }}</div>
+                <input class="govuk-input" id="video_url" name="video_url" type="url" value="{{ event.videoUrl }}" aria-describedby="video-url-hint">
+              </div>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="govuk-fieldset govuk-!-margin-top-7" aria-describedby="venue-accessibility-hint">
+          <legend class="govuk-fieldset__legend govuk-fieldset__legend--l"><h2 class="govuk-fieldset__heading">{{ t("event_accessibility.form.title") }}</h2></legend>
+          <div id="venue-accessibility-hint" class="govuk-hint">{{ t("event_accessibility.form.hint") }}</div>
+          {% set accessFields = [
+            ['accessibility_step_free', 'step_free_access', event.accessibility.stepFree],
+            ['accessibility_toilet', 'accessible_toilet', event.accessibility.toilet],
+            ['accessibility_hearing_loop', 'hearing_loop', event.accessibility.hearingLoop],
+            ['accessibility_quiet_space', 'quiet_space', event.accessibility.quietSpace],
+            ['accessibility_seating', 'seating_available', event.accessibility.seating],
+            ['accessibility_parking', 'accessible_parking', event.accessibility.parking]
+          ] %}
+          <div class="govuk-grid-row">
+            {% for field in accessFields %}
+              <div class="govuk-grid-column-one-half"><div class="govuk-form-group">
+                <label class="govuk-label" for="{{ field[0] }}">{{ t("event_accessibility.features." + field[1]) }}</label>
+                <select class="govuk-select" id="{{ field[0] }}" name="{{ field[0] }}">
+                  {% for status in ['unknown', 'yes', 'no'] %}<option value="{{ status }}"{% if status == field[2] %} selected{% endif %}>{{ t("event_accessibility.status." + status) }}</option>{% endfor %}
+                </select>
+              </div></div>
+            {% endfor %}
+          </div>
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="accessibility_parking_details">{{ t("event_accessibility.form.parking_details") }}</label>
+            <div id="accessibility-parking-details-hint" class="govuk-hint">{{ t("event_accessibility.form.parking_details_hint") }}</div>
+            <textarea class="govuk-textarea" id="accessibility_parking_details" name="accessibility_parking_details" rows="3" maxlength="1000" aria-describedby="accessibility-parking-details-hint">{{ event.accessibility.parkingDetails }}</textarea>
+          </div>
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="accessibility_transit_details">{{ t("event_accessibility.form.transit_details") }}</label>
+            <div id="accessibility-transit-details-hint" class="govuk-hint">{{ t("event_accessibility.form.transit_details_hint") }}</div>
+            <textarea class="govuk-textarea" id="accessibility_transit_details" name="accessibility_transit_details" rows="3" maxlength="1000" aria-describedby="accessibility-transit-details-hint">{{ event.accessibility.transitDetails }}</textarea>
+          </div>
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="accessibility_assistance_contact">{{ t("event_accessibility.form.assistance_contact") }}</label>
+            <div id="accessibility-assistance-contact-hint" class="govuk-hint">{{ t("event_accessibility.form.assistance_contact_hint") }}</div>
+            <input class="govuk-input" id="accessibility_assistance_contact" name="accessibility_assistance_contact" type="text" maxlength="500" value="{{ event.accessibility.assistanceContact }}" aria-describedby="accessibility-assistance-contact-hint">
+          </div>
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="accessibility_notes">{{ t("event_accessibility.form.notes") }}</label>
+            <div id="accessibility-notes-hint" class="govuk-hint">{{ t("event_accessibility.form.notes_hint") }}</div>
+            <textarea class="govuk-textarea" id="accessibility_notes" name="accessibility_notes" rows="5" maxlength="4000" aria-describedby="accessibility-notes-hint">{{ event.accessibility.notes }}</textarea>
+          </div>
+          <p class="govuk-body-s">{{ t("event_accessibility.form.privacy_note") }}</p>
+        </fieldset>
+
+        <fieldset class="govuk-fieldset govuk-!-margin-top-7">
+          <legend class="govuk-fieldset__legend govuk-fieldset__legend--l"><h2 class="govuk-fieldset__heading">{{ t("govuk_alpha.events.create_capacity_title") }}</h2></legend>
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="max_attendees">{{ t("govuk_alpha.events.max_attendees_label") }}</label>
+            <div id="max-attendees-hint" class="govuk-hint">{{ t("govuk_alpha.events.max_attendees_hint") }}</div>
+            <input class="govuk-input govuk-input--width-5" id="max_attendees" name="max_attendees" type="number" min="1" step="1" value="{{ event.maxAttendees or '' }}" aria-describedby="max-attendees-hint">
+          </div>
+        </fieldset>
+
+        {% if supportsEffectiveRevisions %}
         <div class="govuk-warning-text govuk-!-margin-top-7">
           <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
           <strong class="govuk-warning-text__text">
@@ -63,6 +163,9 @@
             {{ t("govuk_alpha_events.recurring_edit.scope_all_warning") }}
           </strong>
         </div>
+        {% else %}
+          <div class="govuk-inset-text govuk-!-margin-top-7">{{ t("govuk_alpha_events.recurring_edit.unavailable") }}</div>
+        {% endif %}
 
         <div class="govuk-form-group">
           <fieldset class="govuk-fieldset" aria-describedby="scope-hint">
@@ -76,11 +179,11 @@
                 <label class="govuk-label govuk-radios__label" for="scope-single">{{ t("govuk_alpha_events.recurring_edit.scope_single") }}</label>
                 <div class="govuk-hint govuk-radios__hint">{{ t("govuk_alpha_events.recurring_edit.scope_single_hint") }}</div>
               </div>
-              <div class="govuk-radios__item">
+              {% if supportsEffectiveRevisions %}<div class="govuk-radios__item">
                 <input class="govuk-radios__input" id="scope-all" name="scope" type="radio" value="all">
                 <label class="govuk-label govuk-radios__label" for="scope-all">{{ t("govuk_alpha_events.recurring_edit.scope_all") }}</label>
                 <div class="govuk-hint govuk-radios__hint">{{ t("govuk_alpha_events.recurring_edit.scope_all_hint") }}</div>
-              </div>
+              </div>{% endif %}
             </div>
           </fieldset>
         </div>

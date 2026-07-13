@@ -21203,7 +21203,7 @@ describe('shared accessible frontend shell', () => {
           { id: 8, start_time: '2026-08-08T10:30:00Z' }
         ]
       }
-    });
+    }).mockResolvedValueOnce({ data: { supports_effective_revisions: true } });
 
     const response = await request(app)
       .get('/events/7/recurring-edit')
@@ -21222,6 +21222,10 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('name="location" type="text" value="Community hall"');
     expect(response.text).toContain('name="start_time" type="datetime-local" value="2026-08-01T10:30"');
     expect(response.text).toContain('name="end_time" type="datetime-local" value="2026-08-01T12:00"');
+    expect(response.text).toContain('name="category_id"');
+    expect(response.text).toContain('name="is_online" type="checkbox"');
+    expect(response.text).toContain('name="accessibility_step_free"');
+    expect(response.text).toContain('name="max_attendees"');
     expect(response.text).toContain('Changes to this and future dates are previewed before they are applied.');
     expect(response.text).toContain('name="scope" type="radio" value="single" checked');
     expect(response.text).toContain('Only this date');
@@ -21248,7 +21252,7 @@ describe('shared accessible frontend shell', () => {
           { id: 8, start_time: '2026-08-08T10:30:00Z' }
         ]
       }
-    });
+    }).mockResolvedValueOnce({ data: { supports_effective_revisions: true } });
 
     const mounted = await request(app)
       .get('/acme/accessible/events/7/recurring-edit')
@@ -21258,6 +21262,26 @@ describe('shared accessible frontend shell', () => {
     expect(mounted.text).toContain('href="/acme/accessible/events/7"');
     expect(mounted.text).toContain('method="post" action="/acme/accessible/events/7/recurring-edit"');
     expect(mounted.text).toContain('href="/acme/accessible/events/8"');
+
+    api.callEventApi
+      .mockResolvedValueOnce({ data: {
+        id: 7,
+        user_id: 101,
+        title: 'Weekly repair cafe',
+        description: 'Bring small appliances.',
+        start_time: '2026-08-01T10:30:00Z',
+        is_series: true
+      } })
+      .mockResolvedValueOnce({ data: { supports_effective_revisions: false } });
+
+    const unavailable = await request(app)
+      .get('/events/7/recurring-edit')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(unavailable.status).toBe(200);
+    expect(unavailable.text).toContain('This-and-future editing is not available for this community yet.');
+    expect(unavailable.text).toContain('name="scope" type="radio" value="single" checked');
+    expect(unavailable.text).not.toContain('name="scope" type="radio" value="all"');
   });
 
   it('redirects non-series events from Laravel recurring edit to the normal edit page', async () => {
@@ -21667,12 +21691,31 @@ describe('shared accessible frontend shell', () => {
       poll_ids: [1, 2]
     });
 
-    api.callEventApi.mockResolvedValueOnce({ data: { preview_token: 'signed-revision', can_commit: true, effective_from_utc: '2026-08-01T09:00:00Z', impact: { affected_count: 4 } } });
+    api.callEventApi
+      .mockResolvedValueOnce({ data: {
+        id: 7,
+        parent_event_id: 1,
+        title: 'Current event',
+        description: 'Current description',
+        location: null,
+        start_time: '2026-08-01T09:30:00Z',
+        end_time: null,
+        timezone: 'UTC',
+        all_day: false,
+        is_series: true,
+        max_attendees: null,
+        is_online: false,
+        allow_remote_attendance: false
+      } })
+      .mockResolvedValueOnce({ data: { supports_effective_revisions: true } })
+      .mockResolvedValueOnce({ data: { preview_token: 'signed-revision', can_commit: true, effective_from_utc: '2026-08-01T09:00:00Z', impact: { affected_count: 4 } } });
     const recurringResponse = await post('/events/7/recurring-edit', {
       scope: 'all',
       title: ' Updated event ',
       description: ' Updated description ',
       start_time: '2026-08-01T10:00',
+      timezone: 'UTC',
+      all_day: '0',
       max_attendees: '20',
       is_online: 'on',
       online_link: ' https://example.org/meet ',
@@ -21682,16 +21725,20 @@ describe('shared accessible frontend shell', () => {
     expect(recurringResponse.text).toContain('action="/events/7/recurring-edit/commit"');
     expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', '/7/recurrence-revisions/preview', {
       patch: {
-      title: 'Updated event',
-      description: 'Updated description',
-      location: null,
-      local_start_time: '10:00'
+        allow_remote_attendance: true,
+        description: 'Updated description',
+        is_online: true,
+        local_start_time: '10:00',
+        max_attendees: 20,
+        online_link: 'https://example.org/meet',
+        title: 'Updated event'
       }
     });
     api.callEventApi.mockResolvedValueOnce({ data: { revision_version: 3 } });
-    const recurringCommit = await post('/events/7/recurring-edit/commit', { preview_token: 'signed-revision', patch_json: JSON.stringify({ title: 'Updated event', description: 'Updated description', location: null, local_start_time: '10:00' }), idempotency_key: 'revision-commit-123' });
+    const recurringPatch = { title: 'Updated event', description: 'Updated description', category_id: 4, accessibility_step_free: true, local_start_time: '10:00' };
+    const recurringCommit = await post('/events/7/recurring-edit/commit', { preview_token: 'signed-revision', patch_json: JSON.stringify(recurringPatch), idempotency_key: 'revision-commit-123' });
     expect(recurringCommit.headers.location).toBe('/events/7?status=event-updated');
-    expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', '/7/recurrence-revisions/commit', { patch: { title: 'Updated event', description: 'Updated description', location: null, local_start_time: '10:00' }, preview_token: 'signed-revision' }, { headers: { 'Idempotency-Key': 'revision-commit-123' } });
+    expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', '/7/recurrence-revisions/commit', { patch: recurringPatch, preview_token: 'signed-revision' }, { headers: { 'Idempotency-Key': 'revision-commit-123' } });
 
     const translateResponse = await post('/events/7/translate', {
       source_text: ' Hello neighbours ',
@@ -30985,8 +31032,8 @@ describe('shared accessible frontend shell', () => {
 
     expect(docs).toContain('alphagov/govuk-frontend');
     expect(docs).toContain('alphagov/govuk-design-system');
-    expect(docs).toContain('future shared accessible frontend candidate');
-    expect(docs).toContain('does not certify production readiness');
+    expect(docs).toContain('implementation target for the future shared accessible');
+    expect(docs).toContain('It is not production-ready');
     expect(docs).toContain('LARAVEL_ACCESSIBLE_ROUTE_MATRIX.md');
     expect(docs).toContain('BLADE_COMPONENT_PORT_AUDIT.md');
     expect(docs).toContain('BACKEND_SWITCHING_CONTRACT.md');
@@ -31001,8 +31048,8 @@ describe('shared accessible frontend shell', () => {
     expect(matrix).toContain('`/organisations` POST and `/organisations/register` POST validate required fields/terms');
     expect(matrix).toContain('Auth enforcement depth, volunteering/job feature gates, tenant-prefixed routes, runtime registration persistence');
     expect(matrix).toContain('It does not certify route parity');
-    expect(contract).toContain('Its default backend contract is now Laravel-first');
+    expect(contract).toContain('Blade defines the browser experience and the Laravel backend defines the HTTP');
     expect(contract).toContain('| `ACCESSIBLE_BACKEND_TARGET` | `laravel` | Laravel is the default backend contract target. |');
-    expect(contract).toContain('ASP.NET must become');
+    expect(contract).toContain('It may become a second backend only by');
   });
 });
