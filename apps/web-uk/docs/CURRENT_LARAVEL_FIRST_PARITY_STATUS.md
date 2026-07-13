@@ -154,6 +154,11 @@ listing from the authenticated accepted-offer collection, ignores a forged
 submitted listing ID, and revalidates offer-scoped shipping and pickup choices
 before creating an order.
 
+Marketplace prices now also mirror Laravel's dedicated money formatter: labels
+use uppercase stored currency codes, comma grouping, and the same Stripe
+zero-decimal currency list. Focused proof covers `JPY 1,200` without a false
+`.00` suffix alongside the existing GBP and hybrid cases.
+
 ## Localization P0 Closed In Current Slice
 
 The previously identified raw-key risk is fixed and guarded. The generator now

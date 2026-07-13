@@ -29,6 +29,10 @@ const REPORT_REASONS = ['counterfeit', 'illegal', 'unsafe', 'misleading', 'discr
 const SELLER_TYPES = ['private', 'business'];
 const COUPON_DISCOUNT_TYPES = ['percent', 'fixed', 'bogo'];
 const COUPON_STATUSES = ['draft', 'active', 'paused', 'expired'];
+const ZERO_DECIMAL_CURRENCIES = new Set([
+  'BIF', 'CLP', 'DJF', 'GNF', 'JPY', 'KMF', 'KRW', 'MGA', 'PYG',
+  'RWF', 'VND', 'VUV', 'XAF', 'XOF', 'XPF'
+]);
 
 const PRICE_TYPE_LABELS = {
   fixed: 'Fixed price',
@@ -388,8 +392,14 @@ function safeRelativeOrAbsoluteUrl(value) {
 function formatMoney(amount, currency = '') {
   const number = Number(amount);
   if (!Number.isFinite(number)) return '';
-  const code = trimmed(currency || 'EUR', 3).toUpperCase() || 'EUR';
-  return `${code} ${number.toFixed(2)}`;
+  const code = trimmed(currency, 3).toUpperCase();
+  const precision = ZERO_DECIMAL_CURRENCIES.has(code) ? 0 : 2;
+  const formatted = new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: precision,
+    maximumFractionDigits: precision,
+    useGrouping: true
+  }).format(number);
+  return `${code} ${formatted}`.trim();
 }
 
 function formatCredits(amount) {

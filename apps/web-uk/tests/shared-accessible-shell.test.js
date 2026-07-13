@@ -29103,6 +29103,17 @@ describe('shared accessible frontend shell', () => {
           status: 'active',
           user: { id: 77, name: 'Aisha Khan' }
         }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          id: 45,
+          title: 'JPY garden kit',
+          price: 1200,
+          price_currency: 'JPY',
+          price_type: 'fixed',
+          status: 'active',
+          user: { id: 77, name: 'Aisha Khan' }
+        }
       });
 
     const hybrid = await request(app)
@@ -29110,6 +29121,9 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', signedCookieHeader());
     const negotiable = await request(app)
       .get('/marketplace/44')
+      .set('Cookie', signedCookieHeader());
+    const zeroDecimal = await request(app)
+      .get('/marketplace/45')
       .set('Cookie', signedCookieHeader());
 
     expect(hybrid.status).toBe(200);
@@ -29119,6 +29133,9 @@ describe('shared accessible frontend shell', () => {
     expect(negotiable.status).toBe(200);
     expect(negotiable.text).not.toContain('href="/marketplace/44/buy"');
     expect(negotiable.text).toContain('href="/marketplace/44/offer"');
+    expect(zeroDecimal.status).toBe(200);
+    expect(zeroDecimal.text).toContain('JPY 1,200');
+    expect(zeroDecimal.text).not.toContain('JPY 1,200.00');
   });
 
   it('renders the Laravel-backed marketplace create form', async () => {
