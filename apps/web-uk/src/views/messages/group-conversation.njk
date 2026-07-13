@@ -100,7 +100,7 @@
             <li class="nexus-alpha-card" id="m-{{ message.id }}">
               <p class="govuk-body govuk-!-font-weight-bold govuk-!-margin-bottom-1">{{ message.displaySenderName }}</p>
               {% if message.created_at %}
-                <p class="govuk-hint govuk-!-margin-bottom-2">{{ t("govuk_alpha_messages.conversation.sent_label") }} {{ message.created_at | formatDate }}</p>
+                <p class="govuk-hint govuk-!-margin-bottom-2">{{ t("govuk_alpha_messages.conversation.sent_label") }} {{ message.created_at | formatBladeDateTime }}</p>
               {% endif %}
               {% if message.is_deleted %}
                 <p class="govuk-body govuk-hint">{{ t("govuk_alpha_messages.conversation.deleted_placeholder") }}</p>

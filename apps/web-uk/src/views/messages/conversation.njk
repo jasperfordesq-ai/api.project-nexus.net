@@ -67,7 +67,7 @@
                   </strong>
                 </div>
                 <span class="govuk-body-s">
-                  {{ (message.created_at or message.createdAt) | formatDate if (message.created_at or message.createdAt) else "" }}
+                  {{ (message.created_at or message.createdAt) | formatBladeDateTime if (message.created_at or message.createdAt) else "" }}
                 </span>
               </div>
               <div class="app-message-body">

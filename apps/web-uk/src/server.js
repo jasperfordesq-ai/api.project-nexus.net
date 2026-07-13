@@ -168,6 +168,27 @@ nunjucksEnv.addFilter('formatDate', (dateStr) => {
   }
 });
 
+nunjucksEnv.addFilter('formatBladeDateTime', (dateStr) => {
+  if (!dateStr) return '';
+  try {
+    const date = new Date(dateStr);
+    const locale = getRequestLocale() || 'en';
+    const parts = new Intl.DateTimeFormat(locale, {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    }).formatToParts(date);
+    const value = (type) => parts.find((part) => part.type === type)?.value || '';
+    const dayPeriod = value('dayPeriod').replace(/\s+/g, '').toLocaleLowerCase(locale);
+    return `${value('day')} ${value('month')} ${value('year')}, ${value('hour')}:${value('minute')}${dayPeriod}`;
+  } catch {
+    return dateStr;
+  }
+});
+
 nunjucksEnv.addFilter('formatEventDate', (dateStr) => {
   if (!dateStr) return '';
   try {

@@ -76,7 +76,7 @@
                 <p class="govuk-hint govuk-!-margin-top-3">{{ t("govuk_alpha_messages.groups.no_messages_yet") }}</p>
               {% endif %}
               {% if lastMessage and lastMessage.created_at %}
-                <p class="govuk-hint">{{ t("govuk_alpha_messages.conversation.sent_label") }} {{ lastMessage.created_at | formatDate }}</p>
+                <p class="govuk-hint">{{ t("govuk_alpha_messages.conversation.sent_label") }} {{ lastMessage.created_at | formatBladeDateTime }}</p>
               {% endif %}
             </article>
           {% endfor %}

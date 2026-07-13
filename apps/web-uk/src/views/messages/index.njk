@@ -98,7 +98,7 @@
                     </strong>
                   </div>
                   <span class="govuk-body-s govuk-!-margin-bottom-0">
-                    {{ conversation.lastMessageAt | formatDate if conversation.lastMessageAt else "" }}
+                    {{ conversation.lastMessageAt | formatBladeDateTime if conversation.lastMessageAt else "" }}
                   </span>
                 </div>
                 <p class="govuk-body-s govuk-!-margin-bottom-0 govuk-!-margin-top-1">

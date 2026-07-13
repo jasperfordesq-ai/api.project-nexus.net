@@ -6639,7 +6639,7 @@ describe('shared accessible frontend shell', () => {
             id: 91,
             body: 'Can we confirm Saturday?',
             sender_id: 77,
-            created_at: '2026-07-09T10:00:00Z'
+            created_at: '2026-07-09T10:00:00'
           }
         },
         {
@@ -6666,6 +6666,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Avery Stone');
     expect(response.text).toContain('/uploads/avery.jpg');
     expect(response.text).toContain('Can we confirm Saturday?');
+    expect(response.text).toContain('9 July 2026, 10:00am');
     expect(response.text).not.toContain('[object Object]');
     expect(response.text).toContain('3 unread');
     expect(response.text).toContain('2 unread messages');
@@ -26173,7 +26174,7 @@ describe('shared accessible frontend shell', () => {
               last_message: {
                 sender_name: 'Avery Stone',
                 body: 'Bring the spare keys',
-                created_at: '2026-07-06T10:30:00Z'
+                created_at: '2026-07-06T10:30:00'
               }
             }
           ]
@@ -26198,6 +26199,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Latest');
     expect(response.text).toContain('Avery Stone');
     expect(response.text).toContain('Bring the spare keys');
+    expect(response.text).toContain('6 July 2026, 10:30am');
     expect(response.text).toContain('You have left the group.');
   });
 
