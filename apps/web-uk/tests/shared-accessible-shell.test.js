@@ -29194,8 +29194,11 @@ describe('shared accessible frontend shell', () => {
       data: {
         id: 42,
         title: 'Community bike',
+        status: 'active',
+        price_type: 'fixed',
         price: 15.5,
         price_currency: 'GBP',
+        delivery_method: 'pickup',
         user: { id: 77, name: 'Aisha Khan' }
       }
     });
@@ -29206,12 +29209,14 @@ describe('shared accessible frontend shell', () => {
 
     expect(response.status).toBe(200);
     expect(api.callMarketplaceApi).toHaveBeenCalledWith('test-token', 'GET', '/listings/42');
+    expect(api.callMarketplaceApi).toHaveBeenCalledWith('test-token', 'GET', '/listings/42/pickup-slots');
     expect(response.text).toContain('Confirm your purchase');
     expect(response.text).toContain('Sorry, your order could not be placed. Please try again.');
     expect(response.text).toContain('Community bike');
     expect(response.text).toContain('GBP 15.50');
     expect(response.text).toContain('Quantity');
     expect(response.text).toContain('Delivery notes');
+    expect(response.text).toMatch(/name="idempotency_key" value="accessible-marketplace-[^"]+"/);
     expect(response.text).toContain('Confirm order');
     expect(response.text).not.toContain('Laravel Blade route');
   });
@@ -29460,6 +29465,54 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Accept');
     expect(response.text).toContain('action="/marketplace/offers/12/decline"');
     expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('matches Laravel direct marketplace checkout payment, fulfilment and idempotency contracts', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    api.callMarketplaceApi.mockImplementation(async (_token, method, pathName, payload) => {
+      if (method === 'GET' && pathName === '/listings/42') {
+        return { data: { id: 42, title: 'Hybrid bike', status: 'active', price_type: 'fixed', price: 12.5, price_currency: 'GBP', time_credit_price: 3, delivery_method: 'both', user: { id: 77, name: 'Aisha Khan' } } };
+      }
+      if (method === 'GET' && pathName === '/sellers/77/shipping-options') return { data: [{ id: 5, courier_name: 'Community courier', price: 2.5, currency: 'GBP' }] };
+      if (method === 'GET' && pathName === '/listings/42/pickup-slots') return { data: [{ id: 8, slot_start: '2026-07-14T10:00:00Z', slot_end: '2026-07-14T11:00:00Z', remaining: 2 }] };
+      if (method === 'POST' && pathName === '/orders') return { data: { id: 91, ...payload } };
+      return { data: [] };
+    });
+
+    const page = await agent.get('/marketplace/42/buy').set('Cookie', signedCookieHeader());
+    expect(page.status).toBe(200);
+    expect(page.text).toContain('How would you like to pay?');
+    expect(page.text).toContain('Pay GBP 12.50');
+    expect(page.text).toContain('Pay with 3 time credits');
+    expect(page.text).toContain('Community courier — GBP 2.50');
+    expect(page.text).toContain('2 places remaining');
+    const csrf = page.text.match(/name="_csrf" value="([^"]+)"/)[1];
+    const key = page.text.match(/name="idempotency_key" value="([^"]+)"/)[1];
+
+    const callsBeforeInvalidKey = api.callMarketplaceApi.mock.calls.length;
+    const invalidKey = await agent.post('/marketplace/42/buy').set('Cookie', signedCookieHeader()).type('form').send({ _csrf: csrf, idempotency_key: 'not-the-session-key', quantity: '1' });
+    expect(invalidKey.headers.location).toBe('/marketplace/42/buy');
+    expect(api.callMarketplaceApi).toHaveBeenCalledTimes(callsBeforeInvalidKey);
+
+    const missingPayment = await agent.post('/marketplace/42/buy').set('Cookie', signedCookieHeader()).type('form').send({ _csrf: csrf, idempotency_key: key, quantity: '1', delivery_choice: 'pickup', pickup_slot_id: '8' });
+    expect(missingPayment.headers.location).toBe('/marketplace/42/buy');
+    expect(api.callMarketplaceApi).not.toHaveBeenCalledWith('test-token', 'POST', '/orders', expect.anything());
+
+    const replay = await agent.get('/marketplace/42/buy').set('Cookie', signedCookieHeader());
+    expect(replay.text).toContain('href="#payment_method"');
+    expect(replay.text).toContain('Select how you would like to pay');
+
+    const submitted = await agent.post('/marketplace/42/buy').set('Cookie', signedCookieHeader()).type('form').send({ _csrf: csrf, idempotency_key: key, quantity: '2', payment_method: 'cash', delivery_choice: 'shipping:5', delivery_notes: 'Ring bell' });
+    expect(submitted.headers.location).toBe('/marketplace/orders?status=ordered');
+    expect(api.callMarketplaceApi).toHaveBeenCalledWith('test-token', 'POST', '/orders', {
+      listing_id: 42,
+      quantity: 2,
+      idempotency_key: key,
+      payment_method: 'cash',
+      delivery_notes: 'Ring bell',
+      shipping_option_id: 5
+    });
   });
 
   it('renders and submits the accepted-offer purchase checkout', async () => {
@@ -29831,20 +29884,31 @@ describe('shared accessible frontend shell', () => {
     expect(unsaveResponse.headers.location).toBe('/marketplace/saved?status=unsaved');
     expect(api.callMarketplaceApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/listings/42/save');
 
+    api.callMarketplaceApi.mockImplementation(async (_token, method, pathName) => {
+      if (method === 'GET' && pathName === '/listings/42') {
+        return { data: { id: 42, title: 'Community bike', status: 'active', price_type: 'fixed', price: 15.5, price_currency: 'GBP', delivery_method: 'pickup', user: { id: 77 } } };
+      }
+      if (method === 'GET' && pathName === '/listings/42/pickup-slots') return { data: [] };
+      return { data: { id: 91 } };
+    });
+    const buyPage = await agent.get('/marketplace/42/buy').set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const buyKey = buyPage.text.match(/name="idempotency_key" value="([^"]+)"/)[1];
     const buyResponse = await post('/marketplace/42/buy', {
+      idempotency_key: buyKey,
       quantity: '2',
-      delivery_notes: ' Leave at the front desk ',
-      shipping_method: 'pickup',
-      coupon_code: ' NEXUS10 '
+      delivery_notes: ' Leave at the front desk '
     });
     expect(buyResponse.headers.location).toBe('/marketplace/orders?status=ordered');
     expect(api.callMarketplaceApi).toHaveBeenLastCalledWith('test-token', 'POST', '/orders', {
       listing_id: 42,
       quantity: 2,
-      shipping_method: 'pickup',
+      idempotency_key: buyKey,
+      payment_method: 'cash',
       delivery_notes: 'Leave at the front desk',
-      coupon_code: 'NEXUS10'
+      shipping_method: 'pickup'
     });
+
+    api.callMarketplaceApi.mockResolvedValue({ data: { id: 42 } });
 
     const offerResponse = await post('/marketplace/42/offer', {
       amount: '12.25',

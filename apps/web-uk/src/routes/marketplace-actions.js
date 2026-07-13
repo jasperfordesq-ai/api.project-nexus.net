@@ -153,6 +153,18 @@ function acceptedOfferSessionKey(id) {
   return `marketplaceAcceptedOffer:${id}`;
 }
 
+function directBuySessionKey(id) {
+  return `marketplaceDirectBuy:${id}`;
+}
+
+function directBuyCompletedSessionKey(id) {
+  return `marketplaceDirectBuyCompleted:${id}`;
+}
+
+function directBuyErrorSessionKey(id) {
+  return `marketplaceDirectBuyError:${id}`;
+}
+
 function matchingKey(actual, expected) {
   const left = Buffer.from(actual);
   const right = Buffer.from(expected);
@@ -373,37 +385,120 @@ router.post('/:id(\\d+)/unsave', asyncRoute(async (req, res) => {
 }));
 
 router.post('/:id(\\d+)/buy', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return redirectTo(res, loginRedirect());
   const id = Number(req.params.id);
+  const fail = (messageKey, target) => {
+    req.session[directBuyErrorSessionKey(id)] = {
+      messageKey,
+      target,
+      oldInput: {
+        quantity: trimmed(req.body.quantity, 20),
+        delivery_notes: trimmed(req.body.delivery_notes, 500),
+        delivery_choice: trimmed(req.body.delivery_choice, 100),
+        pickup_slot_id: trimmed(req.body.pickup_slot_id, 20),
+        payment_method: trimmed(req.body.payment_method, 30)
+      }
+    };
+    return redirectTo(res, `/marketplace/${id}/buy`);
+  };
+  const idempotencyKey = trimmed(req.body.idempotency_key, 100);
+  const expectedKey = trimmed(req.session && req.session[directBuySessionKey(id)], 100);
+  if (idempotencyKey.length < 16 || !expectedKey || !matchingKey(idempotencyKey, expectedKey)) {
+    return fail('govuk_alpha_commerce.buy.error_generic', 'quantity');
+  }
+
+  let listing;
+  let shippingOptions = [];
+  let pickupSlots = [];
+  try {
+    const listingResult = await callApi(token, 'GET', `/listings/${id}`);
+    listing = dataFrom(listingResult) || {};
+    const listingPriceType = trimmed(listing.price_type);
+    const listingMoney = decimalNumber(listing.price);
+    const listingCredits = decimalNumber(listing.time_credit_price);
+    const purchasable = trimmed(listing.status) === 'active'
+      && ((listingPriceType === 'fixed' && listingMoney > 0) || listingPriceType === 'free' || listingCredits > 0);
+    if (checked(listing.is_own || listing.is_owner || listing.owned_by_current_user) || !purchasable) {
+      return fail('govuk_alpha_commerce.buy.error_generic', 'quantity');
+    }
+    const sellerId = positiveInteger(listing.user && listing.user.id) || positiveInteger(listing.user_id);
+    const deliveryMethod = trimmed(listing.delivery_method) || 'pickup';
+    const [shippingResult, slotsResult] = await Promise.all([
+      sellerId && ['shipping', 'both'].includes(deliveryMethod)
+        ? callApi(token, 'GET', `/sellers/${sellerId}/shipping-options`).catch(() => ({ data: [] }))
+        : Promise.resolve({ data: [] }),
+      callApi(token, 'GET', `/listings/${id}/pickup-slots`).catch(() => ({ data: [] }))
+    ]);
+    shippingOptions = Array.isArray(dataFrom(shippingResult)) ? dataFrom(shippingResult) : [];
+    const hasCashCheckout = listingPriceType === 'fixed' && listingMoney > 0;
+    if (listingPriceType === 'free' || (listingCredits > 0 && !hasCashCheckout)) {
+      shippingOptions = shippingOptions.filter((row) => decimalNumber(row && row.price) <= 0);
+    }
+    pickupSlots = Array.isArray(dataFrom(slotsResult)) ? dataFrom(slotsResult) : [];
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    return fail('govuk_alpha_commerce.buy.error_generic', 'quantity');
+  }
+
   const quantity = positiveInteger(req.body.quantity) || 1;
+  const priceType = trimmed(listing.price_type);
+  const money = decimalNumber(listing.price);
+  const credits = decimalNumber(listing.time_credit_price);
+  const isHybrid = priceType === 'fixed' && money > 0 && credits > 0;
+  const paymentMethod = isHybrid
+    ? trimmed(req.body.payment_method)
+    : (credits > 0 ? 'time_credits' : (priceType === 'free' ? 'free' : 'cash'));
+  if (isHybrid && !['cash', 'time_credits'].includes(paymentMethod)) {
+    return fail('govuk_alpha_commerce.buy.payment_method_required', 'payment_method');
+  }
   const payload = {
     listing_id: id,
-    quantity
+    quantity,
+    idempotency_key: idempotencyKey,
+    payment_method: paymentMethod
   };
-
-  const shippingMethod = trimmed(req.body.shipping_method, 100);
-  if (shippingMethod !== '') {
-    payload.shipping_method = shippingMethod;
-  }
 
   const deliveryNotes = trimmed(req.body.delivery_notes, 500);
   if (deliveryNotes !== '') {
     payload.delivery_notes = deliveryNotes;
   }
 
-  const couponCode = trimmed(req.body.coupon_code, 64);
-  if (couponCode !== '') {
-    payload.coupon_code = couponCode;
+  const deliveryMethod = trimmed(listing.delivery_method) || 'pickup';
+  const choice = trimmed(req.body.delivery_choice, 100);
+  let isPickup = false;
+  if (deliveryMethod === 'pickup') {
+    payload.shipping_method = 'pickup';
+    isPickup = true;
+  } else if (deliveryMethod === 'both' && choice === 'pickup') {
+    payload.shipping_method = 'pickup';
+    isPickup = true;
+  } else if (['shipping', 'both'].includes(deliveryMethod)) {
+    const match = choice.match(/^shipping:(\d+)$/);
+    const option = match && shippingOptions.find((row) => positiveInteger(row && row.id) === Number(match[1]));
+    if (!option) return fail('govuk_alpha_commerce.buy.delivery_option_required', 'delivery_choice');
+    if (paymentMethod !== 'cash' && decimalNumber(option.price) > 0) {
+      return fail('govuk_alpha_commerce.buy.delivery_option_cash_only', 'delivery_choice');
+    }
+    payload.shipping_option_id = Number(match[1]);
   }
 
-  return runAction(
-    req,
-    res,
-    'POST',
-    '/orders',
-    payload,
-    '/marketplace/orders?status=ordered',
-    `/marketplace/${id}/buy?status=order-failed`
-  );
+  const pickupSlotId = positiveInteger(req.body.pickup_slot_id);
+  if (isPickup && (pickupSlots.length > 0 || pickupSlotId)) {
+    const validSlot = pickupSlots.some((row) => positiveInteger(row && row.id) === pickupSlotId);
+    if (!pickupSlotId || !validSlot) {
+      return fail('govuk_alpha_commerce.buy.pickup_slot_required', 'pickup_slot_id');
+    }
+    payload.pickup_slot_id = pickupSlotId;
+  }
+  try {
+    await callApi(token, 'POST', '/orders', payload);
+    req.session[directBuyCompletedSessionKey(id)] = true;
+    return redirectTo(res, '/marketplace/orders?status=ordered');
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    return fail('govuk_alpha_commerce.buy.error_generic', 'quantity');
+  }
 }));
 
 router.post('/offers/:id(\\d+)/buy', asyncRoute(async (req, res) => {

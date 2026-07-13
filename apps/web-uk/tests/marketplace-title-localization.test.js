@@ -27,6 +27,7 @@ function createApp() {
   app.use((req, res, next) => {
     req.signedCookies = { token: 'test-token' };
     req.token = 'test-token';
+    req.session = {};
     res.locals.urlFor = (pathname) => pathname;
     res.render = (view, locals = {}) => res.json({ view, locals });
     next();
@@ -65,7 +66,9 @@ describe('Laravel-first Marketplace document-title localization', () => {
             title: 'Dynamic listing title',
             price: 12,
             price_currency: 'EUR',
-            price_type: 'fixed'
+            price_type: 'fixed',
+            status: 'active',
+            delivery_method: 'pickup'
           }
         });
       }

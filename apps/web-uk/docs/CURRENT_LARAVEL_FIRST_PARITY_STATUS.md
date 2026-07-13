@@ -111,8 +111,9 @@ commit as the implementation it describes.
 
 ## Audited Baseline
 
-The committed frontend baseline was refreshed through ASP.NET-repository commit
-`1a51aa8d`, and the Laravel source baseline is `903d03d3`. The first SHA names the
+The committed frontend starting baseline for the current checkout was refreshed
+through ASP.NET-repository commit `6993a891`, and the Laravel source baseline is
+`903d03d3`. The first SHA names the
 repository snapshot containing Web UK; it does not make ASP.NET authoritative.
 Refresh the Laravel Blade/API source and Web UK implementation before relying on
 these numbers after either source moves.
@@ -125,7 +126,7 @@ these numbers after either source moves.
 | Missing Laravel routes | 6 | All are Event workflows |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 47/47 suites, 1,599/1,599 tests | Fresh green code gate |
+| Jest | 47/47 suites, 1,600/1,600 tests | Fresh green code gate |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
 | Blade marker check | 19/19 | Text-marker spotcheck, not visual certification |
 | Automated accessibility | Latest recorded 87/87 | Manual AT review remains open |
@@ -133,6 +134,20 @@ these numbers after either source moves.
 The generated route matrix was refreshed against the same route inventories
 and reports the counts above. It remains declaration evidence, not runtime or
 workflow certification.
+
+## Direct Marketplace Checkout Refresh
+
+Current Laravel commit `fed93dfd1` hardened direct marketplace purchasing. Web
+UK now follows that Blade/API contract: the GET loads seller shipping options
+and available pickup slots, filters paid shipping for free or time-credit-only
+orders, and issues a session-bound idempotency key. The POST rejects forged or
+stale keys before any order call, re-reads authoritative checkout data, requires
+a cash/time-credit choice for hybrid listings, validates delivery and pickup
+choices, and sends the exact order fields. The form now uses the source catalog,
+field-linked error summary, old-input replay, delivery prices, localized pickup
+times and remaining capacity, and suppresses confirmation when a shipping-only
+listing has no option. Focused mocked contract proof covers the successful and
+failure paths; no live order or database mutation was run.
 
 ## Localization P0 Closed In Current Slice
 
@@ -150,12 +165,12 @@ A fresh proof run records:
 
 - 11 locales, 36 namespaces, and 8,837 keys per locale;
 - zero missing or extra keys in every locale;
-- 6,831 complete static references and 5,214 unique referenced keys;
+- 6,852 complete static references and 5,229 unique referenced keys;
 - zero unresolved complete static references;
 - 315 templates and zero conservative hard-coded-copy matches;
 - an English and Irish Event-template library render with no raw key leakage;
 - focused Event and Jobs-response localization/operation proof and full
-  47/47-suite, 1,599/1,599-test proof;
+  47/47-suite, 1,600/1,600-test proof;
 - green brand, lint, CSS, and `git diff --check` gates.
 
 The live Blade marker comparator also uses the canonical
