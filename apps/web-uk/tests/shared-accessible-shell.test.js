@@ -20973,9 +20973,11 @@ describe('shared accessible frontend shell', () => {
     api.callEventApi.mockResolvedValueOnce({
       data: {
         id: 7,
-        title: 'Repair cafe planning'
+        title: 'Repair cafe planning',
+        user_id: 101
       }
     });
+    api.getProfile.mockResolvedValueOnce({ data: { id: 101 } });
     api.getPolls.mockResolvedValueOnce({
       data: [
         { id: 12, question: 'Which day works?', event_id: 7 },
@@ -21008,9 +21010,11 @@ describe('shared accessible frontend shell', () => {
     api.callEventApi.mockResolvedValueOnce({
       data: {
         id: 7,
-        title: 'Repair cafe planning'
+        title: 'Repair cafe planning',
+        user_id: 101
       }
     });
+    api.getProfile.mockResolvedValueOnce({ data: { id: 101 } });
     api.getPolls.mockResolvedValueOnce({
       data: [
         { id: 12, question: 'Which day works?', event_id: 7 }
@@ -21024,6 +21028,20 @@ describe('shared accessible frontend shell', () => {
     expect(mounted.status).toBe(200);
     expect(mounted.text).toContain('href="/acme/accessible/events/7"');
     expect(mounted.text).toContain('method="post" action="/acme/accessible/events/7/polls"');
+  });
+
+  it('fails closed before showing event poll attachment controls to non-organisers', async () => {
+    const api = require('../src/lib/api');
+    api.callEventApi.mockResolvedValueOnce({ data: { id: 7, title: 'Repair cafe planning', user_id: 202 } });
+    api.getPolls.mockResolvedValueOnce({ data: [{ id: 12, question: 'Which day works?', event_id: 7 }] });
+    api.getProfile.mockResolvedValueOnce({ data: { id: 101 } });
+
+    const response = await request(app)
+      .get('/events/7/polls')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(403);
+    expect(response.text).not.toContain('Save poll selection');
   });
 
   it('renders the Laravel event translation page for signed-in visitors', async () => {

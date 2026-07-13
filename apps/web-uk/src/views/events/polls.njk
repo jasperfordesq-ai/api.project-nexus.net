@@ -5,46 +5,46 @@
 {% extends "layouts/base.njk" %}
 
 {% block content %}
-  <a class="govuk-back-link" href="{{ urlFor('/events/' + (event.id | string)) }}">Back to event</a>
+  <a class="govuk-back-link" href="{{ urlFor('/events/' + (event.id | string)) }}">{{ t("govuk_alpha_events.common.back_to_event") }}</a>
 
   <span class="govuk-caption-l">{{ event.title }}</span>
-  <h1 class="govuk-heading-xl">Polls for this event</h1>
+  <h1 class="govuk-heading-xl">{{ t("govuk_alpha_events.polls.title") }}</h1>
 
   {% if status == "polls-updated" %}
     <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="polls-updated-title">
       <div class="govuk-notification-banner__header">
-        <h2 class="govuk-notification-banner__title" id="polls-updated-title">{{ t("states.success_title") }}</h2>
+        <h2 class="govuk-notification-banner__title" id="polls-updated-title">{{ t("govuk_alpha_events.common.success_title") }}</h2>
       </div>
       <div class="govuk-notification-banner__content">
-        <p class="govuk-notification-banner__heading">Your poll selection has been saved.</p>
+        <p class="govuk-notification-banner__heading">{{ t("govuk_alpha_events.polls.updated") }}</p>
       </div>
     </div>
   {% elif status == "polls-failed" %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
       <div role="alert">
-        <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
+        <h2 class="govuk-error-summary__title">{{ t("govuk_alpha_events.common.error_title") }}</h2>
         <div class="govuk-error-summary__body">
-          <p>Your poll selection could not be saved. Please try again.</p>
+          <p>{{ t("govuk_alpha_events.polls.failed") }}</p>
         </div>
       </div>
     </div>
   {% endif %}
 
-  <p class="govuk-body-l">Attach polls you have created to this event, or remove them. Attendees can vote on the event page.</p>
+  <p class="govuk-body-l">{{ t("govuk_alpha_events.polls.intro") }}</p>
 
   {% if not polls.length %}
     <div class="govuk-inset-text">
-      <h2 class="govuk-heading-m">You have no polls yet</h2>
-      <p class="govuk-body">Create a poll first, then come back to attach it to this event.</p>
+      <h2 class="govuk-heading-m">{{ t("govuk_alpha_events.polls.none_heading") }}</h2>
+      <p class="govuk-body">{{ t("govuk_alpha_events.polls.none_body") }}</p>
     </div>
   {% else %}
     <form method="post" action="{{ urlFor('/events/' + (event.id | string) + '/polls') }}">
       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
       <fieldset class="govuk-fieldset" aria-describedby="event-polls-hint">
         <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
-          <h2 class="govuk-fieldset__heading">Your polls</h2>
+          <h2 class="govuk-fieldset__heading">{{ t("govuk_alpha_events.polls.choose_legend") }}</h2>
         </legend>
-        <div id="event-polls-hint" class="govuk-hint">Tick the polls you want shown on this event. Untick to remove a poll.</div>
+        <div id="event-polls-hint" class="govuk-hint">{{ t("govuk_alpha_events.polls.choose_hint") }}</div>
         <div class="govuk-checkboxes" data-module="govuk-checkboxes">
           {% for poll in polls %}
             <div class="govuk-checkboxes__item">
@@ -52,7 +52,7 @@
               <label class="govuk-label govuk-checkboxes__label" for="poll-{{ poll.id }}">
                 {{ poll.question }}
                 {% if poll.attached %}
-                  <strong class="govuk-tag govuk-tag--green">Attached</strong>
+                  <strong class="govuk-tag govuk-tag--green">{{ t("govuk_alpha_events.polls.attached_tag") }}</strong>
                 {% endif %}
               </label>
             </div>
@@ -60,7 +60,7 @@
         </div>
       </fieldset>
 
-      <button class="govuk-button govuk-!-margin-top-4" data-module="govuk-button" type="submit">Save poll selection</button>
+      <button class="govuk-button govuk-!-margin-top-4" data-module="govuk-button" type="submit">{{ t("govuk_alpha_events.polls.save_button") }}</button>
     </form>
   {% endif %}
 {% endblock %}

@@ -422,21 +422,28 @@ router.get('/:id(\\d+)/polls', asyncRoute(async (req, res) => {
   if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
-  const [eventResult, pollsResult] = await Promise.all([
+  const [eventResult, pollsResult, currentUser] = await Promise.all([
     callApi(token, 'GET', `/${id}`),
-    getPolls(token, { mine: true, limit: 100 })
+    getPolls(token, { mine: true, limit: 100 }),
+    getRequestProfile(req, token)
   ]);
   const event = eventFrom(eventResult);
+  const ownerId = eventOwnerId(event);
+  const currentUserId = idFrom(currentUser);
+  const canEdit = event.can_edit === true || event.canEdit === true;
+  if (!canEdit && (ownerId === null || currentUserId === null || ownerId !== currentUserId)) {
+    return res.status(403).render('errors/403', { title: 'Forbidden' });
+  }
   const polls = collectionFrom(pollsResult)
     .map((poll) => eventPollFrom(poll, id))
     .filter(Boolean);
 
   res.render('events/polls', {
-    title: 'Polls for this event',
+    title: res.locals.t('govuk_alpha_events.polls.title'),
     activeNav: 'events',
     event: {
       id,
-      title: trimmed(event.title) || 'Polls'
+      title: trimmed(event.title) || res.locals.t('govuk_alpha_events.polls.caption')
     },
     polls,
     status: trimmed(req.query.status),
