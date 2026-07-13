@@ -635,6 +635,7 @@ rewriting.
 
 ### Jobs member-page evidence
 
+- Current post-slice integration checkpoint: `tests/shared-accessible-shell.test.js` passes `728/728` in `61.1s`; lint, brand, and both static localization gates pass with 6,572 references, 4,975 unique keys, and zero unresolved or conservative template matches.
 - `views/jobs.blade.php` and `partials/job-card.blade.php` now map to the browse route/template with Blade's tenant caption, catalog-backed filters/results/cards, single empty fallback on non-auth load failure, and next-page icon/semantics. Focused default-English populated, signed-out, and failure rendering is green.
 - `views/job-detail.blade.php` now resolves owner identity from Laravel `/api/v2/users/me`, shows owner management rather than save/apply controls, and renders the optional Laravel `/api/v2/jobs/{id}/match` result with Blade's catalog and progress semantics. Type, commitment, remote, and caption fallbacks are catalog/tenant backed. Similar-opportunity rendering and a public CV-upload configuration contract remain open because Laravel exposes no equivalent member-facing API data for them.
 - `views/jobs-saved.blade.php`, `partials/job-card.blade.php`, and `AlphaController::savedJobs()` now map to `src/routes/jobs.js` and `src/views/jobs/saved.njk` with Blade's tenant caption, catalog-backed card labels and plural counts, single empty fallback on non-auth load failure, unsave control, and next-page icon/semantics. Focused default-English rendering is green; broader gaps remain tracked in the Jobs workflows row.
