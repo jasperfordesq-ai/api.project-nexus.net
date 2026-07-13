@@ -952,6 +952,21 @@ router.post('/:id(\\d+)/recurrence-definition-blueprints/commit', requireAuth, a
   }
 }));
 
+async function transitionEventPublication(req, res, action) {
+  const id = Number(req.params.id);
+  try {
+    await callApi(tokenFrom(req), 'POST', `/${id}/${action === 'submit' ? 'submit' : 'publish'}`);
+    return redirectTo(res, eventPath(id, `?status=${action === 'submit' ? 'event-submitted' : 'event-published'}`));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    if (error instanceof ApiError && [400, 403, 404, 409, 422, 429, 503].includes(error.status)) return redirectTo(res, eventPath(id, '?status=event-publication-failed'));
+    throw error;
+  }
+}
+
+router.post('/:id(\\d+)/submit', requireAuth, asyncRoute(async (req, res) => transitionEventPublication(req, res, 'submit')));
+router.post('/:id(\\d+)/publish', requireAuth, asyncRoute(async (req, res) => transitionEventPublication(req, res, 'publish')));
+
 router.get('/:id(\\d+)/check-in/credential', requireAuth, asyncRoute(async (req, res) => {
   return renderOfflineCredential(req, res, Number(req.params.id));
 }, { notFoundTitle: 'Event not found' }));

@@ -131,6 +131,16 @@ render, permission, exact-payload, and confirmation proof passes. Live
 future-occurrence effects, wider role fixtures, manual assistive-technology
 review, and unchanged ASP.NET runtime proof remain open.
 
+## 2026-07-13 Event Publication Transitions Checkpoint
+
+The event detail now exposes Laravel's submit-for-review or direct-publish
+transition only when that exact capability is present in the canonical event
+projection and the event is not archived. Both POST routes call Laravel's
+publication workflow and preserve its success/conflict outcomes. Focused
+capability/render and exact-endpoint proof passes. Live review-policy variants,
+moderator handoff, manual assistive-technology review, and unchanged ASP.NET
+runtime proof remain open.
+
 ## Purpose
 
 This audit lists reusable Laravel Blade accessible frontend patterns that should

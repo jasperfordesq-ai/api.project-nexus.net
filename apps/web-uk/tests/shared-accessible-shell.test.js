@@ -23479,7 +23479,7 @@ describe('shared accessible frontend shell', () => {
         attendee_count: 3,
         max_attendees: 20,
         start_time: '2026-08-01T10:00:00',
-        permissions: { manage_people: true, check_in: true }
+        permissions: { manage_people: true, check_in: true, submit_for_review: true }
       }
     });
     api.getEventRsvps.mockResolvedValueOnce({ data: [] });
@@ -23505,6 +23505,18 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('No RSVPs yet. Be the first to respond!');
     expect(response.text).toContain('href="/events/42/people"');
     expect(response.text).toContain('href="/events/42/check-in"');
+    expect(response.text).toContain('action="/events/42/submit"');
+    expect(response.text).toContain('Submit for review');
+  });
+
+  it('submits and publishes events through Laravel publication transitions', async () => {
+    const api = require('../src/lib/api'); const agent = request.agent(app); const shell = await agent.get('/contact').set('Cookie', signedCookieHeader()); const csrf = shell.text.match(/name="_csrf" value="([^"]+)"/)[1];
+    for (const [action, status] of [['submit', 'event-submitted'], ['publish', 'event-published']]) {
+      api.callEventApi.mockResolvedValueOnce({ data: { id: 42 } });
+      const response = await agent.post(`/events/42/${action}`).set('Cookie', signedCookieHeader()).type('form').send({ _csrf: csrf });
+      expect(response.headers.location).toBe(`/events/42?status=${status}`);
+      expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', `/42/${action}`);
+    }
   });
 
   it('hides registration mutations from attendance-only Event People staff', async () => {

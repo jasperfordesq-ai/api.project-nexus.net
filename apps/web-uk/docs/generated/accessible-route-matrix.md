@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-13T03:23:54.577Z
+Generated: 2026-07-13T03:27:03.622Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 687 |
-| web-uk routes | 674 |
-| Matched routes | 671 |
-| Missing routes | 16 |
+| web-uk routes | 676 |
+| Matched routes | 673 |
+| Missing routes | 14 |
 | Extra web-uk routes | 1 |
 | Ignored web-uk infrastructure routes | 3 |
 
@@ -32,7 +32,7 @@ Generated: 2026-07-13T03:23:54.577Z
 | courses | 26 | 0 | 0 | 0 |
 | dashboard | 1 | 0 | 0 | 0 |
 | event-templates | 0 | 4 | 0 | 0 |
-| events | 82 | 12 | 0 | 0 |
+| events | 84 | 10 | 0 | 0 |
 | exchanges | 4 | 0 | 0 | 0 |
 | explore | 1 | 0 | 0 | 0 |
 | faq | 1 | 0 | 0 | 0 |
@@ -99,9 +99,7 @@ Generated: 2026-07-13T03:23:54.577Z
 | GET | `/events/moderation/{param}/reject` | events | eventsModerationRejectConfirmation |  | public-or-unknown |  |
 | GET | `/events/templates` | events | eventsTemplates | event-templates | public-or-unknown |  |
 | POST | `/events/{param}/check-in/code` | events | eventsOfflineCheckinCode |  | public-or-unknown |  |
-| POST | `/events/{param}/publish` | events | publishEvent |  | public-or-unknown |  |
 | POST | `/events/{param}/recurring-edit/commit` | events | eventsCommitRecurringRevision |  | public-or-unknown |  |
-| POST | `/events/{param}/submit` | events | submitEventForReview |  | public-or-unknown |  |
 | POST | `/events/{param}/templates` | events | eventsTemplateCapture |  | public-or-unknown |  |
 | POST | `/events/moderation/{param}/approve` | events | eventsModerationApprove |  | public-or-unknown |  |
 | POST | `/events/moderation/{param}/reject` | events | eventsModerationReject |  | public-or-unknown |  |

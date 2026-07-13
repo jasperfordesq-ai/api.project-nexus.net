@@ -1,12 +1,12 @@
 {
   "summary": {
-    "generatedAt": "2026-07-13T03:23:54.577Z",
+    "generatedAt": "2026-07-13T03:27:03.622Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\platforms\\htdocs\\asp.net-backend",
     "laravelRoutes": 687,
-    "webUkRoutes": 674,
-    "matchedRoutes": 671,
-    "missingRoutes": 16,
+    "webUkRoutes": 676,
+    "matchedRoutes": 673,
+    "missingRoutes": 14,
     "extraWebUkRoutes": 1,
     "ignoredInfrastructureRoutes": 3,
     "familyCounts": {
@@ -131,8 +131,8 @@
         "ignoredInfrastructure": 0
       },
       "events": {
-        "matched": 82,
-        "missing": 12,
+        "matched": 84,
+        "missing": 10,
         "extraWebUk": 0,
         "ignoredInfrastructure": 0
       },
@@ -3009,6 +3009,28 @@
     },
     {
       "method": "POST",
+      "path": "/events/{param}/publish",
+      "family": "events",
+      "status": "matched",
+      "laravelRouteName": "events.publish",
+      "laravelHandler": "publishEvent",
+      "laravelView": "",
+      "laravelParamConstraints": [
+        "number"
+      ],
+      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha.php",
+      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\AlphaController.php",
+      "laravelMiddleware": "'throttle:10,1'",
+      "auth": "public-or-unknown",
+      "tenantScoped": "unknown",
+      "gates": "",
+      "apiNeeds": "",
+      "webUkPath": "/events/{param}/publish",
+      "webUkView": "",
+      "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\routes\\events.js"
+    },
+    {
+      "method": "POST",
       "path": "/events/{param}/recurrence-definition-blueprints/commit",
       "family": "events",
       "status": "matched",
@@ -3591,6 +3613,28 @@
       "gates": "feature:events",
       "apiNeeds": "",
       "webUkPath": "/events/{param}/safety",
+      "webUkView": "",
+      "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\routes\\events.js"
+    },
+    {
+      "method": "POST",
+      "path": "/events/{param}/submit",
+      "family": "events",
+      "status": "matched",
+      "laravelRouteName": "events.submit",
+      "laravelHandler": "submitEventForReview",
+      "laravelView": "",
+      "laravelParamConstraints": [
+        "number"
+      ],
+      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha.php",
+      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\AlphaController.php",
+      "laravelMiddleware": "'throttle:10,1'",
+      "auth": "public-or-unknown",
+      "tenantScoped": "unknown",
+      "gates": "",
+      "apiNeeds": "",
+      "webUkPath": "/events/{param}/submit",
       "webUkView": "",
       "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\routes\\events.js"
     },
@@ -15025,28 +15069,6 @@
     },
     {
       "method": "POST",
-      "path": "/events/{param}/publish",
-      "family": "events",
-      "status": "missing",
-      "laravelRouteName": "events.publish",
-      "laravelHandler": "publishEvent",
-      "laravelView": "",
-      "laravelParamConstraints": [
-        "number"
-      ],
-      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha.php",
-      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\AlphaController.php",
-      "laravelMiddleware": "'throttle:10,1'",
-      "auth": "public-or-unknown",
-      "tenantScoped": "unknown",
-      "gates": "",
-      "apiNeeds": "",
-      "webUkPath": "",
-      "webUkView": "",
-      "webUkFile": ""
-    },
-    {
-      "method": "POST",
       "path": "/events/{param}/recurring-edit/commit",
       "family": "events",
       "status": "missing",
@@ -15058,28 +15080,6 @@
       ],
       "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\events.php",
       "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventsParity.php",
-      "laravelMiddleware": "'throttle:10,1'",
-      "auth": "public-or-unknown",
-      "tenantScoped": "unknown",
-      "gates": "",
-      "apiNeeds": "",
-      "webUkPath": "",
-      "webUkView": "",
-      "webUkFile": ""
-    },
-    {
-      "method": "POST",
-      "path": "/events/{param}/submit",
-      "family": "events",
-      "status": "missing",
-      "laravelRouteName": "events.submit",
-      "laravelHandler": "submitEventForReview",
-      "laravelView": "",
-      "laravelParamConstraints": [
-        "number"
-      ],
-      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha.php",
-      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\AlphaController.php",
       "laravelMiddleware": "'throttle:10,1'",
       "auth": "public-or-unknown",
       "tenantScoped": "unknown",

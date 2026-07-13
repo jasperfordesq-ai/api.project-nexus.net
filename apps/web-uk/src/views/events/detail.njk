@@ -66,6 +66,18 @@
         {% endif %}
       </div>
 
+      {% set publicationPermissions = event.permissions or {} %}
+      {% if not (event.isArchived or event.is_archived) and (publicationPermissions.submit_for_review or publicationPermissions.publish) %}
+        {% set publicationAction = "submit" if publicationPermissions.submit_for_review else "publish" %}
+        <details class="govuk-details govuk-!-margin-bottom-4">
+          <summary class="govuk-details__summary"><span class="govuk-details__summary-text">{{ t("govuk_alpha.events.submit_for_review" if publicationAction == "submit" else "govuk_alpha.events.publish_event") }}</span></summary>
+          <div class="govuk-details__text">
+            <p class="govuk-body">{{ t("govuk_alpha.events.publication_submit_confirm" if publicationAction == "submit" else "govuk_alpha.events.publication_publish_confirm") }}</p>
+            <form method="post" action="{{ urlFor('/events/' + (event.id | string) + '/' + publicationAction) }}"><input type="hidden" name="_csrf" value="{{ csrfToken }}"><button class="govuk-button govuk-!-margin-bottom-0">{{ t("govuk_alpha.events.submit_for_review" if publicationAction == "submit" else "govuk_alpha.events.publish_event") }}</button></form>
+          </div>
+        </details>
+      {% endif %}
+
       {% if (event.isCancelled or event.is_cancelled) %}
         {{ govukWarningText({
           text: t("events.polish_events.cancelled_banner_heading"),
