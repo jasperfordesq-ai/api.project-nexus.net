@@ -22767,6 +22767,49 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('Capacity');
   });
 
+  it('renders waitlist controls only from Laravel relationship capabilities', async () => {
+    const api = require('../src/lib/api');
+    const event = {
+      data: { id: 42, title: 'Community garden day', description: 'Planting and tea', start_time: '2026-08-01T10:00:00' }
+    };
+    api.getEvent.mockResolvedValueOnce(event).mockResolvedValueOnce(event).mockResolvedValueOnce(event);
+    api.getEventRsvps.mockResolvedValue({ data: [] });
+    api.callEventApi
+      .mockResolvedValueOnce({
+        data: {
+          waitlist: { state: 'offered', position: 1, offer_active: true },
+          actions: { accept_offer: true, leave_waitlist: true }
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          waitlist: { state: 'waiting', position: 3 },
+          actions: { leave_waitlist: true }
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          waitlist: { state: 'none' },
+          actions: { join_waitlist: true }
+        }
+      });
+
+    const offered = await request(app).get('/events/42').set('Cookie', signedCookieHeader());
+    const waiting = await request(app).get('/events/42').set('Cookie', signedCookieHeader());
+    const joinable = await request(app).get('/events/42').set('Cookie', signedCookieHeader());
+
+    expect(offered.status).toBe(200);
+    expect(offered.text).toContain('action="/events/42/waitlist/accept"');
+    expect(offered.text).toContain('action="/events/42/waitlist/leave"');
+    expect(offered.text).not.toContain('action="/events/42/rsvp"');
+    expect(waiting.text).toContain('action="/events/42/waitlist/leave"');
+    expect(waiting.text).toContain('You are number 3 on the waitlist.');
+    expect(waiting.text).not.toContain('action="/events/42/waitlist/accept"');
+    expect(joinable.text).toContain('action="/events/42/waitlist"');
+    expect(joinable.text).not.toContain('action="/events/42/waitlist/leave"');
+    expect(api.callEventApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/42/relationship');
+  });
+
   it('rejects unsafe external links from Laravel event detail payloads', async () => {
     const api = require('../src/lib/api');
 

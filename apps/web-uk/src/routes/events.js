@@ -384,6 +384,25 @@ function eventPerson(row = {}) {
   };
 }
 
+function eventRelationship(result) {
+  const row = dataFrom(result);
+  if (!row || typeof row !== 'object') return null;
+  const registration = row.registration && typeof row.registration === 'object' ? row.registration : {};
+  const waitlist = row.waitlist && typeof row.waitlist === 'object' ? row.waitlist : {};
+  const actions = row.actions && typeof row.actions === 'object' ? row.actions : {};
+  return {
+    registrationState: trimmed(registration.state),
+    waitlistState: selectedValue(waitlist.state, PEOPLE_FILTERS.waitlist_state, 'none'),
+    waitlistPosition: positiveInteger(waitlist.position),
+    offerActive: checked(waitlist.offer_active),
+    canConfirm: checked(actions.confirm),
+    canWithdraw: checked(actions.withdraw),
+    canJoinWaitlist: checked(actions.join_waitlist),
+    canLeaveWaitlist: checked(actions.leave_waitlist),
+    canAcceptOffer: checked(actions.accept_offer)
+  };
+}
+
 function occurrenceFrom(item, currentEventId) {
   const row = item && typeof item === 'object' ? item : {};
   const id = positiveInteger(row.id);
@@ -1113,10 +1132,14 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
   const { id } = req.params;
   const token = tokenFrom(req);
 
-  const [eventResult, rsvpsResult, currentUserResult] = await Promise.all([
+  const [eventResult, rsvpsResult, currentUserResult, relationshipResult] = await Promise.all([
     getEvent(token, id),
     getEventRsvps(token, id).catch(() => ({ data: [] })),
     token ? getRequestProfile(req, token).catch((error) => {
+      if (isAuthError(error)) throw error;
+      return null;
+    }) : Promise.resolve(null),
+    token ? callApi(token, 'GET', `/${id}/relationship`).catch((error) => {
       if (isAuthError(error)) throw error;
       return null;
     }) : Promise.resolve(null)
@@ -1153,6 +1176,7 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
     title: event.title,
     event,
     myRsvp,
+    relationship: eventRelationship(relationshipResult),
     rsvpsByStatus,
     isAuthenticated: Boolean(token),
     successMessage: req.flash ? req.flash('success')[0] : null,

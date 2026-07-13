@@ -145,7 +145,18 @@
       {% if isAuthenticated and not (event.isCancelled or event.is_cancelled) and not (event.isPast or event.is_past) %}
         <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
 
-        <form action="{{ urlFor('/events/' + (event.id | string) + '/rsvp') }}" method="post">
+        {% if relationship and (relationship.offerActive or relationship.waitlistState == "offered") %}
+          <section aria-labelledby="waitlist-heading"><h2 class="govuk-heading-m" id="waitlist-heading">{{ t("govuk_alpha.events.waitlist_offer_title") }}</h2><div class="govuk-inset-text"><p class="govuk-body govuk-!-margin-bottom-0">{{ t("govuk_alpha.events.waitlist_offer_description") }}</p></div><div class="govuk-button-group">
+            {% if relationship.canAcceptOffer %}<form method="post" action="{{ urlFor('/events/' + (event.id | string) + '/waitlist/accept') }}"><input type="hidden" name="_csrf" value="{{ csrfToken }}"><input type="hidden" name="idempotency_key" value="event-{{ event.id }}-waitlist-offer"><button class="govuk-button govuk-!-margin-bottom-0">{{ t("govuk_alpha.events.waitlist_offer_accept") }}</button></form>{% endif %}
+            {% if relationship.canLeaveWaitlist %}<details class="govuk-details govuk-!-margin-bottom-0"><summary class="govuk-details__summary"><span class="govuk-details__summary-text">{{ t("govuk_alpha.events.waitlist_offer_decline") }}</span></summary><div class="govuk-details__text"><form method="post" action="{{ urlFor('/events/' + (event.id | string) + '/waitlist/leave') }}"><input type="hidden" name="_csrf" value="{{ csrfToken }}"><button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0">{{ t("govuk_alpha.events.waitlist_offer_decline") }}</button></form></div></details>{% endif %}
+          </div></section>
+        {% elif relationship and relationship.waitlistState == "waiting" %}
+          <section aria-labelledby="waitlist-heading"><h2 class="govuk-heading-m" id="waitlist-heading">{{ t("govuk_alpha.events.waitlist_heading") }}</h2><div class="govuk-inset-text"><p class="govuk-body govuk-!-margin-bottom-1">{{ t("govuk_alpha.events.waitlist_on_list_note") }}</p>{% if relationship.waitlistPosition %}<p class="govuk-body govuk-!-margin-bottom-0 govuk-!-font-weight-bold">{{ t("govuk_alpha.events.waitlist_position", { position: relationship.waitlistPosition }) }}</p>{% endif %}</div>{% if relationship.canLeaveWaitlist %}<form method="post" action="{{ urlFor('/events/' + (event.id | string) + '/waitlist/leave') }}"><input type="hidden" name="_csrf" value="{{ csrfToken }}"><button class="govuk-button govuk-button--warning">{{ t("govuk_alpha.events.waitlist_leave") }}</button></form>{% endif %}</section>
+        {% elif relationship and relationship.canJoinWaitlist %}
+          <section aria-labelledby="waitlist-heading"><h2 class="govuk-heading-m" id="waitlist-heading">{{ t("govuk_alpha.events.waitlist_heading") }}</h2><p class="govuk-body">{{ t("govuk_alpha.events.waitlist_full_note") }}</p><form method="post" action="{{ urlFor('/events/' + (event.id | string) + '/waitlist') }}"><input type="hidden" name="_csrf" value="{{ csrfToken }}"><button class="govuk-button">{{ t("govuk_alpha.events.waitlist_join") }}</button></form></section>
+        {% endif %}
+
+        {% if not relationship or not (relationship.offerActive or relationship.waitlistState == "offered") %}<form action="{{ urlFor('/events/' + (event.id | string) + '/rsvp') }}" method="post">
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
           {{ govukRadios({
             name: "status",
@@ -176,7 +187,7 @@
             ]
           }) }}
           {{ govukButton({ text: t("actions.rsvp") }) }}
-        </form>
+        </form>{% endif %}
       {% elif not isAuthenticated and not (event.isCancelled or event.is_cancelled) and not (event.isPast or event.is_past) %}
         <div class="govuk-inset-text">
           <a class="govuk-link" href="{{ urlFor('/login') }}">{{ t("nav.login") }}</a>. {{ t("events.auth_required_detail", { community: tenantName or serviceName }) }}
