@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-13T03:16:15.861Z
+Generated: 2026-07-13T03:23:54.577Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 687 |
-| web-uk routes | 671 |
-| Matched routes | 668 |
-| Missing routes | 19 |
+| web-uk routes | 674 |
+| Matched routes | 671 |
+| Missing routes | 16 |
 | Extra web-uk routes | 1 |
 | Ignored web-uk infrastructure routes | 3 |
 
@@ -32,7 +32,7 @@ Generated: 2026-07-13T03:16:15.861Z
 | courses | 26 | 0 | 0 | 0 |
 | dashboard | 1 | 0 | 0 | 0 |
 | event-templates | 0 | 4 | 0 | 0 |
-| events | 79 | 15 | 0 | 0 |
+| events | 82 | 12 | 0 | 0 |
 | exchanges | 4 | 0 | 0 | 0 |
 | explore | 1 | 0 | 0 | 0 |
 | faq | 1 | 0 | 0 | 0 |
@@ -93,7 +93,6 @@ Generated: 2026-07-13T03:16:15.861Z
 | GET | `/event-templates/{param}/materialize` | event-templates | eventsTemplateMaterializeForm |  | public-or-unknown |  |
 | POST | `/event-templates/{param}/materialize` | event-templates | eventsTemplateMaterialize |  | public-or-unknown |  |
 | POST | `/event-templates/{param}/materialize/preview` | event-templates | eventsTemplateMaterializePreview |  | public-or-unknown |  |
-| GET | `/events/{param}/recurrence-definition-blueprints` | events | eventsRecurrenceDefinitionBlueprints | event-recurrence-blueprints | public-or-unknown |  |
 | GET | `/events/{param}/template-preview` | events | eventsTemplateCapturePreview | event-template-capture-preview | public-or-unknown |  |
 | GET | `/events/moderation` | events | eventsModerationQueue | event-moderation-queue | public-or-unknown |  |
 | GET | `/events/moderation/{param}/approve` | events | eventsModerationApproveConfirmation |  | public-or-unknown |  |
@@ -101,8 +100,6 @@ Generated: 2026-07-13T03:16:15.861Z
 | GET | `/events/templates` | events | eventsTemplates | event-templates | public-or-unknown |  |
 | POST | `/events/{param}/check-in/code` | events | eventsOfflineCheckinCode |  | public-or-unknown |  |
 | POST | `/events/{param}/publish` | events | publishEvent |  | public-or-unknown |  |
-| POST | `/events/{param}/recurrence-definition-blueprints/commit` | events | eventsCommitRecurrenceDefinitions |  | public-or-unknown |  |
-| POST | `/events/{param}/recurrence-definition-blueprints/preview` | events | eventsPreviewRecurrenceDefinitions | event-recurrence-blueprints | public-or-unknown |  |
 | POST | `/events/{param}/recurring-edit/commit` | events | eventsCommitRecurringRevision |  | public-or-unknown |  |
 | POST | `/events/{param}/submit` | events | submitEventForReview |  | public-or-unknown |  |
 | POST | `/events/{param}/templates` | events | eventsTemplateCapture |  | public-or-unknown |  |

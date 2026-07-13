@@ -22450,6 +22450,35 @@ describe('shared accessible frontend shell', () => {
     expect(api.callEventApi).toHaveBeenNthCalledWith(1, 'test-token', 'POST', '/42/registration-product/campaigns/preview', { campaign_type: 'member', source: { member_ids: [7, 8, 9] }, default_locale: 'en' }, { headers: { 'Idempotency-Key': 'campaign-preview-123' } });
   });
 
+  it('renders and previews Laravel recurrence definition blueprints from permitted sections', async () => {
+    const api = require('../src/lib/api'); const agent = request.agent(app); const shell = await agent.get('/contact').set('Cookie', signedCookieHeader()); const csrf = shell.text.match(/name="_csrf" value="([^"]+)"/)[1];
+    const event = { id: 42, title: 'Community garden day', permissions: { manage_agenda: true, manage_finance: false, manage_registration: true, edit: true, manage_staff: false }, series: { recurrence: { recurrence_id: '20260801T090000Z' } } };
+    api.callEventApi
+      .mockResolvedValueOnce({ data: event })
+      .mockResolvedValueOnce({ data: { items: [{ blueprint_version: 2, effective_from_recurrence_id: '20260701T090000Z', selected_sections: { agenda: true } }], next_before_version: null } });
+    const page = await agent.get('/events/42/recurrence-definition-blueprints').set('Cookie', signedCookieHeader());
+    expect(page.status).toBe(200); expect(page.text).toContain('20260801T090000Z'); expect(page.text).toContain('name="sections" type="checkbox" value="staff" disabled');
+    api.callEventApi
+      .mockResolvedValueOnce({ data: event })
+      .mockResolvedValueOnce({ data: { items: [], next_before_version: null } })
+      .mockResolvedValueOnce({ data: { preview_token: 'signed-preview', can_commit: true, selected_sections: { agenda: true, ticket_types: false, registration: true, safety: false, staff: false }, counts: { agenda_sessions: 2 }, conflicts: [] } });
+    const preview = await agent.post('/events/42/recurrence-definition-blueprints/preview').set('Cookie', signedCookieHeader()).type('form').send({ _csrf: csrf, sections: ['agenda', 'registration'] });
+    expect(preview.status).toBe(200); expect(preview.text).toContain('value="signed-preview"'); expect(preview.text).toContain('/events/42/recurrence-definition-blueprints/commit');
+    expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/recurrence-definition-blueprints/preview', { effective_from_recurrence_id: '20260801T090000Z', sections: { agenda: true, ticket_types: false, registration: true, safety: false, staff: false } });
+  });
+
+  it('commits Laravel recurrence definition blueprints only after explicit confirmation', async () => {
+    const api = require('../src/lib/api'); const agent = request.agent(app); const shell = await agent.get('/contact').set('Cookie', signedCookieHeader()); const csrf = shell.text.match(/name="_csrf" value="([^"]+)"/)[1];
+    const event = { id: 42, permissions: { manage_agenda: true }, series: { recurrence: { recurrence_id: '20260801T090000Z' } } };
+    api.callEventApi.mockResolvedValueOnce({ data: event });
+    const rejected = await agent.post('/events/42/recurrence-definition-blueprints/commit').set('Cookie', signedCookieHeader()).type('form').send({ _csrf: csrf, idempotency_key: 'blueprint-commit-123', preview_token: 'signed-preview', sections: 'agenda' });
+    expect(rejected.headers.location).toBe('/events/42/recurrence-definition-blueprints?status=invalid');
+    api.callEventApi.mockResolvedValueOnce({ data: event }).mockResolvedValueOnce({ data: { blueprint_version: 3, idempotent_replay: false } });
+    const committed = await agent.post('/events/42/recurrence-definition-blueprints/commit').set('Cookie', signedCookieHeader()).type('form').send({ _csrf: csrf, idempotency_key: 'blueprint-commit-123', preview_token: 'signed-preview', sections: 'agenda', confirm_definition_version: '1' });
+    expect(committed.headers.location).toBe('/events/42/recurrence-definition-blueprints?status=created&version=3');
+    expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/recurrence-definition-blueprints/commit', { effective_from_recurrence_id: '20260801T090000Z', sections: { agenda: true, ticket_types: false, registration: false, safety: false, staff: false }, preview_token: 'signed-preview' }, { headers: { 'Idempotency-Key': 'blueprint-commit-123' } });
+  });
+
   it('issues, schedules and cancels Laravel invitation campaigns with exact revisions', async () => {
     const api = require('../src/lib/api'); const agent = request.agent(app); const shell = await agent.get('/contact').set('Cookie', signedCookieHeader()); const csrf = shell.text.match(/name="_csrf" value="([^"]+)"/)[1];
     for (const [action, extra, status] of [['issue', { expires_at: '2026-08-30T17:00' }, 'campaign-issued'], ['schedule', { scheduled_for: '2026-08-01T09:00' }, 'campaign-scheduled'], ['cancel', { reason: 'Audience changed' }, 'campaign-cancelled']]) {

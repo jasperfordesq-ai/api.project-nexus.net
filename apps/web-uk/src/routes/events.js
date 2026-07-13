@@ -876,6 +876,82 @@ router.post('/:id(\\d+)/waitlist/leave', asyncRoute(async (req, res) => {
   );
 }));
 
+const RECURRENCE_BLUEPRINT_SECTIONS = ['agenda', 'ticket_types', 'registration', 'safety', 'staff'];
+
+function recurrenceBlueprintContext(result) {
+  const event = eventFrom(result);
+  const permissions = event.permissions && typeof event.permissions === 'object' ? event.permissions : {};
+  const recurrence = event.series?.recurrence || event.recurrence || {};
+  const recurrenceId = trimmed(recurrence.recurrence_id || recurrence.recurrenceId, 32);
+  const allowedSections = {
+    agenda: permissions.manage_agenda === true,
+    ticket_types: permissions.manage_finance === true,
+    registration: permissions.manage_registration === true,
+    safety: permissions.edit === true,
+    staff: permissions.manage_staff === true
+  };
+  return { event, recurrenceId, allowedSections };
+}
+
+function recurrenceBlueprintSections(body, allowed) {
+  const raw = body.sections;
+  const values = Array.isArray(raw) ? raw : (typeof raw === 'string' ? [raw] : []);
+  const unique = [...new Set(values.map((value) => trimmed(value)).filter(Boolean))];
+  if (!unique.length || unique.some((value) => !RECURRENCE_BLUEPRINT_SECTIONS.includes(value) || allowed[value] !== true)) return null;
+  return Object.fromEntries(RECURRENCE_BLUEPRINT_SECTIONS.map((section) => [section, unique.includes(section)]));
+}
+
+async function recurrenceBlueprintState(token, id, beforeVersion = null) {
+  const suffix = beforeVersion ? `?limit=10&before_version=${beforeVersion}` : '?limit=10';
+  const [eventResult, historyResult] = await Promise.all([callApi(token, 'GET', `/${id}`), callApi(token, 'GET', `/${id}/recurrence-definition-blueprints${suffix}`)]);
+  const context = recurrenceBlueprintContext(eventResult);
+  return { ...context, history: dataFrom(historyResult) || { items: [], next_before_version: null } };
+}
+
+function renderRecurrenceBlueprints(req, res, state, extras = {}) {
+  res.set('Cache-Control', 'private, no-store');
+  res.set('Pragma', 'no-cache');
+  res.set('Referrer-Policy', 'no-referrer');
+  return res.render('events/recurrence-blueprints', { title: res.locals.t('event_recurrence_blueprints.title'), activeNav: 'events', event: state.event, recurrenceId: state.recurrenceId, allowedSections: state.allowedSections, history: state.history, selectedSections: state.allowedSections, preview: null, idempotencyKey: randomUUID(), csrfToken: req.csrfToken ? req.csrfToken() : '', status: trimmed(req.query.status), statusVersion: positiveInteger(req.query.version), ...extras });
+}
+
+router.get('/:id(\\d+)/recurrence-definition-blueprints', requireAuth, asyncRoute(async (req, res) => {
+  const id = Number(req.params.id); const beforeVersion = positiveInteger(req.query.before_version);
+  if (req.query.before_version && !beforeVersion) return redirectTo(res, eventPath(id, '/recurrence-definition-blueprints?status=invalid'));
+  const state = await recurrenceBlueprintState(tokenFrom(req), id, beforeVersion);
+  return renderRecurrenceBlueprints(req, res, state);
+}, { notFoundTitle: 'Event not found' }));
+
+router.post('/:id(\\d+)/recurrence-definition-blueprints/preview', requireAuth, asyncRoute(async (req, res) => {
+  const id = Number(req.params.id); const token = tokenFrom(req);
+  try {
+    const state = await recurrenceBlueprintState(token, id);
+    const sections = recurrenceBlueprintSections(req.body, state.allowedSections);
+    if (!sections || !/^\d{8}T\d{6}Z$/.test(state.recurrenceId)) return redirectTo(res, eventPath(id, '/recurrence-definition-blueprints?status=invalid'));
+    const result = dataFrom(await callApi(token, 'POST', `/${id}/recurrence-definition-blueprints/preview`, { effective_from_recurrence_id: state.recurrenceId, sections })) || {};
+    return renderRecurrenceBlueprints(req, res, state, { preview: result, selectedSections: sections, status: null });
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    if (error instanceof ApiError && [400, 403, 404, 409, 422, 429, 503].includes(error.status)) return redirectTo(res, eventPath(id, '/recurrence-definition-blueprints?status=failed'));
+    throw error;
+  }
+}));
+
+router.post('/:id(\\d+)/recurrence-definition-blueprints/commit', requireAuth, asyncRoute(async (req, res) => {
+  const id = Number(req.params.id); const token = tokenFrom(req); const key = trimmed(req.body.idempotency_key, 191); const previewToken = trimmed(req.body.preview_token, 8192);
+  try {
+    const eventResult = await callApi(token, 'GET', `/${id}`); const context = recurrenceBlueprintContext(eventResult); const sections = recurrenceBlueprintSections(req.body, context.allowedSections);
+    if (!checked(req.body.confirm_definition_version) || !key || !previewToken || !sections || !/^\d{8}T\d{6}Z$/.test(context.recurrenceId)) return redirectTo(res, eventPath(id, '/recurrence-definition-blueprints?status=invalid'));
+    const result = dataFrom(await callEventMutation(token, 'POST', `/${id}/recurrence-definition-blueprints/commit`, { effective_from_recurrence_id: context.recurrenceId, sections, preview_token: previewToken }, key)) || {};
+    const status = result.idempotent_replay ? 'replayed' : 'created'; const version = positiveInteger(result.blueprint_version);
+    return redirectTo(res, eventPath(id, `/recurrence-definition-blueprints?status=${status}${version ? `&version=${version}` : ''}`));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    if (error instanceof ApiError && [400, 403, 404, 409, 422, 429, 503].includes(error.status)) return redirectTo(res, eventPath(id, '/recurrence-definition-blueprints?status=failed'));
+    throw error;
+  }
+}));
+
 router.get('/:id(\\d+)/check-in/credential', requireAuth, asyncRoute(async (req, res) => {
   return renderOfflineCredential(req, res, Number(req.params.id));
 }, { notFoundTitle: 'Event not found' }));

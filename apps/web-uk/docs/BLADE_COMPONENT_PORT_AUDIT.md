@@ -120,6 +120,17 @@ Focused render, exact-payload, revision, and confirmation proof passes. Live
 delivery and disposable retention effects, manual assistive-technology review,
 and unchanged ASP.NET runtime proof remain open.
 
+## 2026-07-13 Recurrence Definition Blueprints Checkpoint
+
+Eligible series managers now have Laravel's private definition-only propagation
+workflow: permission-scoped agenda, ticket, registration, safety, and staff
+sections; bounded immutable history; signed preview; conflict-aware commit; and
+explicit confirmation with an idempotency header. The effective occurrence ID
+comes from Laravel's event projection and preview tokens remain opaque. Focused
+render, permission, exact-payload, and confirmation proof passes. Live
+future-occurrence effects, wider role fixtures, manual assistive-technology
+review, and unchanged ASP.NET runtime proof remain open.
+
 ## Purpose
 
 This audit lists reusable Laravel Blade accessible frontend patterns that should

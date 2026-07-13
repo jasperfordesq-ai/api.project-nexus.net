@@ -1,12 +1,12 @@
 {
   "summary": {
-    "generatedAt": "2026-07-13T03:16:15.861Z",
+    "generatedAt": "2026-07-13T03:23:54.577Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\platforms\\htdocs\\asp.net-backend",
     "laravelRoutes": 687,
-    "webUkRoutes": 671,
-    "matchedRoutes": 668,
-    "missingRoutes": 19,
+    "webUkRoutes": 674,
+    "matchedRoutes": 671,
+    "missingRoutes": 16,
     "extraWebUkRoutes": 1,
     "ignoredInfrastructureRoutes": 3,
     "familyCounts": {
@@ -131,8 +131,8 @@
         "ignoredInfrastructure": 0
       },
       "events": {
-        "matched": 79,
-        "missing": 15,
+        "matched": 82,
+        "missing": 12,
         "extraWebUk": 0,
         "ignoredInfrastructure": 0
       },
@@ -2305,6 +2305,28 @@
     },
     {
       "method": "GET",
+      "path": "/events/{param}/recurrence-definition-blueprints",
+      "family": "events",
+      "status": "matched",
+      "laravelRouteName": "events.recurrence-definitions.index",
+      "laravelHandler": "eventsRecurrenceDefinitionBlueprints",
+      "laravelView": "event-recurrence-blueprints",
+      "laravelParamConstraints": [
+        "number"
+      ],
+      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\events.php",
+      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventsParity.php",
+      "laravelMiddleware": "",
+      "auth": "public-or-unknown",
+      "tenantScoped": "unknown",
+      "gates": "",
+      "apiNeeds": "",
+      "webUkPath": "/events/{param}/recurrence-definition-blueprints",
+      "webUkView": "",
+      "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\routes\\events.js"
+    },
+    {
+      "method": "GET",
       "path": "/events/{param}/recurring-edit",
       "family": "events",
       "status": "matched",
@@ -2987,6 +3009,50 @@
     },
     {
       "method": "POST",
+      "path": "/events/{param}/recurrence-definition-blueprints/commit",
+      "family": "events",
+      "status": "matched",
+      "laravelRouteName": "events.recurrence-definitions.commit",
+      "laravelHandler": "eventsCommitRecurrenceDefinitions",
+      "laravelView": "",
+      "laravelParamConstraints": [
+        "number"
+      ],
+      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\events.php",
+      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventsParity.php",
+      "laravelMiddleware": "'throttle:10,1'",
+      "auth": "public-or-unknown",
+      "tenantScoped": "unknown",
+      "gates": "",
+      "apiNeeds": "",
+      "webUkPath": "/events/{param}/recurrence-definition-blueprints/commit",
+      "webUkView": "",
+      "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\routes\\events.js"
+    },
+    {
+      "method": "POST",
+      "path": "/events/{param}/recurrence-definition-blueprints/preview",
+      "family": "events",
+      "status": "matched",
+      "laravelRouteName": "events.recurrence-definitions.preview",
+      "laravelHandler": "eventsPreviewRecurrenceDefinitions",
+      "laravelView": "event-recurrence-blueprints",
+      "laravelParamConstraints": [
+        "number"
+      ],
+      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\events.php",
+      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventsParity.php",
+      "laravelMiddleware": "'throttle:10,1'",
+      "auth": "public-or-unknown",
+      "tenantScoped": "unknown",
+      "gates": "",
+      "apiNeeds": "",
+      "webUkPath": "/events/{param}/recurrence-definition-blueprints/preview",
+      "webUkView": "",
+      "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\routes\\events.js"
+    },
+    {
+      "method": "POST",
       "path": "/events/{param}/recurring-edit",
       "family": "events",
       "status": "matched",
@@ -3659,7 +3725,7 @@
       "gates": "feature:events",
       "apiNeeds": "service:eventWaitlistService::withdrawCompatibility",
       "webUkPath": "/events/{param}/waitlist/leave",
-      "webUkView": "",
+      "webUkView": "events/recurrence-blueprints",
       "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\routes\\events.js"
     },
     {
@@ -14831,28 +14897,6 @@
     },
     {
       "method": "GET",
-      "path": "/events/{param}/recurrence-definition-blueprints",
-      "family": "events",
-      "status": "missing",
-      "laravelRouteName": "events.recurrence-definitions.index",
-      "laravelHandler": "eventsRecurrenceDefinitionBlueprints",
-      "laravelView": "event-recurrence-blueprints",
-      "laravelParamConstraints": [
-        "number"
-      ],
-      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\events.php",
-      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventsParity.php",
-      "laravelMiddleware": "",
-      "auth": "public-or-unknown",
-      "tenantScoped": "unknown",
-      "gates": "",
-      "apiNeeds": "",
-      "webUkPath": "",
-      "webUkView": "",
-      "webUkFile": ""
-    },
-    {
-      "method": "GET",
       "path": "/events/{param}/template-preview",
       "family": "events",
       "status": "missing",
@@ -14992,50 +15036,6 @@
       ],
       "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha.php",
       "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\AlphaController.php",
-      "laravelMiddleware": "'throttle:10,1'",
-      "auth": "public-or-unknown",
-      "tenantScoped": "unknown",
-      "gates": "",
-      "apiNeeds": "",
-      "webUkPath": "",
-      "webUkView": "",
-      "webUkFile": ""
-    },
-    {
-      "method": "POST",
-      "path": "/events/{param}/recurrence-definition-blueprints/commit",
-      "family": "events",
-      "status": "missing",
-      "laravelRouteName": "events.recurrence-definitions.commit",
-      "laravelHandler": "eventsCommitRecurrenceDefinitions",
-      "laravelView": "",
-      "laravelParamConstraints": [
-        "number"
-      ],
-      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\events.php",
-      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventsParity.php",
-      "laravelMiddleware": "'throttle:10,1'",
-      "auth": "public-or-unknown",
-      "tenantScoped": "unknown",
-      "gates": "",
-      "apiNeeds": "",
-      "webUkPath": "",
-      "webUkView": "",
-      "webUkFile": ""
-    },
-    {
-      "method": "POST",
-      "path": "/events/{param}/recurrence-definition-blueprints/preview",
-      "family": "events",
-      "status": "missing",
-      "laravelRouteName": "events.recurrence-definitions.preview",
-      "laravelHandler": "eventsPreviewRecurrenceDefinitions",
-      "laravelView": "event-recurrence-blueprints",
-      "laravelParamConstraints": [
-        "number"
-      ],
-      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\events.php",
-      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventsParity.php",
       "laravelMiddleware": "'throttle:10,1'",
       "auth": "public-or-unknown",
       "tenantScoped": "unknown",
