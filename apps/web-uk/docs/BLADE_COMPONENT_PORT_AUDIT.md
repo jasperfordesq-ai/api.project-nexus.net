@@ -19,6 +19,12 @@ schema blocker: authenticated feed queries reference missing MySQL column
 masked by Web UK. Remaining runtime quarters, disposable mutation proof, manual
 assistive-technology review, and unchanged ASP.NET operation remain open.
 
+Quarter three then reached a terminal `238`-check result. Its only Web UK drift
+was two current fixture markers (`/polls/8` and `/federation/partners/5`), now
+aligned and proven by a focused live `12/12` rerun. The four remaining failures
+are the same two feed-schema endpoints counted once for rendering and once for
+body content; no additional product regression was exposed.
+
 ## 2026-07-13 Laravel Runtime Classification Checkpoint
 
 The first quarter of the exhaustive Laravel runtime smoke exposed three
