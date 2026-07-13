@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-13T03:27:03.622Z
+Generated: 2026-07-13T03:37:57.752Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 687 |
-| web-uk routes | 676 |
-| Matched routes | 673 |
-| Missing routes | 14 |
+| web-uk routes | 683 |
+| Matched routes | 680 |
+| Missing routes | 7 |
 | Extra web-uk routes | 1 |
 | Ignored web-uk infrastructure routes | 3 |
 
@@ -31,8 +31,8 @@ Generated: 2026-07-13T03:27:03.622Z
 | coupons | 2 | 0 | 0 | 0 |
 | courses | 26 | 0 | 0 | 0 |
 | dashboard | 1 | 0 | 0 | 0 |
-| event-templates | 0 | 4 | 0 | 0 |
-| events | 84 | 10 | 0 | 0 |
+| event-templates | 4 | 0 | 0 | 0 |
+| events | 87 | 7 | 0 | 0 |
 | exchanges | 4 | 0 | 0 | 0 |
 | explore | 1 | 0 | 0 | 0 |
 | faq | 1 | 0 | 0 | 0 |
@@ -89,18 +89,11 @@ Generated: 2026-07-13T03:27:03.622Z
 
 | Method | Path | Family | Handler | Blade view | Auth | Gates |
 | --- | --- | --- | --- | --- | --- | --- |
-| GET | `/event-templates/{param}/history` | event-templates | eventsTemplateHistory | event-template-history | public-or-unknown |  |
-| GET | `/event-templates/{param}/materialize` | event-templates | eventsTemplateMaterializeForm |  | public-or-unknown |  |
-| POST | `/event-templates/{param}/materialize` | event-templates | eventsTemplateMaterialize |  | public-or-unknown |  |
-| POST | `/event-templates/{param}/materialize/preview` | event-templates | eventsTemplateMaterializePreview |  | public-or-unknown |  |
-| GET | `/events/{param}/template-preview` | events | eventsTemplateCapturePreview | event-template-capture-preview | public-or-unknown |  |
 | GET | `/events/moderation` | events | eventsModerationQueue | event-moderation-queue | public-or-unknown |  |
 | GET | `/events/moderation/{param}/approve` | events | eventsModerationApproveConfirmation |  | public-or-unknown |  |
 | GET | `/events/moderation/{param}/reject` | events | eventsModerationRejectConfirmation |  | public-or-unknown |  |
-| GET | `/events/templates` | events | eventsTemplates | event-templates | public-or-unknown |  |
 | POST | `/events/{param}/check-in/code` | events | eventsOfflineCheckinCode |  | public-or-unknown |  |
 | POST | `/events/{param}/recurring-edit/commit` | events | eventsCommitRecurringRevision |  | public-or-unknown |  |
-| POST | `/events/{param}/templates` | events | eventsTemplateCapture |  | public-or-unknown |  |
 | POST | `/events/moderation/{param}/approve` | events | eventsModerationApprove |  | public-or-unknown |  |
 | POST | `/events/moderation/{param}/reject` | events | eventsModerationReject |  | public-or-unknown |  |
 

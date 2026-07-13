@@ -281,6 +281,7 @@ jest.mock('../src/lib/api', () => ({
   callIdeationApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callGroupExchangeApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callEventApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
+  callEventTemplateApi: jest.fn().mockResolvedValue({ data: [] }),
   downloadEventApi: jest.fn().mockResolvedValue({ status: 200, body: Buffer.from('metric,value'), headers: { 'content-type': 'text/csv; charset=UTF-8', 'content-disposition': 'attachment; filename="event-42-analytics.csv"' } }),
   getEvents: jest.fn().mockResolvedValue({ data: [], pagination: { page: 1, totalPages: 1 } }),
   getEvent: jest.fn().mockResolvedValue({ data: { id: 42, title: 'Community garden day', start_time: '2026-08-01T10:00:00' } }),
@@ -23517,6 +23518,48 @@ describe('shared accessible frontend shell', () => {
       expect(response.headers.location).toBe(`/events/42?status=${status}`);
       expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', `/42/${action}`);
     }
+  });
+
+  it('renders Laravel event template library and immutable history', async () => {
+    const api = require('../src/lib/api');
+    api.callEventTemplateApi
+      .mockResolvedValueOnce({ data: [{ id: 7, status: 'active', current_version: 2, source_event: { id: 42, title: 'Community garden day' }, capabilities: { materialize: true, revise: true, view_audit: true } }], meta: { next_cursor: 8 } })
+      .mockResolvedValueOnce({ data: { id: 7, source_event: { title: 'Community garden day' } } })
+      .mockResolvedValueOnce({ data: [{ id: 9, action: 'captured', template_version: 2, immutable: true, created_at: '2026-07-13T12:00:00Z' }], meta: {} });
+    const library = await request(app).get('/events/templates?filter=active').set('Cookie', signedCookieHeader());
+    expect(library.status).toBe(200); expect(library.text).toContain('/event-templates/7/materialize'); expect(library.text).toContain('/events/42/template-preview?template_id=7');
+    const history = await request(app).get('/event-templates/7/history').set('Cookie', signedCookieHeader());
+    expect(history.status).toBe(200); expect(history.text).toContain('Community garden day'); expect(history.text).toContain('2026-07-13T12:00:00Z');
+  });
+
+  it('previews, captures and revises Laravel event templates', async () => {
+    const api = require('../src/lib/api'); const agent = request.agent(app); const shell = await agent.get('/contact').set('Cookie', signedCookieHeader()); const csrf = shell.text.match(/name="_csrf" value="([^"]+)"/)[1];
+    api.callEventApi.mockResolvedValueOnce({ data: { id: 42, title: 'Community garden day' } }).mockResolvedValueOnce({ data: { copied_fields: ['title'], skipped_fields: ['attendees'] } });
+    const preview = await agent.get('/events/42/template-preview').set('Cookie', signedCookieHeader());
+    expect(preview.status).toBe(200); expect(preview.text).toContain('action="/events/42/templates"');
+    api.callEventApi.mockResolvedValueOnce({ data: { template: { id: 7 } } });
+    const captured = await agent.post('/events/42/templates').set('Cookie', signedCookieHeader()).type('form').send({ _csrf: csrf, idempotency_key: 'capture-123' });
+    expect(captured.headers.location).toBe('/events/templates?status=captured');
+    expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/templates', {}, { headers: { 'Idempotency-Key': 'capture-123' } });
+    api.callEventTemplateApi.mockResolvedValueOnce({ data: { changed: true } });
+    const revised = await agent.post('/events/42/templates').set('Cookie', signedCookieHeader()).type('form').send({ _csrf: csrf, idempotency_key: 'revise-123', template_id: '7', expected_version: '2' });
+    expect(revised.headers.location).toBe('/events/templates?status=revised');
+    expect(api.callEventTemplateApi).toHaveBeenLastCalledWith('test-token', 'POST', '/7/revisions', { expected_version: 2 }, { headers: { 'Idempotency-Key': 'revise-123' } });
+  });
+
+  it('previews and materializes Laravel event templates into fresh drafts', async () => {
+    const api = require('../src/lib/api'); const agent = request.agent(app); const shell = await agent.get('/contact').set('Cookie', signedCookieHeader()); const csrf = shell.text.match(/name="_csrf" value="([^"]+)"/)[1]; const template = { id: 7, current_version: 2, source_event: { title: 'Community garden day' }, version: { configuration: { title: 'Garden copy', timezone: 'Europe/Dublin' } } };
+    api.callEventTemplateApi.mockResolvedValueOnce({ data: template });
+    const form = await agent.get('/event-templates/7/materialize').set('Cookie', signedCookieHeader());
+    expect(form.status).toBe(200); expect(form.text).toContain('value="Garden copy"');
+    const fields = { _csrf: csrf, template_version: '2', title: 'Autumn garden', start_time: '2026-09-01T10:00', end_time: '2026-09-01T12:00', location: 'Village hall', max_attendees: '20', timezone: 'Europe/Dublin' };
+    api.callEventTemplateApi.mockResolvedValueOnce({ data: { kind: 'materialization', will_create: { publication_status: 'draft' } } }).mockResolvedValueOnce({ data: template });
+    const preview = await agent.post('/event-templates/7/materialize/preview').set('Cookie', signedCookieHeader()).type('form').send(fields);
+    expect(preview.status).toBe(200); expect(preview.text).toContain('action="/event-templates/7/materialize"');
+    api.callEventTemplateApi.mockResolvedValueOnce({ data: { event: { id: 99 }, created: true } });
+    const created = await agent.post('/event-templates/7/materialize').set('Cookie', signedCookieHeader()).type('form').send({ ...fields, idempotency_key: 'materialize-123' });
+    expect(created.headers.location).toBe('/events/99/edit');
+    expect(api.callEventTemplateApi).toHaveBeenLastCalledWith('test-token', 'POST', '/7/materializations', { template_version: 2, start_time: '2026-09-01T10:00', end_time: '2026-09-01T12:00', overrides: { title: 'Autumn garden', location: 'Village hall', max_attendees: 20, timezone: 'Europe/Dublin', all_day: false } }, { headers: { 'Idempotency-Key': 'materialize-123' } });
   });
 
   it('hides registration mutations from attendance-only Event People staff', async () => {

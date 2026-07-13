@@ -1,12 +1,12 @@
 {
   "summary": {
-    "generatedAt": "2026-07-13T03:27:03.622Z",
+    "generatedAt": "2026-07-13T03:37:57.752Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\platforms\\htdocs\\asp.net-backend",
     "laravelRoutes": 687,
-    "webUkRoutes": 676,
-    "matchedRoutes": 673,
-    "missingRoutes": 14,
+    "webUkRoutes": 683,
+    "matchedRoutes": 680,
+    "missingRoutes": 7,
     "extraWebUkRoutes": 1,
     "ignoredInfrastructureRoutes": 3,
     "familyCounts": {
@@ -130,9 +130,15 @@
         "extraWebUk": 0,
         "ignoredInfrastructure": 0
       },
+      "event-templates": {
+        "matched": 4,
+        "missing": 0,
+        "extraWebUk": 0,
+        "ignoredInfrastructure": 0
+      },
       "events": {
-        "matched": 84,
-        "missing": 10,
+        "matched": 87,
+        "missing": 7,
         "extraWebUk": 0,
         "ignoredInfrastructure": 0
       },
@@ -415,12 +421,6 @@
       "wallet": {
         "matched": 6,
         "missing": 0,
-        "extraWebUk": 0,
-        "ignoredInfrastructure": 0
-      },
-      "event-templates": {
-        "matched": 0,
-        "missing": 4,
         "extraWebUk": 0,
         "ignoredInfrastructure": 0
       }
@@ -1977,6 +1977,94 @@
     },
     {
       "method": "GET",
+      "path": "/event-templates/{param}/history",
+      "family": "event-templates",
+      "status": "matched",
+      "laravelRouteName": "events.templates.history",
+      "laravelHandler": "eventsTemplateHistory",
+      "laravelView": "event-template-history",
+      "laravelParamConstraints": [
+        "number"
+      ],
+      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\event-templates.php",
+      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventTemplatesParity.php",
+      "laravelMiddleware": "",
+      "auth": "public-or-unknown",
+      "tenantScoped": "unknown",
+      "gates": "",
+      "apiNeeds": "",
+      "webUkPath": "/event-templates/{param}/history",
+      "webUkView": "events/template-history",
+      "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\routes\\event-templates.js"
+    },
+    {
+      "method": "GET",
+      "path": "/event-templates/{param}/materialize",
+      "family": "event-templates",
+      "status": "matched",
+      "laravelRouteName": "events.templates.materialize.form",
+      "laravelHandler": "eventsTemplateMaterializeForm",
+      "laravelView": "",
+      "laravelParamConstraints": [
+        "number"
+      ],
+      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\event-templates.php",
+      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventTemplatesParity.php",
+      "laravelMiddleware": "",
+      "auth": "public-or-unknown",
+      "tenantScoped": "unknown",
+      "gates": "",
+      "apiNeeds": "",
+      "webUkPath": "/event-templates/{param}/materialize",
+      "webUkView": "",
+      "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\routes\\event-templates.js"
+    },
+    {
+      "method": "POST",
+      "path": "/event-templates/{param}/materialize",
+      "family": "event-templates",
+      "status": "matched",
+      "laravelRouteName": "events.templates.materialize",
+      "laravelHandler": "eventsTemplateMaterialize",
+      "laravelView": "",
+      "laravelParamConstraints": [
+        "number"
+      ],
+      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\event-templates.php",
+      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventTemplatesParity.php",
+      "laravelMiddleware": "'throttle:20,1'",
+      "auth": "public-or-unknown",
+      "tenantScoped": "unknown",
+      "gates": "",
+      "apiNeeds": "",
+      "webUkPath": "/event-templates/{param}/materialize",
+      "webUkView": "",
+      "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\routes\\event-templates.js"
+    },
+    {
+      "method": "POST",
+      "path": "/event-templates/{param}/materialize/preview",
+      "family": "event-templates",
+      "status": "matched",
+      "laravelRouteName": "events.templates.materialize.preview",
+      "laravelHandler": "eventsTemplateMaterializePreview",
+      "laravelView": "",
+      "laravelParamConstraints": [
+        "number"
+      ],
+      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\event-templates.php",
+      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventTemplatesParity.php",
+      "laravelMiddleware": "'throttle:60,1'",
+      "auth": "public-or-unknown",
+      "tenantScoped": "unknown",
+      "gates": "",
+      "apiNeeds": "",
+      "webUkPath": "/event-templates/{param}/materialize/preview",
+      "webUkView": "",
+      "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\routes\\event-templates.js"
+    },
+    {
+      "method": "GET",
       "path": "/events",
       "family": "events",
       "status": "matched",
@@ -2460,6 +2548,28 @@
     },
     {
       "method": "GET",
+      "path": "/events/{param}/template-preview",
+      "family": "events",
+      "status": "matched",
+      "laravelRouteName": "events.templates.capture.preview",
+      "laravelHandler": "eventsTemplateCapturePreview",
+      "laravelView": "event-template-capture-preview",
+      "laravelParamConstraints": [
+        "number"
+      ],
+      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\event-templates.php",
+      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventTemplatesParity.php",
+      "laravelMiddleware": "",
+      "auth": "public-or-unknown",
+      "tenantScoped": "unknown",
+      "gates": "",
+      "apiNeeds": "",
+      "webUkPath": "/events/{param}/template-preview",
+      "webUkView": "events/template-capture-preview",
+      "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\routes\\events.js"
+    },
+    {
+      "method": "GET",
       "path": "/events/{param}/tickets",
       "family": "events",
       "status": "matched",
@@ -2625,6 +2735,26 @@
       "apiNeeds": "",
       "webUkPath": "/events/new",
       "webUkView": "events/new",
+      "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\routes\\events.js"
+    },
+    {
+      "method": "GET",
+      "path": "/events/templates",
+      "family": "events",
+      "status": "matched",
+      "laravelRouteName": "events.templates.index",
+      "laravelHandler": "eventsTemplates",
+      "laravelView": "event-templates",
+      "laravelParamConstraints": [],
+      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\event-templates.php",
+      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventTemplatesParity.php",
+      "laravelMiddleware": "",
+      "auth": "public-or-unknown",
+      "tenantScoped": "unknown",
+      "gates": "",
+      "apiNeeds": "",
+      "webUkPath": "/events/templates",
+      "webUkView": "events/templates",
       "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\routes\\events.js"
     },
     {
@@ -3635,6 +3765,28 @@
       "gates": "",
       "apiNeeds": "",
       "webUkPath": "/events/{param}/submit",
+      "webUkView": "",
+      "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\routes\\events.js"
+    },
+    {
+      "method": "POST",
+      "path": "/events/{param}/templates",
+      "family": "events",
+      "status": "matched",
+      "laravelRouteName": "events.templates.capture",
+      "laravelHandler": "eventsTemplateCapture",
+      "laravelView": "",
+      "laravelParamConstraints": [
+        "number"
+      ],
+      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\event-templates.php",
+      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventTemplatesParity.php",
+      "laravelMiddleware": "'throttle:20,1'",
+      "auth": "public-or-unknown",
+      "tenantScoped": "unknown",
+      "gates": "",
+      "apiNeeds": "",
+      "webUkPath": "/events/{param}/templates",
       "webUkView": "",
       "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\routes\\events.js"
     },
@@ -14853,116 +15005,6 @@
     },
     {
       "method": "GET",
-      "path": "/event-templates/{param}/history",
-      "family": "event-templates",
-      "status": "missing",
-      "laravelRouteName": "events.templates.history",
-      "laravelHandler": "eventsTemplateHistory",
-      "laravelView": "event-template-history",
-      "laravelParamConstraints": [
-        "number"
-      ],
-      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\event-templates.php",
-      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventTemplatesParity.php",
-      "laravelMiddleware": "",
-      "auth": "public-or-unknown",
-      "tenantScoped": "unknown",
-      "gates": "",
-      "apiNeeds": "",
-      "webUkPath": "",
-      "webUkView": "",
-      "webUkFile": ""
-    },
-    {
-      "method": "GET",
-      "path": "/event-templates/{param}/materialize",
-      "family": "event-templates",
-      "status": "missing",
-      "laravelRouteName": "events.templates.materialize.form",
-      "laravelHandler": "eventsTemplateMaterializeForm",
-      "laravelView": "",
-      "laravelParamConstraints": [
-        "number"
-      ],
-      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\event-templates.php",
-      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventTemplatesParity.php",
-      "laravelMiddleware": "",
-      "auth": "public-or-unknown",
-      "tenantScoped": "unknown",
-      "gates": "",
-      "apiNeeds": "",
-      "webUkPath": "",
-      "webUkView": "",
-      "webUkFile": ""
-    },
-    {
-      "method": "POST",
-      "path": "/event-templates/{param}/materialize",
-      "family": "event-templates",
-      "status": "missing",
-      "laravelRouteName": "events.templates.materialize",
-      "laravelHandler": "eventsTemplateMaterialize",
-      "laravelView": "",
-      "laravelParamConstraints": [
-        "number"
-      ],
-      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\event-templates.php",
-      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventTemplatesParity.php",
-      "laravelMiddleware": "'throttle:20,1'",
-      "auth": "public-or-unknown",
-      "tenantScoped": "unknown",
-      "gates": "",
-      "apiNeeds": "",
-      "webUkPath": "",
-      "webUkView": "",
-      "webUkFile": ""
-    },
-    {
-      "method": "POST",
-      "path": "/event-templates/{param}/materialize/preview",
-      "family": "event-templates",
-      "status": "missing",
-      "laravelRouteName": "events.templates.materialize.preview",
-      "laravelHandler": "eventsTemplateMaterializePreview",
-      "laravelView": "",
-      "laravelParamConstraints": [
-        "number"
-      ],
-      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\event-templates.php",
-      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventTemplatesParity.php",
-      "laravelMiddleware": "'throttle:60,1'",
-      "auth": "public-or-unknown",
-      "tenantScoped": "unknown",
-      "gates": "",
-      "apiNeeds": "",
-      "webUkPath": "",
-      "webUkView": "",
-      "webUkFile": ""
-    },
-    {
-      "method": "GET",
-      "path": "/events/{param}/template-preview",
-      "family": "events",
-      "status": "missing",
-      "laravelRouteName": "events.templates.capture.preview",
-      "laravelHandler": "eventsTemplateCapturePreview",
-      "laravelView": "event-template-capture-preview",
-      "laravelParamConstraints": [
-        "number"
-      ],
-      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\event-templates.php",
-      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventTemplatesParity.php",
-      "laravelMiddleware": "",
-      "auth": "public-or-unknown",
-      "tenantScoped": "unknown",
-      "gates": "",
-      "apiNeeds": "",
-      "webUkPath": "",
-      "webUkView": "",
-      "webUkFile": ""
-    },
-    {
-      "method": "GET",
       "path": "/events/moderation",
       "family": "events",
       "status": "missing",
@@ -15026,26 +15068,6 @@
       "webUkFile": ""
     },
     {
-      "method": "GET",
-      "path": "/events/templates",
-      "family": "events",
-      "status": "missing",
-      "laravelRouteName": "events.templates.index",
-      "laravelHandler": "eventsTemplates",
-      "laravelView": "event-templates",
-      "laravelParamConstraints": [],
-      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\event-templates.php",
-      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventTemplatesParity.php",
-      "laravelMiddleware": "",
-      "auth": "public-or-unknown",
-      "tenantScoped": "unknown",
-      "gates": "",
-      "apiNeeds": "",
-      "webUkPath": "",
-      "webUkView": "",
-      "webUkFile": ""
-    },
-    {
       "method": "POST",
       "path": "/events/{param}/check-in/code",
       "family": "events",
@@ -15081,28 +15103,6 @@
       "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\events.php",
       "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventsParity.php",
       "laravelMiddleware": "'throttle:10,1'",
-      "auth": "public-or-unknown",
-      "tenantScoped": "unknown",
-      "gates": "",
-      "apiNeeds": "",
-      "webUkPath": "",
-      "webUkView": "",
-      "webUkFile": ""
-    },
-    {
-      "method": "POST",
-      "path": "/events/{param}/templates",
-      "family": "events",
-      "status": "missing",
-      "laravelRouteName": "events.templates.capture",
-      "laravelHandler": "eventsTemplateCapture",
-      "laravelView": "",
-      "laravelParamConstraints": [
-        "number"
-      ],
-      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\event-templates.php",
-      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventTemplatesParity.php",
-      "laravelMiddleware": "'throttle:20,1'",
       "auth": "public-or-unknown",
       "tenantScoped": "unknown",
       "gates": "",
