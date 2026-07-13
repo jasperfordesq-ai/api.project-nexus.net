@@ -172,6 +172,101 @@ test('certifies a disposable successful application and withdrawal through Web U
   }
 });
 
+test('certifies disposable interview acceptance and offer rejection through Web UK', async ({ page }) => {
+  const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+  const title = `Community interview opportunity ${runId}`;
+  const ownerAuth = await login(smoke.email, smoke.password, smoke.tenant);
+  const secondEmail = process.env.SMOKE_SECOND_EMAIL || process.env.E2E_SECOND_USER_EMAIL || 'e2e.user.b@project-nexus.local';
+  const secondPassword = process.env.SMOKE_SECOND_PASSWORD || process.env.E2E_SECOND_USER_PASSWORD || smoke.password;
+  const applicantAuth = await login(secondEmail, secondPassword, smoke.tenant);
+  let jobId = null;
+  let applicationId = null;
+  let interviewId = null;
+  let offerId = null;
+  let deleted = false;
+
+  console.log(`Disposable job response fixture: ${title}`);
+
+  try {
+    const created = objectFrom(await callJobApi(ownerAuth.access_token, 'POST', '', {
+      title,
+      description: 'A safe disposable vacancy for the Web UK interview and offer response gate.',
+      type: 'volunteer',
+      commitment: 'flexible',
+      category: 'Community support',
+      location: 'Hour Timebank',
+      is_remote: true,
+      status: 'open'
+    }));
+    jobId = Number(created.id);
+    expect(jobId).toBeGreaterThan(0);
+
+    await callJobApi(applicantAuth.access_token, 'POST', `/${jobId}/apply`, {
+      message: 'Disposable candidate application for response testing.'
+    });
+    const application = await findApplication(applicantAuth.access_token, jobId);
+    expect(application).toBeTruthy();
+    applicationId = Number(application.id);
+
+    const interview = objectFrom(await callJobApi(ownerAuth.access_token, 'POST', `/applications/${applicationId}/interview`, {
+      scheduled_at: '2099-07-01T14:30:00Z',
+      interview_type: 'video',
+      duration_mins: 45,
+      location_notes: 'Disposable video interview link'
+    }));
+    interviewId = Number(interview.id);
+    expect(interviewId).toBeGreaterThan(0);
+
+    const offer = objectFrom(await callJobApi(ownerAuth.access_token, 'POST', `/applications/${applicationId}/offer`, {
+      salary_offered: 20000,
+      salary_currency: 'EUR',
+      salary_type: 'annual',
+      start_date: '2099-08-01',
+      expires_at: '2099-08-05',
+      message: 'Disposable offer for response testing.'
+    }));
+    offerId = Number(offer.id);
+    expect(offerId).toBeGreaterThan(0);
+
+    await page.context().clearCookies();
+    await page.setViewportSize({ width: 320, height: 640 });
+    await authenticate(page, secondEmail, secondPassword);
+    await page.goto(`${mountPath}/jobs/responses`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
+    await expect(page.locator('h1')).toHaveText('Interviews and offers');
+    await expect(page.getByText(title, { exact: false })).toHaveCount(2);
+    await expect(page.getByRole('link', { name: /Add to Google Calendar/ })).toHaveCount(1);
+    await expectAccessibleReflow(page);
+
+    const interviewForm = page.locator(`form[action$="/jobs/interviews/${interviewId}/accept"]`);
+    await interviewForm.locator('input[name="note"]').fill('I confirm this disposable interview.');
+    const acceptResponse = await submit(page, `/jobs/interviews/${interviewId}/accept`, interviewForm.locator('button[type="submit"]'));
+    expect(acceptResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    await expect(page.getByText('You accepted the interview. The employer has been notified.', { exact: true })).toHaveCount(1);
+    let interviews = rowsFrom(await callJobApi(applicantAuth.access_token, 'GET', '/my-interviews'));
+    expect(interviews.find(row => Number(row.id) === interviewId)?.status).toBe('accepted');
+
+    const rejectForm = page.locator(`form[action$="/jobs/offers/${offerId}/reject"]`);
+    const rejectResponse = await submit(page, `/jobs/offers/${offerId}/reject`, rejectForm.locator('button[type="submit"]'));
+    expect(rejectResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    await expect(page.getByText('You declined the offer. The employer has been notified.', { exact: true })).toHaveCount(1);
+    let offers = rowsFrom(await callJobApi(applicantAuth.access_token, 'GET', '/my-offers'));
+    expect(offers.find(row => Number(row.id) === offerId)?.status).toBe('rejected');
+    await expectAccessibleReflow(page);
+
+    await callJobApi(ownerAuth.access_token, 'DELETE', `/${jobId}`);
+    deleted = true;
+    interviews = rowsFrom(await callJobApi(applicantAuth.access_token, 'GET', '/my-interviews'));
+    offers = rowsFrom(await callJobApi(applicantAuth.access_token, 'GET', '/my-offers'));
+    expect(interviews.some(row => Number(row.id) === interviewId)).toBe(false);
+    expect(offers.some(row => Number(row.id) === offerId)).toBe(false);
+    expect(await findApplication(applicantAuth.access_token, jobId)).toBeNull();
+  } finally {
+    if (!deleted && jobId) await callJobApi(ownerAuth.access_token, 'DELETE', `/${jobId}`).catch(() => undefined);
+  }
+});
+
 test('certifies a disposable job owner lifecycle through Web UK', async ({ page }) => {
   const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
   const createdTitle = `Codex disposable opportunity ${runId}`;
