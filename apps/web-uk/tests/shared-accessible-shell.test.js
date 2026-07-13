@@ -16784,6 +16784,45 @@ describe('shared accessible frontend shell', () => {
     expect(replay.text).toContain('value="draft" checked');
   });
 
+  it('replays Laravel field validation errors on the create job form', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.callJobApi.mockRejectedValueOnce(new api.ApiError('Validation failed', 422, {
+      errors: [{ code: 'VALIDATION_ERROR', message: 'Description is required', field: 'description' }]
+    }));
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/jobs')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        title: 'Community organiser',
+        description: '',
+        type: 'volunteer',
+        commitment: 'flexible',
+        status: 'draft'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/jobs/create?status=create-failed');
+
+    const replay = await agent
+      .get('/jobs/create?status=create-failed')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    expect(replay.status).toBe(200);
+    expect(replay.text).toContain('href="#description"');
+    expect(replay.text).toContain('Description is required');
+    expect(replay.text).toContain('value="Community organiser"');
+    expect(replay.text).not.toContain('The opportunity could not be saved. Check the details and try again.');
+  });
+
   it('redirects signed-out visitors away from the create job form', async () => {
     const response = await request(app).get('/jobs/create');
 

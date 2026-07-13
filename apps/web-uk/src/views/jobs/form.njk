@@ -19,7 +19,7 @@
         <div class="govuk-error-summary__body">
           <ul class="govuk-list govuk-error-summary__list">
             {% for error in jobFormErrors %}
-              <li><a href="#title">{{ error }}</a></li>
+              <li>{% if error.href %}<a href="{{ error.href }}">{{ error.text }}</a>{% else %}{{ error.text or error }}{% endif %}</li>
             {% endfor %}
           </ul>
         </div>

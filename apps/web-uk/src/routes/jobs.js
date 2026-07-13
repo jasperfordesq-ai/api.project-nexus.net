@@ -33,6 +33,11 @@ const JOBS_PER_PAGE = 12;
 const TALENT_PER_PAGE = 20;
 const JOB_CV_MAX_BYTES = 5 * 1024 * 1024;
 const JOB_CV_EXTENSIONS = new Set(['.pdf', '.doc', '.docx']);
+const JOB_FORM_FIELDS = new Set([
+  'title', 'description', 'type', 'commitment', 'category', 'location', 'is_remote',
+  'skills_required', 'deadline', 'salary_min', 'salary_max', 'salary_currency',
+  'salary_type', 'salary_negotiable', 'hours_per_week', 'time_credits', 'contact_email', 'status'
+]);
 const JOB_TYPE_LABELS = {
   paid: 'Paid',
   volunteer: 'Volunteer',
@@ -1472,7 +1477,25 @@ function actionErrorMessage(req, status) {
 
 function formErrors(req, status) {
   const message = localizedStatusMessage(req, status, JOB_FORM_ERROR_MESSAGES, JOB_FORM_ERROR_MESSAGE_KEYS);
-  return message ? [message] : [];
+  return message ? [{ text: message, href: '#title' }] : [];
+}
+
+function apiJobFormErrors(error, fallback) {
+  if (!(error instanceof ApiError) || !Array.isArray(error.data?.errors)) {
+    return [];
+  }
+
+  const errors = error.data.errors
+    .filter((entry) => entry && typeof entry === 'object')
+    .map((entry) => {
+      const field = trimmed(entry.field);
+      return {
+        text: trimmed(entry.message) || fallback,
+        ...(JOB_FORM_FIELDS.has(field) ? { href: `#${field}` } : {})
+      };
+    });
+
+  return errors;
 }
 
 function alertSuccessMessage(req, status) {
@@ -1554,15 +1577,23 @@ function jobFormPayload(body) {
   return values.title === '' ? null : values;
 }
 
-function rememberJobForm(req, body) {
+function rememberJobForm(req, body, errors = []) {
   if (typeof req.flash !== 'function') return;
   req.flash('jobFormValues', jobFormValues(body));
+  if (errors.length > 0) req.flash('jobFormErrors', errors);
 }
 
 function recalledJobForm(req) {
   if (typeof req.flash !== 'function') return {};
   const values = req.flash('jobFormValues');
   return values.length > 0 && values[0] && typeof values[0] === 'object' ? values[0] : {};
+}
+
+function recalledJobFormErrors(req) {
+  if (typeof req.flash !== 'function') return [];
+  const errors = req.flash('jobFormErrors');
+  if (errors.length > 0 && Array.isArray(errors[0])) return errors[0];
+  return errors.filter((error) => error && typeof error === 'object' && trimmed(error.text));
 }
 
 function rememberJobApplication(req, jobId, body) {
@@ -1790,16 +1821,19 @@ router.get('/mine', asyncRoute(async (req, res) => {
   });
 }));
 
-router.get('/create', (req, res) => res.render('jobs/form', {
-  title: 'Post an opportunity',
-  titleKey: 'jobs_t3.create_title',
-  activeNav: 'explore',
-  formMode: 'create',
-  formAction: '/jobs',
-  jobForm: recalledJobForm(req),
-  jobFormErrors: formErrors(req, req.query.status),
-  csrfToken: req.csrfToken ? req.csrfToken() : ''
-}));
+router.get('/create', (req, res) => {
+  const rememberedErrors = recalledJobFormErrors(req);
+  return res.render('jobs/form', {
+    title: 'Post an opportunity',
+    titleKey: 'jobs_t3.create_title',
+    activeNav: 'explore',
+    formMode: 'create',
+    formAction: '/jobs',
+    jobForm: recalledJobForm(req),
+    jobFormErrors: rememberedErrors.length > 0 ? rememberedErrors : formErrors(req, req.query.status),
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+});
 
 router.get('/alerts', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
@@ -2182,6 +2216,7 @@ router.get('/:id(\\d+)/edit', asyncRoute(async (req, res) => {
     return res.status(403).render('errors/403', { title: 'Forbidden' });
   }
 
+  const rememberedErrors = recalledJobFormErrors(req);
   return res.render('jobs/form', {
     title: 'Edit opportunity',
     titleKey: 'jobs_t3.edit_title',
@@ -2189,7 +2224,7 @@ router.get('/:id(\\d+)/edit', asyncRoute(async (req, res) => {
     formMode: 'edit',
     formAction: `/jobs/${id}/update`,
     jobForm: { ...jobFormForEdit(job), ...recalledJobForm(req) },
-    jobFormErrors: formErrors(req, req.query.status),
+    jobFormErrors: rememberedErrors.length > 0 ? rememberedErrors : formErrors(req, req.query.status),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }));
@@ -2426,7 +2461,8 @@ router.post('/', asyncRoute(async (req, res) => {
     result = await callJob(token, 'POST', '', payload);
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    rememberJobForm(req, req.body);
+    const fallback = fallbackTranslator('jobs_t3.error_generic');
+    rememberJobForm(req, req.body, apiJobFormErrors(error, fallback));
     return redirectTo(res, statusRedirect('/jobs/create', 'create-failed'));
   }
 
@@ -2450,7 +2486,8 @@ router.post('/:id(\\d+)/update', asyncRoute(async (req, res) => {
     return redirectTo(res, jobRedirect(id, 'updated'));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    rememberJobForm(req, req.body);
+    const fallback = fallbackTranslator('jobs_t3.error_generic');
+    rememberJobForm(req, req.body, apiJobFormErrors(error, fallback));
     return redirectTo(res, statusRedirect(`/jobs/${id}/edit`, 'update-failed'));
   }
 }));
