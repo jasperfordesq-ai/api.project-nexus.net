@@ -16506,6 +16506,9 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('href="/jobs/501/edit"');
     expect(response.text).toContain('action="/jobs/501/renew"');
     expect(response.text).toContain('action="/jobs/501/delete"');
+    expect(response.text).toContain('Deleting an opportunity also removes its applications. This cannot be undone.');
+    expect(response.text).toContain('Yes, delete');
+    expect(response.text).toContain('govuk-pagination__icon--next');
     expect(response.text).toContain('Load more');
     expect(response.text).toContain('cursor=next-postings');
     expect(response.text).not.toContain('Laravel Blade route');
@@ -16520,6 +16523,21 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe('/login?status=auth-required');
     expect(api.callJobApi).not.toHaveBeenCalled();
+  });
+
+  it('uses the Blade empty state when job postings cannot be loaded', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.callJobApi.mockRejectedValueOnce(new Error('temporary postings failure'));
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/jobs/mine')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('You have not posted any opportunities yet.');
+    expect(response.text).not.toContain('Your postings could not be loaded.');
   });
 
   it('renders the Laravel-style create job form for signed-in users', async () => {

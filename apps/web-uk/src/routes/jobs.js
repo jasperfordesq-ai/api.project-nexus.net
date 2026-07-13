@@ -710,7 +710,10 @@ function decorateJob(job) {
     hasApplied: checked(job.has_applied || job.hasApplied),
     isSaved: checked(job.is_saved || job.isSaved),
     isRemote: checked(job.is_remote),
-    statusLabel: JOB_POSTING_STATUS_LABELS[job.status] || trimmed(job.status) || JOB_POSTING_STATUS_LABELS.open
+    statusLabel: JOB_POSTING_STATUS_LABELS[job.status] || trimmed(job.status) || JOB_POSTING_STATUS_LABELS.open,
+    statusTranslationKey: JOB_POSTING_STATUS_LABELS[job.status]
+      ? `jobs_t3.status_${job.status}`
+      : 'jobs_t3.status_open'
   };
 }
 
@@ -1773,13 +1776,11 @@ router.get('/mine', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   const cursor = trimmed(req.query.cursor, 500);
   let result = null;
-  let loadError = false;
 
   try {
     result = await callJob(token, 'GET', myPostingsPath(cursor));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    loadError = true;
   }
 
   const jobs = collectionItems(result).map(decorateJob);
@@ -1795,7 +1796,6 @@ router.get('/mine', asyncRoute(async (req, res) => {
     status: req.query.status || '',
     successMessage: statusMessage(req, req.query.status),
     errorMessage: statusErrorMessage(req, req.query.status),
-    loadError,
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }));
