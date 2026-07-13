@@ -2,7 +2,7 @@
     "_meta": {
         "schema": 1,
         "locale": "pt",
-        "source": "lang/pt/{govuk_alpha*,event_offline_checkin}.php"
+        "source": "lang/pt/{govuk_alpha*,event_offline_checkin,event_safety}.php"
     },
     "namespaces": {
         "event_offline_checkin": {
@@ -63,6 +63,121 @@
             },
             "device": {
                 "lost": "Se perder um dispositivo da equipa, revogue-o imediatamente na área de eventos padrão. Continue aqui por nome ou código assinado."
+            }
+        },
+        "event_safety": {
+            "govuk": {
+                "link": "Requisitos e revisões de segurança",
+                "back": "Voltar ao evento",
+                "title": "Segurança do evento",
+                "intro": "Revise os requisitos de participação, conclua todas as etapas aplicáveis ​​a você ou gerencie a política de segurança controlada do evento.",
+                "updated": "O registro de segurança do evento foi atualizado.",
+                "failed": "A mudança de segurança não pôde ser concluída. Revise as informações atuais e tente novamente.",
+                "unavailable_title": "A segurança do evento não está disponível",
+                "unavailable_body": "Os requisitos de participação não puderam ser verificados. Nenhuma decisão de segurança foi alterada.",
+                "rollout": {
+                    "off": "Aplicação desativada",
+                    "shadow": "Modo de observação",
+                    "enforce": "Aplicação ativa"
+                },
+                "requirement_status": {
+                    "draft": "Rascunho",
+                    "published": "Publicado",
+                    "archived": "Arquivado"
+                },
+                "policy_title": "Política de participação",
+                "policy_intro": "As alterações preliminares permanecem privadas até serem publicadas. Cada versão publicada é mantida para comparação de evidências.",
+                "minimum_age": "Idade mínima",
+                "minimum_age_hint": "Deixar em branco quando o evento não tiver idade mínima.",
+                "guardian_policy": "Consentimento do tutor",
+                "guardian_required": "Exigir consentimento do tutor para menores",
+                "minor_threshold": "Limite de idade menor",
+                "minor_threshold_hint": "Os membros abaixo dessa idade no evento precisam do consentimento do responsável.",
+                "code_policy": "Código de Conduta",
+                "code_required": "Exija que os participantes reconheçam o código de conduta",
+                "code_version": "Versão do texto do código",
+                "code_version_hint": "Use um identificador significativo, como event-conduct-2026-01.",
+                "code_text": "Texto completo do código de conduta",
+                "save_draft": "Salvar rascunho",
+                "publish": "Publicar requisitos",
+                "archive": "Requisitos de arquivo",
+                "archive_warning": "Os requisitos arquivados deixam de ser a política ativa. As evidências e o histórico de auditoria permanecem retidos.",
+                "confirm_archive": "Arquivar agora",
+                "attendee_title": "Requisitos de participação",
+                "eligibility": {
+                    "allow": "Seus requisitos aplicáveis ​​estão completos.",
+                    "deny": "A participação está atualmente bloqueada até que os requisitos listados sejam resolvidos.",
+                    "unavailable": "Os requisitos não podem ser verificados no momento. Tente novamente antes de se registrar.",
+                    "not_evaluated": "Os requisitos de participação ainda não foram avaliados."
+                },
+                "action_required": "A ação é necessária antes da participação",
+                "code_title": "Código de Conduta",
+                "confirm_code": "Li e concordo com o código de conduta completo.",
+                "acknowledge": "Reconheça o código",
+                "withdraw_acknowledgement": "Retirar reconhecimento",
+                "guardian_title": "Consentimento do tutor",
+                "guardian_status": {
+                    "not_required": "O consentimento do tutor não é necessário.",
+                    "required": "É necessária uma solicitação de consentimento do responsável.",
+                    "pending": "O pedido aguarda resposta do tutor.",
+                    "active": "O consentimento do tutor foi concedido.",
+                    "withdrawn": "O pedido de consentimento do responsável foi retirado.",
+                    "expired": "A solicitação de consentimento do responsável expirou."
+                },
+                "guardian_name": "Nome do guardião",
+                "guardian_email": "Endereço de e-mail do responsável",
+                "guardian_relationship": "Relacionamento com o participante",
+                "relationships": {
+                    "parent": "Pai/Mãe",
+                    "guardian": "Responsável",
+                    "legal_guardian": "Responsável legal",
+                    "carer": "Cuidador"
+                },
+                "guardian_privacy": "O endereço é criptografado para entrega e removido do envelope de entrega após processamento.",
+                "request_guardian": "Enviar solicitação de consentimento",
+                "withdraw_guardian": "Retirar solicitação de consentimento",
+                "reviews_title": "Avaliações de participação",
+                "reviews_intro": "Registre decisões controladas sem notas de texto livre, detalhes de contato ou registros de incidentes.",
+                "review_member": "Participante do evento",
+                "review_member_choose": "Escolha um participante",
+                "member_fallback": "Membro #:id",
+                "review_decision": "Decisão",
+                "decisions": {
+                    "deny": "Negar participação",
+                    "remove": "Remover do evento"
+                },
+                "review_reason": "Razão controlada",
+                "reasons": {
+                    "unknown": "Um requisito de participação ainda precisa de atenção.",
+                    "safeguarding_policy": "Salvaguardando a decisão política",
+                    "minimum_age": "Requisito de idade mínima",
+                    "guardian_consent": "Requisito de consentimento do tutor",
+                    "code_of_conduct": "Requisito de código de conduta",
+                    "conduct_violation": "Violação de conduta",
+                    "safety_review": "Decisão de revisão de segurança",
+                    "user_block": "Um bloco de membros impede a participação"
+                },
+                "effective_from": "Eficaz a partir de",
+                "effective_until": "Efetivo até",
+                "effective_until_hint": "Deixar em branco quando a decisão não tiver término previsto.",
+                "no_notes": "Para privacidade, use apenas motivos controlados. Mantenha incidentes e evidências confidenciais no sistema de proteção aprovado.",
+                "save_review": "Salvar decisão de revisão",
+                "no_people": "Nenhum participante do evento está disponível para uma nova revisão.",
+                "open_people": "Abra o espaço de trabalho de pessoas do evento",
+                "ledger_title": "Revise o razão",
+                "review_status": "Estado",
+                "review_states": {
+                    "active": "Ativo",
+                    "withdrawn": "Retirada",
+                    "expired": "Expirado"
+                },
+                "reviewed_by": "Avaliado por",
+                "withdraw_review": "Retirar decisão",
+                "ledger_empty": "Nenhuma avaliação de participação foi registrada para este evento.",
+                "confirm_archive_checkbox": "Compreendo que isto desativará os requisitos de segurança atuais.",
+                "confirm_withdraw_code": "Compreendo que isto pode impedir a minha participação até aceitar novamente o código.",
+                "confirm_withdraw_guardian": "Compreendo que o pedido de consentimento atual ficará inválido.",
+                "confirm_withdraw_review": "Confirmo que pretendo retirar a decisão ativa de :name."
             }
         },
         "govuk_alpha": {

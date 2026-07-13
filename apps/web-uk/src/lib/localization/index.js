@@ -51,7 +51,7 @@ function valueAtPath(source, key) {
 function valueInCatalog(catalog, key) {
   if (!catalog || typeof key !== 'string' || !key) return undefined;
 
-  const explicitNamespace = key.match(/^(govuk_alpha(?:_[a-z]+)?|event_offline_checkin)\.(.+)$/);
+  const explicitNamespace = key.match(/^(govuk_alpha(?:_[a-z]+)?|event_offline_checkin|event_safety)\.(.+)$/);
   const namespace = explicitNamespace ? explicitNamespace[1] : 'govuk_alpha';
   const translationKey = explicitNamespace ? explicitNamespace[2] : key;
   return valueAtPath(catalog.namespaces?.[namespace], translationKey);

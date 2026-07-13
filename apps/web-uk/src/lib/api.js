@@ -910,11 +910,11 @@ async function callGroupExchangeApi(token, method, path = '', data = undefined) 
   return request(`/api/v2/group-exchanges${normalizedPath}`, options);
 }
 
-async function callEventApi(token, method, path = '', data = undefined) {
+async function callEventApi(token, method, path = '', data = undefined, requestOptions = {}) {
   const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
   const options = {
     method,
-    headers: { Authorization: `Bearer ${token}` }
+    headers: { Authorization: `Bearer ${token}`, ...(requestOptions.headers || {}) }
   };
 
   if (data !== undefined) {

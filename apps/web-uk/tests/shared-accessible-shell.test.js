@@ -21927,6 +21927,79 @@ describe('shared accessible frontend shell', () => {
     });
   });
 
+  it('renders Laravel Event Safety from server-declared permissions and private projections', async () => {
+    const api = require('../src/lib/api');
+    api.callEventApi
+      .mockResolvedValueOnce({ data: { id: 42, title: 'Community garden day' } })
+      .mockResolvedValueOnce({ data: {
+        rollout: { mode: 'enforce' },
+        requirements: { revision: 3, status: 'published', current_version: 2, version: {
+          version_number: 2, minimum_age: 16, guardian_consent_required: true, minor_age_threshold: 18,
+          code_of_conduct_required: true, code_of_conduct_text: 'Treat everyone with respect.',
+          code_of_conduct_text_version: 'conduct-2', code_of_conduct_text_hash: 'hash-2'
+        } },
+        eligibility: { decision: 'allow' },
+        evidence: { code_of_conduct: { status: 'required' }, guardian_consent: { status: 'pending', consent_id: 91 } },
+        permissions: { manage_requirements: true, review_participation: true, acknowledge_code_of_conduct: true, withdraw_guardian_consent: true }
+      } })
+      .mockResolvedValueOnce({ data: { items: [], total: 0, page: 1, per_page: 25 } })
+      .mockResolvedValueOnce({ data: [{ member: { id: 55, display_name: 'Alex Morgan' }, registration: { state: 'confirmed' }, attendance: { state: 'not_checked_in', version: 0 }, management_actions: {} }] });
+
+    const response = await request(app).get('/events/42/safety').set('Cookie', signedCookieHeader());
+    expect(response.status).toBe(200);
+    expect(response.headers['cache-control']).toBe('private, no-store');
+    expect(response.text).toContain('Event safety');
+    expect(response.text).toContain('Treat everyone with respect.');
+    expect(response.text).toContain('name="action" value="save_requirements"');
+    expect(response.text).toContain('name="action" value="archive_requirements"');
+    expect(response.text).toContain('name="action" value="acknowledge_code"');
+    expect(response.text).toContain('name="action" value="record_review"');
+    expect(response.text).toContain('Alex Morgan');
+    expect(api.callEventApi).toHaveBeenNthCalledWith(3, 'test-token', 'GET', '/42/safety/reviews?page=1&per_page=25');
+  });
+
+  it('submits versioned Laravel Event Safety policies with an idempotency header', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const shell = await agent.get('/contact').set('Cookie', signedCookieHeader());
+    const csrf = shell.text.match(/name="_csrf" value="([^"]+)"/)[1];
+    api.callEventApi.mockResolvedValueOnce({ data: { requirements: { revision: 4 } } });
+    const response = await agent.post('/events/42/safety').set('Cookie', signedCookieHeader()).type('form').send({
+      _csrf: csrf,
+      action: 'save_requirements',
+      idempotency_key: 'event-safety-save-key',
+      expected_revision: '3',
+      minimum_age: '16',
+      guardian_consent_required: '1',
+      minor_age_threshold: '18',
+      code_of_conduct_required: '1',
+      code_of_conduct_text_version: 'conduct-3',
+      code_of_conduct_text: 'Respect every participant.'
+    });
+    expect(response.headers.location).toBe('/events/42/safety?status=safety-updated');
+    expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/42/safety/requirements', {
+      minimum_age: 16,
+      guardian_consent_required: true,
+      minor_age_threshold: 18,
+      code_of_conduct_required: true,
+      code_of_conduct_text: 'Respect every participant.',
+      code_of_conduct_text_version: 'conduct-3',
+      expected_revision: 3
+    }, { headers: { 'Idempotency-Key': 'event-safety-save-key' } });
+  });
+
+  it('requires explicit confirmation before destructive Event Safety mutations', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const shell = await agent.get('/contact').set('Cookie', signedCookieHeader());
+    const csrf = shell.text.match(/name="_csrf" value="([^"]+)"/)[1];
+    const response = await agent.post('/events/42/safety').set('Cookie', signedCookieHeader()).type('form').send({
+      _csrf: csrf, action: 'withdraw_review', idempotency_key: 'event-safety-withdraw-key', denial_id: '7', expected_version: '2'
+    });
+    expect(response.headers.location).toBe('/events/42/safety?status=safety-failed');
+    expect(api.callEventApi).not.toHaveBeenCalled();
+  });
+
   it('renders and issues Laravel signed Event check-in credentials without caching the secret', async () => {
     const api = require('../src/lib/api');
     api.callEventApi

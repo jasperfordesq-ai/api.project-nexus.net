@@ -2,6 +2,18 @@
 
 Last reviewed: 2026-07-12
 
+## 2026-07-13 Event Safety Checkpoint
+
+Web UK now implements Laravel's private Event Safety page and all nine
+server-declared policy, acknowledgement, guardian-consent, and participation-
+review actions through the versioned `/api/v2/events/{id}/safety*` contract.
+Mutations carry `Idempotency-Key`; destructive actions require confirmation;
+guardian delivery uses the request locale; controlled reviews accept no free-
+text evidence. Focused permission/render/payload/fail-closed proof and the full
+45-suite Jest gate pass. Live disposable effects, delivery, wider role fixtures,
+manual assistive-technology review, and unchanged ASP.NET runtime proof remain
+open.
+
 ## Purpose
 
 This audit lists reusable Laravel Blade accessible frontend patterns that should

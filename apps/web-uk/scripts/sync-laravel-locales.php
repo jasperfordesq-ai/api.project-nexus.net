@@ -37,6 +37,7 @@ foreach (SUPPORTED_LOCALES as $locale) {
     $files = array_merge(
         glob($localeDirectory . '/govuk_alpha*.php') ?: [],
         glob($localeDirectory . '/event_offline_checkin.php') ?: [],
+        glob($localeDirectory . '/event_safety.php') ?: [],
     );
     if ($files === false || $files === []) {
         fwrite(STDERR, "No accessible locale files found for {$locale}.\n");
@@ -61,7 +62,7 @@ foreach (SUPPORTED_LOCALES as $locale) {
         '_meta' => [
             'schema' => 1,
             'locale' => $locale,
-            'source' => "lang/{$locale}/{govuk_alpha*,event_offline_checkin}.php",
+            'source' => "lang/{$locale}/{govuk_alpha*,event_offline_checkin,event_safety}.php",
         ],
         'namespaces' => $namespaces,
     ];

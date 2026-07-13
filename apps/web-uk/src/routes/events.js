@@ -384,6 +384,12 @@ function eventPerson(row = {}) {
   };
 }
 
+async function callEventMutation(token, method, path, data, idempotencyKey) {
+  return callEventApi(token, method, path, data, {
+    headers: { 'Idempotency-Key': idempotencyKey }
+  });
+}
+
 function offlineCredentialFrom(result) {
   const data = dataFrom(result);
   const value = data?.credential;
@@ -855,6 +861,131 @@ router.post('/:id(\\d+)/check-in/credential/issue', requireAuth, asyncRoute(asyn
     if (redirectOnAuthError(error, res)) return undefined;
     if (error instanceof ApiError && [400, 403, 404, 409, 422].includes(error.status)) {
       return redirectTo(res, eventPath(id, '/check-in/credential?status=failed'));
+    }
+    throw error;
+  }
+}));
+
+router.get('/:id(\\d+)/safety', requireAuth, asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const token = tokenFrom(req);
+  const [eventResult, safetyResult] = await Promise.all([
+    callApi(token, 'GET', `/${id}`),
+    callApi(token, 'GET', `/${id}/safety`)
+  ]);
+  const event = eventFrom(eventResult);
+  const safety = dataFrom(safetyResult) || {};
+  const canReview = safety.permissions?.review_participation === true;
+  let reviews = { items: [], total: 0, page: 1, per_page: 25 };
+  let people = [];
+  if (canReview) {
+    const page = boundedPositiveInteger(req.query.page, 1);
+    const [reviewsResult, peopleResult] = await Promise.all([
+      callApi(token, 'GET', `/${id}/safety/reviews?page=${page}&per_page=25`),
+      callApi(token, 'GET', `/${id}/people?page=1&per_page=100&sort=name&direction=asc`)
+    ]);
+    reviews = dataFrom(reviewsResult) || reviews;
+    people = (Array.isArray(peopleResult?.data) ? peopleResult.data : [])
+      .map(eventPerson)
+      .filter((person) => person.id !== null);
+  }
+  res.set('Cache-Control', 'private, no-store');
+  res.set('Pragma', 'no-cache');
+  return res.render('events/safety', {
+    title: res.locals.t('event_safety.govuk.title'),
+    activeNav: 'events',
+    event: { id, title: trimmed(event.title) },
+    safety,
+    reviews,
+    people,
+    status: trimmed(req.query.status),
+    today: new Date().toISOString().slice(0, 10),
+    idempotencyKey: randomUUID(),
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}, { notFoundTitle: 'Event not found' }));
+
+router.post('/:id(\\d+)/safety', requireAuth, asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const action = selectedValue(req.body.action, [
+    'save_requirements', 'publish_requirements', 'archive_requirements',
+    'acknowledge_code', 'withdraw_code', 'request_guardian_consent',
+    'withdraw_guardian_consent', 'record_review', 'withdraw_review'
+  ]);
+  const idempotencyKey = trimmed(req.body.idempotency_key, 191);
+  const destructive = ['archive_requirements', 'withdraw_code', 'withdraw_guardian_consent', 'withdraw_review'].includes(action);
+  if (!action || idempotencyKey.length < 8 || (destructive && !checked(req.body.confirm_destructive))) {
+    return redirectTo(res, eventPath(id, '/safety?status=safety-failed'));
+  }
+
+  let method = 'POST';
+  let path;
+  let payload = {};
+  const expectedRevision = req.body.expected_revision === '' ? null : Number.parseInt(req.body.expected_revision, 10);
+  const expectedVersion = Number.parseInt(req.body.expected_version, 10);
+  if (action === 'save_requirements') {
+    method = 'PUT';
+    path = `/${id}/safety/requirements`;
+    payload = {
+      minimum_age: req.body.minimum_age === '' ? null : Number.parseInt(req.body.minimum_age, 10),
+      guardian_consent_required: checked(req.body.guardian_consent_required),
+      minor_age_threshold: req.body.minor_age_threshold === '' ? null : Number.parseInt(req.body.minor_age_threshold, 10),
+      code_of_conduct_required: checked(req.body.code_of_conduct_required),
+      code_of_conduct_text: trimmed(req.body.code_of_conduct_text, 20000),
+      code_of_conduct_text_version: trimmed(req.body.code_of_conduct_text_version, 191),
+      expected_revision: expectedRevision
+    };
+  } else if (action === 'publish_requirements' || action === 'archive_requirements') {
+    path = `/${id}/safety/requirements/${action === 'publish_requirements' ? 'publish' : 'archive'}`;
+    payload = { expected_revision: expectedRevision, expected_version: expectedVersion };
+  } else if (action === 'acknowledge_code') {
+    path = `/${id}/safety/code-of-conduct/acknowledgements`;
+    payload = { text_version: trimmed(req.body.text_version, 191), text_hash: trimmed(req.body.text_hash, 191) };
+  } else if (action === 'withdraw_code') {
+    method = 'DELETE';
+    path = `/${id}/safety/code-of-conduct/acknowledgements/${positiveInteger(req.body.acknowledgement_id) || 0}`;
+  } else if (action === 'request_guardian_consent') {
+    path = `/${id}/safety/guardian-consents`;
+    payload = {
+      guardian_name: trimmed(req.body.guardian_name, 160),
+      guardian_email: trimmed(req.body.guardian_email, 320),
+      relationship_code: selectedValue(req.body.relationship_code, ['parent', 'guardian', 'legal_guardian', 'carer']),
+      preferred_language: req.locale || 'en'
+    };
+  } else if (action === 'withdraw_guardian_consent') {
+    method = 'DELETE';
+    path = `/${id}/safety/guardian-consents/${positiveInteger(req.body.consent_id) || 0}`;
+  } else if (action === 'record_review') {
+    path = `/${id}/safety/reviews`;
+    payload = {
+      user_id: positiveInteger(req.body.user_id),
+      decision: selectedValue(req.body.decision, ['deny', 'remove']),
+      reason_code: selectedValue(req.body.reason_code, ['safeguarding_policy', 'minimum_age', 'guardian_consent', 'code_of_conduct', 'conduct_violation', 'safety_review', 'user_block']),
+      effective_from: trimmed(req.body.effective_from),
+      effective_until: trimmed(req.body.effective_until) || null,
+      expected_version: req.body.expected_version === '' ? null : Number.parseInt(req.body.expected_version, 10)
+    };
+  } else {
+    method = 'DELETE';
+    path = `/${id}/safety/reviews/${positiveInteger(req.body.denial_id) || 0}`;
+    payload = { expected_version: expectedVersion };
+  }
+
+  const invalidNumber = [payload.minimum_age, payload.minor_age_threshold, payload.expected_revision, payload.expected_version]
+    .some((value) => value !== undefined && value !== null && (!Number.isInteger(value) || value < 0));
+  const invalidPayload = invalidNumber
+    || (action === 'request_guardian_consent' && (!payload.guardian_name || !payload.guardian_email || !payload.relationship_code))
+    || (action === 'record_review' && (!payload.user_id || !payload.decision || !payload.reason_code || !payload.effective_from));
+  if (invalidPayload || path.includes('/0')) {
+    return redirectTo(res, eventPath(id, '/safety?status=safety-failed'));
+  }
+  try {
+    await callEventMutation(tokenFrom(req), method, path, payload, idempotencyKey);
+    return redirectTo(res, eventPath(id, '/safety?status=safety-updated'));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    if (error instanceof ApiError && [400, 403, 404, 409, 422, 429].includes(error.status)) {
+      return redirectTo(res, eventPath(id, '/safety?status=safety-failed'));
     }
     throw error;
   }
