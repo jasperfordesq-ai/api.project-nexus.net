@@ -22779,6 +22779,31 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('About this event');
     expect(response.text).not.toContain('Date and time');
     expect(response.text).not.toContain('Capacity');
+    expect(response.text).not.toContain('govuk-grid-column-one-third');
+    expect(response.text).not.toContain('app-sidebar-card');
+    expect(response.text).not.toContain('No RSVPs yet. Be the first to respond!');
+  });
+
+  it('keeps the event attendee roster in Blade\'s main reading column', async () => {
+    const api = require('../src/lib/api');
+    api.getEvent.mockResolvedValueOnce({
+      data: { id: 42, title: 'Community garden day', description: 'Planting and tea', start_time: '2026-08-01T10:00:00' }
+    });
+    api.getEventRsvps.mockResolvedValueOnce({
+      data: [
+        { status: 'going', user: { id: 55, name: 'Alex Morgan' } },
+        { status: 'interested', user: { id: 56, name: 'Sam Green' } }
+      ]
+    });
+
+    const response = await request(app).get('/events/42').set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Who is going');
+    expect(response.text).toContain('Alex Morgan');
+    expect(response.text).toContain('Sam Green');
+    expect(response.text).not.toContain('govuk-grid-column-one-third');
+    expect(response.text).not.toContain('app-attendee-list');
   });
 
   it('renders waitlist controls only from Laravel relationship capabilities', async () => {

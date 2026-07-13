@@ -242,18 +242,14 @@
         </div>
       {% endif %}
 
-    </div>
-
-    <div class="govuk-grid-column-one-third">
-      {# Attendees sidebar #}
-      <div class="app-sidebar-card">
-        <h2 class="govuk-heading-m">Attendees</h2>
+      {% if rsvpsByStatus.going.length > 0 or rsvpsByStatus.interested.length > 0 %}
+        <h2 class="govuk-heading-l govuk-!-margin-top-8">{{ t("govuk_alpha.events.attendees_title") }}</h2>
 
         {% if rsvpsByStatus.going.length > 0 %}
           <h3 class="govuk-heading-s govuk-!-margin-bottom-2">{{ t("events.attendees_label") }} ({{ rsvpsByStatus.going.length }})</h3>
-          <ul class="app-attendee-list govuk-!-margin-bottom-4">
-            {% for rsvp in rsvpsByStatus.going | take(8) %}
-              <li class="app-attendee-list__item">
+          <ul class="govuk-list govuk-!-margin-bottom-4">
+            {% for rsvp in rsvpsByStatus.going %}
+              <li>
                 {% set user = rsvp.user or rsvp %}
                 {% include "partials/avatar.njk" %}
                 <a href="{{ urlFor('/members/' + (user.id | string)) }}" class="govuk-link govuk-body-s">
@@ -262,16 +258,13 @@
               </li>
             {% endfor %}
           </ul>
-          {% if rsvpsByStatus.going.length > 8 %}
-            <p class="govuk-body-s">and {{ rsvpsByStatus.going.length - 8 }} more...</p>
-          {% endif %}
         {% endif %}
 
         {% if rsvpsByStatus.interested.length > 0 %}
           <h3 class="govuk-heading-s govuk-!-margin-bottom-2">{{ t("events.interested_label") }} ({{ rsvpsByStatus.interested.length }})</h3>
-          <ul class="app-attendee-list govuk-!-margin-bottom-4">
-            {% for rsvp in rsvpsByStatus.interested | take(5) %}
-              <li class="app-attendee-list__item">
+          <ul class="govuk-list govuk-!-margin-bottom-4">
+            {% for rsvp in rsvpsByStatus.interested %}
+              <li>
                 {% set user = rsvp.user or rsvp %}
                 {% include "partials/avatar.njk" %}
                 <a href="{{ urlFor('/members/' + (user.id | string)) }}" class="govuk-link govuk-body-s">
@@ -280,15 +273,9 @@
               </li>
             {% endfor %}
           </ul>
-          {% if rsvpsByStatus.interested.length > 5 %}
-            <p class="govuk-body-s">and {{ rsvpsByStatus.interested.length - 5 }} more...</p>
-          {% endif %}
         {% endif %}
 
-        {% if rsvpsByStatus.going.length == 0 and rsvpsByStatus.interested.length == 0 %}
-          <p class="govuk-body-s">No RSVPs yet. Be the first to respond!</p>
-        {% endif %}
-      </div>
+      {% endif %}
     </div>
   </div>
 {% endblock %}
