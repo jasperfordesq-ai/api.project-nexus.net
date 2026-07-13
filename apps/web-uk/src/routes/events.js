@@ -392,7 +392,17 @@ router.get('/:id(\\d+)/recurring-edit', asyncRoute(async (req, res) => {
   if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
-  const event = eventFrom(await callApi(token, 'GET', `/${id}`));
+  const [eventResult, currentUser] = await Promise.all([
+    callApi(token, 'GET', `/${id}`),
+    getRequestProfile(req, token)
+  ]);
+  const event = eventFrom(eventResult);
+  const ownerId = eventOwnerId(event);
+  const currentUserId = idFrom(currentUser);
+  const canEdit = event.can_edit === true || event.canEdit === true;
+  if (!canEdit && (ownerId === null || currentUserId === null || ownerId !== currentUserId)) {
+    return res.status(403).render('errors/403', { title: 'Forbidden' });
+  }
   if (!eventIsSeries(event)) {
     return redirectTo(res, eventPath(id, '/edit'));
   }
@@ -402,11 +412,11 @@ router.get('/:id(\\d+)/recurring-edit', asyncRoute(async (req, res) => {
     .filter(Boolean);
 
   return res.render('events/recurring-edit', {
-    title: 'Edit a repeating event',
+    title: res.locals.t('govuk_alpha_events.recurring_edit.title'),
     activeNav: 'events',
     event: {
       id,
-      title: trimmed(event.title),
+      title: trimmed(event.title) || res.locals.t('govuk_alpha_events.recurring_edit.caption'),
       description: trimmed(event.description, 8000),
       location: trimmed(event.location),
       startTime: dateTimeLocal(event.start_time ?? event.startTime ?? event.starts_at ?? event.startsAt),

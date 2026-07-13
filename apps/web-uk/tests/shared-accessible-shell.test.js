@@ -21156,6 +21156,7 @@ describe('shared accessible frontend shell', () => {
     api.callEventApi.mockResolvedValueOnce({
       data: {
         id: 7,
+        user_id: 101,
         title: 'Weekly repair cafe',
         description: 'Bring small appliances.',
         location: 'Community hall',
@@ -21200,6 +21201,7 @@ describe('shared accessible frontend shell', () => {
     api.callEventApi.mockResolvedValueOnce({
       data: {
         id: 7,
+        user_id: 101,
         title: 'Weekly repair cafe',
         description: 'Bring small appliances.',
         location: 'Community hall',
@@ -21230,6 +21232,7 @@ describe('shared accessible frontend shell', () => {
     api.callEventApi.mockResolvedValueOnce({
       data: {
         id: 7,
+        user_id: 101,
         title: 'One-off repair cafe',
         is_series: false,
         is_recurring_template: false,
@@ -21244,6 +21247,26 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe('/events/7/edit');
     expect(api.callEventApi).toHaveBeenCalledWith('test-token', 'GET', '/7');
+  });
+
+  it('fails closed before rendering recurring event edit controls to non-organisers', async () => {
+    const api = require('../src/lib/api');
+    api.callEventApi.mockResolvedValueOnce({
+      data: {
+        id: 7,
+        user_id: 202,
+        title: 'Weekly repair cafe',
+        is_series: true
+      }
+    });
+    api.getProfile.mockResolvedValueOnce({ data: { id: 101 } });
+
+    const response = await request(app)
+      .get('/events/7/recurring-edit')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(403);
+    expect(response.text).not.toContain('Save changes');
   });
 
   it('renders the Laravel event map page and no-location state', async () => {
