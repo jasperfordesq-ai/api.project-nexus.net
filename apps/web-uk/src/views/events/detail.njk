@@ -7,14 +7,19 @@
 
 {% block beforeContent %}
   {{ super() }}
+  <p class="govuk-body">
+    <a class="govuk-link" href="{{ urlFor('/events/' + (event.id | string) + '/calendar') }}">{{ t("govuk_alpha.events.calendar_actions_title") }}</a>
+    <span aria-hidden="true"> · </span>
+    <a class="govuk-link" href="{{ urlFor('/events/' + (event.id | string) + '/agenda') }}">{{ t("govuk_alpha.events.agenda_link") }}</a>
+    <span aria-hidden="true"> · </span>
+    <a class="govuk-link" href="{{ urlFor('/events/' + (event.id | string) + '/safety') }}">{{ t("event_safety.govuk.link") }}</a>
+    <span aria-hidden="true"> · </span>
+    <a class="govuk-link" href="{{ urlFor('/events/' + (event.id | string) + '/tickets') }}">{{ t("event_tickets.title") }}</a>
+  </p>
   <a class="govuk-back-link" href="{{ urlFor('/events') }}">{{ t("actions.back_to_events") }}</a>
 {% endblock %}
 
 {% block mainContent %}
-  <div class="govuk-grid-row">
-    <div class="govuk-grid-column-two-thirds">
-      <p class="govuk-body"><a class="govuk-link" href="{{ urlFor('/events/' + (event.id | string) + '/safety') }}">{{ t("event_safety.govuk.link") }}</a></p>
-
       {% if status == "waitlist-offer-accepted" %}
         <div class="govuk-notification-banner govuk-notification-banner--success" role="alert"><div class="govuk-notification-banner__header"><h2 class="govuk-notification-banner__title">{{ t("govuk_alpha.states.success_title") }}</h2></div><div class="govuk-notification-banner__content"><p class="govuk-notification-banner__heading">{{ t("govuk_alpha.events.waitlist_offer_accepted") }}</p></div></div>
       {% elif status == "waitlist-offer-accept-failed" %}
@@ -44,6 +49,26 @@
           <a class="govuk-link" href="{{ urlFor('/events/' + (event.id | string) + '/check-in/credential') }}">{{ t("event_offline_checkin.attendee.manage_link") }}</a>
         </p>
       {% endif %}
+
+      {% if (event.isCancelled or event.is_cancelled) %}
+        {{ govukWarningText({
+          text: t("events.polish_events.cancelled_banner_heading"),
+          iconFallbackText: "Warning"
+        }) }}
+        {% if event.cancellation_reason or event.cancellationReason %}
+          <p class="govuk-body govuk-!-margin-top-1"><strong>{{ t("events.polish_events.cancelled_reason_prefix") }}</strong> {{ event.cancellation_reason or event.cancellationReason }}</p>
+        {% endif %}
+      {% endif %}
+
+      {% if event.isArchived or event.is_archived %}
+        <div class="govuk-notification-banner" data-module="govuk-notification-banner" role="region" aria-labelledby="event-archived-title">
+          <div class="govuk-notification-banner__header"><h2 class="govuk-notification-banner__title" id="event-archived-title">{{ t("govuk_alpha.events.archive_event") }}</h2></div>
+          <div class="govuk-notification-banner__content"><p class="govuk-notification-banner__heading">{{ t("govuk_alpha.events.archived_notice") }}</p></div>
+        </div>
+      {% endif %}
+
+  <div class="govuk-grid-row">
+    <div class="govuk-grid-column-two-thirds">
 
       <div class="app-page-header">
         <span class="govuk-caption-l">{{ t("events.detail_title") }}</span>
@@ -88,18 +113,60 @@
         </details>
       {% endif %}
 
-      {% if (event.isCancelled or event.is_cancelled) %}
-        {{ govukWarningText({
-          text: t("events.polish_events.cancelled_banner_heading"),
-          iconFallbackText: "Warning"
-        }) }}
-        {% if event.cancellation_reason or event.cancellationReason %}
-          <p class="govuk-body govuk-!-margin-top-1"><strong>{{ t("events.polish_events.cancelled_reason_prefix") }}</strong> {{ event.cancellation_reason or event.cancellationReason }}</p>
-        {% endif %}
-      {% endif %}
+      {# Owner actions follow publication controls and precede event content, matching Blade. #}
+      {% if isOwner and not (event.isArchived or event.is_archived) %}
+        <div class="govuk-button-group govuk-!-margin-bottom-4">
+          {{ govukButton({
+            text: t("events.edit_event"),
+            href: urlFor("/events/" + (event.id | string) + "/edit"),
+            classes: "govuk-button--secondary govuk-!-margin-bottom-0"
+          }) }}
+          {% set eventIsSeries = event.is_series or event.is_recurring_template or event.parent_event_id or (event.series and event.series.recurrence) %}
+          {% if eventIsSeries %}
+            {{ govukButton({ text: t("govuk_alpha_events.nav.edit_series"), href: urlFor("/events/" + (event.id | string) + "/recurring-edit"), classes: "govuk-button--secondary govuk-!-margin-bottom-0" }) }}
+          {% endif %}
+          {{ govukButton({ text: t("govuk_alpha_events.nav.manage_polls"), href: urlFor("/events/" + (event.id | string) + "/polls"), classes: "govuk-button--secondary govuk-!-margin-bottom-0" }) }}
+          {{ govukButton({ text: t("event_templates.capture_preview_title"), href: urlFor("/events/" + (event.id | string) + "/template-preview"), classes: "govuk-button--secondary govuk-!-margin-bottom-0" }) }}
+        </div>
 
-      {% if event.isArchived or event.is_archived %}
-        <div class="govuk-inset-text">{{ t("govuk_alpha.events.archived_notice") }}</div>
+        {% if not (event.isCancelled or event.is_cancelled) %}
+          <details class="govuk-details govuk-!-margin-bottom-2" data-module="govuk-details">
+            <summary class="govuk-details__summary">
+              <span class="govuk-details__summary-text">{{ t("events.cancel_event") }}</span>
+            </summary>
+            <div class="govuk-details__text">
+              <p class="govuk-body">{{ t("events.cancel_confirm") }}</p>
+              <form action="{{ urlFor('/events/' + (event.id | string) + '/cancel') }}" method="post">
+                <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                <input type="hidden" name="idempotency_key" value="{{ idempotencyKey }}">
+                <div class="govuk-form-group">
+                  <label class="govuk-label" for="cancel-reason">{{ t("events.cancel_reason_label") }}</label>
+                  <textarea class="govuk-textarea" id="cancel-reason" name="reason" rows="3" maxlength="4000" required></textarea>
+                </div>
+                {{ govukButton({
+                  text: t("events.cancel_event_button"),
+                  classes: "govuk-button--warning govuk-!-margin-bottom-0"
+                }) }}
+              </form>
+            </div>
+          </details>
+        {% endif %}
+
+        <details class="govuk-details govuk-!-margin-bottom-4" data-module="govuk-details">
+          <summary class="govuk-details__summary"><span class="govuk-details__summary-text">{{ t("govuk_alpha.events.archive_event") }}</span></summary>
+          <div class="govuk-details__text">
+            <p class="govuk-body">{{ t("govuk_alpha.events.archive_confirm") }}</p>
+            <form action="{{ urlFor('/events/' + (event.id | string) + '/delete') }}" method="post">
+              <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+              <input type="hidden" name="idempotency_key" value="{{ idempotencyKey }}">
+              <div class="govuk-form-group">
+                <label class="govuk-label" for="archive-reason">{{ t("govuk_alpha.events.archive_reason_label") }}</label>
+                <textarea class="govuk-textarea" id="archive-reason" name="reason" rows="2" maxlength="4000" required></textarea>
+              </div>
+              {{ govukButton({ text: t("govuk_alpha.events.archive_event_button"), classes: "govuk-button--warning govuk-!-margin-bottom-0" }) }}
+            </form>
+          </div>
+        </details>
       {% endif %}
 
       {% set coverImage = event.cover_image or event.coverImage %}
@@ -237,64 +304,6 @@
       {% elif not isAuthenticated and not (event.isCancelled or event.is_cancelled) and not (event.isPast or event.is_past) %}
         <div class="govuk-inset-text">
           <a class="govuk-link" href="{{ urlFor('/login') }}">{{ t("nav.login") }}</a>. {{ t("events.auth_required_detail", { community: tenantName or serviceName }) }}
-        </div>
-      {% endif %}
-
-      {# Owner actions #}
-      {% if isOwner and not (event.isArchived or event.is_archived) %}
-        <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
-
-        <div class="app-action-buttons">
-          {{ govukButton({
-            text: t("events.edit_event"),
-            href: urlFor("/events/" + (event.id | string) + "/edit"),
-            classes: "govuk-button--secondary"
-          }) }}
-          {% set eventIsSeries = event.is_series or event.is_recurring_template or event.parent_event_id or (event.series and event.series.recurrence) %}
-          {% if eventIsSeries %}
-            {{ govukButton({ text: t("govuk_alpha_events.nav.edit_series"), href: urlFor("/events/" + (event.id | string) + "/recurring-edit"), classes: "govuk-button--secondary" }) }}
-          {% endif %}
-          {{ govukButton({ text: t("govuk_alpha_events.nav.manage_polls"), href: urlFor("/events/" + (event.id | string) + "/polls"), classes: "govuk-button--secondary" }) }}
-          {{ govukButton({ text: t("event_templates.capture_preview_title"), href: urlFor("/events/" + (event.id | string) + "/template-preview"), classes: "govuk-button--secondary" }) }}
-
-          {% if not (event.isCancelled or event.is_cancelled) %}
-            <details class="govuk-details govuk-!-margin-bottom-2" data-module="govuk-details">
-              <summary class="govuk-details__summary">
-                <span class="govuk-details__summary-text">{{ t("events.cancel_event") }}</span>
-              </summary>
-              <div class="govuk-details__text">
-                <p class="govuk-body">{{ t("events.cancel_confirm") }}</p>
-                <form action="{{ urlFor('/events/' + (event.id | string) + '/cancel') }}" method="post">
-                  <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-                  <input type="hidden" name="idempotency_key" value="{{ idempotencyKey }}">
-                  <div class="govuk-form-group">
-                    <label class="govuk-label" for="cancel-reason">{{ t("events.cancel_reason_label") }}</label>
-                    <textarea class="govuk-textarea" id="cancel-reason" name="reason" rows="3" maxlength="4000" required></textarea>
-                  </div>
-                  {{ govukButton({
-                    text: t("events.cancel_event_button"),
-                    classes: "govuk-button--warning govuk-!-margin-bottom-0"
-                  }) }}
-                </form>
-              </div>
-            </details>
-          {% endif %}
-
-          <details class="govuk-details govuk-!-margin-bottom-4" data-module="govuk-details">
-            <summary class="govuk-details__summary"><span class="govuk-details__summary-text">{{ t("govuk_alpha.events.archive_event") }}</span></summary>
-            <div class="govuk-details__text">
-              <p class="govuk-body">{{ t("govuk_alpha.events.archive_confirm") }}</p>
-              <form action="{{ urlFor('/events/' + (event.id | string) + '/delete') }}" method="post">
-                <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-                <input type="hidden" name="idempotency_key" value="{{ idempotencyKey }}">
-                <div class="govuk-form-group">
-                  <label class="govuk-label" for="archive-reason">{{ t("govuk_alpha.events.archive_reason_label") }}</label>
-                  <textarea class="govuk-textarea" id="archive-reason" name="reason" rows="2" maxlength="4000" required></textarea>
-                </div>
-                {{ govukButton({ text: t("govuk_alpha.events.archive_event_button"), classes: "govuk-button--warning govuk-!-margin-bottom-0" }) }}
-              </form>
-            </div>
-          </details>
         </div>
       {% endif %}
 

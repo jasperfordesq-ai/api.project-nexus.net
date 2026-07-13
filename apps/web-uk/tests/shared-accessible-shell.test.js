@@ -23521,8 +23521,16 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('href="/events/42/recurring-edit"');
     expect(response.text).toContain('href="/events/42/polls"');
     expect(response.text).toContain('href="/events/42/template-preview"');
+    expect(response.text).toContain('href="/events/42/calendar"');
+    expect(response.text).toContain('href="/events/42/agenda"');
+    expect(response.text).toContain('href="/events/42/safety"');
+    expect(response.text).toContain('href="/events/42/tickets"');
     expect(response.text).toContain('action="/events/42/submit"');
     expect(response.text).toContain('Submit for review');
+    expect(response.text.indexOf('href="/events/42/calendar"')).toBeLessThan(response.text.indexOf('class="govuk-back-link"'));
+    expect(response.text.indexOf('action="/events/42/submit"')).toBeLessThan(response.text.indexOf('href="/events/42/edit"'));
+    expect(response.text.indexOf('href="/events/42/edit"')).toBeLessThan(response.text.indexOf('>Description</h2>'));
+    expect(response.text.indexOf('href="/events/42/edit"')).toBeLessThan(response.text.indexOf('action="/events/42/rsvp"'));
     expect(api.callEventApi).toHaveBeenCalledWith('test-token', 'GET', '/recurrence-capabilities');
   });
 

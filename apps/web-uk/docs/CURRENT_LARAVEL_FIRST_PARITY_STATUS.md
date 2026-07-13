@@ -51,8 +51,8 @@ commit as the implementation it describes.
 
 ## Audited Baseline
 
-The audit was refreshed from ASP.NET-repo commit `ffa265ef` plus the scoped
-Event owner-action slice recorded below, and Laravel-repo commit `c2cf4fa`. Refresh both
+The audit was refreshed from ASP.NET-repo commit `979c123f` plus the scoped
+Event detail hierarchy slice recorded below, and Laravel-repo commit `c2cf4fa`. Refresh both
 repositories before relying on these numbers after either source moves.
 
 | Measure | Audited result | Meaning |
@@ -88,7 +88,7 @@ A fresh proof run records:
 
 - 11 locales, 35 namespaces, and 8,663 keys per locale;
 - zero missing or extra keys in every locale;
-- 6,409 complete static references and 4,852 unique referenced keys;
+- 6,413 complete static references and 4,853 unique referenced keys;
 - zero unresolved complete static references;
 - 315 templates and zero conservative hard-coded-copy matches;
 - an English and Irish Event-template library render with no raw key leakage;
