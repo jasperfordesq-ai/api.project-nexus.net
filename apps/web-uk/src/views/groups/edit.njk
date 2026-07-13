@@ -11,12 +11,9 @@
 {% endblock %}
 
 {% block mainContent %}
-  <div class="govuk-grid-row">
-    <div class="govuk-grid-column-two-thirds">
-
-      <span class="govuk-caption-l">{{ group.name }}</span>
-      <h1 class="govuk-heading-xl">{{ t("groups.edit.title") }}</h1>
-      <p class="govuk-body-l">{{ t("groups.edit.description") }}</p>
+  <span class="govuk-caption-l">{{ group.name }}</span>
+  <h1 class="govuk-heading-xl">{{ t("groups.edit.title") }}</h1>
+  <p class="govuk-body-l">{{ t("groups.edit.description") }}</p>
 
       {% if updateFailed or deleteFailed %}
         <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
@@ -74,8 +71,7 @@
 
         {{ govukInput({
           label: {
-            text: t("polish_groups.location_label"),
-            classes: "govuk-label--m"
+            text: t("polish_groups.location_label")
           },
           hint: {
             text: t("polish_groups.location_hint")
@@ -83,6 +79,7 @@
           id: "location",
           name: "location",
           value: group.location if group.location else "",
+          classes: "govuk-!-width-two-thirds",
           attributes: { maxlength: "255" }
         }) }}
 
@@ -161,7 +158,4 @@
           }) }}
         </form>
       {% endif %}
-
-    </div>
-  </div>
 {% endblock %}

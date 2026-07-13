@@ -1456,10 +1456,6 @@ router.post('/:id(\\d+)/edit', requireAuth, audit.groupUpdate(), asyncRoute(asyn
     errors.push({ text: res.locals.t('groups.errors.name_too_long'), href: '#name' });
   }
 
-  if (String(location || '').length > 255) {
-    errors.push({ text: 'Location must be 255 characters or fewer', href: '#location' });
-  }
-
   if (errors.length > 0) {
     await removeUploadedFile(cover);
     return res.render('groups/edit', {

@@ -24869,6 +24869,7 @@ describe('shared accessible frontend shell', () => {
     expect(edit.text).toContain('name="visibility"');
     expect(edit.text).toMatch(/name="visibility"[^>]*value="private"[^>]*checked/);
     expect(edit.text).toContain('value="Dublin"');
+    expect(edit.text).toContain('govuk-input govuk-!-width-two-thirds');
     expect(edit.text).toContain('value="repair, tools"');
     expect(edit.text).toContain('id="cover" name="cover" type="file"');
     expect(edit.text).not.toContain('Cancel');
@@ -24943,6 +24944,28 @@ describe('shared accessible frontend shell', () => {
     expect(missingEditName.text).toContain('aria-describedby="name-hint name-error"');
     expect(missingEditName.text).toContain('Preserve edited description.');
     expect(api.updateGroup).toHaveBeenCalledTimes(1);
+
+    api.updateGroup.mockRejectedValueOnce(new api.ApiError('Validation failed', 422, {
+      errors: [{ code: 'VALIDATION_ERROR', field: 'location', message: 'The location must not be greater than 255 characters.' }]
+    }));
+    const longEditLocation = 'x'.repeat(256);
+    const invalidEditLocation = await agent
+      .post('/groups/88/edit')
+      .set('Cookie', signedCookieHeader())
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        name: 'Repair circle',
+        description: 'Updated description',
+        location: longEditLocation,
+        visibility: 'public',
+        tags: 'repair, sharing'
+      });
+
+    expect(invalidEditLocation.status).toBe(200);
+    expect(api.updateGroup).toHaveBeenLastCalledWith('test-token', 88, expect.objectContaining({ location: longEditLocation }));
+    expect(invalidEditLocation.text).toContain('The location must not be greater than 255 characters.');
+    expect(invalidEditLocation.text).toContain('href="#location"');
 
     const missingName = await agent
       .post('/groups/new')
