@@ -9,6 +9,7 @@ const { requireAuth } = require('../middleware/auth');
 const {
   getConversations,
   getUnreadCount,
+  getUser,
   searchUsers,
   callMessageApi,
   uploadVoiceMessage,
@@ -761,6 +762,16 @@ router.get('/groups/new', requireAuth, asyncRoute(async (req, res) => {
     searchResults = rawSearchResults.filter(member => !selected.has(member.id));
   }
   const namedSelected = new Map(rawSearchResults.map(member => [member.id, member.displayName]));
+  await Promise.all(selectedIds
+    .filter(id => !namedSelected.has(id))
+    .map(async (id) => {
+      try {
+        const member = dataFrom(await getUser(req.token, id));
+        namedSelected.set(id, memberName(member, res.locals.t));
+      } catch {
+        // Preserve the selected id and use Blade's unknown-member fallback below.
+      }
+    }));
 
   res.render('messages/group-create', {
     title: res.locals.t('govuk_alpha_messages.create.title'),

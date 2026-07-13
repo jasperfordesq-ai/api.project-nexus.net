@@ -25857,6 +25857,30 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Create group conversation');
   });
 
+  it('resolves selected group members without requiring a repeated search', async () => {
+    const api = require('../src/lib/api');
+    api.getUser.mockImplementation(async (_token, id) => ({
+      data: id === 44
+        ? { id: 44, name: 'Casey Quinn' }
+        : { id: 55, name: 'Morgan Lee' }
+    }));
+
+    const response = await request(app)
+      .get('/acme/accessible/messages/groups/new?name=Local%20helpers&members[]=44&members[]=55')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.searchUsers).not.toHaveBeenCalled();
+    expect(api.getUser).toHaveBeenCalledTimes(2);
+    expect(api.getUser).toHaveBeenCalledWith('test-token', 44);
+    expect(api.getUser).toHaveBeenCalledWith('test-token', 55);
+    expect(response.text).toContain('Remove Casey Quinn from the group');
+    expect(response.text).toContain('Remove Morgan Lee from the group');
+    expect(response.text).not.toContain('Remove Community member from the group');
+    expect(response.text).toMatch(/<span>Casey Quinn<\/span>\s*<form[^>]+>\s*<input type="hidden" name="name" value="Local helpers">\s*<input type="hidden" name="members\[\]" value="55">/);
+    expect(response.text).toMatch(/<span>Morgan Lee<\/span>\s*<form[^>]+>\s*<input type="hidden" name="name" value="Local helpers">\s*<input type="hidden" name="members\[\]" value="44">/);
+  });
+
   it('suppresses group-message mutations when Laravel restricts messaging', async () => {
     const api = require('../src/lib/api');
     api.callConversationApi.mockResolvedValueOnce({ data: [] });
