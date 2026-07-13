@@ -240,8 +240,8 @@
         </div>
       {% endif %}
 
-      {# Admin actions #}
-      {% if event.canEdit or event.can_edit %}
+      {# Owner actions #}
+      {% if isOwner and not (event.isArchived or event.is_archived) %}
         <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
 
         <div class="app-action-buttons">
@@ -250,6 +250,12 @@
             href: urlFor("/events/" + (event.id | string) + "/edit"),
             classes: "govuk-button--secondary"
           }) }}
+          {% set eventIsSeries = event.is_series or event.is_recurring_template or event.parent_event_id or (event.series and event.series.recurrence) %}
+          {% if eventIsSeries %}
+            {{ govukButton({ text: t("govuk_alpha_events.nav.edit_series"), href: urlFor("/events/" + (event.id | string) + "/recurring-edit"), classes: "govuk-button--secondary" }) }}
+          {% endif %}
+          {{ govukButton({ text: t("govuk_alpha_events.nav.manage_polls"), href: urlFor("/events/" + (event.id | string) + "/polls"), classes: "govuk-button--secondary" }) }}
+          {{ govukButton({ text: t("event_templates.capture_preview_title"), href: urlFor("/events/" + (event.id | string) + "/template-preview"), classes: "govuk-button--secondary" }) }}
 
           {% if not (event.isCancelled or event.is_cancelled) %}
             <details class="govuk-details govuk-!-margin-bottom-2" data-module="govuk-details">

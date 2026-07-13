@@ -21897,6 +21897,7 @@ describe('shared accessible frontend shell', () => {
         title: 'Community garden day',
         description: 'Planting and tea',
         start_time: '2026-08-01T10:00:00',
+        organizer: { id: 101 },
         can_edit: true
       }
     });
@@ -23302,6 +23303,7 @@ describe('shared accessible frontend shell', () => {
         title: 'Managed repair cafe',
         description: 'Bring a broken household item.',
         start_time: '2026-08-01T10:00:00Z',
+        organizer: { id: 101 },
         can_edit: true
       }
     });
@@ -23317,7 +23319,7 @@ describe('shared accessible frontend shell', () => {
     expect(detail.text).toContain('Archive reason');
     expect(detail.text).toContain('name="idempotency_key"');
     expect(detail.text).toContain('action="/events/42/delete"');
-    expect(detail.text).not.toContain('Manage event');
+    expect(detail.text).not.toContain('>Manage event</');
     expect(detail.text).not.toContain('cannot be undone');
     expect(detail.text).not.toContain('onsubmit="return confirm');
 
@@ -23515,6 +23517,10 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('href="/events/42/analytics"');
     expect(response.text).toContain('href="/events/templates"');
     expect(response.text).toContain('href="/events/42/lifecycle-history"');
+    expect(response.text).toContain('href="/events/42/edit"');
+    expect(response.text).toContain('href="/events/42/recurring-edit"');
+    expect(response.text).toContain('href="/events/42/polls"');
+    expect(response.text).toContain('href="/events/42/template-preview"');
     expect(response.text).toContain('action="/events/42/submit"');
     expect(response.text).toContain('Submit for review');
     expect(api.callEventApi).toHaveBeenCalledWith('test-token', 'GET', '/recurrence-capabilities');
@@ -23527,6 +23533,7 @@ describe('shared accessible frontend shell', () => {
         id: 43,
         title: 'Member-led recurring event',
         organizer: { id: 202 },
+        can_edit: true,
         permissions: { manage_agenda: true },
         series: { recurrence: { recurrence_id: '20260802T090000Z', parent_event_id: 43, is_template: false, engine: 'sabre-vobject', engine_version: '2' } }
       }
@@ -23542,6 +23549,11 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('href="/events/43/recurrence-definition-blueprints"');
     expect(response.text).not.toContain('href="/events/43/analytics"');
     expect(response.text).not.toContain('href="/events/templates"');
+    expect(response.text).not.toContain('href="/events/43/edit"');
+    expect(response.text).not.toContain('href="/events/43/polls"');
+    expect(response.text).not.toContain('href="/events/43/template-preview"');
+    expect(response.text).not.toContain('action="/events/43/cancel"');
+    expect(response.text).not.toContain('action="/events/43/delete"');
     expect(api.callEventApi).toHaveBeenCalledWith('test-token', 'GET', '/recurrence-capabilities');
   });
 
