@@ -767,7 +767,11 @@ router.get('/groups/new', requireAuth, asyncRoute(async (req, res) => {
     query,
     groupName: trimmed(req.query.name, 100),
     selectedIds,
-    selectedMembers: selectedIds.map(id => ({ id, displayName: namedSelected.get(id) || res.locals.t('govuk_alpha.members.unknown_member') })),
+    selectedMembers: selectedIds.map(id => ({
+      id,
+      displayName: namedSelected.get(id) || res.locals.t('govuk_alpha.members.unknown_member'),
+      remainingIds: selectedIds.filter(selectedId => selectedId !== id)
+    })),
     searchResults,
     canCreate: selectedIds.length >= 2,
     ...access,

@@ -25836,18 +25836,22 @@ describe('shared accessible frontend shell', () => {
     });
 
     const response = await request(app)
-      .get('/messages/groups/new?q=case&name=Local%20helpers&members[]=44')
+      .get('/acme/accessible/messages/groups/new?q=case&name=Local%20helpers&members[]=44')
       .set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(200);
     expect(api.searchUsers).toHaveBeenCalledWith('test-token', 'case', { limit: 10 });
     expect(api.callConversationApi).not.toHaveBeenCalled();
     expect(response.text).toContain('Start a group conversation');
+    const mainContent = response.text.split('<main')[1].split('</main>')[0];
+    expect(mainContent).not.toContain('govuk-grid-column-two-thirds');
     expect(response.text).toContain('Members in this group');
     expect(response.text).toContain('Find members to add');
     expect(response.text).toContain('Casey Quinn');
     expect(response.text).toContain('Morgan Lee');
     expect(response.text).toContain('name="members[]" value="44"');
+    expect(response.text).toContain('Remove<span class="govuk-visually-hidden"> Remove Casey Quinn from the group</span>');
+    expect(response.text).toMatch(/<form method="get" action="\/acme\/accessible\/messages\/groups\/new" style="display:inline">\s*<input type="hidden" name="name" value="Local helpers">\s*<button type="submit" class="govuk-link"/);
     expect(response.text).toContain('id="group-name" name="name"');
     expect(response.text).toContain('Local helpers');
     expect(response.text).toContain('Create group conversation');
@@ -25868,8 +25872,9 @@ describe('shared accessible frontend shell', () => {
     expect(list.status).toBe(200);
     expect(list.text).not.toContain('href="/messages/groups/new"');
     expect(create.status).toBe(200);
-    expect(create.text).toContain('Your messaging access is currently restricted. You can still read existing messages.');
-    expect(create.text).toMatch(/<button class="govuk-button" disabled aria-disabled="true">Create group conversation<\/button>/);
+    expect(create.text).toContain('Direct messaging is currently disabled for this community.');
+    expect(create.text).not.toContain('Your messaging access is currently restricted. You can still read existing messages.');
+    expect(create.text).toMatch(/<button class="govuk-button" data-module="govuk-button" disabled aria-disabled="true">Create group conversation<\/button>/);
   });
 
   it('renders Laravel group-message failures as error summaries', async () => {
