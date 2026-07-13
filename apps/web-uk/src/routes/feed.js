@@ -123,6 +123,10 @@ function normalizeFeedPost(row) {
   const deepLink = feedItemDeepLink(type, id);
   const reactions = row && row.reactions && typeof row.reactions === 'object' ? row.reactions : {};
   const reactionCounts = reactions.counts && typeof reactions.counts === 'object' ? reactions.counts : {};
+  const reactionTotal = Object.values(reactionCounts).reduce(
+    (total, count) => total + positiveInteger(count, 0, 0, Number.MAX_SAFE_INTEGER),
+    0
+  );
   const userReaction = trimmed(reactions.user_reaction || row && row.user_reaction, 40);
   const rawPoll = row && row.poll_data && typeof row.poll_data === 'object' ? row.poll_data : null;
   const userVoteOptionId = rawPoll
@@ -169,6 +173,7 @@ function normalizeFeedPost(row) {
     commentLabel: pluralLabel(commentCount, 'comment'),
     isLiked: !!(row && (row.is_liked || row.isLiked)),
     reactionCounts,
+    reactionTotal,
     userReaction,
     isShared: !!(row && (row.is_shared || row.isShared)),
     isBookmarked: !!(row && (row.is_bookmarked || row.isBookmarked || row.is_saved || row.isSaved)),

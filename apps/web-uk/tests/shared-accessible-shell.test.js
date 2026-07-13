@@ -13701,7 +13701,12 @@ describe('shared accessible frontend shell', () => {
     expect(index.status).toBe(200);
     expect(index.text).toContain('action="/feed/posts/42/react"');
     expect(index.text).toContain('name="emoji" value="celebrate"');
+    expect(index.text).toContain('2 reactions');
+    expect(index.text).toContain('nexus-alpha-reaction--active" data-module="govuk-button" aria-pressed="true"');
+    expect(index.text).toContain('name="type" value="all"');
+    expect(index.text).toContain('name="mode" value="ranking"');
     expect(index.text).toContain('action="/feed/posts/42/save"');
+    expect(index.text).toContain('Remove from saved<span class="govuk-visually-hidden"> Post</span>');
     expect(index.text).toContain('action="/feed/posts/42/update"');
     expect(index.text).toContain('action="/feed/posts/42/delete"');
     expect(index.text).toContain('href="https://cdn.example.test/feed/full.png" target="_blank" rel="noopener noreferrer"');
