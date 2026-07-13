@@ -47,6 +47,12 @@ try {
     },
     "/api/v2/missing-feature": {
       "post": {}
+    },
+    "/api/v2/events/{id}/registration-product": {
+      "get": {}
+    },
+    "/api/v2/events/{id}/registration-product/forms/{formId}": {
+      "put": {}
     }
   }
 }
@@ -98,7 +104,7 @@ public sealed class ListingsController : ControllerBase
     [HttpPost]
     public IActionResult Store() => Ok();
 
-    [HttpGet("{id:int}")]
+    [HttpGet("{id:int}"), HttpGet("api/v2/listings/{id:int}")]
     public IActionResult Show(int id) => Ok();
 }
 
@@ -132,6 +138,18 @@ public sealed class CreditAgreementController : ControllerBase
     [HttpPost("{id:int}/terminate")]
     public IActionResult Terminate(int id) => Ok();
 }
+
+[ApiController]
+public sealed class ConstantRouteController : ControllerBase
+{
+    private const string Root = "api/v2/events/{id:int}/registration-product";
+
+    [HttpGet(Root)]
+    public IActionResult Show(int id) => Ok();
+
+    [HttpPut(Root + "/forms/{formId:long}")]
+    public IActionResult Update(int id, long formId) => Ok();
+}
 '@ | Set-Content -LiteralPath (Join-Path $targetRoot 'src\Nexus.Api\Controllers\ListingsController.cs')
 
     & powershell -NoProfile -ExecutionPolicy Bypass -File $scriptPath -TargetRoot $targetRoot -SourceRoot $sourceRoot -OutDir $outDir
@@ -147,13 +165,15 @@ public sealed class CreditAgreementController : ControllerBase
     $report = Get-Content -Raw -LiteralPath $jsonPath | ConvertFrom-Json
     $matrix = @($report.matrix)
 
-    Assert-True ($report.summary.aspnet_operations -eq 10) 'Expected ten ASP.NET operations.'
-    Assert-True ($report.summary.laravel_openapi_operations -eq 5) 'Expected five Laravel OpenAPI operations.'
+    Assert-True ($report.summary.aspnet_operations -eq 12) 'Expected twelve ASP.NET operations.'
+    Assert-True ($report.summary.laravel_openapi_operations -eq 7) 'Expected seven Laravel OpenAPI operations.'
     Assert-True ($report.summary.supplemental_route_operations -eq 2) 'Expected two supplemental route operations.'
-    Assert-True ($report.summary.matched_operations -eq 5) 'Expected five matched operations.'
+    Assert-True ($report.summary.matched_operations -eq 7) 'Expected seven matched operations.'
     Assert-True ($report.summary.missing_operations -eq 2) 'Expected two missing operations.'
 
     Assert-True (@($matrix | Where-Object { $_.source -eq 'openapi' -and $_.method -eq 'GET' -and $_.normalized_path -eq '/api/listings' -and $_.status -eq 'matched' }).Count -eq 1) 'Expected GET /api/listings to match.'
+    Assert-True (@($matrix | Where-Object { $_.source -eq 'openapi' -and $_.method -eq 'GET' -and $_.normalized_path -eq '/api/events/{id}/registration-product' -and $_.status -eq 'matched' }).Count -eq 1) 'Expected a constant-composed root route to match.'
+    Assert-True (@($matrix | Where-Object { $_.source -eq 'openapi' -and $_.method -eq 'PUT' -and $_.normalized_path -eq '/api/events/{id}/registration-product/forms/{formid}' -and $_.status -eq 'matched' }).Count -eq 1) 'Expected a constant-plus-literal route to match by shape.'
     Assert-True (@($matrix | Where-Object { $_.source -eq 'supplemental-route' -and $_.method -eq 'POST' -and $_.normalized_path -eq '/api/supplemental/{id}' -and $_.status -eq 'matched' }).Count -eq 1) 'Expected supplemental route to match by shape.'
     $supplementalRow = @($matrix | Where-Object { $_.source -eq 'supplemental-route' -and $_.method -eq 'POST' -and $_.normalized_path -eq '/api/supplemental/{id}' })[0]
     Assert-True ($supplementalRow.source_file.Contains('api.php')) 'Expected duplicate supplemental source evidence to include api.php.'

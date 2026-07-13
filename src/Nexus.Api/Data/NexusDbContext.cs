@@ -104,6 +104,10 @@ public class NexusDbContext : DbContext
     public DbSet<EventInvitationHistory> EventInvitationHistory => Set<EventInvitationHistory>();
     public DbSet<EventInvitationDeliveryEvidence> EventInvitationDeliveryEvidence => Set<EventInvitationDeliveryEvidence>();
     public DbSet<EventNotificationPreferenceProduct> EventNotificationPreferencesProduct => Set<EventNotificationPreferenceProduct>();
+    public DbSet<EventAttendanceCreditClaim> EventAttendanceCreditClaims => Set<EventAttendanceCreditClaim>();
+    public DbSet<EventAnalyticsOptionalFact> EventAnalyticsOptionalFacts => Set<EventAnalyticsOptionalFact>();
+    public DbSet<EventAnalyticsWithdrawalRun> EventAnalyticsWithdrawalRuns => Set<EventAnalyticsWithdrawalRun>();
+    public DbSet<EventAnalyticsAccessAudit> EventAnalyticsAccessAudits => Set<EventAnalyticsAccessAudit>();
     public DbSet<EventRegistrationGuest> EventRegistrationGuests => Set<EventRegistrationGuest>();
     public DbSet<EventRegistrationGuestAttendance> EventRegistrationGuestAttendance => Set<EventRegistrationGuestAttendance>();
     public DbSet<EventRegistrationGuestAttendanceHistory> EventRegistrationGuestAttendanceHistory => Set<EventRegistrationGuestAttendanceHistory>();

@@ -76,6 +76,45 @@ function Join-RoutePath {
     return Normalize-RoutePath $combined
 }
 
+function Get-CSharpStringConstants {
+    param([string]$Text)
+
+    $constants = @{}
+    foreach ($match in [regex]::Matches(
+        $Text,
+        '(?m)\bconst\s+string\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*"((?:\\.|[^"\\])*)"\s*;')) {
+        $constants[$match.Groups[1].Value] = [regex]::Unescape($match.Groups[2].Value)
+    }
+    return $constants
+}
+
+function Resolve-CSharpStringExpression {
+    param(
+        [AllowNull()][string]$Expression,
+        [hashtable]$Constants
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Expression)) {
+        return ''
+    }
+
+    $value = New-Object System.Text.StringBuilder
+    foreach ($part in ($Expression -split '\s*\+\s*')) {
+        $token = $part.Trim()
+        $literal = [regex]::Match($token, '^"((?:\\.|[^"\\])*)"$')
+        if ($literal.Success) {
+            [void]$value.Append([regex]::Unescape($literal.Groups[1].Value))
+            continue
+        }
+        if ($Constants.ContainsKey($token)) {
+            [void]$value.Append([string]$Constants[$token])
+            continue
+        }
+        return $null
+    }
+    return $value.ToString()
+}
+
 function Get-AspNetRoutes {
     param([string]$Root)
 
@@ -101,6 +140,7 @@ function Get-AspNetRoutes {
         ForEach-Object {
             $file = $_
             $text = Get-Content -Raw -LiteralPath $file.FullName
+            $stringConstants = Get-CSharpStringConstants $text
             $classMatches = [regex]::Matches($text, '(?m)^\s*(?:public\s+)?(?:sealed\s+)?(?:partial\s+)?class\s+([A-Za-z0-9_]+)\b')
             if ($classMatches.Count -eq 0) {
                 return
@@ -137,8 +177,11 @@ function Get-AspNetRoutes {
                 }
                 $attributeWindow = $attributeLines -join "`n"
                 $prefixes = New-Object System.Collections.Generic.List[string]
-                foreach ($routeMatch in [regex]::Matches($attributeWindow, '\[Route\("([^"]*)"\)\]')) {
-                    $prefixes.Add(($routeMatch.Groups[1].Value -replace '\[controller\]', $controllerName))
+                foreach ($routeMatch in [regex]::Matches($attributeWindow, '\[Route\(([^)]*)\)\]')) {
+                    $resolvedPrefix = Resolve-CSharpStringExpression $routeMatch.Groups[1].Value $stringConstants
+                    if ($null -ne $resolvedPrefix) {
+                        $prefixes.Add(($resolvedPrefix -replace '\[controller\]', $controllerName))
+                    }
                 }
                 if ($prefixes.Count -eq 0) {
                     $prefixes.Add('')
@@ -147,13 +190,27 @@ function Get-AspNetRoutes {
                 $lines = $segment -split "`r?`n"
                 for ($i = 0; $i -lt $lines.Count; $i++) {
                     $line = $lines[$i]
-                    $httpMatch = [regex]::Match($line, '\[(HttpGet|HttpPost|HttpPut|HttpPatch|HttpDelete|HttpHead|HttpOptions)(?:\("([^"]*)"\))?')
+                    $httpMatch = [regex]::Match($line, '^\s*\[(HttpGet|HttpPost|HttpPut|HttpPatch|HttpDelete|HttpHead|HttpOptions)(?:\(([^)]*)\))?\]\s*$')
+                    $expressionRoute = $httpMatch.Success
+                    if (-not $httpMatch.Success) {
+                        # Preserve support for compact lines such as
+                        # [HttpGet("path"), AllowAnonymous] while the strict
+                        # expression parser handles const-composed attributes.
+                        $httpMatch = [regex]::Match($line, '\[(HttpGet|HttpPost|HttpPut|HttpPatch|HttpDelete|HttpHead|HttpOptions)(?:\("([^"]*)"\))?')
+                    }
                     if (-not $httpMatch.Success) {
                         continue
                     }
 
                     $method = $httpMap[$httpMatch.Groups[1].Value]
-                    $child = $httpMatch.Groups[2].Value
+                    $child = if ($expressionRoute) {
+                        Resolve-CSharpStringExpression $httpMatch.Groups[2].Value $stringConstants
+                    } else {
+                        $httpMatch.Groups[2].Value
+                    }
+                    if ($null -eq $child) {
+                        continue
+                    }
                     $action = ''
                     $lookAheadEnd = [Math]::Min($i + 10, $lines.Count - 1)
                     for ($j = $i; $j -le $lookAheadEnd; $j++) {

@@ -43,6 +43,45 @@ Before any production deployment or production-container action, stop and read
 deployment or touching production containers. Never modify the Laravel repo or
 Laravel Edition containers from this worktree.
 
+## 2026-07-13 ASP.NET Event Analytics Checkpoint (Locally Verified; Publication Pending)
+
+ASP.NET now implements the canonical organizer analytics summary and CSV export
+contracts at both `/api/events/{id}/analytics` and `/api/v2/events/{id}/analytics`
+(plus `/export.csv`). The identity-free version-1 projection derives registration,
+invitation, waitlist, attendance, ticket, attendance-credit, communication,
+optional-funnel, and guardian-consent metrics from their durable ledgers. Counts
+below the configurable minimum-five privacy threshold are suppressed. Cross-tenant
+and non-manager reads return 404, active co-organizers may read the summary, and
+ticket finance remains redacted unless the actor has owner, administrator, or
+finance-manager authority. Every dashboard or export read appends an immutable
+access audit. CSV output is private/no-store, UTF-8 BOM encoded, localized across
+the canonical locale set, and spreadsheet-formula safe.
+
+Migration 138 (`20260713161512_EventAnalyticsParity`) adds the exact attendance
+credit claim, optional analytics fact, withdrawal-run, and access-audit tables,
+including tenant-scoped indexes, privacy/time/state constraints, and PostgreSQL
+append-only guards. A new blank PostgreSQL database replayed the complete migration
+chain through migration 138. `has-pending-model-changes` reports no drift, and
+catalog inspection proves all four new immutability/deletion triggers are installed.
+The Debug API and test projects compile with zero errors; only two existing
+`EventSafetyService` nullable warnings and four existing `xUnit1031` test warnings
+remain. The focused migrated-database runtime suite passes 4/4 with zero skipped:
+canonical ledger counts and privacy, localized formula-safe CSV plus export audit,
+tenant/manager authorization plus finance redaction, and database immutability.
+
+The route comparator now understands constant-composed ASP.NET attributes and
+retains compact multi-alias route parsing, with a passing synthetic regression
+fixture. The refreshed live inventory represents 2,567/2,592 Laravel operations
+(99.0%), up from 2,541/2,592 at the previous checkpoint, leaving 25 static misses.
+This is route representation only, not semantic certification.
+
+Current provisional global scores are **770/1000 implementation** and
+**635/1000 certification confidence**. The honest combined finish-line estimate is
+**64%** (up from 62%). The increase is deliberately small because the complete
+3,000-plus test suite, canonical-frontend-on-ASP.NET browser runs, CI, live-provider
+evidence, and the remaining lifecycle/vetting/static-route queue are still open.
+No production resource or frontend file was touched by this backend slice.
+
 ## 2026-07-13 ASP.NET Event Registration Product Checkpoint (Locally Verified; Publication Pending)
 
 This uncommitted backend-only slice replaces the event-registration product
@@ -136,8 +175,8 @@ Do not call global event-registration certification complete. The hosted
 minute-loop itself still lacks a clock-controlled integration test. Full-suite,
 route/runtime frontend, live-provider credential, and CI evidence also remain.
 
-Current provisional global scores are **760/1000 implementation** and
-**620/1000 certification confidence**. These supersede the 2026-07-10
+At this checkpoint the provisional global scores were **760/1000 implementation**
+and **620/1000 certification confidence**. These superseded the 2026-07-10
 64%/42% baseline but are not release-readiness claims. Route inventory remains
 2,541/2,592 Laravel routes represented (98%); route representation is not
 semantic workflow parity.

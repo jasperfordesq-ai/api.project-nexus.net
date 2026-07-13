@@ -356,6 +356,75 @@ public class EventConfiguration : TenantScopedConfiguration
         modelBuilder.Entity<EventRegistrationGuestAttendanceHistory>(e => { e.ToTable("event_registration_guest_attendance_history"); e.Property(x => x.Action).HasMaxLength(32); e.Property(x => x.FromStatus).HasMaxLength(32); e.Property(x => x.ToStatus).HasMaxLength(32); e.Property(x => x.Status).HasMaxLength(32); Hash64(e.Property(x => x.IdempotencyHash)); Hash64(e.Property(x => x.RequestHash)); e.Property(x => x.Reason).HasMaxLength(500); e.Property(x => x.Metadata).HasColumnType("jsonb"); e.HasIndex(x => new { x.TenantId, x.AttendanceId, x.AttendanceVersion }).IsUnique(); e.HasIndex(x => new { x.TenantId, x.IdempotencyHash }).IsUnique(); e.HasQueryFilter(x => !TenantContext.IsResolved || x.TenantId == TenantContext.TenantId); });
         modelBuilder.Entity<EventRegistrationRetentionRun>(e => { e.ToTable("event_registration_retention_runs"); e.Property(x => x.Mode).HasMaxLength(16); e.Property(x => x.Status).HasMaxLength(16); Hash64(e.Property(x => x.IdempotencyHash)); Hash64(e.Property(x => x.RequestHash)); e.HasIndex(x => new { x.TenantId, x.IdempotencyHash }).IsUnique(); e.HasQueryFilter(x => !TenantContext.IsResolved || x.TenantId == TenantContext.TenantId); });
         modelBuilder.Entity<EventRegistrationRetentionItem>(e => { e.ToTable("event_registration_retention_items"); e.Property(x => x.SubjectType).HasMaxLength(16); e.Property(x => x.Action).HasMaxLength(16); e.Property(x => x.Status).HasMaxLength(16); e.Property(x => x.Evidence).HasColumnType("jsonb"); e.HasIndex(x => new { x.TenantId, x.RetentionRunId, x.SubjectType, x.SubjectId, x.Action }).IsUnique(); e.HasQueryFilter(x => !TenantContext.IsResolved || x.TenantId == TenantContext.TenantId); });
+        modelBuilder.Entity<EventAttendanceCreditClaim>(e =>
+        {
+            e.ToTable("event_attendance_credit_claims");
+            e.Property(x => x.ClaimType).HasMaxLength(50);
+            e.Property(x => x.IdempotencyKey).HasMaxLength(191);
+            e.Property(x => x.FundingSourceType).HasMaxLength(32);
+            e.Property(x => x.Amount).HasPrecision(10, 2);
+            e.Property(x => x.Unit).HasMaxLength(32).HasDefaultValue("time_credit");
+            e.Property(x => x.Status).HasMaxLength(32).HasDefaultValue("pending");
+            e.Property(x => x.FailureCode).HasMaxLength(100);
+            e.Property(x => x.ReversalCode).HasMaxLength(100);
+            e.Property(x => x.Metadata).HasColumnType("jsonb");
+            e.HasIndex(x => new { x.TenantId, x.EventId, x.UserId, x.ClaimType }).IsUnique().HasDatabaseName("uq_event_credit_claim_subject");
+            e.HasIndex(x => new { x.TenantId, x.IdempotencyKey }).IsUnique().HasDatabaseName("uq_event_credit_claim_key");
+            e.HasIndex(x => x.TransactionId).IsUnique().HasDatabaseName("uq_event_credit_claim_transaction");
+            e.HasIndex(x => new { x.TenantId, x.Status, x.CreatedAt, x.Id }).HasDatabaseName("idx_event_credit_claim_status");
+            e.HasIndex(x => new { x.TenantId, x.EventId, x.AttendanceId }).HasDatabaseName("idx_event_credit_claim_attendance");
+            e.HasQueryFilter(x => !TenantContext.IsResolved || x.TenantId == TenantContext.TenantId);
+        });
+        modelBuilder.Entity<EventAnalyticsOptionalFact>(e =>
+        {
+            e.ToTable("event_analytics_optional_facts", table =>
+            {
+                table.HasCheckConstraint("chk_event_analytics_fact_metric", "\"Metric\" IN ('event_viewed','registration_started')");
+                table.HasCheckConstraint("chk_event_analytics_fact_time", "\"OccurredAt\" <= \"ReceivedAt\" + interval '5 minutes' AND \"RetentionDueAt\" > \"OccurredAt\"");
+                table.HasCheckConstraint("chk_event_analytics_fact_status", "\"Status\" IN ('active','withdrawn')");
+            });
+            e.Property(x => x.OccurrenceKey).HasMaxLength(191);
+            e.Property(x => x.Metric).HasMaxLength(64);
+            Hash64(e.Property(x => x.DeduplicationHash));
+            Hash64(e.Property(x => x.RequestHash));
+            Hash64(e.Property(x => x.SubjectHash));
+            e.Property(x => x.PseudonymKeyVersion).HasMaxLength(16).IsFixedLength();
+            e.Property(x => x.ConsentVersion).HasMaxLength(20);
+            e.Property(x => x.SourceSurface).HasMaxLength(32);
+            e.Property(x => x.ClientPlatform).HasMaxLength(32);
+            e.Property(x => x.Dimensions).HasColumnType("jsonb");
+            e.Property(x => x.Status).HasMaxLength(16).HasDefaultValue("active");
+            e.HasIndex(x => new { x.TenantId, x.DeduplicationHash }).IsUnique().HasDatabaseName("uq_event_analytics_fact_dedup");
+            e.HasIndex(x => new { x.TenantId, x.EventId, x.Id }).IsUnique().HasDatabaseName("uq_event_analytics_fact_scope");
+            e.HasIndex(x => new { x.TenantId, x.EventId, x.Metric, x.Status, x.OccurredAt, x.Id }).HasDatabaseName("idx_event_analytics_fact_event");
+            e.HasIndex(x => new { x.TenantId, x.ConsentRecordId, x.Status, x.Id }).HasDatabaseName("idx_event_analytics_fact_consent");
+            e.HasIndex(x => new { x.TenantId, x.RetentionDueAt, x.Status, x.Id }).HasDatabaseName("idx_event_analytics_fact_retention");
+            e.HasQueryFilter(x => !TenantContext.IsResolved || x.TenantId == TenantContext.TenantId);
+        });
+        modelBuilder.Entity<EventAnalyticsWithdrawalRun>(e =>
+        {
+            e.ToTable("event_analytics_withdrawal_runs");
+            Hash64(e.Property(x => x.IdempotencyHash));
+            Hash64(e.Property(x => x.RequestHash));
+            e.HasIndex(x => new { x.TenantId, x.IdempotencyHash }).IsUnique().HasDatabaseName("uq_event_analytics_withdraw_key");
+            e.HasIndex(x => new { x.TenantId, x.ActorUserId, x.CreatedAt, x.Id }).HasDatabaseName("idx_event_analytics_withdraw_actor");
+            e.HasQueryFilter(x => !TenantContext.IsResolved || x.TenantId == TenantContext.TenantId);
+        });
+        modelBuilder.Entity<EventAnalyticsAccessAudit>(e =>
+        {
+            e.ToTable("event_analytics_access_audits", table =>
+            {
+                table.HasCheckConstraint("chk_event_analytics_access_scope", "\"AccessScope\" IN ('organizer_summary','tenant_summary','csv_export')");
+                table.HasCheckConstraint("chk_event_analytics_access_threshold", "\"PrivacyThreshold\" >= 5 AND \"SuppressedCount\" <= \"ResultCount\"");
+            });
+            e.Property(x => x.AccessScope).HasMaxLength(32);
+            e.Property(x => x.PurposeCode).HasMaxLength(64);
+            Hash64(e.Property(x => x.QueryHash));
+            e.Property(x => x.PrivacyThreshold).HasDefaultValue(5);
+            e.HasIndex(x => new { x.TenantId, x.EventId, x.CreatedAt, x.Id }).HasDatabaseName("idx_event_analytics_access_event");
+            e.HasIndex(x => new { x.TenantId, x.ActorUserId, x.CreatedAt, x.Id }).HasDatabaseName("idx_event_analytics_access_actor");
+            e.HasQueryFilter(x => !TenantContext.IsResolved || x.TenantId == TenantContext.TenantId);
+        });
     }
 
     private static void Hash64<T>(PropertyBuilder<T> property) =>
