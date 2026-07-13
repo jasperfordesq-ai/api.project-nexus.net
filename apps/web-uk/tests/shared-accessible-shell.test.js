@@ -19998,7 +19998,8 @@ describe('shared accessible frontend shell', () => {
     api.getGroup.mockReset().mockResolvedValueOnce({
       data: {
         id: 42,
-        name: 'Garden Helpers'
+        name: 'Garden Helpers',
+        viewer_membership: { role: 'member', status: 'active' }
       }
     });
     api.callGroupApi.mockReset().mockResolvedValueOnce({
@@ -20039,7 +20040,13 @@ describe('shared accessible frontend shell', () => {
     expect(api.callGroupApi).toHaveBeenCalledTimes(1);
     expect(api.callGroupApi).toHaveBeenCalledWith('test-token', 'GET', '/42/notification-prefs');
 
-    api.getGroup.mockResolvedValueOnce({ data: { id: 42, name: 'Garden Helpers' } });
+    api.getGroup.mockResolvedValueOnce({
+      data: {
+        id: 42,
+        name: 'Garden Helpers',
+        viewer_membership: { role: 'member', status: 'active' }
+      }
+    });
     api.callGroupApi.mockResolvedValueOnce({ data: { frequency: 'instant' } });
     const failed = await request(app)
       .get('/groups/42/notifications?status=prefs-failed')
@@ -20048,6 +20055,22 @@ describe('shared accessible frontend shell', () => {
     expect(failed.status).toBe(200);
     expect(failed.text).toContain(t('govuk_alpha_groups.states.prefs-failed'));
     expect(failed.text).not.toContain('href="#frequency-instant"');
+
+    api.getGroup.mockResolvedValueOnce({
+      data: {
+        id: 42,
+        name: 'Garden Helpers',
+        viewer_membership: null
+      }
+    });
+    api.callGroupApi.mockClear();
+    const outsider = await request(app)
+      .get('/groups/42/notifications')
+      .set('Cookie', signedCookieHeader());
+
+    expect(outsider.status).toBe(403);
+    expect(outsider.text).toContain(englishForbiddenTitle);
+    expect(api.callGroupApi).not.toHaveBeenCalled();
   });
 
   it('renders the Laravel group image page for signed-in group admins', async () => {

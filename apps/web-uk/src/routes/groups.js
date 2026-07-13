@@ -1186,21 +1186,21 @@ router.get('/:id(\\d+)/invite', requireAuth, asyncRoute(async (req, res) => {
 
 router.get('/:id(\\d+)/notifications', requireAuth, asyncRoute(async (req, res) => {
   const id = req.params.id;
-  const [groupResult, prefsResult] = await Promise.all([
-    getGroup(req.token, id),
-    callGroup(req.token, 'GET', `/${id}/notification-prefs`).catch((error) => {
-      if (isAuthError(error)) throw error;
-      return {
-        data: {
-          frequency: 'instant',
-          email_enabled: true,
-          push_enabled: true
-        }
-      };
-    })
-  ]);
+  const { group, profile } = await groupAccessContext(req, id);
+  if (!isActiveGroupMember(group, profile)) {
+    return renderForbidden(res);
+  }
 
-  const group = normalizeGroup(dataFrom(groupResult)?.group || dataFrom(groupResult), Number(id));
+  const prefsResult = await callGroup(req.token, 'GET', `/${id}/notification-prefs`).catch((error) => {
+    if (isAuthError(error)) throw error;
+    return {
+      data: {
+        frequency: 'instant',
+        email_enabled: true,
+        push_enabled: true
+      }
+    };
+  });
 
   return res.render('groups/notifications', {
     title: res.locals.t('govuk_alpha_groups.notifications.title'),
