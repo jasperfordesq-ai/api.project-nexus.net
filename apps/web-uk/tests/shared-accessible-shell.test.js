@@ -16061,7 +16061,7 @@ describe('shared accessible frontend shell', () => {
       .get('/organisations/42')
       .set('Cookie', signedCookieHeader());
 
-    expect(api.getVolunteerOrganisation).toHaveBeenCalledWith('42');
+    expect(api.getVolunteerOrganisation).toHaveBeenCalledWith('42', 'test-token');
     expect(api.getOrganisationOpportunities).toHaveBeenCalledWith('42', { per_page: 10 });
     expect(api.getOrganisationReviews).toHaveBeenCalledWith('42');
     expect(response.status).toBe(200);
@@ -16144,7 +16144,7 @@ describe('shared accessible frontend shell', () => {
       .get('/organisations/42/jobs')
       .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
 
-    expect(api.getVolunteerOrganisation).toHaveBeenCalledWith('42');
+    expect(api.getVolunteerOrganisation).toHaveBeenCalledWith('42', 'test-token');
     expect(api.getOrganisationJobs).not.toHaveBeenCalled();
     expect(response.status).toBe(200);
     expect(response.text).toContain('href="/organisations/42"');
@@ -23700,6 +23700,33 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Hub for Dunmanway neighbours');
     expect(response.text).toContain('Ada Member');
     expect(api.getGroupMembers).toHaveBeenCalledWith('test-token', '484', { per_page: 100 });
+  });
+
+  it('keeps a public group detail available when Laravel denies its member roster', async () => {
+    const api = require('../src/lib/api');
+
+    api.getGroup.mockResolvedValueOnce({
+      data: {
+        id: 482,
+        name: 'Macroom',
+        description: 'A public community group',
+        visibility: 'public',
+        viewer_membership: null
+      }
+    });
+    api.getGroupMembers.mockRejectedValueOnce(new api.ApiError('Forbidden', 403, {
+      errors: [{ code: 'FORBIDDEN', message: 'Forbidden' }]
+    }));
+    api.getEvents.mockResolvedValueOnce({ data: [] });
+
+    const response = await request(app)
+      .get('/groups/482')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Macroom');
+    expect(response.text).toContain('A public community group');
+    expect(response.text).not.toContain('Forbidden');
   });
 
   it('creates and updates private groups with the Laravel visibility contract and v2 envelope', async () => {

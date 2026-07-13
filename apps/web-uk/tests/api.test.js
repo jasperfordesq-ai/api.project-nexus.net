@@ -1771,7 +1771,7 @@ describe('API Request Functions', () => {
   });
 
   describe('getVolunteerOrganisation', () => {
-    it('should call the Laravel public volunteering organisation detail endpoint', async () => {
+    it('should call the Laravel volunteering organisation detail endpoint with bearer auth when supplied', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         headers: { get: () => 'application/json' },
@@ -1788,13 +1788,14 @@ describe('API Request Functions', () => {
         })
       });
 
-      const result = await api.getVolunteerOrganisation(42);
+      const result = await api.getVolunteerOrganisation(42, 'test-token');
 
       expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:5000/api/v2/volunteering/organisations/42?include=public_contract',
         expect.objectContaining({
           headers: expect.objectContaining({
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer test-token'
           })
         })
       );

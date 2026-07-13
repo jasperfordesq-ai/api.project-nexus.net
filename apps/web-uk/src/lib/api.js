@@ -686,8 +686,10 @@ async function getVolunteeringOpportunities(params = {}, token = '') {
   } : {});
 }
 
-async function getVolunteerOrganisation(id) {
-  return request(`/api/v2/volunteering/organisations/${encodeURIComponent(id)}?include=public_contract`);
+async function getVolunteerOrganisation(id, token = '') {
+  return request(`/api/v2/volunteering/organisations/${encodeURIComponent(id)}?include=public_contract`, token ? {
+    headers: { Authorization: `Bearer ${token}` }
+  } : {});
 }
 
 async function getVolunteerOpportunity(id, token = '') {

@@ -1361,6 +1361,7 @@ app.get('/organisations/manage', requireOrganisationAuth, (req, res) => {
 
 app.get('/organisations/:id(\\d+)/jobs', requireOrganisationAuth, (req, res) => {
   const { ApiError, getVolunteerOrganisation } = require('./lib/api');
+  const token = req.signedCookies.token || '';
 
   const normalizeOrganisation = (result) => {
     const data = result?.data && typeof result.data === 'object' ? result.data : {};
@@ -1383,7 +1384,7 @@ app.get('/organisations/:id(\\d+)/jobs', requireOrganisationAuth, (req, res) => 
     });
   };
 
-  return getVolunteerOrganisation(req.params.id)
+  return getVolunteerOrganisation(req.params.id, token)
     .then((result) => {
       const organisation = normalizeOrganisation(result);
 
@@ -1452,7 +1453,7 @@ app.get('/organisations/:id(\\d+)', requireOrganisationAuth, (req, res) => {
     getVolunteerOrganisation
   } = require('./lib/api');
 
-  getVolunteerOrganisation(req.params.id)
+  getVolunteerOrganisation(req.params.id, token)
     .then(async (result) => {
       const data = result?.data && typeof result.data === 'object' ? result.data : {};
       const publicContract = data.public_contract && typeof data.public_contract === 'object'

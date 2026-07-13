@@ -1,6 +1,24 @@
 # Blade Component Port Audit
 
-Last reviewed: 2026-07-12
+Last reviewed: 2026-07-13
+
+## 2026-07-13 Laravel Runtime Classification Checkpoint
+
+The first quarter of the exhaustive Laravel runtime smoke exposed three
+fixture families. Web UK now forwards the signed bearer token to volunteer-
+organisation detail/jobs reads, and public group detail remains available when
+Laravel correctly denies a non-member roster read. The current fixture's two
+group management pages moved from the 2xx list to retained signed `403` gates.
+A focused current-source run passed `15/15`: group 482, organisation 636, and
+its jobs page returned `200`, while group 482/484 management returned `403`.
+
+Feed permalink failures are an upstream local-Laravel schema blocker, not a
+Web UK regression: direct authenticated calls to both post and listing item
+APIs return `500` because the Laravel query references missing MySQL column
+`visible_events.publication_status`. The Laravel source/database remains
+read-only from this workstream, and Web UK does not fabricate successful feed
+content. Exhaustive runtime certification must resume after that Laravel schema
+state is repaired.
 
 ## 2026-07-13 Event Safety Checkpoint
 

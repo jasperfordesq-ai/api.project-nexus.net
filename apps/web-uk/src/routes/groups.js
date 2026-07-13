@@ -977,7 +977,11 @@ router.get('/:id(\\d+)', requireAuth, asyncRoute(async (req, res) => {
 
   const [groupResult, membersResult, eventsResult] = await Promise.all([
     getGroup(req.token, id),
-    getGroupMembers(req.token, id, { per_page: 100 }),
+    getGroupMembers(req.token, id, { per_page: 100 }).catch((error) => {
+      if (isAuthError(error)) throw error;
+      if (error instanceof ApiError && error.status === 403) return { data: [] };
+      throw error;
+    }),
     getEvents(req.token, { group_id: id, when: 'upcoming', per_page: 5 }).catch((error) => {
       if (isAuthError(error)) throw error;
       return { data: [] };
