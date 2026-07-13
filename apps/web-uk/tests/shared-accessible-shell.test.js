@@ -13577,6 +13577,60 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('action="/feed/items/post/42/like"');
   });
 
+  it('renders Blade poll voting and result states from Laravel feed poll data', async () => {
+    const api = require('../src/lib/api');
+    api.getFeedPosts.mockResolvedValueOnce({
+      data: [
+        {
+          id: 42,
+          type: 'poll',
+          title: 'Which workshop next?',
+          author: { id: 77, name: 'Ada Member' },
+          poll_data: {
+            is_active: true,
+            user_vote_option_id: null,
+            options: [
+              { id: 5, text: 'Bike repair', vote_count: 2, percentage: 67 },
+              { id: 6, label: 'Sewing', vote_count: 1, percentage: 33 }
+            ]
+          }
+        },
+        {
+          id: 43,
+          type: 'poll',
+          title: 'Preferred meeting time?',
+          author: { id: 78, name: 'Grace Member' },
+          poll_data: {
+            is_active: false,
+            user_vote_option_id: 8,
+            options: [
+              { id: 8, text: 'Morning', vote_count: 3, percentage: 75.4 },
+              { id: 9, text: 'Evening', vote_count: 1, percentage: 24.6 }
+            ]
+          }
+        }
+      ],
+      meta: { has_more: false }
+    });
+
+    const response = await request(app)
+      .get('/acme/accessible/feed?type=polls&mode=recent&per_page=10')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('action="/acme/accessible/feed/polls/42/vote"');
+    expect(response.text).toContain('id="poll-42-opt-5" name="option_id" type="radio" value="5" required');
+    expect(response.text).toContain('Bike repair');
+    expect(response.text).toContain('Sewing');
+    expect(response.text).toContain('name="type" value="polls"');
+    expect(response.text).toContain('name="mode" value="recent"');
+    expect(response.text).toContain('Your choice');
+    expect(response.text).toContain('3 votes (75%)');
+    expect(response.text).toContain('aria-label="Morning — 75% of votes"');
+    expect(response.text).toContain('You have voted in this poll.');
+    expect(response.text).not.toContain('action="/acme/accessible/feed/polls/43/vote"');
+  });
+
   it('renders Blade-aligned owner, reaction, engagement, and comment controls for a signed feed post', async () => {
     const api = require('../src/lib/api');
     api.getProfile.mockResolvedValue({ id: 101, name: 'Current member' });

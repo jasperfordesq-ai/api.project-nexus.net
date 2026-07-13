@@ -120,6 +120,22 @@ function normalizeFeedPost(row) {
   const reactions = row && row.reactions && typeof row.reactions === 'object' ? row.reactions : {};
   const reactionCounts = reactions.counts && typeof reactions.counts === 'object' ? reactions.counts : {};
   const userReaction = trimmed(reactions.user_reaction || row && row.user_reaction, 40);
+  const rawPoll = row && row.poll_data && typeof row.poll_data === 'object' ? row.poll_data : null;
+  const userVoteOptionId = rawPoll
+    ? positiveInteger(rawPoll.user_vote_option_id, null, 1, Number.MAX_SAFE_INTEGER)
+    : null;
+  const pollOptions = rawPoll && Array.isArray(rawPoll.options)
+    ? rawPoll.options.map((option) => {
+      const percentage = Number(option && option.percentage);
+      return {
+        id: positiveInteger(option && option.id, 0, 1, Number.MAX_SAFE_INTEGER),
+        label: trimmed(option && (option.text || option.label), 500),
+        voteCount: positiveInteger(option && option.vote_count, 0, 0, Number.MAX_SAFE_INTEGER),
+        percentage: Number.isFinite(percentage) ? Math.max(0, Math.min(100, Math.round(percentage))) : null,
+        isUserChoice: userVoteOptionId !== null && positiveInteger(option && option.id, 0, 1, Number.MAX_SAFE_INTEGER) === userVoteOptionId
+      };
+    }).filter((option) => option.id > 0)
+    : [];
 
   return {
     id,
@@ -152,7 +168,13 @@ function normalizeFeedPost(row) {
     userReaction,
     isShared: !!(row && (row.is_shared || row.isShared)),
     isBookmarked: !!(row && (row.is_bookmarked || row.isBookmarked || row.is_saved || row.isSaved)),
-    shareCount: positiveInteger(row && (row.share_count ?? row.shareCount), 0, 0, Number.MAX_SAFE_INTEGER)
+    shareCount: positiveInteger(row && (row.share_count ?? row.shareCount), 0, 0, Number.MAX_SAFE_INTEGER),
+    poll: rawPoll ? {
+      options: pollOptions,
+      isActive: !!rawPoll.is_active,
+      userVoteOptionId,
+      canVote: pollOptions.length > 0 && !!rawPoll.is_active && userVoteOptionId === null
+    } : null
   };
 }
 
@@ -526,6 +548,7 @@ router.get('/', asyncRoute(withTokenRefresh(async (req, res) => {
     selectedType,
     selectedMode,
     selectedSubtype,
+    cursor,
     perPage,
     requiresAuth: !token,
     communityName: res.locals.tenantName || res.locals.serviceName || 'this community',
