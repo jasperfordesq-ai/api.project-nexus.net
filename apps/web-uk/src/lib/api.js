@@ -2485,10 +2485,18 @@ async function cancelEvent(token, id, data = {}) {
   });
 }
 
-async function deleteEvent(token, id) {
+async function deleteEvent(token, id, data = {}) {
+  const idempotencyKey = data.idempotency_key || data.idempotencyKey;
   return request(`/api/v2/events/${encodeURIComponent(id)}`, {
     method: 'DELETE',
-    headers: { Authorization: `Bearer ${token}` }
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {})
+    },
+    body: JSON.stringify({
+      reason: data.reason,
+      ...(idempotencyKey ? { idempotency_key: idempotencyKey } : {})
+    })
   });
 }
 

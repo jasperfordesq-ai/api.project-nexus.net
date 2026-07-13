@@ -1163,7 +1163,11 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
   const currentUserId = idFrom(currentUserResult);
   const isCurrentUserOwner = ownerId !== null && currentUserId !== null && String(ownerId) === String(currentUserId);
   const canEditFromApi = event.can_edit === true || event.canEdit === true;
-  event.can_edit = Boolean(token) && (canEditFromApi || isCurrentUserOwner);
+  event.is_archived = event.is_archived === true
+    || event.isArchived === true
+    || trimmed(event.operational_status ?? event.operationalStatus ?? event.status).toLowerCase() === 'archived';
+  event.isArchived = event.is_archived;
+  event.can_edit = !event.is_archived && Boolean(token) && (canEditFromApi || isCurrentUserOwner);
   event.canEdit = event.can_edit;
   const rawRsvp = event.myRsvp ?? event.my_rsvp ?? event.user_rsvp ?? event.rsvp_status;
   const myRsvpStatus = trimmed(
@@ -1191,6 +1195,7 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
     successMessage: req.flash ? req.flash('success')[0] : null,
     errorMessage: req.flash ? req.flash('error')[0] : null,
     status: trimmed(req.query.status),
+    idempotencyKey: randomUUID(),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { notFoundTitle: 'Event not found' }));
@@ -1355,18 +1360,27 @@ router.post('/:id(\\d+)/cancel', requireAuth, asyncRoute(async (req, res) => {
   redirectTo(res, eventPath(id));
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Event not found' }));
 
-// Delete event
+// Archive event through Laravel's archive-first DELETE lifecycle contract.
 router.post('/:id(\\d+)/delete', requireAuth, audit.eventDelete(), asyncRoute(async (req, res) => {
   const { id } = req.params;
+  const reason = trimmed(req.body.reason);
+  const idempotencyKey = trimmed(req.body.idempotency_key) || randomUUID();
+
+  if (!reason || reason.length > 4000) {
+    return redirectTo(res, eventPath(id, '?status=event-archive-failed'));
+  }
 
   try {
-    await deleteEvent(req.token, id);
+    await deleteEvent(req.token, id, {
+      reason,
+      idempotency_key: idempotencyKey
+    });
 
     if (req.flash) {
-      req.flash('success', 'Event deleted successfully');
+      req.flash('success', res.locals.t('govuk_alpha.events.archived'));
     }
 
-    redirectTo(res, EVENTS_PATH);
+    redirectTo(res, `${EVENTS_PATH}?status=event-archived`);
   } catch (error) {
     if (isOnboardingRequired(error)) {
       return redirectTo(res, '/onboarding');
@@ -1376,9 +1390,9 @@ router.post('/:id(\\d+)/delete', requireAuth, audit.eventDelete(), asyncRoute(as
     }
     if (error instanceof ApiError && [400, 409, 422].includes(error.status)) {
       if (req.flash) {
-        req.flash('error', error.message || 'Unable to delete event');
+        req.flash('error', error.message || res.locals.t('govuk_alpha.events.archive_failed'));
       }
-      return redirectTo(res, eventPath(id));
+      return redirectTo(res, eventPath(id, '?status=event-archive-failed'));
     }
     throw error; // asyncRoute handles 401, 404, and 503 consistently.
   }

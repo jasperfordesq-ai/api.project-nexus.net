@@ -21199,7 +21199,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('name="location" type="text" value="Community hall"');
     expect(response.text).toContain('name="start_time" type="datetime-local" value="2026-08-01T10:30"');
     expect(response.text).toContain('name="end_time" type="datetime-local" value="2026-08-01T12:00"');
-    expect(response.text).toContain('Changing all future dates will update every later event in this series.');
+    expect(response.text).toContain('Changes to this and future dates are previewed before they are applied.');
     expect(response.text).toContain('name="scope" type="radio" value="single" checked');
     expect(response.text).toContain('Only this date');
     expect(response.text).toContain('name="scope" type="radio" value="all"');
@@ -22621,7 +22621,7 @@ describe('shared accessible frontend shell', () => {
     expect(detail.text).not.toContain('action="/events/42/delete"');
   });
 
-  it('renders event deletion inside a no-JavaScript disclosure warning', async () => {
+  it('renders and submits the archive-first event lifecycle contract', async () => {
     const api = require('../src/lib/api');
     api.getEvent.mockResolvedValueOnce({
       data: {
@@ -22634,14 +22634,60 @@ describe('shared accessible frontend shell', () => {
     });
     api.getEventRsvps.mockResolvedValueOnce({ data: [] });
 
-    const detail = await request(app)
+    const agent = request.agent(app);
+    const detail = await agent
       .get('/events/42')
       .set('Cookie', signedCookieHeader());
 
     expect(detail.status).toBe(200);
-    expect(detail.text).toContain('Are you sure you want to delete this event? This cannot be undone.');
+    expect(detail.text).toContain('Archiving removes the event from member listings while preserving its history and operational records.');
+    expect(detail.text).toContain('Archive reason');
+    expect(detail.text).toContain('name="idempotency_key"');
     expect(detail.text).toContain('action="/events/42/delete"');
+    expect(detail.text).not.toContain('Manage event');
+    expect(detail.text).not.toContain('cannot be undone');
     expect(detail.text).not.toContain('onsubmit="return confirm');
+
+    const csrfMatch = detail.text.match(/name="_csrf" value="([^"]+)"/);
+    expect(csrfMatch).toBeTruthy();
+    const idempotencyMatch = detail.text.match(/name="idempotency_key" value="([^"]+)"/);
+    expect(idempotencyMatch).toBeTruthy();
+
+    const archived = await agent
+      .post('/events/42/delete')
+      .set('Cookie', signedCookieHeader())
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        reason: 'The event has finished',
+        idempotency_key: idempotencyMatch[1]
+      });
+
+    expect(archived.status).toBe(302);
+    expect(archived.headers.location).toBe('/events?status=event-archived');
+    expect(api.deleteEvent).toHaveBeenCalledWith('test-token', '42', {
+      reason: 'The event has finished',
+      idempotency_key: idempotencyMatch[1]
+    });
+  });
+
+  it('rejects an event archive without a reason before calling Laravel', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const page = await agent
+      .get('/events/42')
+      .set('Cookie', signedCookieHeader());
+    const csrfMatch = page.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/events/42/delete')
+      .set('Cookie', signedCookieHeader())
+      .type('form')
+      .send({ _csrf: csrfMatch[1], reason: '   ' });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/events/42?status=event-archive-failed');
+    expect(api.deleteEvent).not.toHaveBeenCalled();
   });
 
   it('renders the Laravel event cover image on the event detail page', async () => {

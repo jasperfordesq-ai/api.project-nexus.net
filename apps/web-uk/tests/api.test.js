@@ -2524,7 +2524,10 @@ describe('API Request Functions', () => {
       await api.createEvent('test-token', payload);
       await api.updateEvent('test-token', 42, payload);
       await api.cancelEvent('test-token', 42, { reason: 'Weather' });
-      await api.deleteEvent('test-token', 42);
+      await api.deleteEvent('test-token', 42, {
+        reason: 'Event completed',
+        idempotency_key: 'archive-event-42'
+      });
 
       expect(mockFetch).toHaveBeenNthCalledWith(1,
         'http://localhost:5000/api/v2/events',
@@ -2554,7 +2557,14 @@ describe('API Request Functions', () => {
         'http://localhost:5000/api/v2/events/42',
         expect.objectContaining({
           method: 'DELETE',
-          headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token',
+            'Idempotency-Key': 'archive-event-42'
+          }),
+          body: JSON.stringify({
+            reason: 'Event completed',
+            idempotency_key: 'archive-event-42'
+          })
         })
       );
     });

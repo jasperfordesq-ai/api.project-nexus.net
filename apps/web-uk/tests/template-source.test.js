@@ -2196,7 +2196,7 @@ describe('tenant-aware template helper conversion', () => {
     expect(route).toContain('getRequestProfile(req, token)');
     expect(route).toContain('const isCurrentUserOwner = ownerId !== null && currentUserId !== null');
     expect(route).toContain('const canEditFromApi = event.can_edit === true || event.canEdit === true');
-    expect(route).toContain('event.can_edit = Boolean(token) && (canEditFromApi || isCurrentUserOwner)');
+    expect(route).toContain('event.can_edit = !event.is_archived && Boolean(token) && (canEditFromApi || isCurrentUserOwner)');
     expect(route).toContain('event.canEdit = event.can_edit');
     expect(route).toContain("['http:', 'https:'].includes(parsed.protocol)");
     expect(route).toContain('event.online_link = safeExternalHttpUrl');

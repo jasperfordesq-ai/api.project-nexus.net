@@ -71,7 +71,7 @@ async function expectAccessibleReflow(page) {
   expect(results.violations.filter(({ impact }) => impact === 'serious' || impact === 'critical')).toEqual([]);
 }
 
-test('creates, updates, and deletes a disposable event through Web UK', async ({ page }) => {
+test('creates, updates, and archives a disposable event through Web UK', async ({ page }) => {
   const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
   const createdTitle = `Codex disposable event ${runId}`;
   const updatedTitle = `${createdTitle} updated`;
@@ -81,7 +81,7 @@ test('creates, updates, and deletes a disposable event through Web UK', async ({
   const auth = await login(smoke.email, smoke.password, smoke.tenant);
   const token = auth.access_token;
   let eventId = null;
-  let deleted = false;
+  let archived = false;
 
   expect(token).toBeTruthy();
   console.log(`Disposable event fixture: ${createdTitle}`);
@@ -175,19 +175,23 @@ test('creates, updates, and deletes a disposable event through Web UK', async ({
     expect(await findByTitle(token, createdTitle)).toBeNull();
     expect(await findByTitle(token, updatedTitle)).toBeTruthy();
 
-    const deleteForm = page.locator(`form[action$="/events/${eventId}/delete"]`);
-    await expect(deleteForm).toHaveCount(1);
-    await page.getByText('Delete this event', { exact: true }).click();
-    await expect(deleteForm.locator('button[type="submit"]')).toBeVisible();
-    const deleteResponse = await submit(page, `/events/${eventId}/delete`, deleteForm.locator('button[type="submit"]'));
-    expect(deleteResponse.status()).toBe(302);
+    const archiveForm = page.locator(`form[action$="/events/${eventId}/delete"]`);
+    await expect(archiveForm).toHaveCount(1);
+    await page.getByText('Archive this event', { exact: true }).click();
+    await archiveForm.locator('textarea[name="reason"]').fill('Disposable runtime fixture completed');
+    await expect(archiveForm.locator('button[type="submit"]')).toBeVisible();
+    const archiveResponse = await submit(page, `/events/${eventId}/delete`, archiveForm.locator('button[type="submit"]'));
+    expect(archiveResponse.status()).toBe(302);
     await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
     expect(await findByTitle(token, updatedTitle)).toBeNull();
-    deleted = true;
+    archived = true;
   } finally {
-    if (!deleted) {
+    if (!archived) {
       const existing = await findByTitle(token, updatedTitle) || await findByTitle(token, createdTitle);
-      if (existing) await deleteEvent(token, existing.id);
+      if (existing) await deleteEvent(token, existing.id, {
+        reason: 'Disposable runtime fixture cleanup',
+        idempotency_key: `cleanup-${runId}`
+      });
     }
   }
 });
