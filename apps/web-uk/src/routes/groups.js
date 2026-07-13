@@ -56,12 +56,6 @@ const GROUP_INVITE_ERROR_MESSAGES = {
   'invite-revoke-failed': 'The invitation could not be revoked.',
   'invite-forbidden': 'You do not have permission to invite members to this group.'
 };
-const GROUP_NOTIFICATION_SUCCESS_MESSAGES = {
-  'prefs-saved': 'Your notification preferences have been saved.'
-};
-const GROUP_NOTIFICATION_ERROR_MESSAGES = {
-  'prefs-failed': 'Your notification preferences could not be saved. Please try again.'
-};
 const GROUP_IMAGE_SUCCESS_MESSAGES = {
   'avatar-updated': 'The group avatar has been updated.',
   'cover-updated': 'The cover image has been updated.'
@@ -684,24 +678,24 @@ function inviteStatus(status) {
   return { statusBanner: null };
 }
 
-function notificationStatus(status) {
+function notificationStatus(status, t = (key) => key) {
   const value = trimmed(status);
-  if (Object.prototype.hasOwnProperty.call(GROUP_NOTIFICATION_SUCCESS_MESSAGES, value)) {
+  if (value === 'prefs-saved') {
     return {
       statusBanner: {
         type: 'success',
-        title: 'Success',
-        message: GROUP_NOTIFICATION_SUCCESS_MESSAGES[value]
+        title: t('govuk_alpha_groups.common.success_title'),
+        message: t('govuk_alpha_groups.states.prefs-saved')
       }
     };
   }
 
-  if (Object.prototype.hasOwnProperty.call(GROUP_NOTIFICATION_ERROR_MESSAGES, value)) {
+  if (value === 'prefs-failed') {
     return {
       statusBanner: {
         type: 'error',
-        title: 'There is a problem',
-        message: GROUP_NOTIFICATION_ERROR_MESSAGES[value]
+        title: t('govuk_alpha_groups.common.error_title'),
+        message: t('govuk_alpha_groups.states.prefs-failed')
       }
     };
   }
@@ -1209,11 +1203,11 @@ router.get('/:id(\\d+)/notifications', requireAuth, asyncRoute(async (req, res) 
   const group = normalizeGroup(dataFrom(groupResult)?.group || dataFrom(groupResult), Number(id));
 
   return res.render('groups/notifications', {
-    title: 'Notification preferences',
+    title: res.locals.t('govuk_alpha_groups.notifications.title'),
     activeNav: 'explore',
     group,
     ...normalizeNotificationPrefs(prefsResult),
-    ...notificationStatus(req.query.status)
+    ...notificationStatus(req.query.status, res.locals.t)
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Group not found' }));
 

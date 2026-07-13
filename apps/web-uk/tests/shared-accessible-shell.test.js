@@ -19977,6 +19977,7 @@ describe('shared accessible frontend shell', () => {
 
   it('renders the Laravel group notification preferences page for signed-in members', async () => {
     const api = require('../src/lib/api');
+    const t = createTranslator('en');
     api.getGroup.mockReset().mockResolvedValueOnce({
       data: {
         id: 42,
@@ -20005,9 +20006,9 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('Your notification preferences have been saved.');
     expect(signed.text).toContain('Choose how often you hear about activity in this group and which channels are used.');
     expect(signed.text).toContain('How often do you want to be notified?');
-    expect(signed.text).toContain('Instant');
-    expect(signed.text).toContain('Digest');
-    expect(signed.text).toContain('Muted');
+    expect(signed.text).toContain(t('govuk_alpha_groups.notifications.frequency_instant'));
+    expect(signed.text).toContain(t('govuk_alpha_groups.notifications.frequency_digest'));
+    expect(signed.text).toContain(t('govuk_alpha_groups.notifications.frequency_muted'));
     expect(signed.text).toContain('value="digest" checked');
     expect(signed.text).toContain('Notification channels');
     expect(signed.text).toContain('Channels apply when notifications are not muted.');
@@ -20020,6 +20021,16 @@ describe('shared accessible frontend shell', () => {
     expect(api.getGroup).toHaveBeenCalledWith('test-token', '42');
     expect(api.callGroupApi).toHaveBeenCalledTimes(1);
     expect(api.callGroupApi).toHaveBeenCalledWith('test-token', 'GET', '/42/notification-prefs');
+
+    api.getGroup.mockResolvedValueOnce({ data: { id: 42, name: 'Garden Helpers' } });
+    api.callGroupApi.mockResolvedValueOnce({ data: { frequency: 'instant' } });
+    const failed = await request(app)
+      .get('/groups/42/notifications?status=prefs-failed')
+      .set('Cookie', signedCookieHeader());
+
+    expect(failed.status).toBe(200);
+    expect(failed.text).toContain(t('govuk_alpha_groups.states.prefs-failed'));
+    expect(failed.text).not.toContain('href="#frequency-instant"');
   });
 
   it('renders the Laravel group image page for signed-in group admins', async () => {
