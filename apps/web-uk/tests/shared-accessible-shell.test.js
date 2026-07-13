@@ -24214,6 +24214,40 @@ describe('shared accessible frontend shell', () => {
     expect(api.getGroupMembers).toHaveBeenCalledWith('test-token', '484', { per_page: 100 });
   });
 
+  it('renders only current Blade pinned announcements on group detail', async () => {
+    const api = require('../src/lib/api');
+    api.getGroup.mockResolvedValueOnce({
+      data: {
+        id: 484,
+        name: 'Dunmanway',
+        visibility: 'public',
+        viewer_membership: { status: 'active', role: 'member' }
+      }
+    });
+    api.getGroupMembers.mockResolvedValueOnce({ data: [] });
+    api.getEvents.mockResolvedValueOnce({ data: [] });
+    api.callGroupApi.mockResolvedValueOnce({
+      data: [
+        { id: 10, title: 'Summer opening hours', content: 'The hall opens at 9am.', is_pinned: true },
+        { id: 11, title: 'Ordinary update', content: 'This stays on the announcements page.', is_pinned: false },
+        { id: 12, title: '', content: 'Blade skips announcements without a title.', is_pinned: true }
+      ]
+    });
+
+    const response = await request(app)
+      .get('/acme/accessible/groups/484')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.callGroupApi).toHaveBeenCalledWith('test-token', 'GET', '/484/announcements');
+    expect(response.text).toContain('Pinned announcements');
+    expect(response.text).toContain('Pinned');
+    expect(response.text).toContain('Summer opening hours');
+    expect(response.text).toContain('The hall opens at 9am.');
+    expect(response.text).not.toContain('Ordinary update');
+    expect(response.text).not.toContain('Blade skips announcements without a title.');
+  });
+
   it('keeps a public group detail available when Laravel denies its member roster', async () => {
     const api = require('../src/lib/api');
 

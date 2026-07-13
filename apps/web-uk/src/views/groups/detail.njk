@@ -95,6 +95,21 @@
     </div>
   {% endif %}
 
+  {% if pinnedAnnouncements and pinnedAnnouncements.length > 0 %}
+    <h2 class="govuk-heading-l">{{ t("polish_groups.announcements_heading") }}</h2>
+    <div class="nexus-alpha-card-list govuk-!-margin-bottom-6">
+      {% for announcement in pinnedAnnouncements %}
+        <article class="nexus-alpha-card">
+          <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">
+            <strong class="govuk-tag govuk-tag--blue">{{ t("polish_groups.announcement_pinned_tag") }}</strong>
+          </p>
+          <h3 class="govuk-heading-s govuk-!-margin-bottom-1">{{ announcement.title }}</h3>
+          {% if announcement.content %}<p class="govuk-body">{{ announcement.content }}</p>{% endif %}
+        </article>
+      {% endfor %}
+    </div>
+  {% endif %}
+
   {% if members.length > 0 %}
     <h2 class="govuk-heading-l">{{ t("groups.members_title") }}</h2>
     <ul class="govuk-list">

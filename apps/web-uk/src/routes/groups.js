@@ -984,7 +984,7 @@ router.post('/new', requireAuth, audit.groupCreate(), asyncRoute(async (req, res
 router.get('/:id(\\d+)', requireAuth, asyncRoute(async (req, res) => {
   const { id } = req.params;
 
-  const [groupResult, membersResult, eventsResult] = await Promise.all([
+  const [groupResult, membersResult, eventsResult, announcementsResult] = await Promise.all([
     getGroup(req.token, id),
     getGroupMembers(req.token, id, { per_page: 100 }).catch((error) => {
       if (isAuthError(error)) throw error;
@@ -994,12 +994,20 @@ router.get('/:id(\\d+)', requireAuth, asyncRoute(async (req, res) => {
     getEvents(req.token, { group_id: id, when: 'upcoming', per_page: 5 }).catch((error) => {
       if (isAuthError(error)) throw error;
       return { data: [] };
+    }),
+    callGroup(req.token, 'GET', `/${id}/announcements`).catch((error) => {
+      if (isAuthError(error)) throw error;
+      return { data: [] };
     })
   ]);
 
   const group = normalizeGroup(dataFrom(groupResult)?.group || dataFrom(groupResult), Number(id));
   const members = collectionFrom(membersResult);
   const events = collectionFrom(eventsResult);
+  const pinnedAnnouncements = collectionFrom(announcementsResult)
+    .filter((announcement) => trimmed(announcement?.title) !== '')
+    .map(normalizeAnnouncement)
+    .filter((announcement) => announcement.isPinned);
   const myMembership = group.myMembership || group.my_membership;
   const membershipStatus = trimmed(myMembership?.status || myMembership?.state);
   const isAdmin = isGroupAdmin(group);
@@ -1012,6 +1020,7 @@ router.get('/:id(\\d+)', requireAuth, asyncRoute(async (req, res) => {
     group,
     members,
     events,
+    pinnedAnnouncements,
     myMembership,
     isAdmin,
     isMember,
