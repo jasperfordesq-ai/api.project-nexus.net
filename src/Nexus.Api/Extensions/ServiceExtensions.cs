@@ -162,6 +162,7 @@ public static class ServiceExtensions
         services.AddScoped<EventCalendarParityService>();
         services.AddScoped<EventOfflineCheckinService>();
         services.AddScoped<EventSafetyService>();
+        services.AddScoped<EventTicketService>();
         services.AddScoped<DirectMessageMutationService>();
         services.AddScoped<SafeguardingCoordinationService>();
         services.AddScoped<DirectMessageReactionService>();

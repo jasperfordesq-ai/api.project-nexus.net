@@ -68,10 +68,23 @@ and adds exact append-only `event_attendance_activity`. All 124 migrations
 replayed on blank disposable PostgreSQL, EF model drift is clean, and focused
 privacy/history/manager/attendance/bulk/CSV/tenant proof passed 4/4.
 
-The live comparator now reports 4,452 ASP.NET operations, 2,532/2,592 matched,
-and 60 missing. The schema comparator reports 377 Laravel migration files, 131
-ASP.NET migration source files, 129 runtime IDs, 378 ASP.NET table names, 187
-exact matches, 268 missing Laravel names, and 191 ASP.NET-only names.
+The live comparator now reports 4,461 ASP.NET operations, 2,541/2,592 matched,
+and 51 missing. The schema comparator reports 377 Laravel migration files, 132
+ASP.NET migration source files, 130 runtime IDs, 383 ASP.NET table names, 192
+exact matches, 263 missing Laravel names, and 191 ASP.NET-only names.
+
+Event Ticketing is the latest completed backend slice. All nine catalogue,
+quote, type lifecycle, allocation, cancellation, and reconciliation route
+shapes are owned under both prefixes. Free allocation requires a confirmed
+registration and serialized capacity/per-member limits; time-credit
+materialization fails closed with HTTP 503 and no entitlement write. Type,
+entitlement, and inventory changes are versioned and idempotent, and focused
+strict-projection/provider/tenant/lifecycle proof passed 4/4.
+
+Migration `20260713025352_EventTicketingWorkflowParity` adds all five exact
+Laravel ticketing tables, 27 checks, and 12 validation/immutability/no-delete
+triggers. Blank PostgreSQL replay applied 130/130 migrations, EF reports no
+model drift, and an invalid occurrence insert failed with PostgreSQL `P0001`.
 
 Event Safety is the latest completed backend slice. Requirements use versioned
 draft/publish/archive heads plus immutable snapshots and history. Code-of-
@@ -578,8 +591,8 @@ Earlier published slice evidence retained for context:
 - earlier volunteering-chain proof reached
   `20260711031959_NullableTransactionLedgerLegs`; the current migration proof
   is recorded above;
-- API route comparator: 2,532/2,592 current Laravel/supplemental operations
-  matched, 102 route-shape gaps after Event People closure;
+- current API route comparator: 2,541/2,592 Laravel/supplemental operations
+  matched, with 51 route-shape gaps after Event Ticketing closure;
 - historical schema comparator: 134/361 Laravel tables matched, 227 missing, 194
   ASP.NET-only; the current result above supersedes it and remains a global red
   gate.

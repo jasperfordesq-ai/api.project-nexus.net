@@ -84,6 +84,11 @@ public class NexusDbContext : DbContext
     public DbSet<EventGuardianConsentHistory> EventGuardianConsentHistory => Set<EventGuardianConsentHistory>();
     public DbSet<EventParticipationDenial> EventParticipationDenials => Set<EventParticipationDenial>();
     public DbSet<EventParticipationDenialHistory> EventParticipationDenialHistory => Set<EventParticipationDenialHistory>();
+    public DbSet<EventTicketType> EventTicketTypes => Set<EventTicketType>();
+    public DbSet<EventTicketTypeHistory> EventTicketTypeHistory => Set<EventTicketTypeHistory>();
+    public DbSet<EventTicketEntitlement> EventTicketEntitlements => Set<EventTicketEntitlement>();
+    public DbSet<EventTicketEntitlementHistory> EventTicketEntitlementHistory => Set<EventTicketEntitlementHistory>();
+    public DbSet<EventTicketInventoryHistory> EventTicketInventoryHistory => Set<EventTicketInventoryHistory>();
     public DbSet<FeedPost> FeedPosts => Set<FeedPost>();
     public DbSet<FeedActivity> FeedActivities => Set<FeedActivity>();
     public DbSet<PostLike> PostLikes => Set<PostLike>();

@@ -9,21 +9,21 @@ Laravel source of truth: `C:\platforms\htdocs\staging\database\migrations` and
 
 The static schema-table counts were regenerated with
 `scripts/compare-laravel-schema-parity.ps1` on 2026-07-13 after the event
-offline-check-in workflow slice. Runtime migration counts come from a separate
+ticketing workflow slice. Runtime migration counts come from a separate
 blank PostgreSQL replay.
 
 | Source | Count | Notes |
 | --- | ---: | --- |
 | Laravel migrations | 377 | PHP migration files under `database/migrations`. |
-| ASP.NET migration source files | 131 | Static comparator migration-source count. |
-| ASP.NET runtime migrations | 129 | Blank replay applied every recorded EF migration through `20260713015034_EventSafetyWorkflowParity`; `has-pending-model-changes` is green. |
+| ASP.NET migration source files | 132 | Static comparator migration-source count. |
+| ASP.NET runtime migrations | 130 | Blank replay applied every recorded EF migration through `20260713025352_EventTicketingWorkflowParity`; `has-pending-model-changes` is green. |
 | Laravel created tables | 298 | Unique `Schema::create(...)` table names. |
 | Laravel touched tables | 128 | Unique `Schema::table(...)` table names. |
 | Laravel explicit model tables | 267 | Unique `protected/public $table = ...` model declarations. |
 | Laravel source tables | 455 | Union of migration-created, migration-touched, and explicit model tables. |
-| ASP.NET tables | 378 | Static table union after adding canonical Event Safety storage. |
-| Exact matched tables | 187 | Current exact table-name matches. |
-| Missing Laravel tables | 268 | Laravel source names not represented exactly in ASP.NET. |
+| ASP.NET tables | 383 | Static table union after adding canonical Event Ticketing storage. |
+| Exact matched tables | 192 | Current exact table-name matches. |
+| Missing Laravel tables | 263 | Laravel source names not represented exactly in ASP.NET. |
 | Extra ASP.NET tables | 191 | .NET table names with no exact Laravel table name. |
 
 These counts are not a parity score. Static table-name matching will overstate
@@ -32,6 +32,16 @@ tables versus .NET `volunteer_*` tables. Those aliases still need explicit
 triage and compatibility decisions before any table can be marked equivalent.
 
 ## 2026-07-12 Runtime Migration, Direct-Message, And Safeguarding Evidence Status
+
+`20260713025352_EventTicketingWorkflowParity` is migration 130 and adds the
+five exact ticket type, type history, entitlement, entitlement history, and
+inventory history tables. Twenty-seven PostgreSQL checks enforce type,
+price, capacity, sales/refund windows, lifecycle, free-only materialization,
+version, and inventory invariants. Twelve triggers validate inserts and
+updates, serialize capacity enforcement, prohibit aggregate deletion, and
+make all three histories append-only. Blank replay passed 130/130, EF model
+drift is clean, trigger catalog proof is 12/12, and an invalid occurrence
+insert failed closed with SQLSTATE `P0001 event_ticket_concrete_occurrence_required`.
 
 `20260713004944_EventOfflineCheckinWorkflowParity` is the preceding
 migration and runtime ID 128. It adds exact `event_checkin_credentials`,
