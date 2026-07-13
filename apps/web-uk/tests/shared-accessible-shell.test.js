@@ -21614,6 +21614,20 @@ describe('shared accessible frontend shell', () => {
       idempotency_key: 'offer-test-key'
     });
 
+    const tokenAcceptResponse = await post('/events/7/waitlist/accept', {
+      idempotency_key: 'token-offer-key',
+      token: ' signed-offer-token '
+    });
+    expect(tokenAcceptResponse.headers.location).toBe('/events/7?status=waitlist-offer-accepted');
+    expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', '/7/registration/waitlist/accept', {
+      idempotency_key: 'token-offer-key',
+      token: 'signed-offer-token'
+    });
+    const callsBeforeInvalidOffer = api.callEventApi.mock.calls.length;
+    const invalidOffer = await post('/events/7/waitlist/accept', { token: 'x'.repeat(513) });
+    expect(invalidOffer.headers.location).toBe('/events/7?status=waitlist-offer-accept-failed');
+    expect(api.callEventApi).toHaveBeenCalledTimes(callsBeforeInvalidOffer);
+
     const checkinResponse = await post('/events/7/attendees/55/check-in');
     expect(checkinResponse.headers.location).toBe('/events/7?status=checkin-success');
     expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', '/7/attendees/55/check-in');

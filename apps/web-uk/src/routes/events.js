@@ -792,12 +792,20 @@ router.post('/:id(\\d+)/waitlist/leave', asyncRoute(async (req, res) => {
 
 router.post('/:id(\\d+)/waitlist/accept', asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
+  const token = trimmed(req.body.token, 513);
+  if (token.length > 512) {
+    return redirectTo(res, eventRedirect(id, 'waitlist-offer-accept-failed'));
+  }
+  const payload = {
+    idempotency_key: trimmed(req.body.idempotency_key, 191) || randomUUID()
+  };
+  if (token) payload.token = token;
   return runEventAction(
     req,
     res,
     'POST',
     `/${id}/registration/waitlist/accept`,
-    { idempotency_key: trimmed(req.body.idempotency_key, 191) || randomUUID() },
+    payload,
     eventRedirect(id, 'waitlist-offer-accepted'),
     eventRedirect(id, 'waitlist-offer-accept-failed')
   );
