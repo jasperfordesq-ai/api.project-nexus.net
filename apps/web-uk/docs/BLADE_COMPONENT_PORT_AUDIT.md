@@ -108,6 +108,18 @@ payload, privacy, export, consent, and confirmation proof passes. Campaigns,
 retention, live disposable effects, manual assistive-technology review, and
 unchanged ASP.NET runtime proof remain open.
 
+## 2026-07-13 Registration Campaigns and Retention Checkpoint
+
+Organizers can now preview member, email, group, audience, or CSV invitation
+campaigns and then issue, schedule, or cancel the immutable audience snapshot
+through Laravel's revisioned, idempotent contracts. The organizer page also
+exposes the already-backed governed answer review/export and versioned guest
+attendance workflows. Retention remains permission-gated and requires a dated
+dry run plus explicit destructive confirmation before applying the recorded run.
+Focused render, exact-payload, revision, and confirmation proof passes. Live
+delivery and disposable retention effects, manual assistive-technology review,
+and unchanged ASP.NET runtime proof remain open.
+
 ## Purpose
 
 This audit lists reusable Laravel Blade accessible frontend patterns that should

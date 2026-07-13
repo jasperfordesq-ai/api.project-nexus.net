@@ -1655,6 +1655,57 @@ router.post('/:id(\\d+)/registration/guests/:guestId(\\d+)/attendance/:action(ch
   catch (error) { if (redirectOnAuthError(error, res)) return undefined; if (error instanceof ApiError && [400, 403, 404, 409, 422, 429, 503].includes(error.status)) return redirectTo(res, eventPath(id, '/registration?status=failed')); throw error; }
 }));
 
+function registrationCampaignSource(type, raw) {
+  const values = trimmed(raw, 20000).split(/[\s,;]+/).map((value) => value.trim()).filter(Boolean);
+  if (type === 'member') return { member_ids: values.map(positiveInteger).filter(Boolean) };
+  if (type === 'email') return { emails: values };
+  if (type === 'group') return positiveInteger(values[0]) ? { group_id: positiveInteger(values[0]) } : null;
+  if (type === 'audience') return { criteria: values.length ? { all_active: true, roles: values } : { all_active: true } };
+  if (type === 'csv') return trimmed(raw, 20000) ? { csv: trimmed(raw, 20000) } : null;
+  return null;
+}
+
+async function renderRegistrationResult(req, res, extras = {}) {
+  const id = Number(req.params.id); const token = tokenFrom(req);
+  const [eventResult, state] = await Promise.all([callApi(token, 'GET', `/${id}`), registrationProductState(token, id)]);
+  res.set('Cache-Control', 'private, no-store');
+  return res.render('events/registration', { title: res.locals.t('event_registration.title'), activeNav: 'events', event: { id, title: trimmed(eventFrom(eventResult).title) }, ...state, status: null, idempotencyKey: randomUUID(), csrfToken: req.csrfToken ? req.csrfToken() : '', ...extras });
+}
+
+router.post('/:id(\\d+)/registration/campaigns/preview', requireAuth, asyncRoute(async (req, res) => {
+  const id = Number(req.params.id); const key = trimmed(req.body.idempotency_key, 191); const type = selectedValue(req.body.campaign_type, ['member', 'email', 'group', 'audience', 'csv']); const source = registrationCampaignSource(type, req.body.source);
+  if (!key || !type || !source) return redirectTo(res, eventPath(id, '/registration?status=invalid'));
+  try { const result = dataFrom(await callEventMutation(tokenFrom(req), 'POST', `/${id}/registration-product/campaigns/preview`, { campaign_type: type, source, default_locale: selectedValue(req.body.default_locale, ['en', 'ga', 'de', 'fr', 'it', 'pt', 'es', 'nl', 'pl', 'ja', 'ar'], 'en') }, key)) || {}; return renderRegistrationResult(req, res, { campaignPreview: result.campaign || result }); }
+  catch (error) { if (redirectOnAuthError(error, res)) return undefined; if (error instanceof ApiError && [400, 403, 404, 409, 422, 429, 503].includes(error.status)) return redirectTo(res, eventPath(id, '/registration?status=failed')); throw error; }
+}));
+
+async function mutateRegistrationCampaign(req, res, action) {
+  const id = Number(req.params.id); const campaignId = positiveInteger(req.params.campaignId); const revision = positiveInteger(req.body.expected_revision); const key = trimmed(req.body.idempotency_key, 191); const payload = { expected_revision: revision };
+  if (action === 'issue') payload.expires_at = trimmed(req.body.expires_at);
+  if (action === 'schedule') payload.scheduled_for = trimmed(req.body.scheduled_for);
+  if (action === 'cancel') payload.reason = trimmed(req.body.reason, 2000);
+  if (!campaignId || !revision || !key || (action === 'issue' && !payload.expires_at) || (action === 'schedule' && !payload.scheduled_for) || (action === 'cancel' && !payload.reason)) return redirectTo(res, eventPath(id, '/registration?status=invalid'));
+  try { await callEventMutation(tokenFrom(req), 'POST', `/${id}/registration-product/campaigns/${campaignId}/${action}`, payload, key); const status = { issue: 'campaign-issued', schedule: 'campaign-scheduled', cancel: 'campaign-cancelled' }[action]; return redirectTo(res, eventPath(id, `/registration?status=${status}`)); }
+  catch (error) { if (redirectOnAuthError(error, res)) return undefined; if (error instanceof ApiError && [400, 403, 404, 409, 422, 429, 503].includes(error.status)) return redirectTo(res, eventPath(id, '/registration?status=failed')); throw error; }
+}
+router.post('/:id(\\d+)/registration/campaigns/:campaignId(\\d+)/issue', requireAuth, asyncRoute(async (req, res) => mutateRegistrationCampaign(req, res, 'issue')));
+router.post('/:id(\\d+)/registration/campaigns/:campaignId(\\d+)/schedule', requireAuth, asyncRoute(async (req, res) => mutateRegistrationCampaign(req, res, 'schedule')));
+router.post('/:id(\\d+)/registration/campaigns/:campaignId(\\d+)/cancel', requireAuth, asyncRoute(async (req, res) => mutateRegistrationCampaign(req, res, 'cancel')));
+
+router.post('/:id(\\d+)/registration/retention/preview', requireAuth, asyncRoute(async (req, res) => {
+  const id = Number(req.params.id); const key = trimmed(req.body.idempotency_key, 191); const asOf = trimmed(req.body.as_of, 32);
+  if (!key || !/^\d{4}-\d{2}-\d{2}$/.test(asOf)) return redirectTo(res, eventPath(id, '/registration?status=invalid'));
+  try { const result = dataFrom(await callEventMutation(tokenFrom(req), 'POST', `/${id}/registration-product/retention/dry-run`, { as_of: asOf }, key)) || {}; return renderRegistrationResult(req, res, { retentionRun: result.run || result }); }
+  catch (error) { if (redirectOnAuthError(error, res)) return undefined; if (error instanceof ApiError && [400, 403, 404, 409, 422, 429, 503].includes(error.status)) return redirectTo(res, eventPath(id, '/registration?status=failed')); throw error; }
+}));
+
+router.post('/:id(\\d+)/registration/retention/:runId(\\d+)/apply', requireAuth, asyncRoute(async (req, res) => {
+  const id = Number(req.params.id); const runId = positiveInteger(req.params.runId); const key = trimmed(req.body.idempotency_key, 191);
+  if (!runId || !key || !checked(req.body.confirm_destructive)) return redirectTo(res, eventPath(id, '/registration?status=invalid'));
+  try { await callEventMutation(tokenFrom(req), 'POST', `/${id}/registration-product/retention/${runId}/apply`, {}, key); return redirectTo(res, eventPath(id, '/registration?status=retention-applied')); }
+  catch (error) { if (redirectOnAuthError(error, res)) return undefined; if (error instanceof ApiError && [400, 403, 404, 409, 422, 429, 503].includes(error.status)) return redirectTo(res, eventPath(id, '/registration?status=failed')); throw error; }
+}));
+
 router.post('/:id(\\d+)/check-in/credential/rotate', requireAuth, asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const credentialId = positiveInteger(req.body.credential_id);

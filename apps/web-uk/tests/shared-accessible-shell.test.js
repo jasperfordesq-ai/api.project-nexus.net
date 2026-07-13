@@ -22436,6 +22436,48 @@ describe('shared accessible frontend shell', () => {
     expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/registration-product/guests/91/attendance/check_in', { expected_version: 0, reason: null }, { headers: { 'Idempotency-Key': 'guest-checkin-123' } });
   });
 
+  it('previews Laravel invitation campaigns from normalized member sources', async () => {
+    const api = require('../src/lib/api'); const agent = request.agent(app); const shell = await agent.get('/contact').set('Cookie', signedCookieHeader()); const csrf = shell.text.match(/name="_csrf" value="([^"]+)"/)[1];
+    api.callEventApi
+      .mockResolvedValueOnce({ data: { campaign: { id: 61, revision: 2, valid_count: 3 } } })
+      .mockResolvedValueOnce({ data: { id: 42, title: 'Community garden day' } })
+      .mockResolvedValueOnce({ data: { registrations: [], invitations: [], guests: [], settings: {} } })
+      .mockResolvedValueOnce({ data: { settings: { revision: 3 }, forms: [], campaigns: [], permissions: { manage_retention: true } } });
+    const response = await agent.post('/events/42/registration/campaigns/preview').set('Cookie', signedCookieHeader()).type('form').send({ _csrf: csrf, idempotency_key: 'campaign-preview-123', campaign_type: 'member', source: '7, 8; 9', default_locale: 'en' });
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('/events/42/registration/campaigns/61/issue');
+    expect(response.text).toContain('/events/42/registration/campaigns/61/schedule');
+    expect(api.callEventApi).toHaveBeenNthCalledWith(1, 'test-token', 'POST', '/42/registration-product/campaigns/preview', { campaign_type: 'member', source: { member_ids: [7, 8, 9] }, default_locale: 'en' }, { headers: { 'Idempotency-Key': 'campaign-preview-123' } });
+  });
+
+  it('issues, schedules and cancels Laravel invitation campaigns with exact revisions', async () => {
+    const api = require('../src/lib/api'); const agent = request.agent(app); const shell = await agent.get('/contact').set('Cookie', signedCookieHeader()); const csrf = shell.text.match(/name="_csrf" value="([^"]+)"/)[1];
+    for (const [action, extra, status] of [['issue', { expires_at: '2026-08-30T17:00' }, 'campaign-issued'], ['schedule', { scheduled_for: '2026-08-01T09:00' }, 'campaign-scheduled'], ['cancel', { reason: 'Audience changed' }, 'campaign-cancelled']]) {
+      api.callEventApi.mockResolvedValueOnce({ data: { changed: true } });
+      const response = await agent.post(`/events/42/registration/campaigns/61/${action}`).set('Cookie', signedCookieHeader()).type('form').send({ _csrf: csrf, idempotency_key: `campaign-${action}-123`, expected_revision: '2', ...extra });
+      expect(response.headers.location).toBe(`/events/42/registration?status=${status}`);
+      expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', `/42/registration-product/campaigns/61/${action}`, { expected_revision: 2, ...extra }, { headers: { 'Idempotency-Key': `campaign-${action}-123` } });
+    }
+  });
+
+  it('previews Laravel retention and requires destructive confirmation before apply', async () => {
+    const api = require('../src/lib/api'); const agent = request.agent(app); const shell = await agent.get('/contact').set('Cookie', signedCookieHeader()); const csrf = shell.text.match(/name="_csrf" value="([^"]+)"/)[1];
+    api.callEventApi
+      .mockResolvedValueOnce({ data: { run: { id: 71, eligible_count: 4 } } })
+      .mockResolvedValueOnce({ data: { id: 42, title: 'Community garden day' } })
+      .mockResolvedValueOnce({ data: { registrations: [], invitations: [], guests: [], settings: {} } })
+      .mockResolvedValueOnce({ data: { settings: { revision: 3 }, forms: [], campaigns: [], permissions: { manage_retention: true } } });
+    const preview = await agent.post('/events/42/registration/retention/preview').set('Cookie', signedCookieHeader()).type('form').send({ _csrf: csrf, idempotency_key: 'retention-preview-123', as_of: '2026-07-13' });
+    expect(preview.status).toBe(200); expect(preview.text).toContain('/events/42/registration/retention/71/apply');
+    expect(api.callEventApi).toHaveBeenNthCalledWith(1, 'test-token', 'POST', '/42/registration-product/retention/dry-run', { as_of: '2026-07-13' }, { headers: { 'Idempotency-Key': 'retention-preview-123' } });
+    const rejected = await agent.post('/events/42/registration/retention/71/apply').set('Cookie', signedCookieHeader()).type('form').send({ _csrf: csrf, idempotency_key: 'retention-apply-123' });
+    expect(rejected.headers.location).toBe('/events/42/registration?status=invalid');
+    api.callEventApi.mockResolvedValueOnce({ data: { changed: true } });
+    const applied = await agent.post('/events/42/registration/retention/71/apply').set('Cookie', signedCookieHeader()).type('form').send({ _csrf: csrf, idempotency_key: 'retention-apply-123', confirm_destructive: '1' });
+    expect(applied.headers.location).toBe('/events/42/registration?status=retention-applied');
+    expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/registration-product/retention/71/apply', {}, { headers: { 'Idempotency-Key': 'retention-apply-123' } });
+  });
+
   it('renders and issues Laravel signed Event check-in credentials without caching the secret', async () => {
     const api = require('../src/lib/api');
     api.callEventApi
