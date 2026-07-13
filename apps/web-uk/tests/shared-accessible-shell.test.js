@@ -22062,6 +22062,56 @@ describe('shared accessible frontend shell', () => {
     expect(api.callEventApi).not.toHaveBeenCalled();
   });
 
+  it('renders Laravel Event Reminder preferences, inherited source, rules and channels', async () => {
+    const api = require('../src/lib/api');
+    api.callEventApi
+      .mockResolvedValueOnce({ data: { id: 42, title: 'Community garden day' } })
+      .mockResolvedValueOnce({ data: {
+        revision: 6,
+        resolved: { reminders_enabled: true, reminders_source: 'category', channels: { email: true, in_app: true, web_push: false, fcm: false, realtime: true } },
+        overrides: { email_enabled: false },
+        rules: [{ offset_minutes: 1440 }, { offset_minutes: 90 }],
+        limits: { minimum_offset_minutes: 5, maximum_offset_minutes: 525600, maximum_rules: 10, default_offsets_minutes: [1440, 60] }
+      } });
+    const response = await request(app).get('/events/42/reminders').set('Cookie', signedCookieHeader());
+    expect(response.status).toBe(200);
+    expect(response.headers['cache-control']).toBe('private, no-store');
+    expect(response.text).toContain('Community garden day');
+    expect(response.text).toContain('name="expected_revision" value="6"');
+    expect(response.text).toContain('id="offset-1440" name="offsets[]" type="checkbox" value="1440" checked');
+    expect(response.text).toContain('id="offset-90" name="offsets[]" type="checkbox" value="90" checked');
+    expect(response.text).not.toContain('id="channel-email" name="channel_email" type="checkbox" value="1" checked');
+    expect(api.callEventApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/42/reminders');
+  });
+
+  it('saves Laravel Event Reminder overrides and sorted unique rules', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const shell = await agent.get('/contact').set('Cookie', signedCookieHeader());
+    const csrf = shell.text.match(/name="_csrf" value="([^"]+)"/)[1];
+    api.callEventApi.mockResolvedValueOnce({ data: { revision: 7 } });
+    const response = await agent.post('/events/42/reminders').set('Cookie', signedCookieHeader()).type('form').send({
+      _csrf: csrf, expected_revision: '6', reminders_enabled: '1', offsets: ['60', '1440', '60'], custom_offset: '90', channel_email: '1', channel_in_app: '1'
+    });
+    expect(response.headers.location).toBe('/events/42/reminders?status=saved');
+    expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/42/reminders', expect.objectContaining({
+      overrides: expect.objectContaining({ reminders_enabled: true, cadence: 'instant', email_enabled: true, in_app_enabled: true }),
+      rules: expect.arrayContaining([expect.objectContaining({ offset_minutes: 1440 }), expect.objectContaining({ offset_minutes: 90 }), expect.objectContaining({ offset_minutes: 60 })]),
+      expected_revision: 6
+    }));
+  });
+
+  it('resets Laravel Event Reminder overrides with optimistic concurrency', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const shell = await agent.get('/contact').set('Cookie', signedCookieHeader());
+    const csrf = shell.text.match(/name="_csrf" value="([^"]+)"/)[1];
+    api.callEventApi.mockResolvedValueOnce({ data: { revision: 7 } });
+    const response = await agent.post('/events/42/reminders/reset').set('Cookie', signedCookieHeader()).type('form').send({ _csrf: csrf, expected_revision: '6' });
+    expect(response.headers.location).toBe('/events/42/reminders?status=reset');
+    expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/42/reminders', { expected_revision: 6 });
+  });
+
   it('renders and issues Laravel signed Event check-in credentials without caching the secret', async () => {
     const api = require('../src/lib/api');
     api.callEventApi

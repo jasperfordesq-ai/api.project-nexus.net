@@ -1119,6 +1119,89 @@ router.post('/:id(\\d+)/agenda', requireAuth, asyncRoute(async (req, res) => {
   }
 }));
 
+router.get('/:id(\\d+)/reminders', requireAuth, asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const token = tokenFrom(req);
+  const [eventResult, preferencesResult] = await Promise.all([
+    callApi(token, 'GET', `/${id}`),
+    callApi(token, 'GET', `/${id}/reminders`)
+  ]);
+  const event = eventFrom(eventResult);
+  const preferences = dataFrom(preferencesResult) || {};
+  const resolved = preferences.resolved || {};
+  const overrides = preferences.overrides || {};
+  const selectedOffsets = (Array.isArray(preferences.rules) ? preferences.rules : [])
+    .map((rule) => positiveInteger(rule.offset_minutes))
+    .filter(Boolean);
+  const limits = preferences.limits || {};
+  res.set('Cache-Control', 'private, no-store');
+  return res.render('events/reminders', {
+    title: res.locals.t('govuk_alpha_events.reminders.title'),
+    activeNav: 'events',
+    event: { id, title: trimmed(event.title) },
+    preferences,
+    limits: {
+      minimum: positiveInteger(limits.minimum_offset_minutes) || 5,
+      maximum: positiveInteger(limits.maximum_offset_minutes) || 525600,
+      maximumRules: positiveInteger(limits.maximum_rules) || 10
+    },
+    selectedOffsets: selectedOffsets.length ? selectedOffsets : (limits.default_offsets_minutes || [1440, 60]),
+    enabled: overrides.reminders_enabled ?? resolved.reminders_enabled ?? false,
+    channels: { ...(resolved.channels || {}), email: overrides.email_enabled ?? resolved.channels?.email, in_app: overrides.in_app_enabled ?? resolved.channels?.in_app, web_push: overrides.web_push_enabled ?? resolved.channels?.web_push, fcm: overrides.fcm_enabled ?? resolved.channels?.fcm, realtime: overrides.realtime_enabled ?? resolved.channels?.realtime },
+    source: selectedValue(resolved.reminders_source, ['event', 'category', 'global', 'tenant'], 'unavailable'),
+    status: trimmed(req.query.status),
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}, { notFoundTitle: 'Event not found' }));
+
+router.post('/:id(\\d+)/reminders', requireAuth, asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const expectedRevision = Math.max(0, Number.parseInt(req.body.expected_revision, 10) || 0);
+  const offsets = arrayValues(req.body.offsets).concat(trimmed(req.body.custom_offset) || [])
+    .map(positiveInteger).filter(Boolean);
+  const uniqueOffsets = [...new Set(offsets)].sort((left, right) => right - left);
+  const enabled = checked(req.body.reminders_enabled);
+  if ((enabled && uniqueOffsets.length === 0) || uniqueOffsets.length > 10 || uniqueOffsets.some((offset) => offset < 5 || offset > 525600)) {
+    return redirectTo(res, eventPath(id, '/reminders?status=invalid'));
+  }
+  try {
+    await callApi(tokenFrom(req), 'PUT', `/${id}/reminders`, {
+      overrides: {
+        reminders_enabled: enabled,
+        cadence: enabled ? 'instant' : 'off',
+        email_enabled: checked(req.body.channel_email),
+        in_app_enabled: checked(req.body.channel_in_app),
+        web_push_enabled: checked(req.body.channel_web_push),
+        fcm_enabled: checked(req.body.channel_fcm),
+        realtime_enabled: checked(req.body.channel_realtime)
+      },
+      rules: uniqueOffsets.map((offset) => ({ offset_minutes: offset, enabled: true, email_enabled: null, in_app_enabled: null, web_push_enabled: null, fcm_enabled: null, realtime_enabled: null })),
+      expected_revision: expectedRevision
+    });
+    return redirectTo(res, eventPath(id, '/reminders?status=saved'));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    if (error instanceof ApiError && error.status === 409) return redirectTo(res, eventPath(id, '/reminders?status=conflict'));
+    if (error instanceof ApiError && [400, 403, 404, 422, 429].includes(error.status)) return redirectTo(res, eventPath(id, '/reminders?status=failed'));
+    throw error;
+  }
+}));
+
+router.post('/:id(\\d+)/reminders/reset', requireAuth, asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const expectedRevision = Number.parseInt(req.body.expected_revision, 10);
+  if (!Number.isInteger(expectedRevision) || expectedRevision < 0) return redirectTo(res, eventPath(id, '/reminders?status=invalid'));
+  try {
+    await callApi(tokenFrom(req), 'DELETE', `/${id}/reminders`, { expected_revision: expectedRevision });
+    return redirectTo(res, eventPath(id, '/reminders?status=reset'));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    if (error instanceof ApiError && error.status === 409) return redirectTo(res, eventPath(id, '/reminders?status=conflict'));
+    if (error instanceof ApiError && [400, 403, 404, 422, 429].includes(error.status)) return redirectTo(res, eventPath(id, '/reminders?status=failed'));
+    throw error;
+  }
+}));
+
 router.post('/:id(\\d+)/check-in/credential/rotate', requireAuth, asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const credentialId = positiveInteger(req.body.credential_id);

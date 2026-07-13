@@ -1,12 +1,12 @@
 {
   "summary": {
-    "generatedAt": "2026-07-13T02:13:28.400Z",
+    "generatedAt": "2026-07-13T02:21:23.133Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\platforms\\htdocs\\asp.net-backend",
     "laravelRoutes": 687,
-    "webUkRoutes": 626,
-    "matchedRoutes": 623,
-    "missingRoutes": 64,
+    "webUkRoutes": 629,
+    "matchedRoutes": 626,
+    "missingRoutes": 61,
     "extraWebUkRoutes": 1,
     "ignoredInfrastructureRoutes": 3,
     "familyCounts": {
@@ -131,8 +131,8 @@
         "ignoredInfrastructure": 0
       },
       "events": {
-        "matched": 34,
-        "missing": 60,
+        "matched": 37,
+        "missing": 57,
         "extraWebUk": 0,
         "ignoredInfrastructure": 0
       },
@@ -2195,6 +2195,28 @@
     },
     {
       "method": "GET",
+      "path": "/events/{param}/reminders",
+      "family": "events",
+      "status": "matched",
+      "laravelRouteName": "events.reminders",
+      "laravelHandler": "eventsReminders",
+      "laravelView": "event-reminders",
+      "laravelParamConstraints": [
+        "number"
+      ],
+      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha.php",
+      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventRemindersParity.php",
+      "laravelMiddleware": "",
+      "auth": "public-or-unknown",
+      "tenantScoped": "unknown",
+      "gates": "",
+      "apiNeeds": "",
+      "webUkPath": "/events/{param}/reminders",
+      "webUkView": "events/reminders",
+      "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\routes\\events.js"
+    },
+    {
+      "method": "GET",
       "path": "/events/{param}/safety",
       "family": "events",
       "status": "matched",
@@ -2563,6 +2585,50 @@
       "gates": "",
       "apiNeeds": "service:EventNotificationService",
       "webUkPath": "/events/{param}/recurring-edit",
+      "webUkView": "",
+      "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\routes\\events.js"
+    },
+    {
+      "method": "POST",
+      "path": "/events/{param}/reminders",
+      "family": "events",
+      "status": "matched",
+      "laravelRouteName": "events.reminders.update",
+      "laravelHandler": "eventsUpdateReminders",
+      "laravelView": "",
+      "laravelParamConstraints": [
+        "number"
+      ],
+      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha.php",
+      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventRemindersParity.php",
+      "laravelMiddleware": "'throttle:20,1'",
+      "auth": "public-or-unknown",
+      "tenantScoped": "unknown",
+      "gates": "",
+      "apiNeeds": "",
+      "webUkPath": "/events/{param}/reminders",
+      "webUkView": "",
+      "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\routes\\events.js"
+    },
+    {
+      "method": "POST",
+      "path": "/events/{param}/reminders/reset",
+      "family": "events",
+      "status": "matched",
+      "laravelRouteName": "events.reminders.reset",
+      "laravelHandler": "eventsResetReminders",
+      "laravelView": "",
+      "laravelParamConstraints": [
+        "number"
+      ],
+      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha.php",
+      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventRemindersParity.php",
+      "laravelMiddleware": "'throttle:20,1'",
+      "auth": "public-or-unknown",
+      "tenantScoped": "unknown",
+      "gates": "",
+      "apiNeeds": "",
+      "webUkPath": "/events/{param}/reminders/reset",
       "webUkView": "",
       "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\routes\\events.js"
     },
@@ -14046,28 +14112,6 @@
     },
     {
       "method": "GET",
-      "path": "/events/{param}/reminders",
-      "family": "events",
-      "status": "missing",
-      "laravelRouteName": "events.reminders",
-      "laravelHandler": "eventsReminders",
-      "laravelView": "event-reminders",
-      "laravelParamConstraints": [
-        "number"
-      ],
-      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha.php",
-      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventRemindersParity.php",
-      "laravelMiddleware": "",
-      "auth": "public-or-unknown",
-      "tenantScoped": "unknown",
-      "gates": "",
-      "apiNeeds": "",
-      "webUkPath": "",
-      "webUkView": "",
-      "webUkFile": ""
-    },
-    {
-      "method": "GET",
       "path": "/events/{param}/template-preview",
       "family": "events",
       "status": "missing",
@@ -14927,50 +14971,6 @@
       "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\event-registration.php",
       "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventRegistrationParity.php",
       "laravelMiddleware": "'throttle:10,1'",
-      "auth": "public-or-unknown",
-      "tenantScoped": "unknown",
-      "gates": "",
-      "apiNeeds": "",
-      "webUkPath": "",
-      "webUkView": "",
-      "webUkFile": ""
-    },
-    {
-      "method": "POST",
-      "path": "/events/{param}/reminders",
-      "family": "events",
-      "status": "missing",
-      "laravelRouteName": "events.reminders.update",
-      "laravelHandler": "eventsUpdateReminders",
-      "laravelView": "",
-      "laravelParamConstraints": [
-        "number"
-      ],
-      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha.php",
-      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventRemindersParity.php",
-      "laravelMiddleware": "'throttle:20,1'",
-      "auth": "public-or-unknown",
-      "tenantScoped": "unknown",
-      "gates": "",
-      "apiNeeds": "",
-      "webUkPath": "",
-      "webUkView": "",
-      "webUkFile": ""
-    },
-    {
-      "method": "POST",
-      "path": "/events/{param}/reminders/reset",
-      "family": "events",
-      "status": "missing",
-      "laravelRouteName": "events.reminders.reset",
-      "laravelHandler": "eventsResetReminders",
-      "laravelView": "",
-      "laravelParamConstraints": [
-        "number"
-      ],
-      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha.php",
-      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventRemindersParity.php",
-      "laravelMiddleware": "'throttle:20,1'",
       "auth": "public-or-unknown",
       "tenantScoped": "unknown",
       "gates": "",

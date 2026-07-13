@@ -25,6 +25,17 @@ Focused render/payload/fail-closed proof passes. Disposable live session effects
 timezone variants, manual assistive-technology review, and unchanged ASP.NET
 runtime proof remain open.
 
+## 2026-07-13 Event Reminders Checkpoint
+
+Confirmed attendees now have Laravel's real reminder preference page, including
+resolved inheritance source, enabled state, preset/custom offsets, five
+independent channels, optimistic revision checks, save, conflict handling, and
+reset to inherited defaults. Web UK calls the canonical GET/PUT/DELETE reminder
+contract and fails invalid enabled-without-rule input locally. Focused read,
+exact payload, reset, and localization proof passes. Live scheduler/delivery
+evidence, provider variants, manual assistive-technology review, and unchanged
+ASP.NET runtime proof remain open.
+
 ## Purpose
 
 This audit lists reusable Laravel Blade accessible frontend patterns that should
