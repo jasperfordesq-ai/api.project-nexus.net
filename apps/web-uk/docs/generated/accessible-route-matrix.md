@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-13T02:59:09.171Z
+Generated: 2026-07-13T03:06:39.208Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 687 |
-| web-uk routes | 658 |
-| Matched routes | 655 |
-| Missing routes | 32 |
+| web-uk routes | 665 |
+| Matched routes | 662 |
+| Missing routes | 25 |
 | Extra web-uk routes | 1 |
 | Ignored web-uk infrastructure routes | 3 |
 
@@ -32,7 +32,7 @@ Generated: 2026-07-13T02:59:09.171Z
 | courses | 26 | 0 | 0 | 0 |
 | dashboard | 1 | 0 | 0 | 0 |
 | event-templates | 0 | 4 | 0 | 0 |
-| events | 66 | 28 | 0 | 0 |
+| events | 73 | 21 | 0 | 0 |
 | exchanges | 4 | 0 | 0 | 0 |
 | explore | 1 | 0 | 0 | 0 |
 | faq | 1 | 0 | 0 | 0 |
@@ -108,15 +108,8 @@ Generated: 2026-07-13T02:59:09.171Z
 | POST | `/events/{param}/registration/campaigns/{param}/issue` | events | eventsRegistrationIssueCampaign |  | public-or-unknown |  |
 | POST | `/events/{param}/registration/campaigns/{param}/schedule` | events | eventsRegistrationScheduleCampaign |  | public-or-unknown |  |
 | POST | `/events/{param}/registration/campaigns/preview` | events | eventsRegistrationPreviewCampaign |  | public-or-unknown |  |
-| POST | `/events/{param}/registration/guests/{param}/attendance/{param}` | events | eventsRegistrationGuestAttendance |  | public-or-unknown |  |
-| POST | `/events/{param}/registration/guests/{param}/cancel` | events | eventsRegistrationCancelGuest |  | public-or-unknown |  |
-| POST | `/events/{param}/registration/invitations/{param}/accept` | events | eventsRegistrationAcceptInvitation |  | public-or-unknown |  |
-| POST | `/events/{param}/registration/registrations/{param}/forms/{param}/submit` | events | eventsRegistrationSubmitAnswers |  | public-or-unknown |  |
-| POST | `/events/{param}/registration/registrations/{param}/guests` | events | eventsRegistrationCaptureGuest |  | public-or-unknown |  |
 | POST | `/events/{param}/registration/retention/{param}/apply` | events | eventsRegistrationRetentionApply |  | public-or-unknown |  |
 | POST | `/events/{param}/registration/retention/preview` | events | eventsRegistrationRetentionPreview |  | public-or-unknown |  |
-| POST | `/events/{param}/registration/submissions/{param}/review` | events | eventsRegistrationReviewAnswers | event-registration-answers | public-or-unknown |  |
-| POST | `/events/{param}/registration/submissions/export` | events | eventsRegistrationExportAnswers |  | public-or-unknown |  |
 | POST | `/events/{param}/submit` | events | submitEventForReview |  | public-or-unknown |  |
 | POST | `/events/{param}/templates` | events | eventsTemplateCapture |  | public-or-unknown |  |
 | POST | `/events/moderation/{param}/approve` | events | eventsModerationApprove |  | public-or-unknown |  |

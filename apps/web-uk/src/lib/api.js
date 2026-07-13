@@ -930,11 +930,12 @@ async function getEventCategories(token) {
   });
 }
 
-async function downloadEventApi(token, path = '') {
+async function downloadEventApi(token, path = '', requestOptions = {}) {
   const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+  const options = { method: requestOptions.method || 'GET', headers: { Authorization: `Bearer ${token}`, ...(requestOptions.headers || {}) } };
+  if (requestOptions.body !== undefined) options.body = JSON.stringify(requestOptions.body);
   return downloadRequest(`/api/v2/events${normalizedPath}`, {
-    method: 'GET',
-    headers: { Authorization: `Bearer ${token}` }
+    ...options
   });
 }
 

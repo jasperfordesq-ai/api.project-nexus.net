@@ -96,6 +96,18 @@ Focused authorization/render/payload proof passes. Submission, campaign, guest,
 retention, live disposable effects, manual assistive-technology review, and
 unchanged ASP.NET runtime proof remain open.
 
+## 2026-07-13 Registration Answers and Guests Checkpoint
+
+Attendees can now submit governed answers through Laravel's required draft-then-
+submit sequence, accept member invitations, and capture consent-versioned guests.
+Organizers can review or export answers only with explicit purpose/correlation
+evidence, cancel guests only after destructive confirmation, and apply versioned,
+idempotent guest attendance transitions. Single-value multi-choice submissions
+are normalized against the authoritative published form schema. Focused exact-
+payload, privacy, export, consent, and confirmation proof passes. Campaigns,
+retention, live disposable effects, manual assistive-technology review, and
+unchanged ASP.NET runtime proof remain open.
+
 ## Purpose
 
 This audit lists reusable Laravel Blade accessible frontend patterns that should

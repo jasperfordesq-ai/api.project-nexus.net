@@ -1584,6 +1584,77 @@ async function transitionRegistrationForm(req, res, action) {
 router.post('/:id(\\d+)/registration/forms/:formId(\\d+)/publish', requireAuth, asyncRoute(async (req, res) => transitionRegistrationForm(req, res, 'publish')));
 router.post('/:id(\\d+)/registration/forms/:formId(\\d+)/fork', requireAuth, asyncRoute(async (req, res) => transitionRegistrationForm(req, res, 'fork')));
 
+router.post('/:id(\\d+)/registration/registrations/:registrationId(\\d+)/forms/:formId(\\d+)/submit', requireAuth, asyncRoute(async (req, res) => {
+  const id = Number(req.params.id); const registrationId = positiveInteger(req.params.registrationId); const formId = positiveInteger(req.params.formId); const key = trimmed(req.body.idempotency_key, 180);
+  if (!registrationId || !formId || !key) return redirectTo(res, eventPath(id, '/registration?status=invalid'));
+  const answers = req.body.answers && typeof req.body.answers === 'object' ? { ...req.body.answers } : {};
+  const expectedRevision = req.body.expected_submission_revision === '' || req.body.expected_submission_revision === undefined ? null : Math.max(0, Number.parseInt(req.body.expected_submission_revision, 10));
+  try {
+    const attendee = dataFrom(await callApi(tokenFrom(req), 'GET', `/${id}/registration-product`)) || {};
+    const registration = arrayValues(attendee.registrations).find((item) => positiveInteger(item?.id) === registrationId);
+    if (!registration || positiveInteger(attendee.form?.id) !== formId) throw new ApiError('Registration form identity mismatch', 409);
+    for (const question of arrayValues(attendee.form?.questions)) {
+      const stableKey = trimmed(question?.stable_key, 191);
+      if (!stableKey || !Object.prototype.hasOwnProperty.call(answers, stableKey)) continue;
+      if (question.question_type === 'multiple_choice') answers[stableKey] = arrayValues(answers[stableKey]);
+      if (['consent', 'waiver'].includes(question.question_type)) answers[stableKey] = checked(answers[stableKey]);
+    }
+    const saved = dataFrom(await callEventMutation(tokenFrom(req), 'POST', `/${id}/registration-product/submissions`, { registration_id: registrationId, form_version_id: formId, answers, expected_revision: expectedRevision }, `${key}:draft`)) || {};
+    const submission = saved.submission || saved; const submissionId = positiveInteger(submission.id); const revision = positiveInteger(submission.revision);
+    if (!submissionId || !revision) throw new ApiError('Registration submission response was incomplete', 502);
+    await callEventMutation(tokenFrom(req), 'POST', `/${id}/registration-product/submissions/${submissionId}/submit`, { expected_revision: revision }, `${key}:submit`);
+    return redirectTo(res, eventPath(id, '/registration?status=answers-submitted'));
+  } catch (error) { if (redirectOnAuthError(error, res)) return undefined; if (error instanceof ApiError && [400, 403, 404, 409, 422, 429, 503].includes(error.status)) return redirectTo(res, eventPath(id, '/registration?status=failed')); throw error; }
+}));
+
+router.post('/:id(\\d+)/registration/submissions/:submissionId(\\d+)/review', requireAuth, asyncRoute(async (req, res) => {
+  const id = Number(req.params.id); const submissionId = positiveInteger(req.params.submissionId); const purpose = trimmed(req.body.purpose, 500); const correlation = trimmed(req.body.correlation_id, 191);
+  if (!submissionId || !purpose || !correlation) return redirectTo(res, eventPath(id, '/registration?status=invalid'));
+  const token = tokenFrom(req);
+  const [answerResult, state] = await Promise.all([callApi(token, 'POST', `/${id}/registration-product/submissions/${submissionId}/answers`, { purpose, correlation_id: correlation, include_sensitive: checked(req.body.include_sensitive) }), registrationProductState(token, id)]);
+  const questions = {};
+  for (const form of arrayValues(state.organizer?.forms)) for (const question of arrayValues(form.questions)) questions[question.id] = question.prompt;
+  res.set('Cache-Control', 'private, no-store');
+  return res.render('events/registration-answers', { title: res.locals.t('event_registration.accessible.review_submission', { id: submissionId }), activeNav: 'events', eventId: id, submissionId, answers: dataFrom(answerResult)?.answers || {}, questions });
+}));
+
+router.post('/:id(\\d+)/registration/submissions/export', requireAuth, asyncRoute(async (req, res) => {
+  const id = Number(req.params.id); const purpose = trimmed(req.body.purpose, 500); const correlation = trimmed(req.body.correlation_id, 191);
+  if (!purpose || !correlation) return redirectTo(res, eventPath(id, '/registration?status=invalid'));
+  const download = await downloadEventApi(tokenFrom(req), `/${id}/registration-product/submissions/export`, { method: 'POST', body: { purpose, correlation_id: correlation, include_sensitive: checked(req.body.include_sensitive) } });
+  res.status(download.status || 200); res.set('Content-Type', download.headers['content-type'] || 'text/csv; charset=UTF-8'); res.set('Content-Disposition', download.headers['content-disposition'] || `attachment; filename="event-registration-${id}.csv"`); res.set('Cache-Control', 'private, no-store'); res.set('X-Content-Type-Options', 'nosniff'); return res.send(download.body);
+}));
+
+router.post('/:id(\\d+)/registration/invitations/:invitationId(\\d+)/accept', requireAuth, asyncRoute(async (req, res) => {
+  const id = Number(req.params.id); const invitationId = positiveInteger(req.params.invitationId); const key = trimmed(req.body.idempotency_key, 191);
+  if (!invitationId || !key) return redirectTo(res, eventPath(id, '/registration?status=invalid'));
+  try { await callEventMutation(tokenFrom(req), 'POST', `/${id}/registration-product/invitations/${invitationId}/accept`, {}, key); return redirectTo(res, eventPath(id, '/registration?status=invitation-accepted')); }
+  catch (error) { if (redirectOnAuthError(error, res)) return undefined; if (error instanceof ApiError && [400, 403, 404, 409, 422, 429, 503].includes(error.status)) return redirectTo(res, eventPath(id, '/registration?status=failed')); throw error; }
+}));
+
+router.post('/:id(\\d+)/registration/registrations/:registrationId(\\d+)/guests', requireAuth, asyncRoute(async (req, res) => {
+  const id = Number(req.params.id); const registrationId = positiveInteger(req.params.registrationId); const version = positiveInteger(req.body.expected_registration_version); const displayName = trimmed(req.body.display_name, 255);
+  if (!registrationId || !version || !displayName || !checked(req.body.consent_accepted)) return redirectTo(res, eventPath(id, '/registration?status=invalid'));
+  const notificationConsent = checked(req.body.notification_consent);
+  const payload = { expected_registration_version: version, display_name: displayName, email: trimmed(req.body.email, 320) || null, phone: trimmed(req.body.phone, 50) || null, consent_accepted: true, consent_text: res.locals.t('event_registration.accessible.privacy_consent_text'), consent_text_version: '2026-07-12', preferred_locale: res.locals.locale || 'en', notification_consent: notificationConsent, notification_consent_text: notificationConsent ? res.locals.t('event_registration.accessible.notification_consent_text') : null, notification_consent_version: notificationConsent ? '2026-07-12' : null, ticket_entitlement_id: positiveInteger(req.body.ticket_entitlement_id) };
+  try { await callApi(tokenFrom(req), 'POST', `/${id}/registration-product/registrations/${registrationId}/guests`, payload); return redirectTo(res, eventPath(id, '/registration?status=guest-added')); }
+  catch (error) { if (redirectOnAuthError(error, res)) return undefined; if (error instanceof ApiError && [400, 403, 404, 409, 422, 429, 503].includes(error.status)) return redirectTo(res, eventPath(id, '/registration?status=failed')); throw error; }
+}));
+
+router.post('/:id(\\d+)/registration/guests/:guestId(\\d+)/cancel', requireAuth, asyncRoute(async (req, res) => {
+  const id = Number(req.params.id); const guestId = positiveInteger(req.params.guestId); const revision = positiveInteger(req.body.expected_revision); const reason = trimmed(req.body.reason, 500);
+  if (!guestId || !revision || !reason || !checked(req.body.confirm_destructive)) return redirectTo(res, eventPath(id, '/registration?status=invalid'));
+  try { await callApi(tokenFrom(req), 'POST', `/${id}/registration-product/guests/${guestId}/cancel`, { expected_revision: revision, reason }); return redirectTo(res, eventPath(id, '/registration?status=guest-cancelled')); }
+  catch (error) { if (redirectOnAuthError(error, res)) return undefined; if (error instanceof ApiError && [400, 403, 404, 409, 422, 429, 503].includes(error.status)) return redirectTo(res, eventPath(id, '/registration?status=failed')); throw error; }
+}));
+
+router.post('/:id(\\d+)/registration/guests/:guestId(\\d+)/attendance/:action(check_in|check_out|no_show|undo)', requireAuth, asyncRoute(async (req, res) => {
+  const id = Number(req.params.id); const guestId = positiveInteger(req.params.guestId); const version = Number.parseInt(req.body.expected_version, 10); const key = trimmed(req.body.idempotency_key, 191);
+  if (!guestId || !Number.isInteger(version) || version < 0 || !key) return redirectTo(res, eventPath(id, '/registration?status=invalid'));
+  try { await callEventMutation(tokenFrom(req), 'POST', `/${id}/registration-product/guests/${guestId}/attendance/${req.params.action}`, { expected_version: version, reason: trimmed(req.body.reason, 500) || null }, key); return redirectTo(res, eventPath(id, '/registration?status=attendance-updated')); }
+  catch (error) { if (redirectOnAuthError(error, res)) return undefined; if (error instanceof ApiError && [400, 403, 404, 409, 422, 429, 503].includes(error.status)) return redirectTo(res, eventPath(id, '/registration?status=failed')); throw error; }
+}));
+
 router.post('/:id(\\d+)/check-in/credential/rotate', requireAuth, asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const credentialId = positiveInteger(req.body.credential_id);
