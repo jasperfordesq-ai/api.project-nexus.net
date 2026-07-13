@@ -2196,6 +2196,7 @@ describe('tenant-aware template helper conversion', () => {
       'listings.image_alt', 'listings.gallery_title', 'listings.skills_title',
       'listings.author_title', 'listings.edit.edit_listing',
       'listings.member_offers', 'listings.member_requests',
+      'members.verified', 'govuk_alpha_listings.detail.author_badges_heading',
       'govuk_alpha_listings.nav.view_analytics', 'polish_listings.save_listing',
       'polish_listings.renew_listing', 'govuk_alpha_listings.detail.comments_link'
     ]) expect(detail).toContain(key);

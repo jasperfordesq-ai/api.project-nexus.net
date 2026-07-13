@@ -440,7 +440,7 @@ describe('shared accessible frontend shell', () => {
     api.getUsers.mockReset().mockResolvedValue({ data: [] });
     api.getUser.mockReset().mockResolvedValue({ data: { id: 77, name: 'Example member' } });
     api.getUserV2.mockReset();
-    api.getMemberVerificationBadges.mockReset();
+    api.getMemberVerificationBadges.mockReset().mockResolvedValue({ data: [] });
     api.getUserListings.mockReset().mockResolvedValue({ data: [] });
     api.getUserSkills.mockReset().mockResolvedValue({ data: [] });
     api.getUserAvailability.mockReset().mockResolvedValue({ data: { weekly: [] } });
@@ -24276,6 +24276,12 @@ describe('shared accessible frontend shell', () => {
         member_requests: [{ id: 52, title: 'Need a paint roller' }]
       }
     });
+    api.getMemberVerificationBadges.mockResolvedValueOnce({
+      data: [
+        { badge_type: 'id_verified', label: 'Unsafe API fallback' },
+        { badge_type: 'background_check', label: 'Unsafe API fallback' }
+      ]
+    });
 
     const detail = await request(app).get('/listings/42').set('Cookie', signedCookieHeader());
 
@@ -24286,6 +24292,11 @@ describe('shared accessible frontend shell', () => {
     expect(detail.text).toContain('Home safety');
     expect(detail.text).toContain('About the member');
     expect(detail.text).toContain('Ada Lovelace');
+    expect(api.getMemberVerificationBadges).toHaveBeenCalledWith('test-token', 77);
+    expect(detail.text).toContain('>Verified</strong>');
+    expect(detail.text).toContain('ID verified');
+    expect(detail.text).toContain('Background check verified');
+    expect(detail.text).not.toContain('Unsafe API fallback');
     expect(detail.text).toContain('6 reviews');
     expect(detail.text).toContain('9 completed exchanges');
     expect(detail.text).toContain('Renewed 2 times');

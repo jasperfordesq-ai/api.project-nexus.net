@@ -21,6 +21,7 @@ const {
   checkExchangeForListing,
   createComment,
   getComments,
+  getMemberVerificationBadges,
   toggleFeedLike,
   callWalletApi,
   ApiError
@@ -482,6 +483,20 @@ function relatedListingsFrom(value) {
     const id = positiveInteger(item.id);
     const title = trimmed(item.title || item.name);
     return id !== null && title ? { id, title } : null;
+  }).filter(Boolean);
+}
+
+function listingVerificationBadgesFrom(result, t) {
+  return collectionFrom(result).map((badge) => {
+    const item = badge && typeof badge === 'object' ? badge : {};
+    const type = trimmed(item.badge_type || item.type);
+    if (!type) return null;
+    const key = `govuk_alpha_listings.badges.${type}`;
+    const translated = t(key);
+    return {
+      type,
+      label: translated === key ? (trimmed(item.label) || type.replaceAll('_', ' ')) : translated
+    };
   }).filter(Boolean);
 }
 
@@ -1276,6 +1291,12 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
   const can_edit = ownerId !== null && currentUserId !== null && ownerId === currentUserId;
   const detailStatus = listingDetailStatus(req.query.status, res.locals.t);
   const tenant = req.accessibleRouting?.tenant || {};
+  const verificationBadges = ownerId === null
+    ? []
+    : listingVerificationBadgesFrom(
+      await Promise.resolve(getMemberVerificationBadges(token, ownerId)).catch(() => ({ data: [] })),
+      res.locals.t
+    );
   let exchangeContext = {
     exchangeWorkflowEnabled: false,
     directMessagingEnabled: false,
@@ -1300,6 +1321,8 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
     listingGallery: listingGalleryFrom(listing),
     listingSkillTags: listingSkillTagsFrom(listing),
     listingAuthor: listingAuthorFrom(listing),
+    listingAuthorVerified: verificationBadges.some(badge => badge.type === 'id_verified'),
+    listingVerificationBadges: verificationBadges,
     memberOffers: relatedListingsFrom(listing.member_offers || listing.memberOffers),
     memberRequests: relatedListingsFrom(listing.member_requests || listing.memberRequests),
     isSaved: listing.is_favorited === true || listing.isFavorited === true,

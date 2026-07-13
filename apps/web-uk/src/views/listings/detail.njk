@@ -124,8 +124,16 @@
             {% endif %}
           </div>
           <div>
-            <p class="govuk-body govuk-!-margin-bottom-1"><strong>{{ listingAuthor.name }}</strong></p>
+            <p class="govuk-body govuk-!-margin-bottom-1">
+              <strong>{{ listingAuthor.name }}</strong>
+              {% if listingAuthorVerified %}<strong class="govuk-tag govuk-tag--green govuk-!-margin-left-1">{{ t("members.verified") }}</strong>{% endif %}
+            </p>
             {% if listingAuthor.tagline %}<p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-2">{{ listingAuthor.tagline }}</p>{% endif %}
+            {% if listingVerificationBadges.length %}
+              <ul class="govuk-list nexus-alpha-actions govuk-!-margin-bottom-2" aria-label="{{ t('govuk_alpha_listings.detail.author_badges_heading') }}">
+                {% for badge in listingVerificationBadges %}<li><strong class="govuk-tag govuk-tag--green">{{ badge.label }}</strong></li>{% endfor %}
+              </ul>
+            {% endif %}
             <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-2">
               {% if listingAuthor.rating %}<span>{{ t("members.rating", { rating: listingAuthor.rating }) }}</span><span aria-hidden="true"> · </span>{% endif %}
               <span>{{ tc("listings.author_reviews", listingAuthor.reviewsCount, { count: listingAuthor.reviewsCount }) }}</span>
