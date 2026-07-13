@@ -100,6 +100,7 @@ public static class RateLimitingExtensions
     public const string EventRegistrationAnswerReadPolicy = "event-registration-answer-read";
     public const string EventRegistrationRestrictedPolicy = "event-registration-restricted";
     public const string EventRegistrationRetentionApplyPolicy = "event-registration-retention-apply";
+    public const string EventPublicationPolicy = "events-publish";
 
     public static IReadOnlyList<SafeguardingVettingRateLimitContract> SafeguardingVettingRateLimitContracts { get; } =
     [
@@ -217,6 +218,9 @@ public static class RateLimitingExtensions
             AddAuthenticatedFixedWindowPolicy(
                 options, EventRegistrationRetentionApplyPolicy, config, trustedProxies,
                 "RateLimiting:EventRegistration:RetentionApplyPermitLimit", 5);
+            AddAuthenticatedFixedWindowPolicy(
+                options, EventPublicationPolicy, config, trustedProxies,
+                "RateLimiting:Events:PublishPermitLimit", 10);
 
             // Laravel uses an independent authenticated 30/minute bucket for
             // the live messaging restriction-status read.
@@ -851,6 +855,7 @@ public static class RateLimitingExtensions
                     EventRegistrationAnswerReadPolicy => config.GetValue("RateLimiting:EventRegistration:AnswerReadPermitLimit", 60),
                     EventRegistrationRestrictedPolicy => config.GetValue("RateLimiting:EventRegistration:RestrictedPermitLimit", 10),
                     EventRegistrationRetentionApplyPolicy => config.GetValue("RateLimiting:EventRegistration:RetentionApplyPermitLimit", 5),
+                    EventPublicationPolicy => config.GetValue("RateLimiting:Events:PublishPermitLimit", 10),
                     _ => (int?)null
                 };
 

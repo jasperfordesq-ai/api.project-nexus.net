@@ -32,8 +32,18 @@ public sealed class EventLifecycleService
         var evt = await _db.Events.IgnoreQueryFilters().SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Id == eventId, ct);
         if (evt is null) return Missing();
         var actor = await _db.Users.IgnoreQueryFilters().AsNoTracking().SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Id == actorId && x.IsActive, ct);
-        if (actor is null || !(actor.IsAdmin || actor.IsSuperAdmin || actor.IsTenantSuperAdmin || actor.IsGod || actor.Role is "admin" or "super_admin" or "god"))
+        if (actor is null) return new(null, new("FORBIDDEN", "Event management access is required", 403));
+        var isAdmin = IsAdmin(actor);
+        var isMemberPublication = action is "submit_for_review" or "publish";
+        if (isMemberPublication)
+        {
+            if (!await CanManageAsync(tenantId, evt, actor, isAdmin, ct))
+                return new(null, new("FORBIDDEN", "Event management access is required", 403));
+        }
+        else if (!isAdmin)
+        {
             return new(null, new("FORBIDDEN", "Administrator access is required", 403));
+        }
 
         var current = Resolve(evt);
         if (current.Error is not null) return current;
@@ -43,8 +53,21 @@ public sealed class EventLifecycleService
         var toOperational = fromOperational;
         HashSet<string>? publicationGuard = null;
         HashSet<string>? operationalGuard = null;
+        var moderationRequired = isMemberPublication && await ModerationRequiredAsync(tenantId, ct);
         switch (action)
         {
+            case "submit_for_review":
+                if (!moderationRequired || isAdmin)
+                    return new(null, new("EVENT_REVIEW_NOT_REQUIRED", "Event review is not required", 409));
+                toPublication = "pending_review";
+                publicationGuard = ["draft", "pending_review"];
+                break;
+            case "publish":
+                if (moderationRequired && !isAdmin)
+                    return new(null, new("EVENT_REVIEW_REQUIRED", "Event review is required", 409));
+                toPublication = "published";
+                publicationGuard = ["draft", "pending_review", "published"];
+                break;
             case "approve": toPublication = "published"; publicationGuard = ["draft", "pending_review", "published"]; break;
             case "reject": toPublication = "draft"; publicationGuard = ["pending_review", "draft"]; break;
             case "postpone": toOperational = "postponed"; operationalGuard = ["scheduled", "postponed"]; break;
@@ -65,6 +88,8 @@ public sealed class EventLifecycleService
         if (operationalGuard is not null && !operationalGuard.Contains(fromOperational)) return Conflict();
         if (toPublication == fromPublication && toOperational == fromOperational)
         {
+            await SynchronizeModerationQueueAsync(evt, actorId, action, reason, ct);
+            await _db.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);
             return new(Resource(evt, action, false, null, null, EmptyCascade()));
         }
@@ -111,11 +136,12 @@ public sealed class EventLifecycleService
             cascade["reminders_cancelled"] = reminders.Count;
         }
 
-        var metadata = JsonSerializer.Serialize(new { schema_version = 1, source = "event_lifecycle_service", axes_changed = new[] { publicationChanged ? "publication" : null, operationalChanged ? "operational" : null }.Where(x => x is not null), cascade });
+        var metadata = JsonSerializer.Serialize(new { schema_version = 1, source = "event_lifecycle_service", axes_changed = new[] { publicationChanged ? "publication" : null, operationalChanged ? "operational" : null }.Where(x => x is not null), cascade, series = (object?)null, notifications_suppressed = false });
         var history = new EventStatusHistory { TenantId = tenantId, EventId = eventId, ActorUserId = actorId, LifecycleVersion = nextVersion, FromPublicationStatus = fromPublication, ToPublicationStatus = toPublication, FromOperationalStatus = fromOperational, ToOperationalStatus = toOperational, FromLegacyStatus = fromLegacy, ToLegacyStatus = legacy, Reason = reason, Metadata = metadata, CreatedAt = now };
         _db.EventStatusHistories.Add(history);
         var outbox = new EventDomainOutbox { TenantId = tenantId, EventId = eventId, AggregateStream = "lifecycle", AggregateVersion = nextVersion, IdempotencyKey = $"event:{tenantId}:{eventId}:lifecycle:v{nextVersion}", Payload = JsonSerializer.Serialize(new { schema_version = 1, tenant_id = tenantId, event_id = eventId, actor_user_id = actorId, organizer_user_id = evt.CreatedById, affected_recipient_user_ids = recipients, lifecycle_version = nextVersion, publication = new { from = fromPublication, to = toPublication }, operational = new { from = fromOperational, to = toOperational }, legacy_status = legacy, reason, metadata, occurred_at = now }), AvailableAt = now, ProcessedAt = now, CreatedAt = now, UpdatedAt = now };
         _db.EventDomainOutbox.Add(outbox);
+        await SynchronizeModerationQueueAsync(evt, actorId, action, reason, ct);
         await _db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
 
@@ -139,6 +165,79 @@ public sealed class EventLifecycleService
     }
 
     private void AddNotification(int tenantId, int userId, string type, string title, int eventId, DateTime now) => _db.Notifications.Add(new Notification { TenantId = tenantId, UserId = userId, Type = type, Title = title, Link = $"/events/{eventId}", Data = JsonSerializer.Serialize(new { event_id = eventId }), CreatedAt = now });
+    private async Task<bool> CanManageAsync(int tenantId, Event evt, User actor, bool isAdmin, CancellationToken ct)
+    {
+        if (evt.GroupId is int groupId)
+        {
+            var group = await _db.Groups.IgnoreQueryFilters().AsNoTracking()
+                .SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Id == groupId, ct);
+            if (group is null || !group.IsActive || group.Status != "active") return false;
+            if (!isAdmin && group.CreatedById != actor.Id && !await _db.GroupMembers.IgnoreQueryFilters().AsNoTracking()
+                    .AnyAsync(x => x.TenantId == tenantId && x.GroupId == groupId && x.UserId == actor.Id && x.Status == "active", ct))
+                return false;
+        }
+
+        if (isAdmin || evt.CreatedById == actor.Id) return true;
+        return await _db.EventStaffAssignments.IgnoreQueryFilters().AsNoTracking().AnyAsync(x =>
+            x.TenantId == tenantId && x.EventId == evt.Id && x.UserId == actor.Id
+            && x.Role == "co_organizer" && x.Status == "active"
+            && (x.ExpiresAt == null || x.ExpiresAt > DateTime.UtcNow), ct);
+    }
+
+    private async Task<bool> ModerationRequiredAsync(int tenantId, CancellationToken ct)
+    {
+        var values = await _db.TenantConfigs.IgnoreQueryFilters().AsNoTracking()
+            .Where(x => x.TenantId == tenantId && (x.Key == "moderation.enabled" || x.Key == "moderation.require_event"))
+            .ToDictionaryAsync(x => x.Key, x => x.Value, ct);
+        return values.TryGetValue("moderation.enabled", out var enabled) && StoredBoolean(enabled)
+            && values.TryGetValue("moderation.require_event", out var requireEvent) && StoredBoolean(requireEvent);
+    }
+
+    private async Task SynchronizeModerationQueueAsync(Event evt, int actorId, string action, string? reason, CancellationToken ct)
+    {
+        if (action is not ("submit_for_review" or "publish" or "approve" or "reject")) return;
+        var rows = await _db.ContentModerationQueue.IgnoreQueryFilters()
+            .Where(x => x.TenantId == evt.TenantId && x.ContentType == "event" && x.ContentId == evt.Id)
+            .OrderBy(x => x.Id).ToListAsync(ct);
+        var now = DateTime.UtcNow;
+        if (action == "submit_for_review")
+        {
+            var row = rows.FirstOrDefault();
+            if (row is null)
+            {
+                row = new ContentModerationQueue
+                {
+                    TenantId = evt.TenantId, ContentType = "event", ContentId = evt.Id,
+                    AuthorId = evt.CreatedById, CreatedAt = now
+                };
+                _db.ContentModerationQueue.Add(row);
+            }
+            row.AuthorId = evt.CreatedById;
+            row.Title = evt.Title.Length <= 255 ? evt.Title : evt.Title[..255];
+            row.Status = "pending";
+            row.ReviewerId = null;
+            row.ReviewedAt = null;
+            row.RejectionReason = null;
+            row.AutoFlagged = false;
+            row.FlagReason = null;
+            row.UpdatedAt = now;
+            if (rows.Count > 1) _db.ContentModerationQueue.RemoveRange(rows.Skip(1));
+            return;
+        }
+
+        foreach (var row in rows)
+        {
+            row.Status = action == "reject" ? "rejected" : "approved";
+            row.ReviewerId = actorId;
+            row.ReviewedAt = now;
+            row.RejectionReason = action == "reject" ? reason : null;
+            row.UpdatedAt = now;
+        }
+    }
+
+    private static bool IsAdmin(User actor) => actor.IsAdmin || actor.IsSuperAdmin || actor.IsTenantSuperAdmin || actor.IsGod
+        || actor.Role is "admin" or "super_admin" or "tenant_admin" or "god";
+    private static bool StoredBoolean(string? value) => value?.Trim().ToLowerInvariant() is "1" or "true" or "yes" or "on";
     private static EventLifecycleResult Resolve(Event evt)
     {
         if (!Publications.Contains(evt.PublicationStatus) || !Operations.Contains(evt.OperationalStatus) || evt.Status != LegacyMirror(evt.PublicationStatus, evt.OperationalStatus)) return Conflict();

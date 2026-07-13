@@ -123,6 +123,8 @@ public static class ServiceExtensions
         services.AddScoped<GroupInviteLifecycleService>();
         services.AddScoped<GroupDataExportService>();
         services.AddScoped<EventLifecycleService>();
+        services.AddScoped<EventLifecycleHistoryQueryService>();
+        services.AddScoped<EventContractProjectionService>();
         services.AddScoped<EventTemplateService>();
         services.AddSingleton<TwoFactorChallengeManager>();
         services.AddScoped<FileUploadService>();

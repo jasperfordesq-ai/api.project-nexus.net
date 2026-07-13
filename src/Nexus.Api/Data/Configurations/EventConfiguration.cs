@@ -152,6 +152,33 @@ public class EventConfiguration : TenantScopedConfiguration
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
         });
 
+        modelBuilder.Entity<ContentModerationQueue>(entity =>
+        {
+            entity.ToTable("content_moderation_queue");
+            entity.Property(e => e.ContentType).HasMaxLength(32).IsRequired();
+            entity.Property(e => e.Title).HasMaxLength(255);
+            entity.Property(e => e.Status).HasMaxLength(32).IsRequired();
+            entity.Property(e => e.RejectionReason).HasColumnType("text");
+            entity.Property(e => e.FlagReason).HasMaxLength(255);
+            entity.HasIndex(e => new { e.TenantId, e.Status }).HasDatabaseName("idx_content_moderation_tenant_status");
+            entity.HasIndex(e => new { e.TenantId, e.ContentType, e.Status }).HasDatabaseName("idx_content_moderation_tenant_type_status");
+            entity.HasIndex(e => new { e.ContentType, e.ContentId }).HasDatabaseName("idx_content_moderation_content");
+            entity.HasIndex(e => new { e.TenantId, e.AuthorId }).HasDatabaseName("idx_content_moderation_author");
+            entity.HasIndex(e => e.ReviewerId).HasDatabaseName("idx_content_moderation_reviewer");
+            entity.HasIndex(e => new { e.TenantId, e.CreatedAt }).HasDatabaseName("idx_content_moderation_created");
+            entity.HasIndex(e => new { e.TenantId, e.ContentType, e.ContentId }).IsUnique()
+                .HasDatabaseName("uq_content_moderation_subject");
+            entity.HasOne<Tenant>().WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<User>().WithMany().HasForeignKey(e => e.AuthorId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<User>().WithMany().HasForeignKey(e => e.ReviewerId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+            entity.ToTable(t =>
+            {
+                t.HasCheckConstraint("ck_content_moderation_type", "\"ContentType\" IN ('post','listing','event','comment','group')");
+                t.HasCheckConstraint("ck_content_moderation_status", "\"Status\" IN ('pending','approved','rejected','flagged')");
+            });
+        });
+
         modelBuilder.Entity<EventNotificationDelivery>(entity =>
         {
             entity.ToTable("event_notification_deliveries");

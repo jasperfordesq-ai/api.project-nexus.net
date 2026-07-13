@@ -4,6 +4,16 @@ Last reviewed: 2026-07-13
 
 Canonical source: `C:\platforms\htdocs\staging` (read-only).
 
+## Latest Verified Backend Slice
+
+Event publication lifecycle parity now includes submit-for-review, direct/admin
+publish, and manager lifecycle history at both API aliases. One durable moderation
+queue row is maintained atomically with immutable event history, and responses use
+the strict canonical V2 event projection. Migration 139 replays from an empty
+PostgreSQL database, model drift is clear, and the migrated-schema suite passes
+8/8. The current route inventory is 2,573/2,608 (98.7%); recurring-series
+propagation and the remaining 35 route shapes are still open.
+
 ## Inventory Baseline
 
 | Surface | Laravel Edition | .NET Edition |

@@ -47,6 +47,7 @@ public class NexusDbContext : DbContext
     public DbSet<Event> Events => Set<Event>();
     public DbSet<EventRsvp> EventRsvps => Set<EventRsvp>();
     public DbSet<EventStatusHistory> EventStatusHistories => Set<EventStatusHistory>();
+    public DbSet<ContentModerationQueue> ContentModerationQueue => Set<ContentModerationQueue>();
     public DbSet<EventDomainOutbox> EventDomainOutbox => Set<EventDomainOutbox>();
     public DbSet<EventNotificationDelivery> EventNotificationDeliveries => Set<EventNotificationDelivery>();
     public DbSet<EventTemplate> EventTemplates => Set<EventTemplate>();

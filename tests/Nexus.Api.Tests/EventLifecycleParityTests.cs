@@ -21,6 +21,120 @@ public sealed class EventLifecycleParityTests : IntegrationTestBase
     public EventLifecycleParityTests(NexusWebApplicationFactory factory) : base(factory) { }
 
     [Fact]
+    public async Task MemberSubmit_IsQueueBackedIdempotentAndReturnsStrictV2Event()
+    {
+        await SetEventModerationAsync(true);
+        var eventId = await CreateEventAsync("draft", "scheduled", "draft");
+        await AuthenticateAsMemberAsync();
+
+        var first = await Client.PostAsJsonAsync($"/api/v2/events/{eventId}/submit", new { });
+        first.StatusCode.Should().Be(HttpStatusCode.OK);
+        var payload = await first.Content.ReadFromJsonAsync<JsonElement>();
+        var data = payload.GetProperty("data");
+        data.GetProperty("contract_version").GetInt32().Should().Be(2);
+        data.GetProperty("schedule").GetProperty("publication_state").GetString().Should().Be("pending_review");
+        data.GetProperty("permissions").GetProperty("publish").GetBoolean().Should().BeFalse();
+        data.GetProperty("permissions").GetProperty("submit_for_review").GetBoolean().Should().BeFalse();
+        data.GetProperty("relationship").GetProperty("capacity").GetProperty("confirmed").GetInt32().Should().Be(0);
+
+        var replay = await Client.PostAsJsonAsync($"/api/v2/events/{eventId}/submit", new { });
+        replay.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var queue = await db.ContentModerationQueue.IgnoreQueryFilters().SingleAsync(x => x.TenantId == TestData.Tenant1.Id && x.ContentType == "event" && x.ContentId == eventId);
+        queue.Status.Should().Be("pending");
+        queue.AuthorId.Should().Be(TestData.MemberUser.Id);
+        (await db.EventStatusHistories.IgnoreQueryFilters().CountAsync(x => x.EventId == eventId)).Should().Be(1);
+        (await db.EventDomainOutbox.IgnoreQueryFilters().CountAsync(x => x.EventId == eventId && x.AggregateStream == "lifecycle")).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Publish_EnforcesModerationAndAdminDecisionClosesQueue()
+    {
+        await SetEventModerationAsync(true);
+        var eventId = await CreateEventAsync("draft", "scheduled", "draft");
+        await AuthenticateAsMemberAsync();
+        var blocked = await Client.PostAsJsonAsync($"/api/v2/events/{eventId}/publish", new { });
+        blocked.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        var blockedJson = await blocked.Content.ReadFromJsonAsync<JsonElement>();
+        blockedJson.GetProperty("errors")[0].GetProperty("code").GetString().Should().Be("EVENT_REVIEW_REQUIRED");
+
+        (await Client.PostAsJsonAsync($"/api/v2/events/{eventId}/submit", new { })).StatusCode.Should().Be(HttpStatusCode.OK);
+        await AuthenticateAsAdminAsync();
+        (await Client.PostAsJsonAsync($"/api/v2/admin/events/{eventId}/approve", new { })).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var queue = await db.ContentModerationQueue.IgnoreQueryFilters().SingleAsync(x => x.ContentId == eventId && x.ContentType == "event");
+        queue.Status.Should().Be("approved");
+        queue.ReviewerId.Should().Be(TestData.AdminUser.Id);
+        queue.ReviewedAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task DirectPublish_WhenReviewDisabled_IsOwnerAuthorizedAndAdminIdempotent()
+    {
+        await SetEventModerationAsync(false);
+        var eventId = await CreateEventAsync("draft", "scheduled", "draft");
+        await AuthenticateAsMemberAsync();
+        var submitted = await Client.PostAsJsonAsync($"/api/v2/events/{eventId}/submit", new { });
+        submitted.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await submitted.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("errors")[0]
+            .GetProperty("code").GetString().Should().Be("EVENT_REVIEW_NOT_REQUIRED");
+
+        var published = await Client.PostAsJsonAsync($"/api/v2/events/{eventId}/publish", new { });
+        published.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = await published.Content.ReadFromJsonAsync<JsonElement>();
+        json.GetProperty("data").GetProperty("schedule").GetProperty("publication_state").GetString().Should().Be("published");
+        json.GetProperty("data").GetProperty("permissions").GetProperty("publish").GetBoolean().Should().BeFalse();
+        (await Client.PostAsJsonAsync($"/api/v2/events/{eventId}/publish", new { })).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        (await db.EventStatusHistories.IgnoreQueryFilters().CountAsync(x => x.EventId == eventId)).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task LifecycleHistory_IsPrivateManagerOnlyCursorBoundAndStrict()
+    {
+        var eventId = await CreateEventAsync("pending_review", "scheduled", "draft");
+        await AuthenticateAsAdminAsync();
+        (await Client.PostAsJsonAsync($"/api/v2/admin/events/{eventId}/approve", new { })).EnsureSuccessStatusCode();
+        (await Client.PostAsJsonAsync($"/api/v2/admin/events/{eventId}/postpone", new { reason = "Weather" })).EnsureSuccessStatusCode();
+        (await Client.PostAsJsonAsync($"/api/v2/admin/events/{eventId}/restore", new { reason = "Clear" })).EnsureSuccessStatusCode();
+
+        await AuthenticateAsMemberAsync();
+        var first = await Client.GetAsync($"/api/v2/events/{eventId}/lifecycle-history?per_page=2");
+        first.StatusCode.Should().Be(HttpStatusCode.OK);
+        first.Headers.CacheControl!.NoStore.Should().BeTrue();
+        first.Headers.Vary.Should().Contain(new[] { "Authorization", "Cookie", "X-Tenant-ID" });
+        var firstJson = await first.Content.ReadFromJsonAsync<JsonElement>();
+        firstJson.GetProperty("data").GetArrayLength().Should().Be(2);
+        firstJson.GetProperty("data")[0].GetProperty("immutable").GetBoolean().Should().BeTrue();
+        firstJson.GetProperty("data")[0].GetProperty("evidence").GetProperty("notifications_suppressed").GetBoolean().Should().BeFalse();
+        firstJson.GetProperty("meta").GetProperty("has_more").GetBoolean().Should().BeTrue();
+        var cursor = firstJson.GetProperty("meta").GetProperty("next_cursor").GetString();
+        cursor.Should().NotBeNullOrWhiteSpace();
+        var second = await Client.GetFromJsonAsync<JsonElement>($"/api/v2/events/{eventId}/lifecycle-history?per_page=2&cursor={Uri.EscapeDataString(cursor!)}");
+        second.GetProperty("data").GetArrayLength().Should().Be(1);
+        second.GetProperty("meta").GetProperty("has_more").GetBoolean().Should().BeFalse();
+
+        var other = await CreateEventAsync("draft", "scheduled", "draft");
+        var wrongBound = await Client.GetAsync($"/api/v2/events/{other}/lifecycle-history?cursor={Uri.EscapeDataString(cursor!)}");
+        wrongBound.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        (await wrongBound.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("errors")[0]
+            .GetProperty("field").GetString().Should().Be("cursor");
+
+        var wrongShape = await Client.GetAsync($"/api/v2/events/{eventId}/lifecycle-history?cursor=W10");
+        wrongShape.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        (await wrongShape.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("errors")[0]
+            .GetProperty("field").GetString().Should().Be("cursor");
+
+        await AuthenticateAsOtherTenantUserAsync();
+        (await Client.GetAsync($"/api/v2/events/{eventId}/lifecycle-history")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
     public async Task Approve_IsVersionedNotifiedAndIdempotent()
     {
         var eventId = await CreateEventAsync("pending_review", "scheduled", "draft");
@@ -120,5 +234,22 @@ public sealed class EventLifecycleParityTests : IntegrationTestBase
             await db.SaveChangesAsync();
         }
         return evt.Id;
+    }
+
+    private async Task SetEventModerationAsync(bool required)
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        foreach (var (key, value) in new[]
+                 {
+                     ("moderation.enabled", required ? "1" : "0"),
+                     ("moderation.require_event", required ? "1" : "0")
+                 })
+        {
+            var row = await db.TenantConfigs.IgnoreQueryFilters().SingleOrDefaultAsync(x => x.TenantId == TestData.Tenant1.Id && x.Key == key);
+            if (row is null) db.TenantConfigs.Add(new TenantConfig { TenantId = TestData.Tenant1.Id, Key = key, Value = value });
+            else row.Value = value;
+        }
+        await db.SaveChangesAsync();
     }
 }

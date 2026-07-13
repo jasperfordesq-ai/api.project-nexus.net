@@ -12,6 +12,17 @@ parity job after a session interruption. The implementation branches may still
 be moving, so treat every numeric snapshot below as advisory. Regenerate the
 live state before editing code or claiming progress.
 
+## Latest Resume Point: Event Publication Lifecycle
+
+The locally verified backend slice owns member submit, publish, and manager
+lifecycle-history at both `/api/events` and `/api/v2/events`. Migration 139 adds
+durable `content_moderation_queue` storage; the complete migration chain, model-drift
+check, comparator fixture, and 8/8 migrated-PostgreSQL lifecycle tests pass. The live
+route inventory is currently 2,573/2,608 with 35 misses because Laravel added 16
+source operations during this work. Provisional global scores are 780/1000
+implementation, 650/1000 certification, and 65% overall. Resume with recurring
+event propagation/recurrence contracts, then the remaining route/runtime queue.
+
 ## Objective
 
 Make the ASP.NET backend contract-compatible with the Laravel backend so the

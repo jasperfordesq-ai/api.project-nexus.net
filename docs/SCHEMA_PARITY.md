@@ -5,6 +5,16 @@ Last reviewed: 2026-07-13
 Laravel source of truth: `C:\platforms\htdocs\staging\database\migrations` and
 `C:\platforms\htdocs\staging\app\Models`.
 
+## 2026-07-13 Event Publication Lifecycle Schema Evidence
+
+Migration 139 adds the exact `content_moderation_queue` table with tenant/content
+subject uniqueness, state checks, tenant/user/event relationships, and queue timing
+evidence. Submit, approve, reject, and publish maintain that row in the same
+transaction as event state and immutable lifecycle history. A blank PostgreSQL
+database replayed the complete chain through migration 139; the focused runtime
+suite passes 8/8 on that migrated schema, including the history immutability trigger,
+and EF reports no pending model changes.
+
 ## Current Source Counts
 
 The static schema-table counts were regenerated with

@@ -43,7 +43,35 @@ Before any production deployment or production-container action, stop and read
 deployment or touching production containers. Never modify the Laravel repo or
 Laravel Edition containers from this worktree.
 
-## 2026-07-13 ASP.NET Event Analytics Checkpoint (Locally Verified; Publication Pending)
+## 2026-07-13 ASP.NET Event Publication Lifecycle Checkpoint (Locally Verified)
+
+ASP.NET now owns the Laravel-compatible member event lifecycle at both `/api/events`
+and `/api/v2/events`: submit for review, direct/admin publish, and manager-only
+lifecycle history. The implementation enforces active tenant and linked-group
+authority, creator/co-organizer management, the canonical moderation-required and
+moderation-not-required conflicts, idempotent transitions, private/no-store reads,
+strict React version-2 event projections, and event-bound opaque history cursors.
+Submit, approve, reject, and publish update one durable
+`content_moderation_queue` subject row atomically with immutable lifecycle history.
+
+Migration 139 (`20260713180152_EventPublicationLifecycleParity`) applied cleanly
+after the complete migration chain on a new PostgreSQL database. The focused suite
+passes 8/8 against that migrated schema, including the database-installed
+append-only history guard; the API/test build succeeds with zero errors, and
+`has-pending-model-changes` reports no drift. The comparator fixture passes. A live
+refresh confirms all three publication routes are represented. The Laravel source
+grew concurrently from 2,592 to 2,608 operations, so the current global inventory
+is 2,573/2,608 (98.7%) with 35 misses; that larger remainder does not reverse this
+slice's three-route closure and is still static representation, not certification.
+
+Current provisional global scores are **780/1000 implementation** and
+**650/1000 certification confidence**. The honest combined finish-line estimate is
+**65%**, up from the goal baseline of 42% and the preceding checkpoint of 64%.
+Recurring-series propagation, the newly exposed recurrence and relationship routes,
+full-suite/CI evidence, canonical-frontend-on-ASP.NET browser proof, and live-provider
+evidence remain open. No production resource or frontend file was touched.
+
+## 2026-07-13 ASP.NET Event Analytics Checkpoint (Locally Verified And Published)
 
 ASP.NET now implements the canonical organizer analytics summary and CSV export
 contracts at both `/api/events/{id}/analytics` and `/api/v2/events/{id}/analytics`
