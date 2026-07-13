@@ -357,6 +357,7 @@ function normalizeGroup(item, fallbackId = null) {
     name: trimmed(raw.name || raw.title) || 'Group',
     imageUrl: trimmed(raw.image_url || raw.imageUrl || raw.avatar_url || raw.avatarUrl || ''),
     coverImageUrl: trimmed(raw.cover_image_url || raw.coverImageUrl || raw.cover_url || raw.coverUrl || ''),
+    createdAtLabel: dateLabel(raw.created_at || raw.createdAt),
     tagsText: groupTags(raw.tags).join(', '),
     my_membership: raw.my_membership || raw.myMembership || raw.membership || viewerMembership || null,
     myMembership: raw.myMembership || raw.my_membership || raw.membership || viewerMembership || null,
@@ -937,6 +938,7 @@ router.get('/', requireAuth, asyncRoute(async (req, res) => {
 router.get('/new', requireAuth, (req, res) => {
   res.render('groups/new', {
     title: 'Create a group',
+    createFailed: trimmed(req.query.status) === 'group-create-failed',
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 });
@@ -991,19 +993,15 @@ router.post('/new', requireAuth, audit.groupCreate(), asyncRoute(async (req, res
     if (groupId === null) {
       throw new ApiError('Laravel did not return the created group', 502);
     }
-    let coverError = null;
     if (cover) {
       try {
         await uploadGroupCover(req.token, groupId, cover);
-      } catch (error) {
-        coverError = error;
+      } catch {
+        // Laravel Blade treats the optional cover upload as best-effort once
+        // the group exists, so its failure is intentionally silent here too.
       }
     }
-    if (req.flash) {
-      req.flash('success', 'Group created successfully');
-      if (coverError) req.flash('error', 'The group was created, but its cover image could not be uploaded.');
-    }
-    res.redirect(urlFor(res, `/groups/${groupId}`));
+    res.redirect(groupRedirect(res, groupId, 'group-created'));
   } catch (error) {
     if (error instanceof ApiError && error.status === 403 && apiErrorCode(error) === 'ONBOARDING_REQUIRED') {
       return res.redirect(urlFor(res, '/onboarding'));

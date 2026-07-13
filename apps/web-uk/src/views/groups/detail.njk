@@ -61,7 +61,7 @@
     {% if group.createdAt or group.created_at %}
       <div class="govuk-summary-list__row">
         <dt class="govuk-summary-list__key">{{ t("polish_groups.meta_created_label") }}</dt>
-        <dd class="govuk-summary-list__value">{{ (group.createdAt or group.created_at) | formatDate }}</dd>
+        <dd class="govuk-summary-list__value">{{ group.createdAtLabel }}</dd>
       </div>
     {% endif %}
   </dl>

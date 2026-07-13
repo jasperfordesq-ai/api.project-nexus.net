@@ -24570,6 +24570,7 @@ describe('shared accessible frontend shell', () => {
         name: 'Macroom',
         description: 'A public community group',
         visibility: 'public',
+        created_at: '2026-07-13T09:30:00Z',
         viewer_membership: null
       }
     });
@@ -24585,6 +24586,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(200);
     expect(response.text).toContain('Macroom');
     expect(response.text).toContain('A public community group');
+    expect(response.text).toContain('13 July 2026');
     expect(response.text).not.toContain('Forbidden');
   });
 
@@ -24610,6 +24612,14 @@ describe('shared accessible frontend shell', () => {
     expect(form.text).toContain('Bring members together around a shared interest in Project NEXUS Accessible.');
     expect(form.text).not.toContain('Cancel');
 
+    const failedForm = await agent
+      .get('/groups/new?status=group-create-failed')
+      .set('Cookie', signedCookieHeader());
+
+    expect(failedForm.status).toBe(200);
+    expect(failedForm.text).toContain('There is a problem creating your group');
+    expect(failedForm.text).toContain('Your group could not be created. Please try again.');
+
     const created = await agent
       .post('/groups/new')
       .set('Cookie', signedCookieHeader())
@@ -24625,7 +24635,7 @@ describe('shared accessible frontend shell', () => {
       });
 
     expect(created.status).toBe(302);
-    expect(created.headers.location).toBe('/groups/88');
+    expect(created.headers.location).toBe('/groups/88?status=group-created');
     expect(api.createGroup).toHaveBeenCalledWith('test-token', {
       name: 'Repair circle',
       description: 'Share repair skills.\n\nTags (optional): repair, tools',
