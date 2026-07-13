@@ -34,6 +34,10 @@ public class PublicCompatibilityEndpointsTests : IntegrationTestBase
         var content = await response.Content.ReadFromJsonAsync<JsonElement>();
         content.GetProperty("id").GetInt32().Should().BeGreaterThan(0);
         content.GetProperty("features").GetProperty("explore").GetBoolean().Should().BeTrue();
+        var data = content.GetProperty("data");
+        data.GetProperty("id").GetInt32().Should().Be(content.GetProperty("id").GetInt32());
+        data.GetProperty("compliance").GetProperty("insurance_enabled").ValueKind
+            .Should().Be(JsonValueKind.False);
     }
 
     [Fact]
@@ -144,6 +148,7 @@ public class PublicCompatibilityEndpointsTests : IntegrationTestBase
         stats.TryGetProperty("listings", out _).Should().BeTrue();
         stats.TryGetProperty("skills", out _).Should().BeTrue();
         stats.TryGetProperty("communities", out _).Should().BeTrue();
+        stats.GetProperty("scope").GetString().Should().Be("tenant");
     }
 
     [Fact]

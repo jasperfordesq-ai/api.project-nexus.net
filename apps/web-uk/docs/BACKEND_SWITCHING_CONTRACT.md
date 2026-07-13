@@ -1,6 +1,6 @@
 # Backend Switching Contract
 
-Last reviewed: 2026-07-10
+Last reviewed: 2026-07-13
 
 ## Decision
 
@@ -46,21 +46,29 @@ healthy process plus Laravel-compatible public tenant bootstrap and platform
 stats resolution using `X-Tenant-Slug`, because Web UK cannot know an internal
 tenant ID before bootstrap.
 
-The live 2026-07-13 run against `http://127.0.0.1:5080` is blocked: `/health`
-returned `200`, but both `/api/v2/tenant/bootstrap?slug=hour-timebank` and
-`/api/v2/platform/stats` returned `400` with `X-Tenant-ID header is required`.
-The backend fix now excludes both public v2 paths from ID-first middleware and
-registers the explicit v2 bootstrap route; the focused ASP.NET integration
-class passes `8/8`. The already-running port-5080 process still needs a normal
-owner-controlled rebuild/restart before this live audit can turn green. Do not
-work around this in Web UK.
+The shared process on `http://127.0.0.1:5080` is still an older image and is not
+readiness evidence. On 2026-07-13, current source was built in a clean detached
+worktree and started on `http://127.0.0.1:5081` against a disposable PostgreSQL
+database migrated from zero. That fresh start exposed two historical schema
+holes: the absent `XpShopRedemptions` table and absent push-subscription key
+columns. A forward-only, idempotent repair migration now supplies both without
+rewriting migrations that may already be applied elsewhere.
 
-The current Web UK backend-contract and readiness-audit tests pass `10/10` in
-an ephemeral container. An isolated rebuild of exact committed SHA `db492e01`
-was attempted twice without replacing the shared listener, but Docker Desktop
-received EOF while resolving both Microsoft .NET base-image manifests. Live
-ASP.NET switching therefore remains uncertified; neither the stale listener nor
-the registry failure is hidden by a frontend fallback.
+The same clean runtime initially exposed two public response-shape gaps. Tenant
+bootstrap now provides Laravel's canonical `data` envelope while retaining the
+legacy root projection, and platform stats now includes `data.scope`. The
+readiness audit then passed `3/3` for health, slug-first bootstrap, and
+slug-first stats. A deliberately scoped unchanged-Web-UK smoke passed `10/10`:
+API and Web UK health, unsigned account redirect, both cookie-consent choices,
+cookie settings, login CSRF, real ASP.NET password login, signed account render,
+and logout/session clearing.
+
+This is scoped development compatibility evidence, not full ASP.NET
+certification. It does not yet prove all Laravel fixture-dependent pages,
+mutations, uploads, downloads, roles, modules, or destructive side effects. A
+full Laravel-fixture smoke is not portable to the ASP.NET seed as-is and also
+trips the development rate limiter; do not report that run as a product
+regression or weaken the limiter to make the harness green.
 
 The static Laravel/API comparator currently reports `2,436/2,449` source
 operations matched and `13` missing. None of those 13 missing routes is called

@@ -1786,7 +1786,7 @@ public class CompatibilityController : ControllerBase
             meta_description = GetConfigString(configEntries, "seo.meta_description", tenant.Tagline),
         };
 
-        return Ok(new
+        var bootstrap = new
         {
             id = tenant.Id,
             name = tenant.Name,
@@ -1806,6 +1806,28 @@ public class CompatibilityController : ControllerBase
             settings = configEntries
                 .Where(kv => kv.Key.StartsWith("settings."))
                 .ToDictionary(kv => kv.Key.Replace("settings.", ""), kv => (object)kv.Value),
+        };
+
+        // Laravel consumers read the canonical data envelope, while the
+        // copied React frontend still reads the historical root properties.
+        // Keep both projections until every ASP.NET consumer has moved to the
+        // Laravel contract.
+        return Ok(new
+        {
+            data = bootstrap,
+            bootstrap.id,
+            bootstrap.name,
+            bootstrap.slug,
+            bootstrap.tagline,
+            bootstrap.features,
+            bootstrap.modules,
+            bootstrap.branding,
+            bootstrap.contact,
+            bootstrap.compliance,
+            bootstrap.seo,
+            bootstrap.categories,
+            bootstrap.config,
+            bootstrap.settings,
         });
     }
 

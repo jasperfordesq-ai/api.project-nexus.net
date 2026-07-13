@@ -5723,6 +5723,30 @@ Full Jest passed `45/45` suites and `1,465/1,465` tests; lint and the
 creation/deletion policy depth, manual assistive-technology review, and ASP.NET
 compatibility remain open.
 
+## 2026-07-13 Clean ASP.NET Development Compatibility
+
+Current source now builds and starts against a disposable PostgreSQL database
+migrated from zero. A forward-only idempotent migration repairs two historical
+fresh-install gaps without changing applied migration history: it creates the
+missing `XpShopRedemptions` table and adds the missing `P256dh` and `Auth`
+columns to `push_subscriptions` when needed.
+
+The clean runtime also preserves legacy bootstrap root fields while adding the
+Laravel `data` envelope, and identifies platform stats as tenant-scoped.
+`npm run audit:aspnet:readiness` passed `3/3` against the disposable runtime.
+An unchanged Web UK core-session smoke then passed `10/10`, covering health,
+unsigned redirect behavior, cookie choices/settings, CSRF login, real ASP.NET
+authentication, signed account rendering, and logout. This is a scoped
+development checkpoint, not certification of every Laravel fixture-dependent
+route or side effect. The owner-controlled listener on port `5080` remains a
+stale image and was not replaced.
+
+The focused .NET run built successfully and its two non-container migration
+checks passed. Its eight integration cases could not initialize because
+Testcontainers cancelled the resource-reaper startup; the same response
+contracts were therefore verified through the clean disposable runtime rather
+than reported as passing integration-test assertions.
+
 ## Final Handoff Checklist
 
 Before leaving this job for another agent, write a short note containing:

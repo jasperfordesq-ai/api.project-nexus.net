@@ -100,6 +100,7 @@ public class ReactFrontendCompatibilityController : ControllerBase
 
         var stats = new
         {
+            scope = "tenant",
             members = await _db.Users.CountAsync(u => u.IsActive),
             hours_exchanged = hoursExchanged,
             listings = await _db.Listings.CountAsync(l => l.Status == ListingStatus.Active),
