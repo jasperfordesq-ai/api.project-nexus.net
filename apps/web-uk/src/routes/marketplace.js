@@ -448,6 +448,12 @@ function objectValue(value) {
 function priceLabel(row) {
   const credits = decimalNumber(row.time_credit_price);
   const money = decimalNumber(row.price);
+  if (credits > 0 && money > 0) {
+    return fallbackTranslator('govuk_alpha_commerce.buy.hybrid_price', {
+      money: formatMoney(money, row.price_currency),
+      credits: formatCompactNumber(credits)
+    });
+  }
   if (credits > 0) return formatCredits(credits);
   if (money > 0) return formatMoney(money, row.price_currency);
   return 'Free';
@@ -457,6 +463,7 @@ function priceTagClass(row) {
   const credits = decimalNumber(row.time_credit_price);
   const money = decimalNumber(row.price);
   if (credits <= 0 && money <= 0) return 'govuk-tag--green';
+  if (credits > 0 && money > 0) return 'govuk-tag--purple';
   if (credits > 0) return 'govuk-tag--blue';
   return 'govuk-tag--grey';
 }
@@ -501,6 +508,8 @@ function decorateListing(listing) {
   const sellerId = positiveInteger(seller.id) || positiveInteger(row.user_id);
   const sellerName = trimmed(seller.name || row.seller_name || row.seller_type);
   const priceType = allowed(row.price_type, PRICE_TYPES, decimalNumber(row.price) > 0 ? 'fixed' : 'free');
+  const money = decimalNumber(row.price);
+  const credits = decimalNumber(row.time_credit_price);
   const condition = trimmed(row.condition);
   const deliveryMethod = trimmed(row.delivery_method);
 
@@ -518,6 +527,8 @@ function decorateListing(listing) {
     price: row.price ?? '',
     priceCurrency: trimmed(row.price_currency || 'EUR', 3).toUpperCase() || 'EUR',
     timeCreditPrice: row.time_credit_price ?? '',
+    canBuy: trimmed(row.status) === 'active'
+      && ((priceType === 'fixed' && money > 0) || priceType === 'free' || credits > 0),
     condition,
     conditionLabel: condition ? (CONDITION_LABELS[condition] || condition) : '',
     deliveryMethod,

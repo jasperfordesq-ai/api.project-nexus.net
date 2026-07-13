@@ -29045,6 +29045,8 @@ describe('shared accessible frontend shell', () => {
         description: 'A road-ready bicycle for local trips.',
         price: 15.5,
         price_currency: 'GBP',
+        price_type: 'fixed',
+        status: 'active',
         condition: 'good',
         location: 'Belfast',
         delivery_method: 'pickup',
@@ -29073,6 +29075,50 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('href="/marketplace/42/offer"');
     expect(response.text).toContain('href="/marketplace/42/report"');
     expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('matches Laravel hybrid marketplace prices and buy eligibility', async () => {
+    const api = require('../src/lib/api');
+    api.callMarketplaceApi
+      .mockResolvedValueOnce({
+        data: {
+          id: 43,
+          title: 'Hybrid garden kit',
+          price: 12.5,
+          price_currency: 'GBP',
+          time_credit_price: 3,
+          price_type: 'fixed',
+          status: 'active',
+          user: { id: 77, name: 'Aisha Khan' }
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          id: 44,
+          title: 'Negotiable garden kit',
+          price: 12.5,
+          price_currency: 'GBP',
+          time_credit_price: 0,
+          price_type: 'negotiable',
+          status: 'active',
+          user: { id: 77, name: 'Aisha Khan' }
+        }
+      });
+
+    const hybrid = await request(app)
+      .get('/marketplace/43')
+      .set('Cookie', signedCookieHeader());
+    const negotiable = await request(app)
+      .get('/marketplace/44')
+      .set('Cookie', signedCookieHeader());
+
+    expect(hybrid.status).toBe(200);
+    expect(hybrid.text).toContain('GBP 12.50 or 3 time credits');
+    expect(hybrid.text).toContain('govuk-tag--purple');
+    expect(hybrid.text).toContain('href="/marketplace/43/buy"');
+    expect(negotiable.status).toBe(200);
+    expect(negotiable.text).not.toContain('href="/marketplace/44/buy"');
+    expect(negotiable.text).toContain('href="/marketplace/44/offer"');
   });
 
   it('renders the Laravel-backed marketplace create form', async () => {

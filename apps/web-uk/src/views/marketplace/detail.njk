@@ -69,7 +69,7 @@
 
   {% if item.id and not item.isOwnItem %}
     <div class="govuk-button-group govuk-!-margin-top-4">
-      <a class="govuk-button" href="{{ urlFor('/marketplace/' + (item.id | string) + '/buy') }}" role="button" draggable="false" data-module="govuk-button">Buy this item</a>
+      {% if item.canBuy %}<a class="govuk-button" href="{{ urlFor('/marketplace/' + (item.id | string) + '/buy') }}" role="button" draggable="false" data-module="govuk-button">{{ t("govuk_alpha_commerce.nav.detail_buy") }}</a>{% endif %}
       <a class="govuk-button govuk-button--secondary" href="{{ urlFor('/marketplace/' + (item.id | string) + '/offer') }}" role="button" draggable="false" data-module="govuk-button">Make an offer</a>
       <form method="post" action="{{ urlFor('/marketplace/' + (item.id | string) + '/save') }}">
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
