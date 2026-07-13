@@ -1610,6 +1610,8 @@ app.use(
   parseMultipartForm({ maxFileSize: 25 * 1024 * 1024 }),
   groupMultipartErrorRedirect('file-too-large', 'file-missing')
 );
+app.use('/podcasts/studio/new', parseMultipartForm({ maxFileSize: 8 * 1024 * 1024 }));
+app.use(/^\/podcasts\/studio\/\d+\/update$/, parseMultipartForm({ maxFileSize: 8 * 1024 * 1024 }));
 app.use(/^\/podcasts\/studio\/\d+\/episodes$/, parseMultipartForm({ maxFileSize: 100 * 1024 * 1024 }));
 // Parse a narrow amount above the product's 5 MB CV limit so the Jobs route
 // can return its field-linked cv-too-large state; larger requests still fail

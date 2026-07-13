@@ -5,7 +5,7 @@
 
 const express = require('express');
 const fs = require('fs/promises');
-const { callPodcastApi, uploadPodcastEpisode, ApiError } = require('../lib/api');
+const { callPodcastApi, uploadPodcastArtwork, uploadPodcastEpisode, ApiError } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
@@ -76,14 +76,24 @@ function allowedVisibility(value) {
   return ['public', 'members', 'private'].includes(visibility) ? visibility : 'public';
 }
 
-function showPayload(body) {
-  return {
+function showPayload(body, defaultLanguage = '') {
+  const payload = {
     title: trimmed(body.title, 200),
     summary: trimmed(body.summary, 600),
     description: trimmed(body.description, 20000),
     category: trimmed(body.category, 120),
+    language: trimmed(body.language, 20) || trimmed(defaultLanguage, 20),
+    author_name: trimmed(body.author_name, 200),
+    owner_email: trimmed(body.owner_email, 320),
+    copyright: trimmed(body.copyright, 300),
+    funding_url: trimmed(body.funding_url),
+    explicit: checked(body.explicit),
     visibility: allowedVisibility(body.visibility)
   };
+
+  const slug = trimmed(body.slug, 200);
+  if (slug !== '') payload.slug = slug;
+  return payload;
 }
 
 function episodePayload(body) {
@@ -143,23 +153,46 @@ router.post('/studio/new', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) return redirectTo(res, loginRedirect());
 
-  const payload = showPayload(req.body);
+  const payload = showPayload(req.body, req.locale || 'en');
+  const artwork = uploadedFile(req, 'artwork');
   if (payload.title === '') {
+    await removeUploadedFile(artwork);
     return redirectTo(res, statusRedirect('/podcasts/studio/new', 'show-title-missing'));
   }
 
+  let showId = null;
   try {
     const result = await callPodcast(token, 'POST', '', payload);
     const data = dataFrom(result);
-    const showId = positiveInteger(data && (data.id || data.show_id));
-    if (showId !== null) {
-      return redirectTo(res, studioRedirect(showId, 'show-created'));
+    showId = positiveInteger(data && (data.id || data.show_id));
+  } catch (error) {
+    await removeUploadedFile(artwork);
+    if (redirectOnAuthError(error, res)) return undefined;
+    return redirectTo(res, statusRedirect('/podcasts/studio/new', 'show-create-failed'));
+  }
+
+  if (showId === null) {
+    await removeUploadedFile(artwork);
+    return redirectTo(res, statusRedirect('/podcasts/studio/new', 'show-create-failed'));
+  }
+
+  try {
+    if (artwork) {
+      const buffer = await fs.readFile(artwork.filepath);
+      await uploadPodcastArtwork(token, showId, {
+        buffer,
+        filename: trimmed(artwork.originalFilename) || 'podcast-artwork',
+        contentType: trimmed(artwork.mimetype) || 'application/octet-stream'
+      });
     }
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
+    return redirectTo(res, studioRedirect(showId, 'show-save-failed'));
+  } finally {
+    await removeUploadedFile(artwork);
   }
 
-  return redirectTo(res, statusRedirect('/podcasts/studio/new', 'show-create-failed'));
+  return redirectTo(res, studioRedirect(showId, 'show-created'));
 }));
 
 router.post('/studio/:id(\\d+)/update', asyncRoute(async (req, res) => {
@@ -168,16 +201,30 @@ router.post('/studio/:id(\\d+)/update', asyncRoute(async (req, res) => {
 
   const id = Number(req.params.id);
   const payload = showPayload(req.body);
+  delete payload.slug;
+  if (payload.language === '') delete payload.language;
+  const artwork = uploadedFile(req, 'artwork');
   if (payload.title === '') {
+    await removeUploadedFile(artwork);
     return redirectTo(res, studioRedirect(id, 'show-title-missing'));
   }
 
   let status = 'show-saved';
   try {
     await callPodcast(token, 'PUT', `/${id}`, payload);
+    if (artwork) {
+      const buffer = await fs.readFile(artwork.filepath);
+      await uploadPodcastArtwork(token, id, {
+        buffer,
+        filename: trimmed(artwork.originalFilename) || 'podcast-artwork',
+        contentType: trimmed(artwork.mimetype) || 'application/octet-stream'
+      });
+    }
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
     status = 'show-save-failed';
+  } finally {
+    await removeUploadedFile(artwork);
   }
 
   return redirectTo(res, studioRedirect(id, status));

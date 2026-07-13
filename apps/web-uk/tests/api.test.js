@@ -3636,6 +3636,33 @@ describe('API Request Functions', () => {
       );
       expect(options.body).toBeInstanceOf(FormData);
     });
+
+    it('should upload podcast artwork to Laravel with the image multipart field', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { artwork_url: '/uploads/podcasts/show.webp' } })
+      });
+
+      await api.uploadPodcastArtwork('test-token', 42, {
+        buffer: Buffer.from('fake podcast image bytes', 'utf8'),
+        filename: 'show.webp',
+        contentType: 'image/webp'
+      });
+
+      const [, options] = mockFetch.mock.calls[0];
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/podcasts/42/artwork',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+      expect(options.body).toBeInstanceOf(FormData);
+      expect(options.body.get('image')).toBeInstanceOf(Blob);
+    });
   });
 
   describe('callFederationApi', () => {

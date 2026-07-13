@@ -23,7 +23,7 @@
 
   <h1 class="govuk-heading-xl">{{ t("govuk_alpha_commerce.podcast_studio.title_create") }}</h1>
 
-  <form method="post" action="{{ urlFor(action) }}" novalidate>
+  <form method="post" action="{{ urlFor(action) }}" enctype="multipart/form-data" novalidate>
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
     <div class="govuk-form-group">
@@ -39,6 +39,12 @@
     </div>
 
     <div class="govuk-form-group">
+      <label class="govuk-label govuk-label--s" for="slug">{{ t("govuk_alpha_commerce.podcast_studio.slug_label") }} <span class="govuk-hint govuk-!-display-inline">({{ t("govuk_alpha_commerce.common.optional") }})</span></label>
+      <div id="slug-hint" class="govuk-hint">{{ t("govuk_alpha_commerce.podcast_studio.slug_hint") }}</div>
+      <input class="govuk-input" id="slug" name="slug" type="text" maxlength="200" value="{{ show.slug }}" aria-describedby="slug-hint">
+    </div>
+
+    <div class="govuk-form-group">
       <label class="govuk-label govuk-label--s" for="description">{{ t("govuk_alpha_commerce.podcast_studio.description_label") }} <span class="govuk-hint govuk-!-display-inline">({{ t("govuk_alpha_commerce.common.optional") }})</span></label>
       <div id="description-hint" class="govuk-hint">{{ t("govuk_alpha_commerce.podcast_studio.description_hint") }}</div>
       <textarea class="govuk-textarea" id="description" name="description" rows="5" aria-describedby="description-hint">{{ show.description }}</textarea>
@@ -50,22 +56,18 @@
       <input class="govuk-input govuk-input--width-20" id="category" name="category" type="text" maxlength="120" value="{{ show.category }}" aria-describedby="category-hint">
     </div>
 
+    {% include "podcasts/_show-rss-fields.njk" %}
+
     <div class="govuk-form-group">
       <fieldset class="govuk-fieldset">
         <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">{{ t("govuk_alpha_commerce.podcast_studio.visibility_label") }}</legend>
         <div class="govuk-radios govuk-radios--small" data-module="govuk-radios">
-          <div class="govuk-radios__item">
-            <input class="govuk-radios__input" id="visibility" name="visibility" type="radio" value="public" {% if show.visibility == "public" %}checked{% endif %}>
-            <label class="govuk-label govuk-radios__label" for="visibility">{{ t("govuk_alpha_commerce.podcast_studio.visibility_public") }}</label>
-          </div>
-          <div class="govuk-radios__item">
-            <input class="govuk-radios__input" id="visibility-members" name="visibility" type="radio" value="members" {% if show.visibility == "members" %}checked{% endif %}>
-            <label class="govuk-label govuk-radios__label" for="visibility-members">{{ t("govuk_alpha_commerce.podcast_studio.visibility_members") }}</label>
-          </div>
-          <div class="govuk-radios__item">
-            <input class="govuk-radios__input" id="visibility-private" name="visibility" type="radio" value="private" {% if show.visibility == "private" %}checked{% endif %}>
-            <label class="govuk-label govuk-radios__label" for="visibility-private">{{ t("govuk_alpha_commerce.podcast_studio.visibility_private") }}</label>
-          </div>
+          {% for visibility in visibilities %}
+            <div class="govuk-radios__item">
+              <input class="govuk-radios__input" id="{% if loop.first %}visibility{% else %}visibility-{{ visibility }}{% endif %}" name="visibility" type="radio" value="{{ visibility }}" {% if show.visibility == visibility %}checked{% endif %}>
+              <label class="govuk-label govuk-radios__label" for="{% if loop.first %}visibility{% else %}visibility-{{ visibility }}{% endif %}">{{ t("govuk_alpha_commerce.podcast_studio.visibility_" + visibility) }}</label>
+            </div>
+          {% endfor %}
         </div>
       </fieldset>
     </div>

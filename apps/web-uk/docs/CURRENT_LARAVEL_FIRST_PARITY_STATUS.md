@@ -112,7 +112,7 @@ commit as the implementation it describes.
 ## Audited Baseline
 
 The committed frontend starting baseline for the current checkout was refreshed
-through ASP.NET-repository commit `6993a891`, and the Laravel source baseline is
+through ASP.NET-repository commit `8f60e106`, and the Laravel source baseline is
 `903d03d3`. The first SHA names the
 repository snapshot containing Web UK; it does not make ASP.NET authoritative.
 Refresh the Laravel Blade/API source and Web UK implementation before relying on
@@ -126,7 +126,7 @@ these numbers after either source moves.
 | Missing Laravel routes | 6 | All are Event workflows |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 47/47 suites, 1,603/1,603 tests | Fresh green code gate |
+| Jest | 47/47 suites, 1,604/1,604 tests | Fresh green code gate |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
 | Blade marker check | 19/19 | Text-marker spotcheck, not visual certification |
 | Automated accessibility | Latest recorded 87/87 | Manual AT review remains open |
@@ -175,9 +175,28 @@ for an existing author, and rejects a direct create-form request when the
 backend says another show cannot be created. Focused default-English proof
 covers permitted and denied states, invalid categories, preserved pagination,
 and artwork hardening. The full non-mutating gate passes 47/47 suites and
-1,603/1,603 tests; brand, lint, CSS, locale shape, static-key resolution,
+1,604/1,604 tests; brand, lint, CSS, locale shape, static-key resolution,
 template localization, route matrix, and `git diff --check` are green. No local
 Laravel smoke or live mutation ran against the production-derived database.
+
+## Podcast Show Metadata And Artwork Refresh
+
+Podcast create and manage now mirror Blade's show fields: create-only slug,
+artwork, language, author, owner email, copyright, funding URL, explicit-content
+flag, and configuration-aware visibility choices. New-show defaults use the
+signed-in profile and request locale where Laravel's API exposes them. Show
+metadata continues through JSON `POST`/`PUT`; artwork uses Laravel's dedicated
+multipart `POST /api/v2/podcasts/{id}/artwork` contract with field `image`.
+
+Web UK now parses only the two show multipart paths before CSRF validation and
+caps artwork at Laravel ImageUploader's 8 MB limit. Temporary files are removed
+on every outcome. If create metadata succeeds but artwork is rejected, the user
+is sent to the created show's manage page with a save-failure state rather than
+being told the show does not exist. Mocked proof covers create, update, upload,
+and rejected-artwork recovery without calling a live mutation endpoint. The
+full gate is 47/47 suites and 1,604/1,604 tests; 6,868 static references resolve
+to 5,241 unique keys with zero unresolved keys, and all 316 templates have zero
+conservative localization matches.
 
 ## Localization P0 Closed In Current Slice
 

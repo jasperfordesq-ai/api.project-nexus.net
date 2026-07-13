@@ -5,6 +5,7 @@
 
 const express = require('express');
 const { callPodcastApi, ApiError } = require('../lib/api');
+const { getRequestProfile } = require('../lib/request-profile');
 const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
@@ -412,8 +413,13 @@ router.get('/studio/new', asyncRoute(async (req, res) => {
   if (!token) return undefined;
 
   try {
-    const result = await callPodcast(token, 'GET', '/mine');
-    if (metaFrom(result).can_create_show !== true) {
+    const [result, profileResult] = await Promise.all([
+      callPodcast(token, 'GET', '/mine'),
+      getRequestProfile(req, token).catch(() => null)
+    ]);
+    const profile = objectFrom(profileResult) || {};
+    const meta = metaFrom(result);
+    if (meta.can_create_show !== true) {
       res.status(403).render('errors/403', { title: 'Access denied' });
       return undefined;
     }
@@ -425,11 +431,19 @@ router.get('/studio/new', asyncRoute(async (req, res) => {
       action: '/podcasts/studio/new',
       show: {
         title: '',
+        slug: '',
         summary: '',
         description: '',
         category: '',
+        language: trimmed(profile.preferred_language || req.locale || 'en', 20),
+        author_name: trimmed(profile.name, 200),
+        owner_email: trimmed(profile.email, 320),
+        copyright: '',
+        funding_url: '',
+        explicit: false,
         visibility: 'public'
       },
+      visibilities: meta.enable_private_shows === true ? ['public', 'members', 'private'] : ['public'],
       status: statusEntry(req.query.status, res.locals.t)
     });
   } catch (error) {
@@ -444,6 +458,7 @@ router.get('/studio/:id(\\d+)', asyncRoute(async (req, res) => {
   const showId = positiveInteger(req.params.id);
   try {
     const result = await callPodcast(token, 'GET', '/mine');
+    const meta = metaFrom(result);
     const shows = rowsFrom(result).map((show) => decorateShow(show, res.locals.t));
     const show = shows.find((row) => row.id === showId);
     if (!show) {
@@ -457,6 +472,9 @@ router.get('/studio/:id(\\d+)', asyncRoute(async (req, res) => {
       activeNav: 'explore',
       show,
       episodes,
+      visibilities: meta.enable_private_shows === true
+        ? ['public', 'members', 'private']
+        : [...new Set(['public', ['members', 'private'].includes(show.visibility) ? show.visibility : null].filter(Boolean))],
       status: statusEntry(req.query.status, res.locals.t),
       episodeStoreAction: `/podcasts/studio/${show.id}/episodes`
     });

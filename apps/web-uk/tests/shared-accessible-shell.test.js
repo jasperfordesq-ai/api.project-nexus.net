@@ -271,6 +271,7 @@ jest.mock('../src/lib/api', () => ({
   uploadMessageAttachments: jest.fn().mockResolvedValue({ data: { id: 12 } }),
   callConversationApi: jest.fn().mockResolvedValue({ data: { id: 33 } }),
   callPodcastApi: jest.fn().mockResolvedValue({ data: { id: 42, subscribed: true, moderation_status: 'approved' } }),
+  uploadPodcastArtwork: jest.fn().mockResolvedValue({ data: { artwork_url: '/uploads/podcasts/show.jpg' } }),
   uploadPodcastEpisode: jest.fn().mockResolvedValue({ data: { id: 99 } }),
   callFederationApi: jest.fn().mockResolvedValue({ data: { id: 42, success: true } }),
   getVolunteerOrganisations: jest.fn().mockResolvedValue({ data: [] }),
@@ -640,6 +641,7 @@ describe('shared accessible frontend shell', () => {
     api.uploadMessageAttachments.mockReset().mockResolvedValue({ data: { id: 12 } });
     api.callConversationApi.mockReset().mockResolvedValue({ data: { id: 33 } });
     api.callPodcastApi.mockReset().mockResolvedValue({ data: { id: 42, subscribed: true, moderation_status: 'approved' } });
+    api.uploadPodcastArtwork.mockReset().mockResolvedValue({ data: { artwork_url: '/uploads/podcasts/show.jpg' } });
     api.uploadPodcastEpisode.mockReset().mockResolvedValue({ data: { id: 99 } });
     api.callFederationApi.mockReset().mockResolvedValue({ data: { id: 42, success: true } });
     api.login.mockReset();
@@ -27547,7 +27549,7 @@ describe('shared accessible frontend shell', () => {
           episodes_count: 2
         }
       ],
-      meta: { can_create_show: true, can_manage_existing_shows: true }
+      meta: { can_create_show: true, can_manage_existing_shows: true, enable_private_shows: true }
     });
 
     const response = await request(app)
@@ -27571,7 +27573,7 @@ describe('shared accessible frontend shell', () => {
     const api = require('../src/lib/api');
     api.callPodcastApi.mockResolvedValueOnce({
       data: [],
-      meta: { can_create_show: true, can_manage_existing_shows: true }
+      meta: { can_create_show: true, can_manage_existing_shows: true, enable_private_shows: true }
     });
 
     const response = await request(app)
@@ -27583,6 +27585,9 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Back to podcast studio');
     expect(response.text).toContain('Create a podcast');
     expect(response.text).toContain('Show title');
+    expect(response.text).toContain('Podcast and RSS details');
+    expect(response.text).toContain('Show artwork');
+    expect(response.text).toContain('Owner email address');
     expect(response.text).toContain('Who can listen?');
     expect(response.text).toContain('Anyone');
     expect(response.text).toContain('Members only');
@@ -27601,6 +27606,13 @@ describe('shared accessible frontend shell', () => {
           summary: 'Weekly local audio',
           description: 'Stories and updates.',
           category: 'Community',
+          artwork_url: '/uploads/podcasts/community.jpg',
+          language: 'en-IE',
+          author_name: 'Community team',
+          owner_email: 'podcasts@example.test',
+          copyright: 'Copyright 2026',
+          funding_url: 'https://example.test/support',
+          explicit: true,
           visibility: 'members',
           status: 'draft',
           moderation_status: 'approved',
@@ -27613,7 +27625,8 @@ describe('shared accessible frontend shell', () => {
             }
           ]
         }
-      ]
+      ],
+      meta: { enable_private_shows: true }
     });
 
     const response = await request(app)
@@ -27627,6 +27640,9 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Publish your show');
     expect(response.text).toContain('Community voices');
     expect(response.text).toContain('Weekly local audio');
+    expect(response.text).toContain('/uploads/podcasts/community.jpg');
+    expect(response.text).toContain('en-IE');
+    expect(response.text).toContain('podcasts@example.test');
     expect(response.text).toContain('Episode 3');
     expect(response.text).toContain('First update');
     expect(response.text).toContain('Add an episode');
@@ -27663,6 +27679,13 @@ describe('shared accessible frontend shell', () => {
       summary: ' Local audio ',
       description: ' Interviews and updates ',
       category: 'community',
+      slug: ' community-stories ',
+      language: ' en-IE ',
+      author_name: ' Community team ',
+      owner_email: ' podcasts@example.test ',
+      copyright: ' Copyright 2026 ',
+      funding_url: ' https://example.test/support ',
+      explicit: 'on',
       visibility: 'members'
     });
     expect(createResponse.headers.location).toBe('/podcasts/studio/42?status=show-created');
@@ -27671,6 +27694,13 @@ describe('shared accessible frontend shell', () => {
       summary: 'Local audio',
       description: 'Interviews and updates',
       category: 'community',
+      language: 'en-IE',
+      author_name: 'Community team',
+      owner_email: 'podcasts@example.test',
+      copyright: 'Copyright 2026',
+      funding_url: 'https://example.test/support',
+      explicit: true,
+      slug: 'community-stories',
       visibility: 'members'
     });
 
@@ -27679,6 +27709,11 @@ describe('shared accessible frontend shell', () => {
       summary: ' New summary ',
       description: ' New description ',
       category: 'local',
+      language: ' cy ',
+      author_name: ' Local team ',
+      owner_email: ' local@example.test ',
+      copyright: ' Local copyright ',
+      funding_url: ' https://example.test/fund ',
       visibility: 'public'
     });
     expect(updateResponse.headers.location).toBe('/podcasts/studio/42?status=show-saved');
@@ -27687,6 +27722,12 @@ describe('shared accessible frontend shell', () => {
       summary: 'New summary',
       description: 'New description',
       category: 'local',
+      language: 'cy',
+      author_name: 'Local team',
+      owner_email: 'local@example.test',
+      copyright: 'Local copyright',
+      funding_url: 'https://example.test/fund',
+      explicit: false,
       visibility: 'public'
     });
 
@@ -27771,6 +27812,66 @@ describe('shared accessible frontend shell', () => {
         buffer: Buffer.from('fake mp3 podcast bytes', 'utf8')
       })
     }));
+
+    const artworkResponse = await agent
+      .post('/podcasts/studio/42/update')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .field('_csrf', csrfMatch[1])
+      .field('title', 'Community stories')
+      .field('language', 'en-IE')
+      .attach('artwork', Buffer.from('fake podcast image bytes', 'utf8'), {
+        filename: 'community.webp',
+        contentType: 'image/webp'
+      });
+
+    expect(artworkResponse.status).toBe(302);
+    expect(artworkResponse.headers.location).toBe('/podcasts/studio/42?status=show-saved');
+    expect(api.callPodcastApi).toHaveBeenCalledWith('test-token', 'PUT', '/42', expect.objectContaining({
+      title: 'Community stories',
+      language: 'en-IE'
+    }));
+    expect(api.uploadPodcastArtwork).toHaveBeenCalledWith('test-token', 42, {
+      filename: 'community.webp',
+      contentType: 'image/webp',
+      buffer: Buffer.from('fake podcast image bytes', 'utf8')
+    });
+
+    const createArtworkResponse = await agent
+      .post('/podcasts/studio/new')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .field('_csrf', csrfMatch[1])
+      .field('title', 'New community show')
+      .field('slug', 'new-community-show')
+      .attach('artwork', Buffer.from('new fake podcast image bytes', 'utf8'), {
+        filename: 'new-show.png',
+        contentType: 'image/png'
+      });
+
+    expect(createArtworkResponse.status).toBe(302);
+    expect(createArtworkResponse.headers.location).toBe('/podcasts/studio/42?status=show-created');
+    expect(api.callPodcastApi).toHaveBeenCalledWith('test-token', 'POST', '', expect.objectContaining({
+      title: 'New community show',
+      slug: 'new-community-show'
+    }));
+    expect(api.uploadPodcastArtwork).toHaveBeenLastCalledWith('test-token', 42, {
+      filename: 'new-show.png',
+      contentType: 'image/png',
+      buffer: Buffer.from('new fake podcast image bytes', 'utf8')
+    });
+
+    api.uploadPodcastArtwork.mockRejectedValueOnce(new api.ApiError('Artwork rejected', 422));
+    const rejectedArtworkResponse = await agent
+      .post('/podcasts/studio/new')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .field('_csrf', csrfMatch[1])
+      .field('title', 'Show with rejected artwork')
+      .attach('artwork', Buffer.from('rejected image bytes', 'utf8'), {
+        filename: 'rejected.gif',
+        contentType: 'image/gif'
+      });
+
+    expect(rejectedArtworkResponse.status).toBe(302);
+    expect(rejectedArtworkResponse.headers.location).toBe('/podcasts/studio/42?status=show-save-failed');
   });
 
   it('submits Laravel federation action aliases and redirects signed-out visitors', async () => {

@@ -1987,6 +1987,20 @@ async function callPodcastApi(token, method, path = '', data = undefined) {
   return request(`/api/v2/podcasts${normalizedPath}`, options);
 }
 
+async function uploadPodcastArtwork(token, showId, file) {
+  const form = new globalThis.FormData();
+  const blob = new globalThis.Blob([file.buffer], {
+    type: file.contentType || 'application/octet-stream'
+  });
+  form.append('image', blob, file.filename || 'podcast-artwork');
+
+  return request(`/api/v2/podcasts/${encodeURIComponent(showId)}/artwork`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form
+  });
+}
+
 async function uploadPodcastEpisode(token, showId, data) {
   const form = new globalThis.FormData();
   form.append('title', data.title || '');
@@ -3438,6 +3452,7 @@ module.exports = {
   uploadMessageAttachments,
   callConversationApi,
   callPodcastApi,
+  uploadPodcastArtwork,
   uploadPodcastEpisode,
   callFederationApi,
   getConversations,
