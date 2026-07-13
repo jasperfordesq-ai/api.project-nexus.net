@@ -1405,6 +1405,92 @@ router.get('/:id(\\d+)/analytics/export.csv', requireAuth, asyncRoute(async (req
   return res.send(download.body);
 }));
 
+function calendarSensitive(res) {
+  res.set('Cache-Control', 'private, no-store, max-age=0');
+  res.set('Pragma', 'no-cache');
+  res.set('Referrer-Policy', 'no-referrer');
+  res.set('X-Robots-Tag', 'noindex, nofollow');
+}
+
+router.get('/:id(\\d+)/calendar', requireAuth, asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const token = tokenFrom(req);
+  const [eventResult, actionsResult] = await Promise.all([callApi(token, 'GET', `/${id}`), callApi(token, 'GET', `/${id}/calendar-actions`)]);
+  return res.render('events/calendar', {
+    title: res.locals.t('govuk_alpha_events.calendar_actions_title'), activeNav: 'events',
+    event: { id, title: trimmed(eventFrom(eventResult).title) }, actions: dataFrom(actionsResult) || {}
+  });
+}, { notFoundTitle: 'Event not found' }));
+
+async function streamCalendar(req, res, path, fallbackName) {
+  const download = await downloadEventApi(tokenFrom(req), path);
+  res.status(download.status || 200);
+  res.set('Content-Type', download.headers['content-type'] || 'text/calendar; charset=utf-8');
+  res.set('Content-Disposition', download.headers['content-disposition'] || `attachment; filename="${fallbackName}"`);
+  calendarSensitive(res);
+  res.set('X-Content-Type-Options', 'nosniff');
+  return res.send(download.body);
+}
+
+router.get('/:id(\\d+)/calendar.ics', requireAuth, asyncRoute(async (req, res) => streamCalendar(req, res, `/${Number(req.params.id)}/calendar.ics`, `event-${Number(req.params.id)}.ics`)));
+router.get('/calendar.ics', requireAuth, asyncRoute(async (req, res) => streamCalendar(req, res, '/calendar/feed.ics', 'events.ics')));
+
+async function calendarTokens(token) {
+  return collectionFrom(await callApi(token, 'GET', '/calendar/feed-tokens'));
+}
+
+router.get('/calendar-subscriptions', requireAuth, asyncRoute(async (req, res) => {
+  calendarSensitive(res);
+  return res.render('events/calendar-subscriptions', {
+    title: res.locals.t('govuk_alpha_events.calendar_subscriptions_title'), activeNav: 'events',
+    tokens: await calendarTokens(tokenFrom(req)), createdFeedUrl: '', status: trimmed(req.query.status), label: '', csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}));
+
+router.post('/calendar-subscriptions', requireAuth, asyncRoute(async (req, res) => {
+  const label = trimmed(req.body.label, 101);
+  const hasControlCharacters = [...label].some((character) => character.codePointAt(0) <= 31 || character.codePointAt(0) === 127);
+  if (label.length > 100 || hasControlCharacters) return redirectTo(res, '/events/calendar-subscriptions?status=invalid');
+  try {
+    const result = await callApi(tokenFrom(req), 'POST', '/calendar/feed-tokens', { label: label || null });
+    const created = dataFrom(result) || {};
+    calendarSensitive(res);
+    return res.status(201).render('events/calendar-subscriptions', {
+      title: res.locals.t('govuk_alpha_events.calendar_subscriptions_title'), activeNav: 'events',
+      tokens: await calendarTokens(tokenFrom(req)), createdFeedUrl: trimmed(created.feed_url, 4096), status: 'created', label: '', csrfToken: req.csrfToken ? req.csrfToken() : ''
+    });
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    if (error instanceof ApiError && [400, 409, 422, 429].includes(error.status)) return redirectTo(res, '/events/calendar-subscriptions?status=failed');
+    throw error;
+  }
+}));
+
+router.get('/calendar-subscriptions/:tokenId(\\d+)/revoke', requireAuth, asyncRoute(async (req, res) => {
+  const tokenId = positiveInteger(req.params.tokenId);
+  const token = (await calendarTokens(tokenFrom(req))).find((item) => positiveInteger(item?.id) === tokenId && checked(item?.active));
+  if (!token) return res.status(404).render('errors/404', { title: 'Calendar subscription not found' });
+  calendarSensitive(res);
+  return res.render('events/calendar-subscription-revoke', {
+    title: res.locals.t('govuk_alpha_events.calendar_subscription_revoke_title'), activeNav: 'events', token,
+    status: trimmed(req.query.status), csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}));
+
+router.post('/calendar-subscriptions/:tokenId(\\d+)/revoke', requireAuth, asyncRoute(async (req, res) => {
+  const tokenId = positiveInteger(req.params.tokenId);
+  if (!tokenId || req.body.confirm_revoke !== 'yes') return redirectTo(res, `/events/calendar-subscriptions/${tokenId || 0}/revoke?status=invalid`);
+  try {
+    await callApi(tokenFrom(req), 'DELETE', `/calendar/feed-tokens/${tokenId}`);
+    calendarSensitive(res);
+    return redirectTo(res, '/events/calendar-subscriptions?status=revoked');
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    if (error instanceof ApiError && [400, 403, 404, 409, 422, 429].includes(error.status)) return redirectTo(res, `/events/calendar-subscriptions/${tokenId}/revoke?status=failed`);
+    throw error;
+  }
+}));
+
 router.post('/:id(\\d+)/check-in/credential/rotate', requireAuth, asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const credentialId = positiveInteger(req.body.credential_id);

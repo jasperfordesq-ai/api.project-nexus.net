@@ -22265,6 +22265,62 @@ describe('shared accessible frontend shell', () => {
     expect(api.downloadEventApi).toHaveBeenLastCalledWith('test-token', '/42/analytics/export.csv');
   });
 
+  it('renders Laravel Event Calendar actions and streams event and tenant ICS feeds safely', async () => {
+    const api = require('../src/lib/api');
+    api.callEventApi
+      .mockResolvedValueOnce({ data: { id: 42, title: 'Community garden day' } })
+      .mockResolvedValueOnce({ data: { google_url: 'https://calendar.google.com/example', outlook_url: 'https://outlook.office.com/example' } });
+    const page = await request(app).get('/events/42/calendar').set('Cookie', signedCookieHeader());
+    expect(page.status).toBe(200);
+    expect(page.text).toContain('/events/42/calendar.ics');
+    expect(page.text).toContain('https://calendar.google.com/example');
+    api.downloadEventApi.mockResolvedValue({ status: 200, body: Buffer.from('BEGIN:VCALENDAR\r\nEND:VCALENDAR'), headers: { 'content-type': 'text/calendar; charset=utf-8', 'content-disposition': 'attachment; filename="event-42.ics"' } });
+    const eventFeed = await request(app).get('/events/42/calendar.ics').set('Cookie', signedCookieHeader());
+    expect(eventFeed.headers['cache-control']).toBe('private, no-store, max-age=0');
+    expect(eventFeed.headers['referrer-policy']).toBe('no-referrer');
+    expect(api.downloadEventApi).toHaveBeenLastCalledWith('test-token', '/42/calendar.ics');
+    await request(app).get('/events/calendar.ics').set('Cookie', signedCookieHeader());
+    expect(api.downloadEventApi).toHaveBeenLastCalledWith('test-token', '/calendar/feed.ics');
+  });
+
+  it('lists and creates a one-shot Laravel personal calendar subscription without caching the capability', async () => {
+    const api = require('../src/lib/api');
+    api.callEventApi.mockResolvedValueOnce({ data: [{ id: 5, label: 'Phone', token_prefix: 'abc123', active: true }] });
+    const list = await request(app).get('/events/calendar-subscriptions').set('Cookie', signedCookieHeader());
+    expect(list.status).toBe(200);
+    expect(list.headers['cache-control']).toBe('private, no-store, max-age=0');
+    expect(list.text).toContain('/events/calendar-subscriptions/5/revoke');
+    const agent = request.agent(app);
+    const shell = await agent.get('/contact').set('Cookie', signedCookieHeader());
+    const csrf = shell.text.match(/name="_csrf" value="([^"]+)"/)[1];
+    api.callEventApi
+      .mockResolvedValueOnce({ data: { id: 6, feed_url: 'https://example.test/api/v2/events/calendar/personal/acme/one-shot-secret.ics' } })
+      .mockResolvedValueOnce({ data: [{ id: 6, label: 'Laptop', token_prefix: 'def456', active: true }] });
+    const created = await agent.post('/events/calendar-subscriptions').set('Cookie', signedCookieHeader()).type('form').send({ _csrf: csrf, label: 'Laptop' });
+    expect(created.status).toBe(201);
+    expect(created.headers['cache-control']).toBe('private, no-store, max-age=0');
+    expect(created.text).toContain('one-shot-secret.ics');
+    expect(api.callEventApi).toHaveBeenNthCalledWith(2, 'test-token', 'POST', '/calendar/feed-tokens', { label: 'Laptop' });
+  });
+
+  it('requires explicit confirmation before revoking a Laravel calendar subscription', async () => {
+    const api = require('../src/lib/api');
+    api.callEventApi.mockResolvedValueOnce({ data: [{ id: 5, label: 'Phone', token_prefix: 'abc123', active: true }] });
+    const confirmation = await request(app).get('/events/calendar-subscriptions/5/revoke').set('Cookie', signedCookieHeader());
+    expect(confirmation.status).toBe(200);
+    expect(confirmation.text).toContain('name="confirm_revoke" type="checkbox" value="yes"');
+    const agent = request.agent(app);
+    const shell = await agent.get('/contact').set('Cookie', signedCookieHeader());
+    const csrf = shell.text.match(/name="_csrf" value="([^"]+)"/)[1];
+    const rejected = await agent.post('/events/calendar-subscriptions/5/revoke').set('Cookie', signedCookieHeader()).type('form').send({ _csrf: csrf });
+    expect(rejected.headers.location).toBe('/events/calendar-subscriptions/5/revoke?status=invalid');
+    expect(api.callEventApi).not.toHaveBeenCalledWith('test-token', 'DELETE', '/calendar/feed-tokens/5');
+    api.callEventApi.mockResolvedValueOnce({ data: { revoked: true } });
+    const revoked = await agent.post('/events/calendar-subscriptions/5/revoke').set('Cookie', signedCookieHeader()).type('form').send({ _csrf: csrf, confirm_revoke: 'yes' });
+    expect(revoked.headers.location).toBe('/events/calendar-subscriptions?status=revoked');
+    expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/calendar/feed-tokens/5');
+  });
+
   it('renders and issues Laravel signed Event check-in credentials without caching the secret', async () => {
     const api = require('../src/lib/api');
     api.callEventApi

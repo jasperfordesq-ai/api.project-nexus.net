@@ -65,6 +65,16 @@ Focused privacy rendering and byte-preserving download proof passes. Live ledger
 fixtures, locale-specific CSV inspection, manual assistive-technology review,
 and unchanged ASP.NET runtime proof remain open.
 
+## 2026-07-13 Event Calendar Checkpoint
+
+Members now have Laravel's privacy-safe add-to-calendar actions, event and
+tenant ICS downloads, and the complete personal-feed token lifecycle: sensitive
+no-store listing, bounded labels, one-shot capability display, active-token
+lookup, explicit revoke confirmation, and canonical revocation. Focused action,
+download-header, one-shot-secret, and destructive-confirmation proof passes.
+Live calendar-client imports, disposable token effects, manual assistive-
+technology review, and unchanged ASP.NET runtime proof remain open.
+
 ## Purpose
 
 This audit lists reusable Laravel Blade accessible frontend patterns that should
