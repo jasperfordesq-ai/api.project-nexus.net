@@ -5,6 +5,18 @@ Last reviewed: 2026-07-13
 Laravel source of truth: `C:\platforms\htdocs\staging\database\migrations` and
 `C:\platforms\htdocs\staging\app\Models`.
 
+## 2026-07-13 Event Recurrence V2 Schema Evidence
+
+Migration 140 adds the exact recurrence rule, revision, occurrence-ledger,
+definition-blueprint, and definition-application aggregates plus tenant-scoped
+event recurrence identity fields. Unique keys bind rule/root, recurrence identity,
+revision version/idempotency, blueprint version/idempotency, and one definition
+application per occurrence. PostgreSQL triggers validate parent/tenant recurrence
+identity and make all four evidence ledgers append-only. A blank database replayed
+the complete chain through migration 140, the migrated runtime suite passes 8/8,
+catalog inspection confirms all five recurrence triggers, and EF reports no pending
+model changes.
+
 ## 2026-07-13 Event Publication Lifecycle Schema Evidence
 
 Migration 139 adds the exact `content_moderation_queue` table with tenant/content

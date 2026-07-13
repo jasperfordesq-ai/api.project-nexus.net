@@ -101,6 +101,9 @@ public static class RateLimitingExtensions
     public const string EventRegistrationRestrictedPolicy = "event-registration-restricted";
     public const string EventRegistrationRetentionApplyPolicy = "event-registration-retention-apply";
     public const string EventPublicationPolicy = "events-publish";
+    public const string EventRecurrenceReadPolicy = "events-recurrence-read";
+    public const string EventRecurrencePreviewPolicy = "events-recurrence-preview";
+    public const string EventRecurrenceCommitPolicy = "events-recurrence-commit";
 
     public static IReadOnlyList<SafeguardingVettingRateLimitContract> SafeguardingVettingRateLimitContracts { get; } =
     [
@@ -221,6 +224,15 @@ public static class RateLimitingExtensions
             AddAuthenticatedFixedWindowPolicy(
                 options, EventPublicationPolicy, config, trustedProxies,
                 "RateLimiting:Events:PublishPermitLimit", 10);
+            AddAuthenticatedFixedWindowPolicy(
+                options, EventRecurrenceReadPolicy, config, trustedProxies,
+                "RateLimiting:Events:RecurrenceReadPermitLimit", 60);
+            AddAuthenticatedFixedWindowPolicy(
+                options, EventRecurrencePreviewPolicy, config, trustedProxies,
+                "RateLimiting:Events:RecurrencePreviewPermitLimit", 30);
+            AddAuthenticatedFixedWindowPolicy(
+                options, EventRecurrenceCommitPolicy, config, trustedProxies,
+                "RateLimiting:Events:RecurrenceCommitPermitLimit", 10);
 
             // Laravel uses an independent authenticated 30/minute bucket for
             // the live messaging restriction-status read.
@@ -856,6 +868,9 @@ public static class RateLimitingExtensions
                     EventRegistrationRestrictedPolicy => config.GetValue("RateLimiting:EventRegistration:RestrictedPermitLimit", 10),
                     EventRegistrationRetentionApplyPolicy => config.GetValue("RateLimiting:EventRegistration:RetentionApplyPermitLimit", 5),
                     EventPublicationPolicy => config.GetValue("RateLimiting:Events:PublishPermitLimit", 10),
+                    EventRecurrenceReadPolicy => config.GetValue("RateLimiting:Events:RecurrenceReadPermitLimit", 60),
+                    EventRecurrencePreviewPolicy => config.GetValue("RateLimiting:Events:RecurrencePreviewPermitLimit", 30),
+                    EventRecurrenceCommitPolicy => config.GetValue("RateLimiting:Events:RecurrenceCommitPermitLimit", 10),
                     _ => (int?)null
                 };
 

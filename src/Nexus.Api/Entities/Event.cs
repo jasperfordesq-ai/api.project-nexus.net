@@ -69,6 +69,30 @@ public class Event : ITenantEntity
     public long CalendarSequence { get; set; }
     public long AgendaVersion { get; set; }
     public long CheckinManifestVersion { get; set; }
+    public int? ParentEventId { get; set; }
+    public int? SeriesId { get; set; }
+    public string? OccurrenceKey { get; set; }
+    public bool IsRecurringTemplate { get; set; }
+    public string? RecurrenceEngine { get; set; }
+    public string? RecurrenceEngineVersion { get; set; }
+    public string? RecurrenceId { get; set; }
+    public bool IsRecurrenceException { get; set; }
+    public string? RecurrenceOverrideFields { get; set; }
+    public long RecurrenceOverrideVersion { get; set; }
+    public DateTime? RecurrenceOverrideUpdatedAt { get; set; }
+    public int? RecurrenceOverrideUpdatedBy { get; set; }
+    public string? OnlineLink { get; set; }
+    public string? VideoUrl { get; set; }
+    public bool? AccessibilityStepFree { get; set; }
+    public bool? AccessibilityToilet { get; set; }
+    public bool? AccessibilityHearingLoop { get; set; }
+    public bool? AccessibilityQuietSpace { get; set; }
+    public bool? AccessibilitySeating { get; set; }
+    public bool? AccessibilityParking { get; set; }
+    public string? AccessibilityParkingDetails { get; set; }
+    public string? AccessibilityTransitDetails { get; set; }
+    public string? AccessibilityAssistanceContact { get; set; }
+    public string? AccessibilityNotes { get; set; }
 
     /// <summary>
     /// Whether the event has been cancelled.

@@ -6,13 +6,15 @@ Canonical source: `C:\platforms\htdocs\staging` (read-only).
 
 ## Latest Verified Backend Slice
 
-Event publication lifecycle parity now includes submit-for-review, direct/admin
-publish, and manager lifecycle history at both API aliases. One durable moderation
-queue row is maintained atomically with immutable event history, and responses use
-the strict canonical V2 event projection. Migration 139 replays from an empty
-PostgreSQL database, model drift is clear, and the migrated-schema suite passes
-8/8. The current route inventory is 2,573/2,608 (98.7%); recurring-series
-propagation and the remaining 35 route shapes are still open.
+Event recurrence v2 parity now includes capability discovery, finite/never-series
+creation, signed effective revisions, immutable definition-blueprint capture, and
+an observable hourly rolling materializer. New occurrences inherit the latest
+effective revision and eligible blueprint exactly once inside tenant-safe bounded
+transactions; paused roots do not grow and Dublin DST gaps/folds fail closed.
+Migration 140 replays from an empty PostgreSQL database, model drift is clear, and
+the migrated-schema suite passes 8/8. The current route inventory is 2,579/2,608
+(98.9%); custom RRULE inputs, full series lifecycle propagation, and 29 route
+shapes remain open.
 
 ## Inventory Baseline
 

@@ -43,6 +43,44 @@ Before any production deployment or production-container action, stop and read
 deployment or touching production containers. Never modify the Laravel repo or
 Laravel Edition containers from this worktree.
 
+## 2026-07-13 ASP.NET Event Recurrence V2 Checkpoint (Locally Verified)
+
+ASP.NET now owns the canonical recurrence capability, finite/never-series create,
+effective revision preview/commit, and definition-blueprint history/preview/commit
+contracts at both `/api/events` and `/api/v2/events`. Recurrence identities and
+occurrence keys are stable, revision and blueprint commits are signed, stale-safe,
+and exactly idempotent, and every materialized or revised occurrence appends
+immutable evidence. Revision preview now fails closed for invalid timezones and
+the same Dublin DST gap/fold conflicts exercised by Laravel.
+
+The registered hourly rolling materializer uses tenant-isolated serializable
+transactions and advisory locks. It extends only active draft/published scheduled
+v2 never-series, persists bounded resume watermarks, inherits the latest effective
+revision, applies the latest eligible immutable definition blueprint only to new
+occurrences, and records one application ledger per occurrence. Portable agenda
+sessions/speakers/resources, free ticket definitions, registration settings and
+published forms/questions, published safety requirements, and active staff
+assignments are supported. Paused/terminal roots do not grow; manifest hashes use
+canonical JSON so PostgreSQL `jsonb` normalization cannot invalidate or conceal
+tampering.
+
+Migration 140 (`20260713192415_EventRecurrenceV2Parity`) replayed with the complete
+migration chain on blank PostgreSQL and installs recurrence identity validation plus
+append-only revision, occurrence, blueprint, and application guards. The focused
+migrated-database suite passes 8/8 with zero skipped, including rolling truncation/
+resume, future-only blueprint propagation, DST conflicts, tenant/token boundaries,
+and database immutability. Debug and Release API builds pass with zero errors;
+`has-pending-model-changes` is clean and the comparator fixture passes. The live
+inventory is 2,579/2,608 (98.9%) with 29 static misses.
+
+Current provisional global scores are **800/1000 implementation** and
+**675/1000 certification confidence**. The honest combined finish-line estimate is
+**68%**, up from the goal baseline of 42% and the previous published checkpoint of
+65%. Custom RRULE/exdate/rdate create input, full recurring-series lifecycle
+propagation, the 29 remaining route shapes, complete-suite/CI proof, unchanged
+canonical-frontend-on-ASP.NET browser proof, and live-provider evidence remain open.
+No production resource or frontend file was touched by this backend slice.
+
 ## 2026-07-13 ASP.NET Event Publication Lifecycle Checkpoint (Locally Verified)
 
 ASP.NET now owns the Laravel-compatible member event lifecycle at both `/api/events`

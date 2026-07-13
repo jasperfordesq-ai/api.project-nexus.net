@@ -108,7 +108,6 @@ public class V15MemberParityController : ControllerBase
     }
 
     [HttpPost("api/v2/events")]
-    [HttpPost("api/v2/events/recurring")]
     [HttpPost("api/v2/events/series")]
     public async Task<IActionResult> V2CreateEvent([FromBody] JsonElement body)
     {

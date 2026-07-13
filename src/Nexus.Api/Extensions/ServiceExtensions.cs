@@ -125,6 +125,11 @@ public static class ServiceExtensions
         services.AddScoped<EventLifecycleService>();
         services.AddScoped<EventLifecycleHistoryQueryService>();
         services.AddScoped<EventContractProjectionService>();
+        services.AddScoped<EventRecurrenceTokenService>();
+        services.AddScoped<EventRecurrenceService>();
+        services.AddScoped<EventRecurrenceDefinitionBlueprintService>();
+        services.AddScoped<EventRecurrenceDefinitionApplicationService>();
+        services.AddScoped<EventRecurrenceMaterializationService>();
         services.AddScoped<EventTemplateService>();
         services.AddSingleton<TwoFactorChallengeManager>();
         services.AddScoped<FileUploadService>();
@@ -369,6 +374,7 @@ public static class ServiceExtensions
         services.AddHostedService<Nexus.Api.Services.Scheduled.VolunteerWaitlistOfferExpiryJob>();
         services.AddHostedService<Nexus.Api.Services.Scheduled.VolunteerGuardianConsentExpiryJob>();
         services.AddHostedService<Nexus.Api.Services.Scheduled.VolunteerRecurringShiftGenerationJob>();
+        services.AddHostedService<Nexus.Api.Services.Scheduled.EventRecurrenceMaterializationJob>();
 
         // Meilisearch (semantic search — optional, falls back to ILIKE)
         services.Configure<MeilisearchOptions>(

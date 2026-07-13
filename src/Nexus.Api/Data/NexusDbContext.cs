@@ -49,6 +49,11 @@ public class NexusDbContext : DbContext
     public DbSet<EventStatusHistory> EventStatusHistories => Set<EventStatusHistory>();
     public DbSet<ContentModerationQueue> ContentModerationQueue => Set<ContentModerationQueue>();
     public DbSet<EventDomainOutbox> EventDomainOutbox => Set<EventDomainOutbox>();
+    public DbSet<EventRecurrenceRule> EventRecurrenceRules => Set<EventRecurrenceRule>();
+    public DbSet<EventRecurrenceRevision> EventRecurrenceRevisions => Set<EventRecurrenceRevision>();
+    public DbSet<EventRecurrenceOccurrenceLedger> EventRecurrenceOccurrenceLedger => Set<EventRecurrenceOccurrenceLedger>();
+    public DbSet<EventRecurrenceDefinitionBlueprint> EventRecurrenceDefinitionBlueprints => Set<EventRecurrenceDefinitionBlueprint>();
+    public DbSet<EventRecurrenceDefinitionApplication> EventRecurrenceDefinitionApplications => Set<EventRecurrenceDefinitionApplication>();
     public DbSet<EventNotificationDelivery> EventNotificationDeliveries => Set<EventNotificationDelivery>();
     public DbSet<EventTemplate> EventTemplates => Set<EventTemplate>();
     public DbSet<EventTemplateVersion> EventTemplateVersions => Set<EventTemplateVersion>();

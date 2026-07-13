@@ -54,6 +54,19 @@ public sealed class EventContractProjectionService(NexusDbContext db)
         var isAdmin = IsAdmin(viewer);
         var canManage = await CanManageAsync(tenantId, evt, viewer, group, isAdmin, ct);
         var moderationRequired = await ModerationRequiredAsync(tenantId, ct);
+        var recurrenceRootId = evt.IsRecurringTemplate ? evt.Id : evt.ParentEventId;
+        var recurrenceRule = recurrenceRootId is int rootId
+            ? await db.EventRecurrenceRules.IgnoreQueryFilters().AsNoTracking()
+                .SingleOrDefaultAsync(x => x.TenantId == tenantId && x.EventId == rootId, ct)
+            : null;
+        var recurrenceRows = recurrenceRootId is int recurrenceRoot
+            ? await db.Events.IgnoreQueryFilters().AsNoTracking()
+                .Where(x => x.TenantId == tenantId && x.ParentEventId == recurrenceRoot && x.RecurrenceId != null)
+                .OrderBy(x => x.StartsAt).ThenBy(x => x.Id)
+                .Select(x => new { x.Id, x.StartsAt })
+                .ToListAsync(ct)
+            : [];
+        var recurrenceOccurrences = recurrenceRows.Select(x => new { id = x.Id, start_at = Iso(x.StartsAt), date = x.StartsAt.ToUniversalTime().ToString("yyyy-MM-dd") }).ToArray();
         var isFull = evt.MaxAttendees is int limit && confirmed >= limit;
         var registrable = evt.PublicationStatus == "published" && evt.OperationalStatus == "scheduled" && evt.StartsAt > DateTime.UtcNow;
         var canParticipate = !canManage && registrable;
@@ -76,7 +89,18 @@ public sealed class EventContractProjectionService(NexusDbContext db)
                 actions = new { view_profile = organizer is not null, message = organizer is not null && organizer.Id != viewerId }
             },
             category = category is null ? null : new { id = (int?)category.Id, name = Clean(category.Name), slug = Clean(category.Slug), colour = (string?)null },
-            location = new { label = Clean(evt.Location), latitude = evt.Latitude, longitude = evt.Longitude, mode },
+            location = new
+            {
+                label = Clean(evt.Location), latitude = evt.Latitude, longitude = evt.Longitude, mode,
+                accessibility = new
+                {
+                    step_free = evt.AccessibilityStepFree, accessible_toilet = evt.AccessibilityToilet,
+                    hearing_loop = evt.AccessibilityHearingLoop, quiet_space = evt.AccessibilityQuietSpace,
+                    seating = evt.AccessibilitySeating, accessible_parking = evt.AccessibilityParking,
+                    parking_details = Clean(evt.AccessibilityParkingDetails), transit_details = Clean(evt.AccessibilityTransitDetails),
+                    assistance_contact = Clean(evt.AccessibilityAssistanceContact), notes = Clean(evt.AccessibilityNotes)
+                }
+            },
             schedule = new
             {
                 start_at = Iso(evt.StartsAt), end_at = Iso(evt.EndsAt), timezone = Clean(evt.Timezone) ?? "UTC",
@@ -112,7 +136,19 @@ public sealed class EventContractProjectionService(NexusDbContext db)
                 mode, reveal_state = mode == "in_person" ? "not_applicable" : "not_configured",
                 join_url = (string?)null, video_url = (string?)null, reveal_at = (string?)null, expires_at = (string?)null
             },
-            series = new { named = (object?)null, recurrence = (object?)null },
+            series = new
+            {
+                named = (object?)null,
+                recurrence = recurrenceRule is null ? null : new
+                {
+                    parent_event_id = evt.ParentEventId, root_event_id = recurrenceRootId ?? 0,
+                    is_template = evt.IsRecurringTemplate, frequency = recurrenceRule.Frequency,
+                    interval = recurrenceRule.Interval, rrule = recurrenceRule.RRule,
+                    recurrence_id = evt.RecurrenceId, engine = evt.RecurrenceEngine,
+                    engine_version = evt.RecurrenceEngineVersion,
+                    occurrence_count = recurrenceOccurrences.Length, occurrences = recurrenceOccurrences
+                }
+            },
             permissions = new
             {
                 edit = canManage && evt.PublicationStatus != "pending_review", cancel = canManage,

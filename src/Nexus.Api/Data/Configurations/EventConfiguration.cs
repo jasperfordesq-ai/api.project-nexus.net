@@ -33,6 +33,17 @@ public class EventConfiguration : TenantScopedConfiguration
             entity.Property(e => e.OperationalStatus).HasMaxLength(32);
             entity.Property(e => e.Timezone).HasMaxLength(64);
             entity.Property(e => e.FederatedVisibility).HasMaxLength(16);
+            entity.Property(e => e.OccurrenceKey).HasMaxLength(191);
+            entity.Property(e => e.RecurrenceEngine).HasMaxLength(32);
+            entity.Property(e => e.RecurrenceEngineVersion).HasMaxLength(32);
+            entity.Property(e => e.RecurrenceId).HasMaxLength(32);
+            entity.Property(e => e.RecurrenceOverrideFields).HasColumnType("jsonb");
+            entity.Property(e => e.OnlineLink).HasMaxLength(512);
+            entity.Property(e => e.VideoUrl).HasMaxLength(512);
+            entity.Property(e => e.AccessibilityParkingDetails).HasMaxLength(1000);
+            entity.Property(e => e.AccessibilityTransitDetails).HasMaxLength(1000);
+            entity.Property(e => e.AccessibilityAssistanceContact).HasMaxLength(500);
+            entity.Property(e => e.AccessibilityNotes).HasMaxLength(4000);
 
             // Indexes
             entity.HasIndex(e => e.TenantId);
@@ -42,6 +53,10 @@ public class EventConfiguration : TenantScopedConfiguration
             entity.HasIndex(e => e.IsCancelled);
             entity.HasIndex(e => new { e.TenantId, e.PublicationStatus, e.OperationalStatus, e.StartsAt, e.Id })
                 .HasDatabaseName("idx_events_tenant_lifecycle_start");
+            entity.HasIndex(e => new { e.TenantId, e.ParentEventId, e.RecurrenceId }).IsUnique()
+                .HasFilter("\"RecurrenceId\" IS NOT NULL").HasDatabaseName("uq_events_tenant_parent_recurrence_id");
+            entity.HasIndex(e => new { e.TenantId, e.ParentEventId, e.IsRecurrenceException })
+                .HasDatabaseName("idx_events_recurrence_exception");
 
             // Relationships
             entity.HasOne(e => e.Tenant)
@@ -58,6 +73,9 @@ public class EventConfiguration : TenantScopedConfiguration
                 .WithMany(g => g.Events)
                 .HasForeignKey(e => e.GroupId)
                 .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne<Event>().WithMany().HasForeignKey(e => e.ParentEventId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             // CRITICAL: Global query filter for tenant isolation
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
@@ -177,6 +195,100 @@ public class EventConfiguration : TenantScopedConfiguration
                 t.HasCheckConstraint("ck_content_moderation_type", "\"ContentType\" IN ('post','listing','event','comment','group')");
                 t.HasCheckConstraint("ck_content_moderation_status", "\"Status\" IN ('pending','approved','rejected','flagged')");
             });
+        });
+
+        modelBuilder.Entity<EventRecurrenceRule>(entity =>
+        {
+            entity.ToTable("event_recurrence_rules");
+            entity.Property(e => e.Frequency).HasMaxLength(16);
+            entity.Property(e => e.DaysOfWeek).HasMaxLength(64);
+            entity.Property(e => e.EndsType).HasMaxLength(16);
+            entity.Property(e => e.RRule).HasMaxLength(2048);
+            entity.Property(e => e.ExDates).HasColumnType("jsonb");
+            entity.Property(e => e.RDates).HasColumnType("jsonb");
+            entity.Property(e => e.RecurrenceEngine).HasMaxLength(32);
+            entity.Property(e => e.RecurrenceEngineVersion).HasMaxLength(32);
+            entity.Property(e => e.RuleHash).HasMaxLength(64);
+            entity.Property(e => e.MaterializationErrorCode).HasMaxLength(64);
+            entity.HasIndex(e => new { e.TenantId, e.EventId }).IsUnique().HasDatabaseName("uq_event_recurrence_rule_tenant_event");
+            entity.HasIndex(e => new { e.TenantId, e.RecurrenceEngine, e.EndsType, e.MaterializedThroughAt }).HasDatabaseName("idx_event_recurrence_materialization_due");
+            entity.HasOne<Event>().WithMany().HasForeignKey(e => e.EventId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<EventRecurrenceRevision>(entity =>
+        {
+            entity.ToTable("event_recurrence_revisions");
+            entity.Property(e => e.EffectiveFromRecurrenceId).HasMaxLength(32);
+            entity.Property(e => e.EffectiveUntilRecurrenceId).HasMaxLength(32);
+            entity.Property(e => e.CanonicalTimezone).HasMaxLength(64);
+            entity.Property(e => e.CanonicalRRule).HasMaxLength(2048);
+            entity.Property(e => e.RuleHash).HasMaxLength(64);
+            entity.Property(e => e.BlueprintPatch).HasColumnType("jsonb");
+            entity.Property(e => e.PatchHash).HasMaxLength(64);
+            entity.Property(e => e.MaterializedChecksumBefore).HasMaxLength(64);
+            entity.Property(e => e.MaterializedChecksumAfter).HasMaxLength(64);
+            entity.Property(e => e.IdempotencyHash).HasMaxLength(64);
+            entity.Property(e => e.RequestHash).HasMaxLength(64);
+            entity.Property(e => e.ImpactSummary).HasColumnType("jsonb");
+            entity.HasIndex(e => new { e.TenantId, e.RootEventId, e.RevisionVersion }).IsUnique().HasDatabaseName("uq_event_recur_revision_version");
+            entity.HasIndex(e => new { e.TenantId, e.RootEventId, e.IdempotencyHash }).IsUnique().HasDatabaseName("uq_event_recur_revision_idempotency");
+            entity.HasIndex(e => new { e.TenantId, e.RootEventId, e.EffectiveFromRecurrenceId, e.RevisionVersion }).HasDatabaseName("idx_event_recur_revision_effective");
+            entity.HasIndex(e => new { e.TenantId, e.ActorUserId, e.CreatedAt, e.Id }).HasDatabaseName("idx_event_recur_revision_actor");
+            entity.HasOne<Event>().WithMany().HasForeignKey(e => e.RootEventId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<EventRecurrenceOccurrenceLedger>(entity =>
+        {
+            entity.ToTable("event_recurrence_occurrence_ledger");
+            entity.Property(e => e.RecurrenceId).HasMaxLength(32);
+            entity.Property(e => e.OccurrenceKey).HasMaxLength(191);
+            entity.Property(e => e.State).HasMaxLength(32);
+            entity.Property(e => e.Metadata).HasColumnType("jsonb");
+            entity.HasIndex(e => new { e.TenantId, e.RootEventId, e.EventId, e.StateVersion }).IsUnique().HasDatabaseName("uq_event_recur_occ_ledger_event_version");
+            entity.HasIndex(e => new { e.TenantId, e.RootEventId, e.RecurrenceId, e.StateVersion }).IsUnique().HasDatabaseName("uq_event_recur_occ_ledger_identity_version");
+            entity.HasIndex(e => new { e.TenantId, e.RootEventId, e.RecurrenceId, e.Id }).HasDatabaseName("idx_event_recur_occ_ledger_effective");
+            entity.HasIndex(e => new { e.TenantId, e.RootEventId, e.State, e.CreatedAt, e.Id }).HasDatabaseName("idx_event_recur_occ_ledger_state");
+            entity.HasOne<Event>().WithMany().HasForeignKey(e => e.RootEventId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<Event>().WithMany().HasForeignKey(e => e.EventId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<EventRecurrenceDefinitionBlueprint>(entity =>
+        {
+            entity.ToTable("event_recurrence_definition_blueprints");
+            entity.Property(e => e.SourceRecurrenceId).HasMaxLength(32);
+            entity.Property(e => e.SourceOccurrenceKey).HasMaxLength(191);
+            entity.Property(e => e.EffectiveFromRecurrenceId).HasMaxLength(32);
+            entity.Property(e => e.SelectedSections).HasColumnType("jsonb");
+            entity.Property(e => e.Manifest).HasColumnType("jsonb");
+            entity.Property(e => e.ManifestHash).HasMaxLength(64);
+            entity.Property(e => e.IdempotencyHash).HasMaxLength(64);
+            entity.Property(e => e.RequestHash).HasMaxLength(64);
+            entity.HasIndex(e => new { e.TenantId, e.RootEventId, e.BlueprintVersion }).IsUnique().HasDatabaseName("uq_ev_rec_def_bp_version");
+            entity.HasIndex(e => new { e.TenantId, e.RootEventId, e.IdempotencyHash }).IsUnique().HasDatabaseName("uq_ev_rec_def_bp_idempotency");
+            entity.HasIndex(e => new { e.TenantId, e.RootEventId, e.EffectiveFromRecurrenceId, e.BlueprintVersion }).HasDatabaseName("idx_ev_rec_def_bp_effective");
+            entity.HasOne<Event>().WithMany().HasForeignKey(e => e.RootEventId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<Event>().WithMany().HasForeignKey(e => e.SourceEventId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<EventRecurrenceDefinitionApplication>(entity =>
+        {
+            entity.ToTable("event_recurrence_definition_applications");
+            entity.Property(e => e.RecurrenceId).HasMaxLength(32);
+            entity.Property(e => e.ManifestHash).HasMaxLength(64);
+            entity.Property(e => e.ApplicationHash).HasMaxLength(64);
+            entity.Property(e => e.AppliedCounts).HasColumnType("jsonb");
+            entity.Property(e => e.Status).HasMaxLength(16);
+            entity.HasIndex(e => new { e.TenantId, e.EventId }).IsUnique().HasDatabaseName("uq_ev_rec_def_app_event");
+            entity.HasIndex(e => new { e.TenantId, e.RootEventId, e.RecurrenceId }).IsUnique().HasDatabaseName("uq_ev_rec_def_app_recurrence");
+            entity.HasIndex(e => new { e.TenantId, e.RootEventId, e.BlueprintVersion, e.CreatedAt }).HasDatabaseName("idx_ev_rec_def_app_root");
+            entity.HasOne<Event>().WithMany().HasForeignKey(e => e.RootEventId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<Event>().WithMany().HasForeignKey(e => e.EventId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<EventRecurrenceDefinitionBlueprint>().WithMany().HasForeignKey(e => e.BlueprintId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
         });
 
         modelBuilder.Entity<EventNotificationDelivery>(entity =>
