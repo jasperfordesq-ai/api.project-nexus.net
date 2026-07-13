@@ -266,6 +266,42 @@ function eventOwnerId(event) {
   );
 }
 
+function fieldErrorsFrom(errors) {
+  return Object.fromEntries((Array.isArray(errors) ? errors : [])
+    .filter((error) => /^#[a-z][a-z0-9_-]*$/i.test(trimmed(error?.href)))
+    .map((error) => [trimmed(error.href).slice(1), trimmed(error.text)]));
+}
+
+const RECURRING_FORM_FIELDS = [
+  'title', 'description', 'category_id', 'location', 'start_time', 'end_time',
+  'is_online', 'online_link', 'allow_remote_attendance', 'video_url',
+  'accessibility_step_free', 'accessibility_toilet', 'accessibility_hearing_loop',
+  'accessibility_quiet_space', 'accessibility_seating', 'accessibility_parking',
+  'accessibility_parking_details', 'accessibility_transit_details',
+  'accessibility_assistance_contact', 'accessibility_notes', 'max_attendees', 'scope'
+];
+
+function recurringFormValues(body = {}) {
+  return Object.fromEntries(RECURRING_FORM_FIELDS
+    .filter((field) => Object.prototype.hasOwnProperty.call(body, field))
+    .map((field) => [field, body[field]]));
+}
+
+function consumeRecurringForm(req, eventId) {
+  const stored = req.session?.eventRecurringForm;
+  if (req.session?.eventRecurringForm) delete req.session.eventRecurringForm;
+  return stored && stored.eventId === eventId ? stored : {};
+}
+
+function storeRecurringForm(req, eventId, body, errors) {
+  if (!req.session) return;
+  req.session.eventRecurringForm = {
+    eventId,
+    values: recurringFormValues(body),
+    errors
+  };
+}
+
 function coordinate(value) {
   if (value === null || value === undefined || value === '') return null;
   const number = Number(value);
@@ -766,6 +802,22 @@ router.get('/:id(\\d+)/recurring-edit', asyncRoute(async (req, res) => {
   const categories = collectionFrom(categoriesResult).map(eventCategoryFrom).filter(Boolean);
   const timezone = trimmed(event.timezone) || 'UTC';
   const allDay = checked(event.all_day ?? event.allDay);
+  const stored = consumeRecurringForm(req, id);
+  const values = stored.values && typeof stored.values === 'object' ? stored.values : {};
+  const hasValue = (field) => Object.prototype.hasOwnProperty.call(values, field);
+  const valueOr = (field, fallback) => hasValue(field) ? values[field] : fallback;
+  const statusKey = {
+    invalid: 'validation_failed',
+    'no-changes': 'no_changes',
+    unavailable: 'unavailable',
+    'concrete-required': 'concrete_required',
+    'preview-failed': 'preview_failed',
+    'preview-invalid': 'preview_invalid',
+    'commit-failed': 'commit_failed'
+  }[trimmed(req.query.status)];
+  const errors = Array.isArray(stored.errors) && stored.errors.length
+    ? stored.errors
+    : (statusKey ? [{ text: res.locals.t(`govuk_alpha_events.recurring_edit.${statusKey}`), href: '#scope-single' }] : []);
 
   const occurrences = collectionFrom(event.series_occurrences ?? event.seriesOccurrences)
     .map((occurrence) => occurrenceFrom(occurrence, id))
@@ -776,34 +828,38 @@ router.get('/:id(\\d+)/recurring-edit', asyncRoute(async (req, res) => {
     activeNav: 'events',
     event: {
       id,
-      title: trimmed(event.title) || res.locals.t('govuk_alpha_events.recurring_edit.caption'),
-      description: trimmed(event.description, 8000),
-      location: trimmed(event.location),
-      categoryId: positiveInteger(event.category_id ?? event.categoryId),
-      startTime: dateTimeLocalInZone(event.start_time ?? event.startTime ?? event.starts_at ?? event.startsAt, timezone),
-      endTime: dateTimeLocalInZone(event.end_time ?? event.endTime ?? event.ends_at ?? event.endsAt, timezone, allDay),
+      caption: trimmed(event.title) || res.locals.t('govuk_alpha_events.recurring_edit.caption'),
+      title: valueOr('title', trimmed(event.title) || res.locals.t('govuk_alpha_events.recurring_edit.caption')),
+      description: valueOr('description', trimmed(event.description, 8000)),
+      location: valueOr('location', trimmed(event.location)),
+      categoryId: positiveInteger(valueOr('category_id', event.category_id ?? event.categoryId)),
+      startTime: valueOr('start_time', dateTimeLocalInZone(event.start_time ?? event.startTime ?? event.starts_at ?? event.startsAt, timezone)),
+      endTime: valueOr('end_time', dateTimeLocalInZone(event.end_time ?? event.endTime ?? event.ends_at ?? event.endsAt, timezone, allDay)),
       timezone,
       allDay,
-      isOnline: checked(event.is_online ?? event.isOnline),
-      onlineLink: trimmed(event.online_link ?? event.onlineLink),
-      allowRemoteAttendance: checked(event.allow_remote_attendance ?? event.allowRemoteAttendance),
-      videoUrl: trimmed(event.video_url ?? event.videoUrl),
-      maxAttendees: positiveInteger(event.max_attendees ?? event.maxAttendees),
+      isOnline: checked(valueOr('is_online', event.is_online ?? event.isOnline)),
+      onlineLink: valueOr('online_link', trimmed(event.online_link ?? event.onlineLink)),
+      allowRemoteAttendance: checked(valueOr('allow_remote_attendance', event.allow_remote_attendance ?? event.allowRemoteAttendance)),
+      videoUrl: valueOr('video_url', trimmed(event.video_url ?? event.videoUrl)),
+      maxAttendees: positiveInteger(valueOr('max_attendees', event.max_attendees ?? event.maxAttendees)),
       accessibility: {
-        stepFree: triState(event.accessibility_step_free),
-        toilet: triState(event.accessibility_toilet),
-        hearingLoop: triState(event.accessibility_hearing_loop),
-        quietSpace: triState(event.accessibility_quiet_space),
-        seating: triState(event.accessibility_seating),
-        parking: triState(event.accessibility_parking),
-        parkingDetails: trimmed(event.accessibility_parking_details),
-        transitDetails: trimmed(event.accessibility_transit_details),
-        assistanceContact: trimmed(event.accessibility_assistance_contact),
-        notes: trimmed(event.accessibility_notes)
+        stepFree: valueOr('accessibility_step_free', triState(event.accessibility_step_free)),
+        toilet: valueOr('accessibility_toilet', triState(event.accessibility_toilet)),
+        hearingLoop: valueOr('accessibility_hearing_loop', triState(event.accessibility_hearing_loop)),
+        quietSpace: valueOr('accessibility_quiet_space', triState(event.accessibility_quiet_space)),
+        seating: valueOr('accessibility_seating', triState(event.accessibility_seating)),
+        parking: valueOr('accessibility_parking', triState(event.accessibility_parking)),
+        parkingDetails: valueOr('accessibility_parking_details', trimmed(event.accessibility_parking_details)),
+        transitDetails: valueOr('accessibility_transit_details', trimmed(event.accessibility_transit_details)),
+        assistanceContact: valueOr('accessibility_assistance_contact', trimmed(event.accessibility_assistance_contact)),
+        notes: valueOr('accessibility_notes', trimmed(event.accessibility_notes))
       }
     },
     categories,
     supportsEffectiveRevisions: supportsEffectiveRevisions(capabilitiesResult),
+    selectedScope: trimmed(values.scope) === 'all' ? 'all' : 'single',
+    errors,
+    fieldErrors: fieldErrorsFrom(errors),
     occurrences,
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
@@ -2229,18 +2285,23 @@ router.post('/:id(\\d+)/recurring-edit', asyncRoute(async (req, res) => {
       throw error;
     }
   }
-  return runEventAction(
-    req,
-    res,
-    'PUT',
-    `/${id}/recurring`,
-    {
+  const token = tokenFrom(req);
+  if (!token) return redirectTo(res, loginRedirect());
+  try {
+    await callApi(token, 'PUT', `/${id}/recurring`, {
       ...eventScopedPayload(req.body),
       scope
-    },
-    eventRedirect(id, 'event-updated'),
-    eventRedirect(id, 'event-update-failed')
-  );
+    });
+    return redirectTo(res, eventRedirect(id, 'event-updated'));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    const errors = eventFormErrors(
+      error,
+      res.locals.t('govuk_alpha_events.recurring_edit.validation_failed')
+    );
+    storeRecurringForm(req, id, req.body, errors);
+    return redirectTo(res, eventPath(id, '/recurring-edit'));
+  }
 }));
 
 router.post('/:id(\\d+)/recurring-edit/commit', requireAuth, asyncRoute(async (req, res) => {

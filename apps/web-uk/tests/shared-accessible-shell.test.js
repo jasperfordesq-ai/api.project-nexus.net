@@ -21740,6 +21740,51 @@ describe('shared accessible frontend shell', () => {
     expect(recurringCommit.headers.location).toBe('/events/7?status=event-updated');
     expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', '/7/recurrence-revisions/commit', { patch: recurringPatch, preview_token: 'signed-revision' }, { headers: { 'Idempotency-Key': 'revision-commit-123' } });
 
+    api.callEventApi.mockRejectedValueOnce(new api.ApiError('Validation failed', 422, {
+      errors: [{ code: 'VALIDATION_ERROR', field: 'title', message: 'Enter a valid event title.' }]
+    }));
+    const recurringInvalid = await post('/events/7/recurring-edit', {
+      scope: 'single',
+      title: ' Preserve this title ',
+      description: ' Preserve this description ',
+      location: ' Preserve this place ',
+      start_time: '2026-08-01T10:30',
+      end_time: '2026-08-01T12:00',
+      category_id: '4',
+      max_attendees: '25'
+    });
+    expect(recurringInvalid.headers.location).toBe('/events/7/recurring-edit');
+    expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/7/recurring', expect.objectContaining({
+      scope: 'single',
+      title: 'Preserve this title',
+      description: 'Preserve this description',
+      location: 'Preserve this place',
+      category_id: 4,
+      max_attendees: 25
+    }));
+
+    api.callEventApi
+      .mockResolvedValueOnce({ data: {
+        id: 7,
+        user_id: 101,
+        title: 'Original title',
+        description: 'Original description',
+        start_time: '2026-08-01T10:30:00Z',
+        is_series: true
+      } })
+      .mockResolvedValueOnce({ data: { supports_effective_revisions: true } });
+    const recurringReplay = await agent
+      .get('/events/7/recurring-edit')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    expect(recurringReplay.status).toBe(200);
+    expect(recurringReplay.text).toContain('<span class="govuk-caption-l">Original title</span>');
+    expect(recurringReplay.text).toContain('href="#title"');
+    expect(recurringReplay.text).toContain('id="title-error"');
+    expect(recurringReplay.text).toContain('value=" Preserve this title "');
+    expect(recurringReplay.text).toContain('Preserve this description');
+    expect(recurringReplay.text).toContain('value=" Preserve this place "');
+    expect(recurringReplay.text).toContain('value="25"');
+
     const translateResponse = await post('/events/7/translate', {
       source_text: ' Hello neighbours ',
       source_locale: 'en',
