@@ -20109,6 +20109,7 @@ describe('shared accessible frontend shell', () => {
 
   it('renders the Laravel group image page for signed-in group admins', async () => {
     const api = require('../src/lib/api');
+    const t = createTranslator('en');
     api.getGroup.mockReset().mockResolvedValueOnce({
       data: {
         id: 42,
@@ -20134,6 +20135,7 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('Upload a group avatar and a cover image. Each upload replaces the current image.');
     expect(signed.text).toContain('Group avatar');
     expect(signed.text).toContain('A small square image shown next to the group name.');
+    expect(signed.text).toContain(t('govuk_alpha_groups.image.avatar_hint'));
     expect(signed.text).toContain('src="https://example.test/images/group-avatar.webp"');
     expect(signed.text).toContain('alt="Current group avatar"');
     expect(signed.text).toContain('id="avatar-image" name="image" type="file"');
@@ -20141,6 +20143,7 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('Save avatar');
     expect(signed.text).toContain('Cover image');
     expect(signed.text).toContain('A wide banner image shown at the top of the group page.');
+    expect(signed.text).toContain(t('govuk_alpha_groups.image.cover_hint'));
     expect(signed.text).toContain('src="https://example.test/images/group-cover.webp"');
     expect(signed.text).toContain('alt="Current group cover image"');
     expect(signed.text).toContain('id="cover-image" name="image" type="file"');
@@ -20151,6 +20154,21 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
     expect(api.getGroup).toHaveBeenCalledTimes(1);
     expect(api.getGroup).toHaveBeenCalledWith('test-token', '42');
+
+    api.getGroup.mockResolvedValueOnce({
+      data: {
+        id: 42,
+        name: 'Garden Helpers',
+        viewer_membership: { role: 'admin', status: 'active' }
+      }
+    });
+    const failed = await request(app)
+      .get('/groups/42/image?status=image-failed')
+      .set('Cookie', signedCookieHeader());
+
+    expect(failed.status).toBe(200);
+    expect(failed.text).toContain(t('govuk_alpha_groups.states.image-failed'));
+    expect(failed.text).not.toContain('href="#avatar-image"');
   });
 
   it('renders the Laravel group announcements page for signed-in group admins', async () => {

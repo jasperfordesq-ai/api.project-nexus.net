@@ -54,14 +54,8 @@ const GROUP_INVITE_ERROR_STATES = new Set([
   'invite-safeguarding-restricted',
   'invite-safeguarding-unavailable'
 ]);
-const GROUP_IMAGE_SUCCESS_MESSAGES = {
-  'avatar-updated': 'The group avatar has been updated.',
-  'cover-updated': 'The cover image has been updated.'
-};
-const GROUP_IMAGE_ERROR_MESSAGES = {
-  'image-missing': 'Choose an image to upload.',
-  'image-failed': 'The image could not be uploaded. Please try again.'
-};
+const GROUP_IMAGE_SUCCESS_STATES = new Set(['avatar-updated', 'cover-updated']);
+const GROUP_IMAGE_ERROR_STATES = new Set(['image-missing', 'image-failed']);
 const GROUP_ANNOUNCEMENT_SUCCESS_MESSAGES = {
   'ann-created': 'The announcement has been posted.',
   'ann-updated': 'The announcement has been updated.',
@@ -706,24 +700,24 @@ function notificationStatus(status, t = (key) => key) {
   return { statusBanner: null };
 }
 
-function imageStatus(status) {
+function imageStatus(status, t = (key) => key) {
   const value = trimmed(status);
-  if (Object.prototype.hasOwnProperty.call(GROUP_IMAGE_SUCCESS_MESSAGES, value)) {
+  if (GROUP_IMAGE_SUCCESS_STATES.has(value)) {
     return {
       statusBanner: {
         type: 'success',
-        title: 'Success',
-        message: GROUP_IMAGE_SUCCESS_MESSAGES[value]
+        title: t('govuk_alpha_groups.common.success_title'),
+        message: t(`govuk_alpha_groups.states.${value}`)
       }
     };
   }
 
-  if (Object.prototype.hasOwnProperty.call(GROUP_IMAGE_ERROR_MESSAGES, value)) {
+  if (GROUP_IMAGE_ERROR_STATES.has(value)) {
     return {
       statusBanner: {
         type: 'error',
-        title: 'There is a problem',
-        message: GROUP_IMAGE_ERROR_MESSAGES[value]
+        title: t('govuk_alpha_groups.common.error_title'),
+        message: t(`govuk_alpha_groups.states.${value}`)
       }
     };
   }
@@ -1218,7 +1212,7 @@ router.get('/:id(\\d+)/image', requireAuth, asyncRoute(async (req, res) => {
     title: 'Group images',
     activeNav: 'explore',
     group,
-    ...imageStatus(req.query.status)
+    ...imageStatus(req.query.status, res.locals.t)
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Group not found' }));
 
