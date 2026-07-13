@@ -20173,6 +20173,7 @@ describe('shared accessible frontend shell', () => {
 
   it('renders the Laravel group announcements page for signed-in group admins', async () => {
     const api = require('../src/lib/api');
+    const t = createTranslator('en');
     api.getGroup.mockReset().mockResolvedValueOnce({
       data: {
         id: 42,
@@ -20235,6 +20236,23 @@ describe('shared accessible frontend shell', () => {
     expect(api.getGroup).toHaveBeenCalledWith('test-token', '42');
     expect(api.callGroupApi).toHaveBeenCalledTimes(1);
     expect(api.callGroupApi).toHaveBeenCalledWith('test-token', 'GET', '/42/announcements');
+
+    api.getGroup.mockResolvedValueOnce({
+      data: {
+        id: 42,
+        name: 'Garden Helpers',
+        owner_id: 101,
+        my_membership: null
+      }
+    });
+    api.callGroupApi.mockResolvedValueOnce({ data: { items: [] } });
+    const failed = await request(app)
+      .get('/groups/42/announcements?status=ann-create-failed')
+      .set('Cookie', signedCookieHeader());
+
+    expect(failed.status).toBe(200);
+    expect(failed.text).toContain(t('govuk_alpha_groups.states.ann-create-failed'));
+    expect(failed.text).not.toContain('href="#ann-title"');
 
     api.getGroup.mockResolvedValueOnce({
       data: {

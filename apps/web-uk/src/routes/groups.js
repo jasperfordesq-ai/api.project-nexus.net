@@ -56,23 +56,13 @@ const GROUP_INVITE_ERROR_STATES = new Set([
 ]);
 const GROUP_IMAGE_SUCCESS_STATES = new Set(['avatar-updated', 'cover-updated']);
 const GROUP_IMAGE_ERROR_STATES = new Set(['image-missing', 'image-failed']);
-const GROUP_ANNOUNCEMENT_SUCCESS_MESSAGES = {
-  'ann-created': 'The announcement has been posted.',
-  'ann-updated': 'The announcement has been updated.',
-  'ann-deleted': 'The announcement has been deleted.',
-  'ann-pinned': 'The announcement has been pinned.',
-  'ann-unpinned': 'The announcement has been unpinned.'
-};
-const GROUP_ANNOUNCEMENT_ERROR_MESSAGES = {
-  'ann-create-failed': 'The announcement could not be posted. Please try again.',
-  'ann-update-failed': 'The announcement could not be updated. Please try again.',
-  'ann-delete-failed': 'The announcement could not be deleted. Please try again.',
-  'ann-pin-failed': 'The pin status could not be changed. Please try again.',
-  'ann-forbidden': 'You do not have permission to manage announcements for this group.',
-  'ann-not-found': 'That announcement could not be found.',
-  'ann-title-required': 'Enter a title for the announcement.',
-  'ann-content-required': 'Enter content for the announcement.'
-};
+const GROUP_ANNOUNCEMENT_SUCCESS_STATES = new Set([
+  'ann-created', 'ann-updated', 'ann-deleted', 'ann-pinned', 'ann-unpinned'
+]);
+const GROUP_ANNOUNCEMENT_ERROR_STATES = new Set([
+  'ann-create-failed', 'ann-update-failed', 'ann-delete-failed', 'ann-pin-failed',
+  'ann-forbidden', 'ann-not-found', 'ann-title-required', 'ann-content-required'
+]);
 const GROUP_DISCUSSION_SUCCESS_MESSAGES = {
   'discussion-created': 'Your discussion has been posted.',
   'reply-posted': 'Your reply has been posted.'
@@ -725,19 +715,19 @@ function imageStatus(status, t = (key) => key) {
   return { statusBanner: null };
 }
 
-function announcementStatus(status) {
+function announcementStatus(status, t = (key) => key) {
   const value = trimmed(status);
-  if (Object.prototype.hasOwnProperty.call(GROUP_ANNOUNCEMENT_SUCCESS_MESSAGES, value)) {
+  if (GROUP_ANNOUNCEMENT_SUCCESS_STATES.has(value)) {
     return {
       statusBanner: {
         type: 'success',
-        title: 'Success',
-        message: GROUP_ANNOUNCEMENT_SUCCESS_MESSAGES[value]
+        title: t('govuk_alpha_groups.common.success_title'),
+        message: t(`govuk_alpha_groups.states.${value}`)
       }
     };
   }
 
-  if (Object.prototype.hasOwnProperty.call(GROUP_ANNOUNCEMENT_ERROR_MESSAGES, value)) {
+  if (GROUP_ANNOUNCEMENT_ERROR_STATES.has(value)) {
     const href = value === 'ann-title-required'
       ? '#ann-title'
       : value === 'ann-content-required'
@@ -746,8 +736,8 @@ function announcementStatus(status) {
     return {
       statusBanner: {
         type: 'error',
-        title: 'There is a problem',
-        message: GROUP_ANNOUNCEMENT_ERROR_MESSAGES[value],
+        title: t('govuk_alpha_groups.common.error_title'),
+        message: t(`govuk_alpha_groups.states.${value}`),
         href
       }
     };
@@ -1237,7 +1227,7 @@ router.get('/:id(\\d+)/announcements', requireAuth, asyncRoute(async (req, res) 
     group,
     announcements,
     isAdmin: isGroupAdmin(group, profile),
-    ...announcementStatus(req.query.status)
+    ...announcementStatus(req.query.status, res.locals.t)
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Group not found' }));
 
@@ -1262,7 +1252,7 @@ router.get('/:id(\\d+)/announcements/:annId(\\d+)/edit', requireAuth, asyncRoute
     activeNav: 'explore',
     group,
     announcement,
-    ...announcementStatus(req.query.status)
+    ...announcementStatus(req.query.status, res.locals.t)
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Announcement not found' }));
 
