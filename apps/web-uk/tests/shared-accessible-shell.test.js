@@ -23296,6 +23296,8 @@ describe('shared accessible frontend shell', () => {
     expect(api.getEventRsvps).toHaveBeenCalledWith('test-token', '42');
     expect(detail.text).toContain('Bring a broken household item.');
     expect(detail.text).toContain('action="/events/42/rsvp"');
+    expect(detail.text).toContain('Share by email');
+    expect(detail.text).toContain('href="/events/42/translate"');
     expect(detail.text).not.toContain('action="/events/42/delete"');
   });
 

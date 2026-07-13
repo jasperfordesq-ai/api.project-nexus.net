@@ -278,6 +278,11 @@
 
       {% if isAuthenticated %}
         <p class="govuk-body govuk-!-margin-top-4">
+          <a class="govuk-link" href="mailto:?subject={{ event.title | urlencode }}&amp;body={{ urlFor('/events/' + (event.id | string)) | urlencode }}">{{ t("govuk_alpha.events.polish_events.share_email_label") }}</a>
+          <span aria-hidden="true"> · </span>
+          <a class="govuk-link" href="{{ urlFor('/events/' + (event.id | string) + '/translate') }}">{{ t("govuk_alpha_events.nav.translate_description") }}</a>
+        </p>
+        <p class="govuk-body govuk-!-margin-top-4">
           {% set reportType = "event" %}
           {% set reportId = event.id %}
           {% set returnTo = urlFor("/events/" + (event.id | string)) %}
