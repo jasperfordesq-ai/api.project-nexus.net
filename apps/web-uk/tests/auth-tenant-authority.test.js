@@ -92,7 +92,7 @@ describe('auth tenant authority', () => {
   });
 
   it('uses the mounted tenant for login even when a different tenant is posted', async () => {
-    api.login.mockResolvedValue({ access_token: 'access-token' });
+    api.login.mockResolvedValue({ access_token: 'access-token', refresh_token: 'refresh-token', expires_in: 900, refresh_expires_in: 604800 });
 
     const response = await request(app)
       .post('/acme/accessible/login')
@@ -108,7 +108,7 @@ describe('auth tenant authority', () => {
   });
 
   it('keeps accepting the posted tenant for flat login', async () => {
-    api.login.mockResolvedValue({ access_token: 'access-token' });
+    api.login.mockResolvedValue({ access_token: 'access-token', refresh_token: 'refresh-token', expires_in: 900, refresh_expires_in: 604800 });
 
     const response = await request(app)
       .post('/login')
@@ -221,7 +221,9 @@ describe('auth tenant authority', () => {
     api.verify2fa.mockResolvedValueOnce({
       success: true,
       access_token: 'verified-access-token',
-      refresh_token: 'verified-refresh-token'
+      refresh_token: 'verified-refresh-token',
+      expires_in: 900,
+      refresh_expires_in: 604800
     });
     const agent = request.agent(app);
 
@@ -252,7 +254,12 @@ describe('auth tenant authority', () => {
     expect(setAuthCookies).toHaveBeenCalledWith(
       expect.anything(),
       'verified-access-token',
-      'verified-refresh-token'
+      'verified-refresh-token',
+      {
+        expiresIn: 900,
+        refreshExpiresIn: 604800,
+        tenantSlug: 'acme'
+      }
     );
     expect((await agent.get('/__test/session')).body).toEqual({
       pending2faToken: null,

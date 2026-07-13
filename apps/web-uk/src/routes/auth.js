@@ -195,6 +195,20 @@ function clearPendingTwoFactor(req) {
   delete req.session.pending2faTenantSlug;
 }
 
+function rotatingSessionFrom(result) {
+  const accessToken = String(result?.access_token || '').trim();
+  const refreshToken = String(result?.refresh_token || '').trim();
+  const expiresIn = Number(result?.expires_in);
+  const refreshExpiresIn = Number(result?.refresh_expires_in);
+  if (!accessToken || !refreshToken || !Number.isFinite(expiresIn) || expiresIn <= 0
+      || !Number.isFinite(refreshExpiresIn) || refreshExpiresIn <= 0) {
+    throw new ApiError('Laravel did not return the complete rotating-session envelope', 502, {
+      errors: [{ code: 'AUTH_SESSION_RESPONSE_INVALID' }]
+    });
+  }
+  return { accessToken, refreshToken, expiresIn, refreshExpiresIn };
+}
+
 function pendingTwoFactorTenantSlug(req) {
   return String(req.session?.pending2faTenantSlug || tenantSlugForRequest(req)).trim();
 }
@@ -250,11 +264,12 @@ router.post('/login', asyncRoute(async (req, res) => {
       return redirectTo(res, '/login/two-factor');
     }
 
-    if (!result.access_token) {
-      throw new Error('No access token received');
-    }
-
-    setAuthCookies(res, result.access_token, result.refresh_token);
+    const session = rotatingSessionFrom(result);
+    setAuthCookies(res, session.accessToken, session.refreshToken, {
+      expiresIn: session.expiresIn,
+      refreshExpiresIn: session.refreshExpiresIn,
+      tenantSlug
+    });
 
     return redirectTo(res, '/dashboard');
   } catch (error) {
@@ -311,14 +326,19 @@ async function handleTwoFactorPost(req, res) {
   try {
     const result = await verify2fa(pendingToken, code.trim(), pendingTenantSlug);
 
-    if (result?.success !== true || !result?.access_token || !result?.refresh_token) {
+    if (result?.success !== true) {
       throw new ApiError('Laravel did not return the two-factor login token envelope', 502, {
         errors: [{ code: 'AUTH_2FA_RESPONSE_INVALID' }]
       });
     }
 
+    const session = rotatingSessionFrom(result);
     clearPendingTwoFactor(req);
-    setAuthCookies(res, result.access_token, result.refresh_token);
+    setAuthCookies(res, session.accessToken, session.refreshToken, {
+      expiresIn: session.expiresIn,
+      refreshExpiresIn: session.refreshExpiresIn,
+      tenantSlug: pendingTenantSlug
+    });
 
     return redirectTo(res, '/dashboard');
   } catch (error) {
@@ -679,18 +699,20 @@ router.post('/register', asyncRoute(async (req, res) => {
 
 router.post('/logout', asyncRoute(async (req, res) => {
   const token = req.signedCookies.token;
+  const refreshToken = req.signedCookies.refresh_token;
 
-  // Call API to revoke tokens server-side
-  if (token) {
+  // Revoke the tracked refresh family even when the short access token has
+  // already expired, matching Laravel's current accessible logout contract.
+  if (token || refreshToken) {
     try {
-      await logout(token);
+      await logout(token, refreshToken);
     } catch (error) {
       // Ignore errors - we still want to clear local cookies
       console.error('Logout API error:', error.message);
     }
 
     // Clear cached data for this user
-    invalidateUserCache(token);
+    if (token) invalidateUserCache(token);
   }
 
   // Destroy session to prevent session fixation

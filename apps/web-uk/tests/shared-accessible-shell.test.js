@@ -404,8 +404,11 @@ describe('shared accessible frontend shell', () => {
     const api = require('../src/lib/api');
     api.getTenantBootstrap.mockReset().mockResolvedValue(tenantBootstrap());
     api.refreshToken.mockReset().mockResolvedValue({
+      success: true,
       access_token: 'test-token',
-      refresh_token: 'test-refresh-token'
+      refresh_token: 'test-refresh-token',
+      expires_in: 900,
+      refresh_expires_in: 604800
     });
     api.submitContact.mockReset().mockResolvedValue({});
     api.submitSupportReport.mockReset().mockResolvedValue({
@@ -13427,7 +13430,7 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', signedAuthCookieHeader('expired-token', 'refresh-me'));
 
     expect(response.status).toBe(200);
-    expect(api.refreshToken).toHaveBeenCalledWith('refresh-me');
+    expect(api.refreshToken).toHaveBeenCalledWith('refresh-me', '');
     expect(api.getFeedItemV2).toHaveBeenNthCalledWith(1, 'expired-token', 'listing', 42);
     expect(api.getFeedItemV2).toHaveBeenNthCalledWith(2, 'test-token', 'listing', 42);
     expect(api.getComments).toHaveBeenCalledWith('test-token', { target_type: 'listing', target_id: 42 });

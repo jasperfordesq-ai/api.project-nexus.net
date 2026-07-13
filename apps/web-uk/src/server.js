@@ -86,7 +86,7 @@ const { localization } = require('./middleware/localization');
 const { tenantFeatureGate } = require('./middleware/tenant-feature-gates');
 const { tenantRouting } = require('./middleware/tenant-routing');
 const { requestTenantContext } = require('./middleware/request-tenant-context');
-const { requireAuth } = require('./middleware/auth');
+const { refreshAuthSession, requireAuth } = require('./middleware/auth');
 
 const app = express();
 
@@ -339,6 +339,7 @@ app.use(flash());
 // Laravel-first accessible locale negotiation. This must run after the session
 // middleware so an explicit language choice can persist across requests.
 app.use(localization);
+app.use(refreshAuthSession);
 
 // CSRF protection
 const {

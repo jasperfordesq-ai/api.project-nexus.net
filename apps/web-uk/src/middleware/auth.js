@@ -3,43 +3,68 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
-const { refreshToken: refreshTokenApi, validateToken, ApiError } = require('../lib/api');
+const { createHash } = require('node:crypto');
+const { refreshToken: refreshTokenApi, validateToken, ApiError, ApiOfflineError } = require('../lib/api');
 
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
-// Token refresh locks keyed by refresh token to prevent concurrent refresh attempts
-// without leaking one user's result to another
+// Token refresh locks keyed by a one-way digest prevent concurrent single-use
+// rotation without retaining refresh credentials in process-global keys.
 const refreshLocks = new Map();
 const AUTH_REQUIRED_LOGIN_PATH = '/login?status=auth-required';
+const DEFAULT_ACCESS_EXPIRES_IN = 15 * 60;
+const DEFAULT_REFRESH_EXPIRES_IN = 7 * 24 * 60 * 60;
+
+function positiveSeconds(value, fallback) {
+  const seconds = Number(value);
+  return Number.isFinite(seconds) && seconds > 0 ? Math.ceil(seconds) : fallback;
+}
+
+function sessionEnvelope(result) {
+  const value = result && typeof result === 'object' ? result : {};
+  const accessToken = String(value.access_token || '').trim();
+  const refreshToken = String(value.refresh_token || '').trim();
+  const expiresIn = positiveSeconds(value.expires_in, 0);
+  const refreshExpiresIn = positiveSeconds(value.refresh_expires_in, 0);
+  return accessToken && refreshToken && expiresIn && refreshExpiresIn
+    ? { accessToken, refreshToken, expiresIn, refreshExpiresIn }
+    : null;
+}
 
 // Helper to set auth cookies
-function setAuthCookies(res, accessToken, refreshTokenValue, tenantSlug = '') {
+function setAuthCookies(res, accessToken, refreshTokenValue, options = {}) {
+  const settings = options && typeof options === 'object' ? options : { tenantSlug: options };
+  const expiresIn = positiveSeconds(settings.expiresIn, DEFAULT_ACCESS_EXPIRES_IN);
+  const refreshExpiresIn = positiveSeconds(settings.refreshExpiresIn, DEFAULT_REFRESH_EXPIRES_IN);
   res.cookie('token', accessToken, {
+    path: '/',
     httpOnly: true,
     signed: true,
     secure: NODE_ENV === 'production',
     sameSite: 'lax',
-    maxAge: 60 * 60 * 1000 // 1 hour
+    maxAge: expiresIn * 1000
   });
 
   if (refreshTokenValue) {
     res.cookie('refresh_token', refreshTokenValue, {
+      path: '/',
       httpOnly: true,
       signed: true,
       secure: NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+      maxAge: refreshExpiresIn * 1000
     });
   }
 
-  const normalizedTenantSlug = String(tenantSlug || '').trim();
+  const normalizedTenantSlug = String(settings.tenantSlug || '').trim();
   if (normalizedTenantSlug) {
     res.cookie('tenant_slug', normalizedTenantSlug, {
+      path: '/',
       httpOnly: true,
       signed: true,
       secure: NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+      maxAge: refreshExpiresIn * 1000
     });
   }
 }
@@ -56,41 +81,108 @@ function redirectTo(res, pathname) {
   return res.redirect(urlFor(pathname));
 }
 
+function tenantSlugForRequest(req) {
+  return String(req.accessibleRouting?.tenantSlug || req.signedCookies?.tenant_slug || '').trim();
+}
+
+function jwtExpiresSoon(token, now = Date.now()) {
+  try {
+    const parts = String(token || '').split('.');
+    if (parts.length !== 3) return false;
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
+    const expiresAt = Number(payload.exp);
+    return Number.isFinite(expiresAt) && expiresAt <= Math.floor(now / 1000) + 5;
+  } catch {
+    return false;
+  }
+}
+
+function refreshLockKey(refreshTokenValue, tenantSlug = '') {
+  return createHash('sha256').update(`${tenantSlug}\0${refreshTokenValue}`).digest('hex');
+}
+
+function apiErrorCode(error) {
+  const first = Array.isArray(error?.data?.errors) ? error.data.errors[0] : null;
+  return String(first?.code || error?.data?.code || '').trim().toUpperCase();
+}
+
+function transientRefreshFailure(error) {
+  if (error instanceof ApiOfflineError) return true;
+  if (!(error instanceof ApiError)) return true;
+  if ([408, 429].includes(error.status) || error.status >= 500) return true;
+  return error.status === 409 && apiErrorCode(error) === 'AUTH_REFRESH_SUPERSEDED';
+}
+
+async function rotateSession(req, res, refreshTokenValue) {
+  const tenantSlug = tenantSlugForRequest(req);
+  const key = refreshLockKey(refreshTokenValue, tenantSlug);
+  if (!refreshLocks.has(key)) {
+    refreshLocks.set(key, refreshTokenApi(refreshTokenValue, tenantSlug).finally(() => {
+      refreshLocks.delete(key);
+    }));
+  }
+  const result = await refreshLocks.get(key);
+  const envelope = sessionEnvelope(result);
+  if (!envelope) {
+    throw new ApiError('Laravel returned an incomplete rotating-session envelope', 502, {
+      errors: [{ code: 'AUTH_REFRESH_RESPONSE_INVALID' }]
+    });
+  }
+
+  setAuthCookies(res, envelope.accessToken, envelope.refreshToken, {
+    expiresIn: envelope.expiresIn,
+    refreshExpiresIn: envelope.refreshExpiresIn,
+    tenantSlug: tenantSlugForRequest(req)
+  });
+  req.signedCookies.token = envelope.accessToken;
+  req.signedCookies.refresh_token = envelope.refreshToken;
+  req.token = envelope.accessToken;
+  req.refreshToken = envelope.refreshToken;
+}
+
+async function ensureAuthSession(req, res) {
+  if (req.authSessionChecked) return;
+  req.authSessionChecked = true;
+  const token = req.signedCookies?.token || '';
+  const refreshTokenValue = req.signedCookies?.refresh_token || '';
+  const needsRefresh = !token || jwtExpiresSoon(token);
+  if (!refreshTokenValue || !needsRefresh) {
+    if (token) req.token = token;
+    return;
+  }
+
+  try {
+    await rotateSession(req, res, refreshTokenValue);
+  } catch (error) {
+    // Do not present an expired access credential as authenticated during this
+    // request. Transient failures preserve browser cookies for a later retry;
+    // authoritative credential failures expire the complete local pair.
+    delete req.signedCookies.token;
+    delete req.token;
+    if (!transientRefreshFailure(error)) {
+      delete req.signedCookies.refresh_token;
+      clearAuthCookies(res);
+    }
+  }
+}
+
+async function refreshAuthSession(req, res, next) {
+  await ensureAuthSession(req, res);
+  next();
+}
+
 // Middleware to require authentication
 // Will attempt to refresh token if access token is missing but refresh token exists
 async function requireAuth(req, res, next) {
-  let token = req.signedCookies.token;
-  const refreshTokenValue = req.signedCookies.refresh_token;
-
-  // If no access token but have refresh token, try to refresh
-  if (!token && refreshTokenValue) {
-    const tokenKey = refreshTokenValue.substring(0, 40);
-    try {
-      // Use per-token lock to prevent concurrent refresh attempts
-      if (!refreshLocks.has(tokenKey)) {
-        refreshLocks.set(tokenKey, refreshTokenApi(refreshTokenValue).finally(() => {
-          refreshLocks.delete(tokenKey);
-        }));
-      }
-      const result = await refreshLocks.get(tokenKey);
-      if (result.access_token) {
-        token = result.access_token;
-        setAuthCookies(res, result.access_token, result.refresh_token);
-      }
-    } catch {
-      refreshLocks.delete(tokenKey);
-      // Refresh failed - clear cookies and redirect to login
-      clearAuthCookies(res);
-      return redirectTo(res, AUTH_REQUIRED_LOGIN_PATH);
-    }
-  }
+  await ensureAuthSession(req, res);
+  const token = req.token || req.signedCookies.token;
 
   if (!token) {
     return redirectTo(res, AUTH_REQUIRED_LOGIN_PATH);
   }
 
   req.token = token;
-  req.refreshToken = refreshTokenValue;
+  req.refreshToken = req.signedCookies.refresh_token || '';
   next();
 }
 
@@ -118,18 +210,30 @@ function withTokenRefresh(handler) {
 
         if (refreshTokenValue) {
           try {
-            const result = await refreshTokenApi(refreshTokenValue);
-            if (result.access_token) {
-              // Update cookies
-              setAuthCookies(res, result.access_token, result.refresh_token);
-              // Update request token
-              req.token = result.access_token;
-              // Retry the original handler
-              return handler(req, res, next);
+            const result = await refreshTokenApi(refreshTokenValue, tenantSlugForRequest(req));
+            const envelope = sessionEnvelope(result);
+            if (!envelope) {
+              throw new ApiError('Laravel returned an incomplete rotating-session envelope', 502, {
+                errors: [{ code: 'AUTH_REFRESH_RESPONSE_INVALID' }]
+              });
             }
-          } catch {
-            // Refresh failed - clear cookies and redirect
-            clearAuthCookies(res);
+
+            setAuthCookies(res, envelope.accessToken, envelope.refreshToken, {
+              expiresIn: envelope.expiresIn,
+              refreshExpiresIn: envelope.refreshExpiresIn,
+              tenantSlug: tenantSlugForRequest(req)
+            });
+            req.token = envelope.accessToken;
+            req.signedCookies.token = envelope.accessToken;
+            req.signedCookies.refresh_token = envelope.refreshToken;
+            return handler(req, res, next);
+          } catch (refreshError) {
+            delete req.token;
+            delete req.signedCookies.token;
+            if (!transientRefreshFailure(refreshError)) {
+              delete req.signedCookies.refresh_token;
+              clearAuthCookies(res);
+            }
             return redirectTo(res, AUTH_REQUIRED_LOGIN_PATH);
           }
         }
@@ -176,6 +280,9 @@ module.exports = {
   requireAdmin,
   redirectIfAuthenticated,
   withTokenRefresh,
+  refreshAuthSession,
   setAuthCookies,
-  clearAuthCookies
+  clearAuthCookies,
+  sessionEnvelope,
+  jwtExpiresSoon
 };

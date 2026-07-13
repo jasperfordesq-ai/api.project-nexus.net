@@ -112,7 +112,7 @@ commit as the implementation it describes.
 ## Audited Baseline
 
 The committed frontend starting baseline for the current checkout was refreshed
-through ASP.NET-repository commit `bd0793ff`, and the Laravel source baseline is
+through ASP.NET-repository commit `71aa473c`, and the Laravel source baseline is
 `903d03d3`. The first SHA names the
 repository snapshot containing Web UK; it does not make ASP.NET authoritative.
 Refresh the Laravel Blade/API source and Web UK implementation before relying on
@@ -126,7 +126,7 @@ these numbers after either source moves.
 | Missing Laravel routes | 6 | All are Event workflows |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 47/47 suites, 1,607/1,607 tests | Fresh green code gate |
+| Jest | 48/48 suites, 1,615/1,615 tests | Fresh green code gate |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
 | Blade marker check | 19/19 | Text-marker spotcheck, not visual certification |
 | Automated accessibility | Latest recorded 87/87 | Manual AT review remains open |
@@ -134,6 +134,24 @@ these numbers after either source moves.
 The generated route matrix was refreshed against the same route inventories
 and reports the counts above. It remains declaration evidence, not runtime or
 workflow certification.
+
+## Rotating Authentication Session Refresh
+
+Web UK now follows Laravel's current rotating-session contract across login,
+two-factor completion, refresh, and logout. A successful session requires the
+complete access/refresh pair plus Laravel-declared access and refresh lifetimes;
+cookies use those exact lifetimes. Optional-auth and protected pages refresh a
+missing or expiring JWT before route handling, preserve mounted tenant authority,
+and serialize single-use refreshes behind a SHA-256-derived in-process key.
+
+Temporary backend failures preserve the refresh cookie for a later attempt while
+withholding an expired access token from the current request. Authoritative
+credential failures clear the complete local pair. Logout submits the refresh
+token even after access expiry so Laravel can revoke the token family. Mocked
+contract coverage is green within the 48-suite, 1,615-test aggregate. No live login, refresh,
+logout, Laravel runtime smoke, database write, or migration was run for this
+slice because the ordinary Laravel database is the protected production-derived
+snapshot.
 
 ## Direct Marketplace Checkout Refresh
 

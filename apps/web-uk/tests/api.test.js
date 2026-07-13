@@ -388,13 +388,35 @@ describe('API Request Functions', () => {
         json: () => Promise.resolve({ access_token: 'fresh-token', refresh_token: 'fresh-refresh-token' })
       });
 
-      await api.refreshToken('expired-access-refresh-token');
+      await api.refreshToken('expired-access-refresh-token', 'hour-timebank');
 
       expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:5000/api/auth/refresh-token',
         expect.objectContaining({
           method: 'POST',
+          headers: expect.objectContaining({ 'X-Tenant-Slug': 'hour-timebank' }),
           body: JSON.stringify({ refresh_token: 'expired-access-refresh-token' })
+        })
+      );
+    });
+  });
+
+  describe('logout', () => {
+    it('submits the rotating refresh credential for family revocation', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: () => Promise.resolve({ success: true })
+      });
+
+      await api.logout('short-access-token', 'rotating-refresh-token');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/auth/logout',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({ Authorization: 'Bearer short-access-token' }),
+          body: JSON.stringify({ refresh_token: 'rotating-refresh-token' })
         })
       );
     });

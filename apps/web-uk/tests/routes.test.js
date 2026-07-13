@@ -292,8 +292,11 @@ describe('Public Routes', () => {
       const api = require('../src/lib/api');
       api.login.mockReset();
       api.login.mockResolvedValueOnce({
+        success: true,
         access_token: 'test-token',
-        refresh_token: 'refresh-token'
+        refresh_token: 'refresh-token',
+        expires_in: 900,
+        refresh_expires_in: 604800
       });
 
       const agent = request.agent(app);
@@ -335,7 +338,7 @@ describe('Public Routes', () => {
 
       expect(logoutResponse.status).toBe(302);
       expect(logoutResponse.headers.location).toBe('/acme/accessible/login');
-      expect(api.logout).toHaveBeenCalledWith('test-token');
+      expect(api.logout).toHaveBeenCalledWith('test-token', 'refresh-token');
     });
 
     it('keeps server-level cookie redirects inside the active shared accessible mount', async () => {

@@ -235,17 +235,19 @@ async function validateRegistrationInvite(tenantSlug, code) {
   });
 }
 
-async function refreshToken(refreshToken) {
+async function refreshToken(refreshToken, tenantSlug = '') {
   return request('/api/auth/refresh-token', {
     method: 'POST',
+    headers: tenantSlugHeaders(tenantSlug),
     body: JSON.stringify({ refresh_token: refreshToken })
   });
 }
 
-async function logout(token) {
+async function logout(token, refreshTokenValue = '') {
   return request('/api/auth/logout', {
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}` }
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: JSON.stringify(refreshTokenValue ? { refresh_token: refreshTokenValue } : {})
   });
 }
 
