@@ -83,6 +83,15 @@ column. The insert failed atomically and retained no disposable Event. Keep the
 runtime test unchanged and rerun it after the Laravel schema is caught up; do
 not mask this upstream schema state in Web UK.
 
+The profile-settings skill boundary now has fresh reversible evidence:
+`npm run smoke:laravel:profile-skills-mutation` passed `1/1` in `3.0` minutes.
+It created a uniquely named offering/requesting skill through Web UK, verified
+the Laravel row and rendered state, passed 320px structure/reflow/axe checks,
+removed it through Web UK, and proved final API absence with an independent
+cleanup fallback. Avatar upload is deliberately still uncertified because the
+current Laravel bearer API can null the profile field but cannot prove deletion
+of the stored file.
+
 ## Current Verified Checkpoint (2026-07-12)
 
 This is the current evidence boundary. Older dated slices below remain useful

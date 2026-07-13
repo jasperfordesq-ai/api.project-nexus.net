@@ -31,6 +31,7 @@
     "smoke:laravel:groups-mutation": "npm run build:css && node scripts/groups-mutation-local-server.js",
     "smoke:laravel:group-management-mutation": "npm run build:css && node scripts/group-management-mutation-local-server.js",
     "smoke:laravel:availability-mutation": "npm run build:css && node scripts/availability-mutation-local-server.js",
+    "smoke:laravel:profile-skills-mutation": "npm run build:css && node scripts/profile-skills-mutation-local-server.js",
     "smoke:laravel:volunteering-accessibility-mutation": "npm run build:css && node scripts/volunteering-accessibility-mutation-local-server.js",
     "smoke:laravel:jobs-mutation": "npm run build:css && node scripts/jobs-mutation-local-server.js",
     "smoke:laravel:courses-mutation": "npm run build:css && node scripts/courses-mutation-local-server.js",

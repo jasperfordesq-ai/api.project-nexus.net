@@ -28,6 +28,16 @@ that column. The failed insert retained no disposable Event. This supersedes
 the older `86.3`-second Event lifecycle pass for current-source certification;
 the test remains intact for rerun after the Laravel schema is caught up.
 
+Profile-settings skill mutation is now current-certified. A disposable
+default-English lifecycle passed `1/1` in `3.0` minutes: it added a uniquely
+named member skill through the rendered form, proved offering and requesting
+state in both Web UK and Laravel, passed one-main/H1/unique-ID/320px reflow/axe
+checks, removed the skill through the rendered action, and independently proved
+final API absence. The gate uses an API cleanup fallback and retained no skill
+row. Avatar upload remains open because Laravel exposes no bearer cleanup
+contract that also removes the stored file; nulling only `avatar_url` is not
+accepted as residue-free evidence.
+
 A manual in-app browser inspection of the default-English login page confirmed
 the skip link, banner/main/footer landmarks, labelled email and password
 controls, and a visible `3px` yellow focus outline on the skip link and email
