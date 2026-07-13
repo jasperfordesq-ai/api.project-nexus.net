@@ -123,6 +123,36 @@
     </ul>
   {% endif %}
 
+  {% if subGroups and subGroups.length > 0 %}
+    <h2 class="govuk-heading-l" id="group-subgroups">{{ t("govuk_alpha_groups.subgroups.heading") }}</h2>
+    <p class="govuk-body">{{ t("govuk_alpha_groups.subgroups.intro") }}</p>
+    <div class="nexus-alpha-card-list govuk-!-margin-bottom-6">
+      {% for subGroup in subGroups %}
+        <article class="nexus-alpha-card">
+          <div class="nexus-alpha-listing-row">
+            {% if subGroup.imageUrl %}
+              <div class="nexus-alpha-listing-row__media">
+                <img class="nexus-alpha-card-thumb" src="{{ subGroup.imageUrl }}" alt="" width="120" height="90" loading="lazy" decoding="async">
+              </div>
+            {% endif %}
+            <div class="nexus-alpha-listing-row__body">
+              <h3 class="govuk-heading-m govuk-!-margin-bottom-1">
+                <a class="govuk-link" href="{{ urlFor('/groups/' + (subGroup.id | string)) }}">{{ subGroup.name }}</a>
+              </h3>
+              <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">
+                <strong class="govuk-tag {{ 'govuk-tag--grey' if subGroup.isPrivate else 'govuk-tag--green' }}">{{ t("govuk_alpha_groups.subgroups.visibility_private") if subGroup.isPrivate else t("govuk_alpha_groups.subgroups.visibility_public") }}</strong>
+                <span aria-hidden="true"> | </span>
+                {{ tc("govuk_alpha_groups.subgroups.members_count", subGroup.memberCount, { count: subGroup.memberCount }) }}
+              </p>
+              {% if subGroup.description %}<p class="govuk-body">{{ subGroup.description | truncate(160) }}</p>{% endif %}
+              <a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor('/groups/' + (subGroup.id | string)) }}">{{ t("govuk_alpha_groups.subgroups.view_link") }}</a>
+            </div>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% endif %}
+
   <h2 class="govuk-heading-l" id="group-events">{{ t("groups_t1.events_title") }}</h2>
   <p class="govuk-body">{{ t("groups_t1.events_description") }}</p>
   {% if not groupCanParticipate and isPrivate %}

@@ -24248,6 +24248,47 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('Blade skips announcements without a title.');
   });
 
+  it('renders Blade subgroups from the Laravel group detail contract', async () => {
+    const api = require('../src/lib/api');
+    api.getGroup.mockResolvedValueOnce({
+      data: {
+        id: 484,
+        name: 'Dunmanway',
+        visibility: 'public',
+        viewer_membership: { status: 'active', role: 'member' },
+        sub_groups: [
+          {
+            id: 901,
+            name: 'Repair circle',
+            description: 'A practical subgroup for neighbours who repair household items together.',
+            image_url: '/uploads/groups/repair-circle.png',
+            visibility: 'private',
+            member_count: 4
+          },
+          { id: 0, name: 'Invalid subgroup', visibility: 'public' },
+          { id: 902, name: '', visibility: 'public' }
+        ]
+      }
+    });
+    api.getGroupMembers.mockResolvedValueOnce({ data: [] });
+    api.getEvents.mockResolvedValueOnce({ data: [] });
+    api.callGroupApi.mockResolvedValueOnce({ data: [] });
+
+    const response = await request(app)
+      .get('/acme/accessible/groups/484')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('id="group-subgroups"');
+    expect(response.text).toContain('Subgroups');
+    expect(response.text).toContain('Repair circle');
+    expect(response.text).toContain('>Private</strong>');
+    expect(response.text).toContain('4 members');
+    expect(response.text).toContain(`src="${getApiBaseUrl()}/uploads/groups/repair-circle.png" alt=""`);
+    expect(response.text).toContain('href="/acme/accessible/groups/901"');
+    expect(response.text).not.toContain('Invalid subgroup');
+  });
+
   it('keeps a public group detail available when Laravel denies its member roster', async () => {
     const api = require('../src/lib/api');
 

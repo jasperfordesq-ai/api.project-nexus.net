@@ -25,6 +25,7 @@ const {
 const { requireAuth } = require('../middleware/auth');
 const { asyncRoute } = require('../lib/routeHelpers');
 const { audit } = require('../lib/auditLogger');
+const { resolveBackendAssetUrl } = require('../lib/accessible-shell');
 const { getRequestIntlLocale } = require('../lib/request-intl-locale');
 const { getRequestProfile } = require('../lib/request-profile');
 
@@ -1008,6 +1009,17 @@ router.get('/:id(\\d+)', requireAuth, asyncRoute(async (req, res) => {
     .filter((announcement) => trimmed(announcement?.title) !== '')
     .map(normalizeAnnouncement)
     .filter((announcement) => announcement.isPinned);
+  const subGroups = (Array.isArray(group.sub_groups) ? group.sub_groups : [])
+    .map((subGroup) => ({
+      ...subGroup,
+      id: positiveInteger(subGroup?.id),
+      name: trimmed(subGroup?.name),
+      description: trimmed(subGroup?.description),
+      imageUrl: resolveBackendAssetUrl(subGroup?.image_url || subGroup?.imageUrl),
+      memberCount: Number(subGroup?.member_count ?? subGroup?.memberCount ?? 0) || 0,
+      isPrivate: trimmed(subGroup?.visibility || 'public') !== 'public'
+    }))
+    .filter((subGroup) => subGroup.id !== null && subGroup.name !== '');
   const myMembership = group.myMembership || group.my_membership;
   const membershipStatus = trimmed(myMembership?.status || myMembership?.state);
   const isAdmin = isGroupAdmin(group);
@@ -1021,6 +1033,7 @@ router.get('/:id(\\d+)', requireAuth, asyncRoute(async (req, res) => {
     members,
     events,
     pinnedAnnouncements,
+    subGroups,
     myMembership,
     isAdmin,
     isMember,
