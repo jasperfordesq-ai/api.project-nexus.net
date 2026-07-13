@@ -34,7 +34,10 @@ if (! is_dir($outputDirectory) && ! mkdir($outputDirectory, 0777, true) && ! is_
 
 foreach (SUPPORTED_LOCALES as $locale) {
     $localeDirectory = rtrim($laravelRoot, '/\\') . '/lang/' . $locale;
-    $files = glob($localeDirectory . '/govuk_alpha*.php');
+    $files = array_merge(
+        glob($localeDirectory . '/govuk_alpha*.php') ?: [],
+        glob($localeDirectory . '/event_offline_checkin.php') ?: [],
+    );
     if ($files === false || $files === []) {
         fwrite(STDERR, "No accessible locale files found for {$locale}.\n");
         exit(1);
@@ -58,7 +61,7 @@ foreach (SUPPORTED_LOCALES as $locale) {
         '_meta' => [
             'schema' => 1,
             'locale' => $locale,
-            'source' => "lang/{$locale}/govuk_alpha*.php",
+            'source' => "lang/{$locale}/{govuk_alpha*,event_offline_checkin}.php",
         ],
         'namespaces' => $namespaces,
     ];
@@ -76,4 +79,3 @@ foreach (SUPPORTED_LOCALES as $locale) {
 
     fwrite(STDOUT, "{$locale}: " . count($namespaces) . " namespaces -> {$outputPath}\n");
 }
-

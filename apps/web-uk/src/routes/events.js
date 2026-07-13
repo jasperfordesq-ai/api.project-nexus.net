@@ -384,6 +384,47 @@ function eventPerson(row = {}) {
   };
 }
 
+function offlineCredentialFrom(result) {
+  const data = dataFrom(result);
+  const value = data?.credential;
+  if (!value || typeof value !== 'object') return null;
+  const id = positiveInteger(value.id);
+  const version = positiveInteger(value.version ?? value.credential_version);
+  return {
+    id,
+    version,
+    status: selectedValue(value.status, ['active', 'rotated', 'revoked', 'expired'], 'expired'),
+    expiresAt: trimmed(value.expires_at ?? value.expiresAt),
+    revokedAt: trimmed(value.revoked_at ?? value.revokedAt),
+    token: trimmed(value.token, 4096),
+    tokenOneShot: value.token_one_shot === true
+  };
+}
+
+async function renderOfflineCredential(req, res, id, options = {}) {
+  const token = tokenFrom(req);
+  const [eventResult, credentialResult] = await Promise.all([
+    callApi(token, 'GET', `/${id}`),
+    options.credentialResult === undefined
+      ? callApi(token, 'GET', `/${id}/offline-checkin/credentials/me`)
+      : Promise.resolve(options.credentialResult)
+  ]);
+  const event = eventFrom(eventResult);
+  const credential = offlineCredentialFrom(credentialResult);
+  res.set('Cache-Control', 'private, no-store');
+  res.set('Pragma', 'no-cache');
+  return res.render('events/check-in-credential', {
+    title: res.locals.t('event_offline_checkin.attendee.title'),
+    activeNav: 'events',
+    event: { id, title: trimmed(event.title) },
+    credential,
+    oneShotToken: credential?.tokenOneShot && credential.token.startsWith('nqx2_') ? credential.token : '',
+    status: options.status || trimmed(req.query.status),
+    idempotencyKey: randomUUID(),
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}
+
 function eventRelationship(result) {
   const row = dataFrom(result);
   if (!row || typeof row !== 'object') return null;
@@ -789,6 +830,84 @@ router.post('/:id(\\d+)/waitlist/leave', asyncRoute(async (req, res) => {
     eventRedirect(id, 'waitlist-left'),
     eventRedirect(id, 'waitlist-leave-failed')
   );
+}));
+
+router.get('/:id(\\d+)/check-in/credential', requireAuth, asyncRoute(async (req, res) => {
+  return renderOfflineCredential(req, res, Number(req.params.id));
+}, { notFoundTitle: 'Event not found' }));
+
+router.post('/:id(\\d+)/check-in/credential/issue', requireAuth, asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const idempotencyKey = trimmed(req.body.idempotency_key, 191);
+  if (!checked(req.body.confirmation) || idempotencyKey.length < 8) {
+    return redirectTo(res, eventPath(id, '/check-in/credential?status=invalid'));
+  }
+  try {
+    const result = await callApi(tokenFrom(req), 'POST', `/${id}/offline-checkin/credentials`, {
+      idempotency_key: idempotencyKey
+    });
+    const credential = offlineCredentialFrom(result);
+    return renderOfflineCredential(req, res, id, {
+      credentialResult: result,
+      status: credential?.tokenOneShot ? 'issued' : 'already-active'
+    });
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    if (error instanceof ApiError && [400, 403, 404, 409, 422].includes(error.status)) {
+      return redirectTo(res, eventPath(id, '/check-in/credential?status=failed'));
+    }
+    throw error;
+  }
+}));
+
+router.post('/:id(\\d+)/check-in/credential/rotate', requireAuth, asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const credentialId = positiveInteger(req.body.credential_id);
+  const expectedVersion = positiveInteger(req.body.expected_version);
+  const idempotencyKey = trimmed(req.body.idempotency_key, 191);
+  if (!checked(req.body.confirmation) || credentialId === null || expectedVersion === null || idempotencyKey.length < 8) {
+    return redirectTo(res, eventPath(id, '/check-in/credential?status=invalid'));
+  }
+  try {
+    const result = await callApi(tokenFrom(req), 'POST', `/${id}/offline-checkin/credentials/${credentialId}/rotate`, {
+      expected_version: expectedVersion,
+      idempotency_key: idempotencyKey
+    });
+    const credential = offlineCredentialFrom(result);
+    return renderOfflineCredential(req, res, id, {
+      credentialResult: result,
+      status: credential?.tokenOneShot ? 'replaced' : 'already-active'
+    });
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    if (error instanceof ApiError && [400, 403, 404, 409, 422].includes(error.status)) {
+      return redirectTo(res, eventPath(id, '/check-in/credential?status=failed'));
+    }
+    throw error;
+  }
+}));
+
+router.post('/:id(\\d+)/check-in/credential/revoke', requireAuth, asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const credentialId = positiveInteger(req.body.credential_id);
+  const expectedVersion = positiveInteger(req.body.expected_version);
+  const reason = trimmed(req.body.reason, 501);
+  if (!checked(req.body.confirmation) || credentialId === null || expectedVersion === null || !reason || reason.length > 500) {
+    return redirectTo(res, eventPath(id, '/check-in/credential?status=invalid'));
+  }
+  try {
+    await callApi(tokenFrom(req), 'POST', `/${id}/offline-checkin/credentials/${credentialId}/revoke`, {
+      expected_version: expectedVersion,
+      reason
+    });
+    return redirectTo(res, eventPath(id, '/check-in/credential?status=revoked'));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    if (error instanceof ApiError && [400, 403, 404, 409, 422].includes(error.status)) {
+      return redirectTo(res, eventPath(id, '/check-in/credential?status=failed'));
+    }
+    throw error;
+  }
 }));
 
 router.post('/:id(\\d+)/waitlist/accept', asyncRoute(async (req, res) => {

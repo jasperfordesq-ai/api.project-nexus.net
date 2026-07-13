@@ -21927,6 +21927,74 @@ describe('shared accessible frontend shell', () => {
     });
   });
 
+  it('renders and issues Laravel signed Event check-in credentials without caching the secret', async () => {
+    const api = require('../src/lib/api');
+    api.callEventApi
+      .mockResolvedValueOnce({ data: { id: 42, title: 'Community garden day' } })
+      .mockResolvedValueOnce({ data: { credential: null } });
+
+    const page = await request(app)
+      .get('/events/42/check-in/credential')
+      .set('Cookie', signedCookieHeader());
+
+    expect(page.status).toBe(200);
+    expect(page.headers['cache-control']).toBe('private, no-store');
+    expect(page.text).toContain('Your event check-in code');
+    expect(page.text).toContain('action="/events/42/check-in/credential/issue"');
+    expect(api.callEventApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/42/offline-checkin/credentials/me');
+
+    const agent = request.agent(app);
+    const shell = await agent.get('/contact').set('Cookie', signedCookieHeader());
+    const csrf = shell.text.match(/name="_csrf" value="([^"]+)"/)[1];
+    api.callEventApi
+      .mockResolvedValueOnce({ data: { credential: { id: 71, version: 1, status: 'active', expires_at: '2026-08-01T10:00:00Z', token: 'nqx2_signed-test-code', token_one_shot: true } } })
+      .mockResolvedValueOnce({ data: { id: 42, title: 'Community garden day' } });
+
+    const issued = await agent
+      .post('/events/42/check-in/credential/issue')
+      .set('Cookie', signedCookieHeader())
+      .type('form')
+      .send({ _csrf: csrf, confirmation: '1', idempotency_key: 'credential-issue-key' });
+
+    expect(issued.status).toBe(200);
+    expect(issued.headers['cache-control']).toBe('private, no-store');
+    expect(issued.text).toContain('nqx2_signed-test-code');
+    expect(issued.text).toContain('the complete code is shown only when it is created or replaced');
+    expect(api.callEventApi).toHaveBeenNthCalledWith(3, 'test-token', 'POST', '/42/offline-checkin/credentials', {
+      idempotency_key: 'credential-issue-key'
+    });
+  });
+
+  it('rotates and revokes Laravel signed Event check-in credentials with versions and reasons', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const shell = await agent.get('/contact').set('Cookie', signedCookieHeader());
+    const csrf = shell.text.match(/name="_csrf" value="([^"]+)"/)[1];
+    api.callEventApi
+      .mockResolvedValueOnce({ data: { credential: { id: 72, version: 3, status: 'active', token: 'nqx2_rotated-code', token_one_shot: true } } })
+      .mockResolvedValueOnce({ data: { id: 42, title: 'Community garden day' } });
+
+    const rotated = await agent.post('/events/42/check-in/credential/rotate').set('Cookie', signedCookieHeader()).type('form').send({
+      _csrf: csrf, credential_id: '71', expected_version: '2', confirmation: '1', idempotency_key: 'credential-rotate-key'
+    });
+    expect(rotated.status).toBe(200);
+    expect(rotated.text).toContain('nqx2_rotated-code');
+    expect(api.callEventApi).toHaveBeenNthCalledWith(1, 'test-token', 'POST', '/42/offline-checkin/credentials/71/rotate', {
+      expected_version: 2,
+      idempotency_key: 'credential-rotate-key'
+    });
+
+    api.callEventApi.mockResolvedValueOnce({ data: { credential: { id: 72, version: 4, status: 'revoked' } } });
+    const revoked = await agent.post('/events/42/check-in/credential/revoke').set('Cookie', signedCookieHeader()).type('form').send({
+      _csrf: csrf, credential_id: '72', expected_version: '3', reason: 'Phone was lost', confirmation: '1'
+    });
+    expect(revoked.headers.location).toBe('/events/42/check-in/credential?status=revoked');
+    expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/offline-checkin/credentials/72/revoke', {
+      expected_version: 3,
+      reason: 'Phone was lost'
+    });
+  });
+
   it('rejects event cancellation without a reason before calling Laravel', async () => {
     const api = require('../src/lib/api');
     const agent = request.agent(app);
