@@ -606,6 +606,13 @@ async function getListingCategories(token) {
   });
 }
 
+async function getPopularListingTags(token, limit = 10) {
+  const params = new URLSearchParams({ limit: String(limit) });
+  return request(`/api/v2/listings/tags/popular?${params.toString()}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
 async function setListingSkillTags(token, id, tags) {
   return request(`/api/v2/listings/${encodeURIComponent(id)}/tags`, {
     method: 'PUT',
@@ -3291,6 +3298,7 @@ module.exports = {
   updateListing,
   deleteListing,
   getListingCategories,
+  getPopularListingTags,
   setListingSkillTags,
   uploadListingImage,
   callListingApi,

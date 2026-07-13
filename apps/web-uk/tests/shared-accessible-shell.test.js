@@ -111,6 +111,7 @@ jest.mock('../src/lib/api', () => ({
   updateListing: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   deleteListing: jest.fn().mockResolvedValue({}),
   getListingCategories: jest.fn().mockResolvedValue({ data: [] }),
+  getPopularListingTags: jest.fn().mockResolvedValue({ data: [] }),
   setListingSkillTags: jest.fn().mockResolvedValue({ data: { listing_id: 42, tags: [] } }),
   uploadListingImage: jest.fn().mockResolvedValue({ data: { image_url: '/uploads/listings/cover.webp' } }),
   getConnections: jest.fn().mockResolvedValue({ data: [] }),
@@ -458,6 +459,7 @@ describe('shared accessible frontend shell', () => {
     api.updateListing.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.deleteListing.mockReset().mockResolvedValue({});
     api.getListingCategories.mockReset().mockResolvedValue({ data: [] });
+    api.getPopularListingTags.mockReset().mockResolvedValue({ data: [] });
     api.setListingSkillTags.mockReset().mockResolvedValue({ data: { listing_id: 42, tags: [] } });
     api.uploadListingImage.mockReset().mockResolvedValue({ data: { image_url: '/uploads/listings/cover.webp' } });
     api.getConnections.mockReset().mockResolvedValue({ data: [] });
@@ -9918,6 +9920,13 @@ describe('shared accessible frontend shell', () => {
       ]
     });
     api.getListingCategories.mockResolvedValueOnce({ data: [{ id: 3, name: 'Gardening' }] });
+    api.getPopularListingTags.mockResolvedValueOnce({
+      data: [
+        { tag: 'repair', count: 12 },
+        { tag: 'garden', count: 9 },
+        { tag: 'community', count: 7 }
+      ]
+    });
 
     const unsigned = await request(app).get('/search/advanced?q=garden');
     const signed = await request(app)
@@ -9938,6 +9947,7 @@ describe('shared accessible frontend shell', () => {
     });
     expect(api.getSavedSearches).toHaveBeenCalledWith('test-token');
     expect(api.getListingCategories).toHaveBeenCalledWith('test-token');
+    expect(api.getPopularListingTags).toHaveBeenCalledWith('test-token', 10);
     expect(signed.text).toContain(t('govuk_alpha_search.saved.saved_banner'));
     expect(signed.text).toContain(t('govuk_alpha_search.advanced.caption', { community: 'Project NEXUS Accessible' }));
     expect(signed.text).toContain(t('govuk_alpha_search.advanced.title'));
@@ -9952,6 +9962,9 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain(t('govuk_alpha_search.filters.sort_newest'));
     expect(signed.text).toContain(t('govuk_alpha_search.filters.skills'));
     expect(signed.text).toContain(t('govuk_alpha_search.filters.active_skills'));
+    expect(signed.text).toContain(t('govuk_alpha_search.filters.popular'));
+    expect(signed.text).toContain(t('govuk_alpha_search.filters.popular_add', { tag: 'garden' }));
+    expect(signed.text).toContain('href="/search/advanced?q=garden&amp;type=listings&amp;category_id=3&amp;sort=newest&amp;skills=repair%2Cteaching%2Cgarden&amp;date_from=2026-07-01&amp;location=Town"');
     expect(signed.text).toContain('repair');
     expect(signed.text).toContain('teaching');
     expect(signed.text).toContain(t('govuk_alpha_search.saved.save_this'));

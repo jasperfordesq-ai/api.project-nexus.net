@@ -123,6 +123,13 @@
                 {% endfor %}
               </ul>
             {% endif %}
+
+            {% if popularTags.length %}
+              <p class="govuk-body-s govuk-!-margin-top-2 govuk-!-margin-bottom-1">{{ t("govuk_alpha_search.filters.popular") }}</p>
+              <ul class="govuk-list nexus-alpha-inline-list govuk-!-margin-bottom-0">
+                {% for popularTag in popularTags %}<li><a class="govuk-link" href="{{ urlFor(popularTag.href) }}" aria-label="{{ t('govuk_alpha_search.filters.popular_add', { tag: popularTag.tag }) }}">{{ popularTag.tag }}</a></li>{% endfor %}
+              </ul>
+            {% endif %}
           </div>
         </fieldset>
 

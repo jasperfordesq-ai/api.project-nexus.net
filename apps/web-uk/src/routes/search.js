@@ -8,6 +8,7 @@ const {
   searchV2,
   getSavedSearches,
   getListingCategories,
+  getPopularListingTags,
   saveSavedSearch,
   deleteSavedSearch,
   runSavedSearch,
@@ -294,6 +295,22 @@ function categoryRows(result) {
     .sort((left, right) => left.name.localeCompare(right.name, getRequestIntlLocale()));
 }
 
+function popularTagRows(result, state) {
+  const selected = new Set(state.skillsList);
+  return (Array.isArray(result?.data) ? result.data : [])
+    .map((row) => textFrom(objectFrom(row).tag))
+    .filter((tag) => tag !== '' && !selected.has(tag))
+    .slice(0, 8)
+    .map((tag) => {
+      const entries = advancedLinkEntries(state);
+      const skills = [...state.skillsList, tag].join(',');
+      const skillsIndex = entries.findIndex(([key]) => key === 'skills');
+      if (skillsIndex >= 0) entries[skillsIndex] = ['skills', skills];
+      else entries.push(['skills', skills]);
+      return { tag, href: advancedSearchHref(entries) };
+    });
+}
+
 function resultCounts(grouped, total) {
   return {
     all: total,
@@ -348,18 +365,23 @@ router.get('/advanced', asyncRoute(async (req, res) => {
   let searchResult = { data: [], meta: { search: { total: 0 } } };
   let savedResult = { data: [] };
   let categoriesResult = { data: [] };
+  let popularTagsResult = { data: [] };
   let searchError = false;
 
   try {
-    const calls = [getSavedSearches(token), getListingCategories(token).catch(() => ({ data: [] }))];
+    const calls = [
+      getSavedSearches(token),
+      getListingCategories(token).catch(() => ({ data: [] })),
+      getPopularListingTags(token, 10).catch(() => ({ data: [] }))
+    ];
     if (hasSearched) {
       calls.unshift(searchV2(token, apiSearchParams(state)));
     }
     const results = await Promise.all(calls);
     if (hasSearched) {
-      [searchResult, savedResult, categoriesResult] = results;
+      [searchResult, savedResult, categoriesResult, popularTagsResult] = results;
     } else {
-      [savedResult, categoriesResult] = results;
+      [savedResult, categoriesResult, popularTagsResult] = results;
     }
   } catch (error) {
     if (redirectAuthIfNeeded(error, res)) return undefined;
@@ -387,6 +409,7 @@ router.get('/advanced', asyncRoute(async (req, res) => {
     grouped,
     displayGrouped: groupedForTab(grouped, state.activeTab),
     categories: categoryRows(categoriesResult),
+    popularTags: popularTagRows(popularTagsResult, state),
     savedSearches,
     savedCountLabel: savedCountLabel(savedSearches.length, res.locals.tc),
     truncate,
