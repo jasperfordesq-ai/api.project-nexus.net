@@ -24670,6 +24670,29 @@ describe('shared accessible frontend shell', () => {
     expect(edit.text).toContain('id="cover" name="cover" type="file"');
     expect(edit.text).not.toContain('Cancel');
 
+    api.getGroup.mockResolvedValue({
+      data: {
+        id: 88,
+        name: 'Repair circle',
+        description: 'Share repair skills.',
+        location: 'Dublin',
+        visibility: 'private',
+        viewer_membership: { role: 'owner', status: 'active' }
+      }
+    });
+    const updateFailed = await agent
+      .get('/groups/88/edit?status=group-update-failed')
+      .set('Cookie', signedCookieHeader());
+    const deleteFailed = await agent
+      .get('/groups/88/edit?status=group-delete-failed')
+      .set('Cookie', signedCookieHeader());
+
+    expect(updateFailed.text).toContain('There is a problem saving your changes');
+    expect(updateFailed.text).toContain('Your changes could not be saved. Please try again.');
+    expect(updateFailed.text.indexOf('Edit group settings')).toBeLessThan(updateFailed.text.indexOf('There is a problem saving your changes'));
+    expect(deleteFailed.text).toContain('There is a problem deleting this group');
+    expect(deleteFailed.text).toContain('The group could not be deleted. Please try again.');
+
     const updated = await agent
       .post('/groups/88/edit')
       .set('Cookie', signedCookieHeader())
@@ -24733,6 +24756,7 @@ describe('shared accessible frontend shell', () => {
 
     expect(missingName.status).toBe(200);
     expect(missingName.text).toContain('href="#name"');
+    expect(missingName.text).toContain('Enter a name for the group.');
     expect(missingName.text).toContain('id="name-error"');
     expect(missingName.text).toContain('govuk-input govuk-input--error');
     expect(missingName.text).toContain('aria-describedby="name-hint name-error"');

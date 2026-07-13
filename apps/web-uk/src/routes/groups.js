@@ -954,9 +954,9 @@ router.post('/new', requireAuth, audit.groupCreate(), asyncRoute(async (req, res
   const errors = [];
 
   if (!name || !name.trim()) {
-    errors.push({ text: 'Enter a group name', href: '#name' });
+    errors.push({ text: res.locals.t('groups.errors.name_required'), href: '#name' });
   } else if (name.length > 255) {
-    errors.push({ text: 'Group name must be 255 characters or fewer', href: '#name' });
+    errors.push({ text: res.locals.t('groups.errors.name_too_long'), href: '#name' });
   }
 
   if (String(location || '').length > 255) {
@@ -1123,6 +1123,8 @@ router.get('/:id(\\d+)/edit', requireAuth, asyncRoute(async (req, res) => {
     group,
     myMembership,
     isOwner: isGroupOwner(group, profile),
+    updateFailed: trimmed(req.query.status) === 'group-update-failed',
+    deleteFailed: trimmed(req.query.status) === 'group-delete-failed',
     deleteConfirmationRequired: false,
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
@@ -1423,9 +1425,9 @@ router.post('/:id(\\d+)/edit', requireAuth, audit.groupUpdate(), asyncRoute(asyn
   const errors = [];
 
   if (!name || !name.trim()) {
-    errors.push({ text: 'Enter a group name', href: '#name' });
+    errors.push({ text: res.locals.t('groups.errors.name_required'), href: '#name' });
   } else if (name.length > 255) {
-    errors.push({ text: 'Group name must be 255 characters or fewer', href: '#name' });
+    errors.push({ text: res.locals.t('groups.errors.name_too_long'), href: '#name' });
   }
 
   if (String(location || '').length > 255) {
@@ -1452,16 +1454,12 @@ router.post('/:id(\\d+)/edit', requireAuth, audit.groupUpdate(), asyncRoute(asyn
       tags: groupTags(tags)
     });
 
-    let coverError = null;
     if (cover) {
       try {
         await uploadGroupCover(req.token, id, cover);
-      } catch (error) {
-        coverError = error;
+      } catch {
+        // Match Blade's best-effort optional cover update.
       }
-    }
-    if (coverError && req.flash) {
-      req.flash('error', 'The group was updated, but its cover image could not be uploaded.');
     }
 
     return res.redirect(groupRedirect(res, id, 'group-updated'));
