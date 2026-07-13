@@ -29,7 +29,7 @@ const { asyncRoute } = require('../lib/routeHelpers');
 const { audit } = require('../lib/auditLogger');
 const { getRequestIntlLocale } = require('../lib/request-intl-locale');
 const { getRequestProfile } = require('../lib/request-profile');
-const { resolveBackendAssetUrl } = require('../lib/accessible-shell');
+const { resolveBackendAssetUrl, flagEnabled } = require('../lib/accessible-shell');
 
 const router = express.Router();
 
@@ -406,6 +406,73 @@ function listingStatusErrorMessage(status) {
     'listing-delete-failed': 'The listing could not be deleted.'
   };
   return messages[trimmed(status)] || null;
+}
+
+function listingDetailStatus(status, t) {
+  const successKeys = {
+    'listing-created': 'listings.create.created',
+    'listing-updated': 'listings.edit.updated',
+    'listing-saved': 'polish_listings.status_listing_saved',
+    'listing-unsaved': 'polish_listings.status_listing_unsaved',
+    'listing-renewed': 'polish_listings.status_listing_renewed',
+    'listing-reported': 'polish_listings.status_listing_reported'
+  };
+  const errorKeys = {
+    'listing-delete-failed': 'listings.edit.delete_failed',
+    'save-failed': 'polish_listings.status_listing_save_failed',
+    'unsave-failed': 'polish_listings.status_listing_save_failed',
+    'renew-failed': 'polish_listings.status_listing_renew_failed',
+    'report-failed': 'polish_listings.status_listing_report_failed',
+    'already-reported': 'polish_listings.status_listing_already_reported'
+  };
+  const normalized = trimmed(status);
+  if (successKeys[normalized]) return { type: 'success', message: t(successKeys[normalized]) };
+  if (errorKeys[normalized]) return { type: 'error', message: t(errorKeys[normalized]) };
+  return null;
+}
+
+function listingGalleryFrom(listing) {
+  const images = Array.isArray(listing.images) ? listing.images : [];
+  return images.map((image) => {
+    const item = image && typeof image === 'object' ? image : {};
+    const url = resolveBackendAssetUrl(item.url || item.image_url || item.imageUrl);
+    if (!url) return null;
+    return {
+      url,
+      altText: trimmed(item.alt_text || item.altText)
+    };
+  }).filter(Boolean);
+}
+
+function listingSkillTagsFrom(listing) {
+  const tags = Array.isArray(listing.skill_tags) ? listing.skill_tags : [];
+  const seen = new Set();
+  return tags.map((tag) => {
+    const value = tag && typeof tag === 'object' ? (tag.name || tag.tag) : tag;
+    return trimmed(value);
+  }).filter((tag) => {
+    const key = tag.toLocaleLowerCase('en');
+    if (!tag || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function listingAuthorFrom(listing) {
+  const user = listing.user && typeof listing.user === 'object' ? listing.user : {};
+  const name = trimmed(listing.author_name || listing.authorName || user.name);
+  const id = listingOwnerId(listing);
+  if (!name) return null;
+  return {
+    id,
+    name,
+    initial: Array.from(name)[0]?.toLocaleUpperCase() || '',
+    avatarUrl: resolveBackendAssetUrl(listing.author_avatar || listing.authorAvatar || user.avatar_url || user.avatar),
+    tagline: trimmed(listing.author_tagline || listing.authorTagline || user.tagline),
+    rating: Number.isFinite(Number(listing.author_rating)) ? Number(listing.author_rating) : null,
+    reviewsCount: Math.max(0, Number(listing.author_reviews_count) || 0),
+    exchangesCount: Math.max(0, Number(listing.author_exchanges_count) || 0)
+  };
 }
 
 async function exchangeWorkflowEnabled(token) {
@@ -1197,11 +1264,8 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
   const ownerId = listingOwnerId(listing);
   const currentUserId = positiveInteger(currentUser.id);
   const can_edit = ownerId !== null && currentUserId !== null && ownerId === currentUserId;
-  const authorRating = Number(listing.author_rating ?? listing.user?.rating);
-  const authorReviewCount = Number(listing.author_reviews_count ?? listing.user?.reviews_count ?? 0);
-  const reviewSummary = Number.isFinite(authorRating) && authorRating > 0
-    ? { average_rating: authorRating, total_reviews: Number.isFinite(authorReviewCount) ? authorReviewCount : 0 }
-    : null;
+  const detailStatus = listingDetailStatus(req.query.status, res.locals.t);
+  const tenant = req.accessibleRouting?.tenant || {};
   let exchangeContext = {
     exchangeWorkflowEnabled: false,
     directMessagingEnabled: false,
@@ -1223,13 +1287,21 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
     title: listing.title || listing.name || 'Listing details',
     listing: { ...listing, can_edit },
     listingImageUrl: resolveBackendAssetUrl(listing.image_url || listing.imageUrl),
-    reviewSummary,
+    listingGallery: listingGalleryFrom(listing),
+    listingSkillTags: listingSkillTagsFrom(listing),
+    listingAuthor: listingAuthorFrom(listing),
+    isSaved: listing.is_favorited === true || listing.isFavorited === true,
+    hasLiked: listing.is_liked === true || listing.isLiked === true,
+    likeCount: Math.max(0, Number(listing.likes_count ?? listing.likesCount) || 0),
+    commentsCount: Math.max(0, Number(listing.comments_count ?? listing.commentsCount) || 0),
     isAuthenticated: Boolean(token),
     currentUserId,
     ownerId,
+    connectionsEnabled: flagEnabled(tenant, 'connections', 'features', true),
+    listingShareUrl: urlFor(res, `/listings/${listing.id}`),
     ...exchangeContext,
-    successMessage: (req.flash ? req.flash('success')[0] : null) || listingStatusMessage(req.query.status),
-    errorMessage: (req.flash ? req.flash('error')[0] : null) || listingStatusErrorMessage(req.query.status),
+    successMessage: (req.flash ? req.flash('success')[0] : null) || (detailStatus?.type === 'success' ? detailStatus.message : null),
+    errorMessage: (req.flash ? req.flash('error')[0] : null) || (detailStatus?.type === 'error' ? detailStatus.message : null),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { notFoundTitle: 'Listing not found' }));

@@ -11,10 +11,7 @@ function nunjucksFilesUnder(directory) {
 
 describe('read-only star rating accessibility', () => {
   it('gives labelled star graphics an image role', () => {
-    for (const templatePath of [
-      path.join('members', 'profile.njk'),
-      path.join('listings', 'detail.njk')
-    ]) {
+    for (const templatePath of [path.join('members', 'profile.njk')]) {
       const template = fs.readFileSync(
         path.join(__dirname, '..', 'src', 'views', templatePath),
         'utf8'
@@ -2195,11 +2192,16 @@ describe('tenant-aware template helper conversion', () => {
       'listings.detail_title', 'listings.description_title', 'listings.summary_title',
       'listings.type', 'listings.status_label', 'listings.service_type_label',
       'listings.category', 'listings.location', 'listings.hours_label',
-      'listings.created', 'listings.image_alt', 'listings.edit.edit_listing'
+      'listings.created', 'listings.expires_label', 'listings.renewals_label',
+      'listings.image_alt', 'listings.gallery_title', 'listings.skills_title',
+      'listings.author_title', 'listings.edit.edit_listing',
+      'govuk_alpha_listings.nav.view_analytics', 'polish_listings.save_listing',
+      'polish_listings.renew_listing', 'govuk_alpha_listings.detail.comments_link'
     ]) expect(detail).toContain(key);
 
     expect(detail).not.toContain('key: { text: "ID" }');
     expect(detail).not.toContain('key: { text: "Description" }');
+    expect(detail).not.toContain('listings.edit.delete_warning');
     expect(detail.match(/actions.back_to_listings/g)).toHaveLength(1);
   });
 

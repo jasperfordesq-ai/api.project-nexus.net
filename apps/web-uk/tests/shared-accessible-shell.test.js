@@ -24258,8 +24258,20 @@ describe('shared accessible frontend shell', () => {
         status: 'active',
         type: 'offer',
         user_id: 77,
+        author_name: 'Ada Lovelace',
+        author_avatar: '/storage/avatars/ada.jpg',
+        author_tagline: 'Neighbourhood fixer',
         author_rating: 4.5,
-        author_reviews_count: 6
+        author_reviews_count: 6,
+        author_exchanges_count: 9,
+        images: [{ url: '/storage/listings/ladder-side.jpg', alt_text: 'Side view of the ladder' }],
+        skill_tags: ['DIY', { name: 'Home safety' }, 'DIY'],
+        expires_at: '2026-08-05T14:15:00Z',
+        renewal_count: 2,
+        is_favorited: true,
+        is_liked: true,
+        likes_count: 3,
+        comments_count: 2
       }
     });
 
@@ -24268,7 +24280,20 @@ describe('shared accessible frontend shell', () => {
     expect(detail.status).toBe(200);
     expect(api.getListing).toHaveBeenCalledWith('test-token', '42');
     expect(detail.text).toContain('A safe ladder available to neighbours.');
-    expect(detail.text).toContain('4.5 (6 reviews)');
+    expect(detail.text).toContain('Side view of the ladder');
+    expect(detail.text).toContain('Home safety');
+    expect(detail.text).toContain('About the member');
+    expect(detail.text).toContain('Ada Lovelace');
+    expect(detail.text).toContain('6 reviews');
+    expect(detail.text).toContain('9 completed exchanges');
+    expect(detail.text).toContain('Renewed 2 times');
+    expect(detail.text).toContain('aria-pressed="true"');
+    expect(detail.text).toContain('action="/listings/42/like"');
+    expect(detail.text).toContain('action="/listings/42/unsave"');
+    expect(detail.text).toContain('href="/listings/42/comments"');
+    expect(detail.text).toContain('View and add comments (2)');
+    expect(detail.text).toContain('href="/listings/42/report"');
+    expect(detail.text).toContain('href="/members/77"');
     expect(detail.text).not.toContain('action="/listings/42/delete"');
   });
 
@@ -24301,9 +24326,10 @@ describe('shared accessible frontend shell', () => {
       id: 42,
       title: 'Borrow a ladder',
       description: 'Useful for painting',
-      status: 'active',
+      status: 'expired',
       type: 'offer',
-      user_id: 101
+      user_id: 101,
+      expires_at: '2026-07-01T14:15:00Z'
     });
 
     const detail = await request(app)
@@ -24312,7 +24338,9 @@ describe('shared accessible frontend shell', () => {
 
     expect(detail.status).toBe(200);
     expect(detail.text).toContain('href="/listings/42/edit"');
-    expect(detail.text).toContain('This permanently removes your listing. You cannot undo this.');
+    expect(detail.text).toContain('href="/listings/42/analytics"');
+    expect(detail.text).toContain('action="/listings/42/renew"');
+    expect(detail.text).toContain('Deleting this listing cannot be undone. It will be removed for everyone.');
     expect(detail.text).toContain('method="post" action="/listings/42/delete"');
     expect(detail.text).not.toContain('href="/listings/42/delete"');
   });

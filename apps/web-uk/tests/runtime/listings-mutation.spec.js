@@ -165,11 +165,17 @@ test('creates, updates, uploads an image for, and deletes a disposable listing',
       waitUntil: 'domcontentloaded',
       timeout: 300_000
     });
+    await expectAccessibleReflow(page);
+
+    const deleteDetails = page.locator(`details:has(form[action$="/listings/${listingId}/delete"])`);
+    await deleteDetails.locator('summary').click();
+    const deleteButton = deleteDetails.locator('button[type="submit"]');
+    await expect(deleteButton).toBeVisible();
 
     const deleteResponse = await submitListingForm(
       page,
       `/listings/${listingId}/delete`,
-      page.locator(`form[action$="/listings/${listingId}/delete"] button[type="submit"]`)
+      deleteButton
     );
     expect(deleteResponse.status()).toBe(302);
     await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
