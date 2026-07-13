@@ -126,6 +126,45 @@ describe('Laravel-first Jobs template localization', () => {
     }
   });
 
+  it('delegates the complete interview and offer response surface to Laravel keys', () => {
+    const source = templateSource('jobs/responses.njk');
+
+    for (const translationKey of [
+      'caption',
+      'title',
+      'description',
+      'interviews_heading',
+      'no_interviews',
+      'for_opportunity',
+      'scheduled_for',
+      'no_date',
+      'duration',
+      'location_label',
+      'add_to_calendar',
+      'note_label',
+      'note_hint',
+      'accept_interview',
+      'decline_interview',
+      'offers_heading',
+      'no_offers',
+      'start_date',
+      'expires_on',
+      'message_heading',
+      'accept_offer_warning',
+      'accept_offer',
+      'reject_offer'
+    ]) {
+      expect(source).toContain(`govuk_alpha_jobs.responses.${translationKey}`);
+    }
+
+    expect(source).toContain('t(interview.statusKey)');
+    expect(source).toContain('t(offer.statusKey)');
+    expect(source).not.toContain('>Interviews and offers<');
+    expect(source).not.toContain('>Accept interview<');
+    expect(source).not.toContain('>Accept offer<');
+    expect(source).not.toContain('>Decline offer<');
+  });
+
   it.each([
     ['ga', 'ltr'],
     ['ar', 'rtl']

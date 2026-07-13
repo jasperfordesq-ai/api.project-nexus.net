@@ -17691,6 +17691,14 @@ describe('shared accessible frontend shell', () => {
             expires_at: '2099-08-05',
             message: 'Welcome aboard.',
             status: 'pending'
+          },
+          {
+            id: 45,
+            vacancy_id: 502,
+            vacancy_title: 'Expired Coordinator',
+            salary_offered: 0,
+            expires_at: '2000-01-01',
+            status: 'pending'
           }
         ]
       });
@@ -17713,9 +17721,14 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Scheduled for 1 July 2099, 14:30');
     expect(response.text).toContain('Duration: 45 minutes');
     expect(response.text).toContain('Video link sent by email');
+    expect(response.text).toContain('href="https://calendar.google.com/calendar/render?');
+    expect(response.text).toContain('Add to Google Calendar');
+    expect(response.text).toContain('opens in new tab');
+    expect(response.text).toContain('govuk-tag govuk-tag--yellow">Awaiting your response');
     expect(response.text).toContain('action="/jobs/interviews/33/accept"');
     expect(response.text).toContain('Accept interview');
     expect(response.text).toContain('action="/jobs/interviews/33/decline"');
+    expect(response.text).toContain('id="iv-decline-note-33" name="note" type="text"');
     expect(response.text).toContain('Offers');
     expect(response.text).toContain('20,000 EUR per year');
     expect(response.text).toContain('Start date: 1 August 2099');
@@ -17725,6 +17738,12 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('action="/jobs/offers/44/accept"');
     expect(response.text).toContain('Accept offer');
     expect(response.text).toContain('action="/jobs/offers/44/reject"');
+    expect(response.text).toContain('Accepting this offer fills the role and, for timebank opportunities, transfers the agreed time credits. This cannot be undone.');
+    expect(response.text).toContain('Expired Coordinator');
+    expect(response.text).toContain('govuk-tag govuk-tag--grey">Expired');
+    expect(response.text).toContain('No pay specified');
+    expect(response.text).not.toContain('action="/jobs/offers/45/accept"');
+    expect(response.text).not.toContain('action="/jobs/offers/45/reject"');
     expect(response.text).not.toContain('Laravel Blade route');
   });
 

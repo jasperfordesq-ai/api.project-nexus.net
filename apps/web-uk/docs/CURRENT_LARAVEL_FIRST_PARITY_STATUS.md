@@ -67,7 +67,7 @@ repositories before relying on these numbers after either source moves.
 | Missing Laravel routes | 6 | All are Event workflows |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 47/47 suites, 1,570/1,570 tests | Fresh green code gate |
+| Jest | 47/47 suites, 1,571/1,571 tests | Fresh green code gate |
 | Locale catalog shape | 11 locales, 35 namespaces, 8,663 keys | Structural parity plus static-key resolution gate |
 | Blade marker check | 19/19 | Text-marker spotcheck, not visual certification |
 | Automated accessibility | Latest recorded 87/87 | Manual AT review remains open |
@@ -92,12 +92,12 @@ A fresh proof run records:
 
 - 11 locales, 35 namespaces, and 8,663 keys per locale;
 - zero missing or extra keys in every locale;
-- 6,422 complete static references and 4,859 unique referenced keys;
+- 6,487 complete static references and 4,915 unique referenced keys;
 - zero unresolved complete static references;
 - 315 templates and zero conservative hard-coded-copy matches;
 - an English and Irish Event-template library render with no raw key leakage;
-- focused Event localization/operation proof and full 47/47-suite,
-  1,570/1,570-test proof;
+- focused Event and Jobs-response localization/operation proof and full
+  47/47-suite, 1,571/1,571-test proof;
 - green brand, lint, CSS, and `git diff --check` gates.
 
 The live Blade marker comparator also uses the canonical

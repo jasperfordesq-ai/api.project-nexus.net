@@ -121,29 +121,7 @@ const JOB_RESPONSE_MESSAGE_KEYS = Object.freeze({
   'offer-failed': 'govuk_alpha_jobs.responses.states_offer_failed'
 });
 const JOB_INTERVIEW_STATUSES = ['proposed', 'accepted', 'declined'];
-const JOB_INTERVIEW_TYPE_LABELS = {
-  video: 'Video',
-  phone: 'Phone',
-  in_person: 'In person'
-};
-const JOB_INTERVIEW_STATUS_LABELS = {
-  proposed: 'Awaiting your response',
-  accepted: 'Accepted',
-  declined: 'Declined'
-};
 const JOB_OFFER_STATUSES = ['pending', 'accepted', 'rejected', 'withdrawn', 'expired'];
-const JOB_OFFER_STATUS_LABELS = {
-  pending: 'Awaiting your decision',
-  accepted: 'Accepted',
-  rejected: 'Declined',
-  withdrawn: 'Withdrawn',
-  expired: 'Expired'
-};
-const JOB_SALARY_PERIOD_LABELS = {
-  hourly: 'hour',
-  monthly: 'month',
-  annual: 'year'
-};
 const JOB_APPLICANT_STAGE_OPTIONS = [
   'applied',
   'pending',
@@ -800,55 +778,100 @@ function formatPlainNumber(value) {
     : trimmed(value);
 }
 
-function offerSalaryLine(offer) {
-  const amount = offer.salary_offered ?? offer.salary_amount ?? offer.salary;
-  if (amount === null || amount === undefined || amount === '') return 'No pay specified';
+function jobTranslation(req, key, fallbackMessage = '', replacements = {}) {
+  const requestTranslator = typeof req?.t === 'function' ? req.t : fallbackTranslator;
+  const translated = requestTranslator(key, replacements);
+  if (typeof translated === 'string' && translated !== '' && translated !== key) return translated;
 
-  const currency = trimmed(offer.salary_currency || offer.currency || '', 10);
-  const period = JOB_SALARY_PERIOD_LABELS[offer.salary_type]
-    || JOB_SALARY_PERIOD_LABELS[offer.salary_period]
-    || trimmed(offer.salary_type || offer.salary_period || '');
-  const amountLabel = formatPlainNumber(amount);
-  const payLabel = trimmed(`${amountLabel} ${currency}`);
-
-  return period ? `${payLabel} per ${period}` : payLabel;
+  const english = fallbackTranslator(key, replacements);
+  return typeof english === 'string' && english !== '' && english !== key ? english : fallbackMessage;
 }
 
-function decorateInterview(interview) {
+function offerSalaryLine(offer, req) {
+  const amount = offer.salary_offered ?? offer.salary_amount ?? offer.salary;
+  if (amount === null || amount === undefined || amount === '' || Number(amount) <= 0) {
+    return jobTranslation(req, 'govuk_alpha_jobs.responses.salary_unspecified', 'No pay specified');
+  }
+
+  const currency = trimmed(offer.salary_currency || offer.currency || '', 10);
+  const periodValue = trimmed(offer.salary_type || offer.salary_period || 'hourly');
+  const periodKey = ['hourly', 'monthly', 'annual'].includes(periodValue) ? periodValue : 'hourly';
+  const period = jobTranslation(req, `govuk_alpha_jobs.responses.period_${periodKey}`, periodKey);
+  const amountLabel = formatPlainNumber(amount);
+  return jobTranslation(req, 'govuk_alpha_jobs.responses.salary_line', `${amountLabel} ${currency} per ${period}`, {
+    amount: amountLabel,
+    currency,
+    period
+  });
+}
+
+function compactUtcTimestamp(date) {
+  return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+}
+
+function interviewCalendarHref(interview, req, title, typeLabel, details, duration) {
+  const scheduled = new Date(interview.scheduled_at || interview.scheduled_for || '');
+  if (Number.isNaN(scheduled.getTime())) return '';
+
+  const end = new Date(scheduled.getTime() + ((duration || 30) * 60 * 1000));
+  const text = jobTranslation(req, 'govuk_alpha_jobs.responses.calendar_event_title', `Interview: ${title}`, { title });
+  const query = new URLSearchParams({
+    action: 'TEMPLATE',
+    text,
+    dates: `${compactUtcTimestamp(scheduled)}/${compactUtcTimestamp(end)}`,
+    details: typeLabel,
+    location: details
+  });
+  return `https://calendar.google.com/calendar/render?${query.toString()}`;
+}
+
+function decorateInterview(interview, req) {
   const status = allowed(interview.status, JOB_INTERVIEW_STATUSES, 'proposed');
   const type = trimmed(interview.interview_type || interview.type);
   const duration = positiveInteger(interview.duration_mins || interview.duration_minutes || interview.duration);
+  const typeKey = ['phone', 'in_person'].includes(type) ? type : 'video';
+  const title = vacancyTitle(interview) || jobTranslation(req, 'govuk_alpha_jobs.responses.opportunity_unknown', 'An opportunity');
+  const typeLabel = jobTranslation(req, `govuk_alpha_jobs.responses.type_${typeKey}`, typeKey);
+  const details = trimmed(interview.location_notes || interview.details || interview.notes || interview.message, 2000);
 
   return {
     ...interview,
     id: positiveInteger(interview.id) || 0,
     vacancyId: vacancyId(interview),
-    title: vacancyTitle(interview),
-    typeLabel: JOB_INTERVIEW_TYPE_LABELS[type] || trimmed(type) || 'Interview',
+    title,
+    typeLabel,
     status,
-    statusLabel: JOB_INTERVIEW_STATUS_LABELS[status] || JOB_INTERVIEW_STATUS_LABELS.proposed,
+    statusKey: `govuk_alpha_jobs.responses.interview_status_${status}`,
+    tagClass: status === 'accepted' ? 'govuk-tag--green' : (status === 'declined' ? 'govuk-tag--grey' : 'govuk-tag--yellow'),
     scheduledLabel: formatDateTimeLong(interview.scheduled_at || interview.scheduled_for),
-    durationLabel: duration ? `${duration} minutes` : '',
-    details: trimmed(interview.location_notes || interview.details || interview.notes || interview.message, 2000),
+    duration,
+    details,
+    calendarHref: interviewCalendarHref(interview, req, title, typeLabel, details, duration),
     canRespond: status === 'proposed'
   };
 }
 
-function decorateOffer(offer) {
+function decorateOffer(offer, req) {
   const status = allowed(offer.status, JOB_OFFER_STATUSES, 'pending');
+  const expiresValue = offer.expires_at || offer.respond_by || offer.response_due_at;
+  const expiresAt = expiresValue ? new Date(expiresValue) : null;
+  const isExpired = status === 'pending' && expiresAt && !Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() < Date.now();
+  const effectiveStatus = isExpired ? 'expired' : status;
 
   return {
     ...offer,
     id: positiveInteger(offer.id) || 0,
     vacancyId: vacancyId(offer),
-    title: vacancyTitle(offer),
+    title: vacancyTitle(offer) || jobTranslation(req, 'govuk_alpha_jobs.responses.opportunity_unknown', 'An opportunity'),
     status,
-    statusLabel: JOB_OFFER_STATUS_LABELS[status] || JOB_OFFER_STATUS_LABELS.pending,
-    salaryLine: offerSalaryLine(offer),
+    effectiveStatus,
+    statusKey: `govuk_alpha_jobs.responses.offer_status_${effectiveStatus}`,
+    tagClass: effectiveStatus === 'accepted' ? 'govuk-tag--green' : (['rejected', 'withdrawn', 'expired'].includes(effectiveStatus) ? 'govuk-tag--grey' : 'govuk-tag--yellow'),
+    salaryLine: offerSalaryLine(offer, req),
     startLabel: formatDateOnlyLong(offer.start_date || offer.starts_at),
-    expiresLabel: formatDateOnlyLong(offer.expires_at || offer.respond_by || offer.response_due_at),
+    expiresLabel: formatDateOnlyLong(expiresValue),
     messageText: trimmed(offer.message || offer.employer_message || offer.notes, 5000),
-    canRespond: status === 'pending'
+    canRespond: status === 'pending' && !isExpired
   };
 }
 
@@ -1838,8 +1861,8 @@ router.get('/responses', asyncRoute(async (req, res) => {
     title: 'Interviews and offers',
     titleKey: 'govuk_alpha_jobs.responses.title',
     activeNav: 'explore',
-    interviews: collectionItems(interviewsResult).map(decorateInterview),
-    offers: collectionItems(offersResult).map(decorateOffer),
+    interviews: collectionItems(interviewsResult).map(interview => decorateInterview(interview, req)),
+    offers: collectionItems(offersResult).map(offer => decorateOffer(offer, req)),
     status: req.query.status || '',
     successMessage: responseSuccessMessage(req, req.query.status),
     errorMessage: responseErrorMessage(req, req.query.status),
