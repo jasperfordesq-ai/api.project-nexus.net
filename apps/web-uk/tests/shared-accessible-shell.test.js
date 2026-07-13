@@ -1304,6 +1304,7 @@ describe('shared accessible frontend shell', () => {
       '/acme/accessible/exchanges',
       '/acme/accessible/matches',
       '/acme/accessible/events',
+      '/acme/accessible/events/6/map',
       '/acme/accessible/volunteering',
       '/acme/accessible/organisations',
       '/acme/accessible/members',
@@ -1348,6 +1349,8 @@ describe('shared accessible frontend shell', () => {
         expect(response.text).toContain(englishForbiddenTitle);
       }
     }
+
+    expect(api.callEventApi).not.toHaveBeenCalled();
   });
 
   it('returns Laravel-style 403 for tenant-mounted route-specific compound gates', async () => {
@@ -1388,6 +1391,8 @@ describe('shared accessible frontend shell', () => {
       expect(response.status).toBe(403);
       expect(response.text).toContain(englishForbiddenTitle);
     }
+
+    expect(api.callEventApi).not.toHaveBeenCalled();
   });
 
   it('renders the Laravel-backed member knowledge base index and search pages', async () => {
