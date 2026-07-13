@@ -2523,7 +2523,10 @@ describe('API Request Functions', () => {
 
       await api.createEvent('test-token', payload);
       await api.updateEvent('test-token', 42, payload);
-      await api.cancelEvent('test-token', 42, { reason: 'Weather' });
+      await api.cancelEvent('test-token', 42, {
+        reason: 'Weather',
+        idempotency_key: 'cancel-event-42'
+      });
       await api.deleteEvent('test-token', 42, {
         reason: 'Event completed',
         idempotency_key: 'archive-event-42'
@@ -2549,8 +2552,14 @@ describe('API Request Functions', () => {
         'http://localhost:5000/api/v2/events/42/cancel',
         expect.objectContaining({
           method: 'POST',
-          headers: expect.objectContaining({ Authorization: 'Bearer test-token' }),
-          body: JSON.stringify({ reason: 'Weather' })
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token',
+            'Idempotency-Key': 'cancel-event-42'
+          }),
+          body: JSON.stringify({
+            reason: 'Weather',
+            idempotency_key: 'cancel-event-42'
+          })
         })
       );
       expect(mockFetch).toHaveBeenNthCalledWith(4,

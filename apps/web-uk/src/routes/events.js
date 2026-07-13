@@ -1334,9 +1334,17 @@ router.post('/:id(\\d+)/edit', requireAuth, audit.eventUpdate(), asyncRoute(asyn
 router.post('/:id(\\d+)/cancel', requireAuth, asyncRoute(async (req, res) => {
   const { id } = req.params;
   const reason = trimmed(req.body.reason);
+  const idempotencyKey = trimmed(req.body.idempotency_key) || randomUUID();
+
+  if (!reason || reason.length > 4000) {
+    return redirectTo(res, eventPath(id, '?status=event-cancel-failed'));
+  }
 
   try {
-    await cancelEvent(req.token, id, { reason });
+    await cancelEvent(req.token, id, {
+      reason,
+      idempotency_key: idempotencyKey
+    });
 
     if (req.flash) {
       req.flash('success', 'Event cancelled');

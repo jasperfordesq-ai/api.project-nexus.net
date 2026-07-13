@@ -20,6 +20,8 @@
         <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1"><div role="alert"><h2 class="govuk-error-summary__title">{{ t("govuk_alpha.states.error_title") }}</h2><div class="govuk-error-summary__body"><p>{{ t("govuk_alpha.events.waitlist_offer_accept_failed") }}</p></div></div></div>
       {% elif status == "event-archive-failed" %}
         <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1"><div role="alert"><h2 class="govuk-error-summary__title">{{ t("govuk_alpha.states.error_title") }}</h2><div class="govuk-error-summary__body"><p>{{ t("govuk_alpha.events.archive_failed") }}</p></div></div></div>
+      {% elif status == "event-cancel-failed" %}
+        <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1"><div role="alert"><h2 class="govuk-error-summary__title">{{ t("govuk_alpha.states.error_title") }}</h2><div class="govuk-error-summary__body"><p>{{ t("events.cancel_failed") }}</p></div></div></div>
       {% endif %}
 
       {% if successMessage %}
@@ -227,9 +229,10 @@
                 <p class="govuk-body">{{ t("events.cancel_confirm") }}</p>
                 <form action="{{ urlFor('/events/' + (event.id | string) + '/cancel') }}" method="post">
                   <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                  <input type="hidden" name="idempotency_key" value="{{ idempotencyKey }}">
                   <div class="govuk-form-group">
                     <label class="govuk-label" for="cancel-reason">{{ t("events.cancel_reason_label") }}</label>
-                    <textarea class="govuk-textarea" id="cancel-reason" name="reason" rows="3"></textarea>
+                    <textarea class="govuk-textarea" id="cancel-reason" name="reason" rows="3" maxlength="4000" required></textarea>
                   </div>
                   {{ govukButton({
                     text: t("events.cancel_event_button"),

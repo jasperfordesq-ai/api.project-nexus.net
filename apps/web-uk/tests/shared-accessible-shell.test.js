@@ -21903,19 +21903,44 @@ describe('shared accessible frontend shell', () => {
     expect(page.status).toBe(200);
     expect(page.text).toContain('action="/events/42/cancel"');
     expect(page.text).toContain('id="cancel-reason" name="reason"');
+    expect(page.text).toContain('id="cancel-reason" name="reason" rows="3" maxlength="4000" required');
     expect(csrfMatch).not.toBeNull();
+    const idempotencyMatch = page.text.match(/name="idempotency_key" value="([^"]+)"/);
+    expect(idempotencyMatch).not.toBeNull();
 
     const response = await agent
       .post('/events/42/cancel')
       .set('Cookie', cookie)
       .type('form')
-      .send({ _csrf: csrfMatch[1], reason: ' Severe weather ' });
+      .send({
+        _csrf: csrfMatch[1],
+        reason: ' Severe weather ',
+        idempotency_key: idempotencyMatch[1]
+      });
 
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe('/events/42');
     expect(api.cancelEvent).toHaveBeenCalledWith('test-token', '42', {
-      reason: 'Severe weather'
+      reason: 'Severe weather',
+      idempotency_key: idempotencyMatch[1]
     });
+  });
+
+  it('rejects event cancellation without a reason before calling Laravel', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const cookie = signedCookieHeader();
+    const csrfToken = await csrfTokenFor(agent, '/contact', cookie);
+
+    const response = await agent
+      .post('/events/42/cancel')
+      .set('Cookie', cookie)
+      .type('form')
+      .send({ _csrf: csrfToken, reason: '   ' });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/events/42?status=event-cancel-failed');
+    expect(api.cancelEvent).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -21958,7 +21983,7 @@ describe('shared accessible frontend shell', () => {
       .post('/acme/accessible/events/42/cancel')
       .set('Cookie', cookie)
       .type('form')
-      .send({ _csrf: onboardingCsrf, reason: '' });
+      .send({ _csrf: onboardingCsrf, reason: 'Weather' });
 
     expect(onboarding.status).toBe(302);
     expect(onboarding.headers.location).toBe('/acme/accessible/onboarding');
@@ -21972,7 +21997,7 @@ describe('shared accessible frontend shell', () => {
       .post('/acme/accessible/events/42/cancel')
       .set('Cookie', cookie)
       .type('form')
-      .send({ _csrf: authCsrf, reason: '' });
+      .send({ _csrf: authCsrf, reason: 'Weather' });
 
     expect(authentication.status).toBe(302);
     expect(authentication.headers.location).toBe('/acme/accessible/login?status=auth-required');

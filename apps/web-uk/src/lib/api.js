@@ -2478,9 +2478,13 @@ async function updateEvent(token, id, data) {
 }
 
 async function cancelEvent(token, id, data = {}) {
+  const idempotencyKey = data.idempotency_key || data.idempotencyKey;
   return request(`/api/v2/events/${encodeURIComponent(id)}/cancel`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {})
+    },
     body: JSON.stringify(data)
   });
 }
