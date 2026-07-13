@@ -1,14 +1,14 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-13T03:42:39.473Z
+Generated: 2026-07-13T08:03:00.052Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 687 |
-| web-uk routes | 684 |
+| web-uk routes | 688 |
 | Matched routes | 681 |
 | Missing routes | 6 |
-| Extra web-uk routes | 1 |
+| Extra web-uk routes | 5 |
 | Ignored web-uk infrastructure routes | 3 |
 
 ## Family Counts
@@ -32,7 +32,7 @@ Generated: 2026-07-13T03:42:39.473Z
 | courses | 26 | 0 | 0 | 0 |
 | dashboard | 1 | 0 | 0 | 0 |
 | event-templates | 4 | 0 | 0 | 0 |
-| events | 88 | 6 | 0 | 0 |
+| events | 88 | 6 | 2 | 0 |
 | exchanges | 4 | 0 | 0 | 0 |
 | explore | 1 | 0 | 0 | 0 |
 | faq | 1 | 0 | 0 | 0 |
@@ -51,13 +51,13 @@ Generated: 2026-07-13T03:42:39.473Z
 | kb | 2 | 0 | 0 | 0 |
 | leaderboard | 5 | 0 | 0 | 0 |
 | legal | 6 | 0 | 0 | 0 |
-| listings | 19 | 0 | 0 | 0 |
+| listings | 19 | 0 | 1 | 0 |
 | login | 7 | 0 | 0 | 0 |
 | logout | 1 | 0 | 0 | 0 |
 | marketplace | 48 | 0 | 0 | 0 |
 | matches | 4 | 0 | 0 | 0 |
 | me | 6 | 0 | 0 | 0 |
-| members | 11 | 0 | 0 | 0 |
+| members | 11 | 0 | 1 | 0 |
 | messages | 18 | 0 | 0 | 0 |
 | newsletter | 1 | 0 | 0 | 0 |
 | nexus-score | 2 | 0 | 0 | 0 |
@@ -100,6 +100,10 @@ Generated: 2026-07-13T03:42:39.473Z
 
 | Method | Path | Family | Web UK view | Web UK file |
 | --- | --- | --- | --- | --- |
+| GET | `/events/my` | events |  | C:\platforms\htdocs\asp.net-backend\apps\web-uk\src\server.js |
+| POST | `/events/{param}/rsvp/remove` | events |  | C:\platforms\htdocs\asp.net-backend\apps\web-uk\src\server.js |
+| GET | `/listings/{param}/delete` | listings |  | C:\platforms\htdocs\asp.net-backend\apps\web-uk\src\server.js |
+| POST | `/members/{param}/connect` | members |  | C:\platforms\htdocs\asp.net-backend\apps\web-uk\src\server.js |
 | GET | `/volunteering/credentials/{param}/download` | volunteering | streamed-download | C:\platforms\htdocs\asp.net-backend\apps\web-uk\src\routes\volunteering-actions.js |
 
 ## Ignored Web UK Infrastructure Routes

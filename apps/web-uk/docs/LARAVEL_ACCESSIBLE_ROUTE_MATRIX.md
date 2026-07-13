@@ -1,13 +1,13 @@
 # Laravel Accessible Route Matrix
 
-Last reviewed: 2026-07-10
+Last reviewed: 2026-07-13
 
 ## Purpose
 
 This matrix tracks how `apps/web-uk` lines up with the Laravel Blade accessible
-frontend. It is preparation evidence only. The exact method/path declaration
-gaps are closed, but this does not certify workflow parity, backend
-compatibility, visual parity, or production readiness.
+frontend. It is preparation evidence only. The current method/path declaration
+gaps are explicitly classified below, but this does not certify workflow
+parity, backend compatibility, visual parity, or production readiness.
 It does not certify route parity beyond static method/path declarations.
 
 ## Sources
@@ -42,11 +42,11 @@ npm run route:matrix
 
 | Surface | Static route declarations | Meaning |
 | --- | ---: | --- |
-| Laravel `govuk-alpha*` | 608 | Laravel Blade accessible source route declarations scanned from route files, including the tenant chooser/root route. |
-| ASP.NET `apps/web-uk` | 610 | Express app/router/static-page declarations scanned from local source after the exchange alias cleanup; this includes preparation skeletons, generated Laravel GET fallback pages, and route modules that may not be certified workflows yet. |
-| Exact method/path matches | 608 | Static matches only. This does not prove workflow, auth, tenant, API, localization, or visual parity. |
-| Missing Laravel routes | 0 | Every Laravel accessible method/path declaration currently has a local exact declaration match. |
-| Extra `apps/web-uk` routes | 0 | No true unmatched accessible route declarations remain. The old local `GET/POST /exchanges/request/{param}` aliases were removed because Laravel exposes the exchange request flow at `/listings/{param}/exchange-request`. |
+| Laravel `govuk-alpha*` | 687 | Laravel Blade accessible source route declarations scanned from route files, including the tenant chooser/root route. |
+| ASP.NET `apps/web-uk` | 688 | Express app/router/static-page declarations scanned from local source; this includes preparation skeletons and route modules that may not be certified workflows yet. |
+| Exact method/path matches | 681 | Static matches only. This does not prove workflow, auth, tenant, API, localization, or visual parity. |
+| Missing Laravel routes | 6 | Five tenant-admin Event moderation declarations and the signed offline check-in-code POST remain unmatched because Laravel exposes no tenant-scoped API v2 contract for Web UK to call. Three missing GETs receive generated preparation pages only. |
+| Extra `apps/web-uk` routes | 5 | Four are deliberate legacy `404` tombstones (`GET /events/my`, `POST /events/{id}/rsvp/remove`, `GET /listings/{id}/delete`, and `POST /members/{id}/connect`); the fifth is the bearer-safe volunteering credential download proxy. None is a claim of an extra Laravel workflow. |
 | Ignored `apps/web-uk` infrastructure routes | 3 | Local infrastructure/helper routes that do not exist in Laravel's scanned GOV.UK accessible route set and are not page parity gaps: `GET /health`, `GET /service-unavailable`, and `POST /session/touch`. |
 
 These are declaration counts, not a parity score. Laravel registers the route
@@ -541,12 +541,13 @@ opportunity cards, load-more links, and apply CTAs; volunteering action
 redirects now pass through `res.locals.urlFor` for auth, validation, success,
 and API-failure destinations.
 
-The legacy local event RSVP routes have been removed: GET `/events/my` and POST
-`/events/{id}/rsvp/remove` are no longer exposed. Event list pages no longer
+The legacy local event RSVP routes are retained only as explicit `404`
+tombstones: GET `/events/my` and POST `/events/{id}/rsvp/remove` expose no
+workflow. Event list pages no longer
 link to the separate My events page, and event detail pages keep Laravel's
 canonical POST `/events/{id}/rsvp` action for RSVP state changes. The event
-family now reports `21` matched routes, `0` missing routes, and `0` extra
-local routes.
+family now reports `88` matched routes, `6` missing routes, and `2` deliberate
+legacy tombstones.
 
 The legacy local GET/POST `/messages/new` route without a member id has been
 removed. Laravel's accessible direct-message entry points use

@@ -43,7 +43,7 @@ async function authenticate(page) {
   const responsePromise = page.waitForResponse((response) => (
     response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith('/login')
   ), { timeout: 300_000 });
-  await page.locator('form:has(input[name="password"]) button[type="submit"]').click();
+  await page.locator('form:has(input[name="password"]) button[type="submit"]').click({ noWaitAfter: true });
   expect((await responsePromise).status()).toBe(302);
   await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
 }

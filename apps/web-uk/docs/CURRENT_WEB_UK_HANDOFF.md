@@ -1,8 +1,8 @@
 # Current Web UK Accessible Frontend Handoff
 
-Last reviewed: 2026-07-12
+Last reviewed: 2026-07-13
 
-> **Current audit notice (2026-07-11):** The verified checkpoint below
+> **Current audit notice (2026-07-13):** The source-refresh checkpoint below
 > supersedes older counts and completion estimates in this chronological handoff.
 > Read `../../../docs/FULL_PARITY_REMEDIATION_RUNBOOK.md` before issuing a score.
 > Route equality is current, but it is not workflow, localization, runtime, or
@@ -42,6 +42,37 @@ toward Laravel's accessible contracts.
 | Previous parity worktree | `C:\Users\jaspe\.config\superpowers\worktrees\asp.net-backend\codex-web-uk-laravel-parity` |
 
 The Laravel repo is read-only reference material from this workspace.
+
+## 2026-07-13 Laravel Source and Independent-Audit Refresh
+
+The read-only Laravel source is current at `c2cf4fa66`. Recent commits and the
+maintained `docs/API.md`, `docs/TESTING.md`, `docs/modules/events.md`,
+`accessible-frontend/CLAUDE.md`, `accessible-frontend/README.md`, and
+`accessible-frontend/COMPONENTS.md` were rescanned before continuing Web UK
+work. The source now defines Events as an authenticated, tenant-scoped,
+feature-gated module rather than an anonymous catalogue. Publication and
+operational lifecycle are separate; registration, waitlist, attendance,
+entitlement, and engagement are independent axes; recurrence controls must use
+the authenticated runtime capability contract; and advanced recurrence,
+moderation, lifecycle-history, template-history/materialisation, registration-
+product, communications, safety, and offline check-in workflows are explicit
+maintained-client boundaries.
+
+The regenerated declaration inventory now reports `687` Laravel routes, `688`
+Web UK routes, `681` matches, `6` missing Laravel declarations, `5` extra Web UK
+declarations, and `3` ignored infrastructure routes. The six gaps are five
+tenant-admin Event moderation routes and signed offline check-in-code
+attendance; Laravel exposes no tenant-scoped API v2 contract for Web UK to call,
+so they remain honest API-boundary gaps. Four of the five extras are deliberate
+legacy `404` tombstones and the fifth is the bearer-safe volunteering credential
+download proxy. These declaration counts do not certify workflows.
+
+The refreshed source invalidates the older audit assumption that unsigned
+`/events` should render a public event shell. Current Laravel documentation and
+routes require authentication and the Events feature boundary. Current Web UK
+already mounts `/events` behind `requireAuth`; a live unsigned request to
+`/hour-timebank/accessible/events` returned `302` to the mounted login. Do not
+weaken that boundary or invent a public catalogue contract.
 
 ## Current Verified Checkpoint (2026-07-12)
 

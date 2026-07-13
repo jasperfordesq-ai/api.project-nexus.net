@@ -1131,7 +1131,8 @@ method/path matches.
 
 `src/routes/laravel-prep-pages.js` registers generated Laravel GET preparation
 pages after all real route modules only for rows that the generated matrix marks
-as `missing`. The current 608/608 matrix exports `0` runtime preparation pages.
+as `missing`. The current `681/687` matrix exports `3` runtime preparation pages
+for the unmatched Event moderation GETs; the three missing POSTs remain absent.
 Any future fallback page counts as route discoverability only. It is not a
 backend adapter and must not be used as proof of Laravel or ASP.NET workflow
 compatibility.

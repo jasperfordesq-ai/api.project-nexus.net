@@ -1,15 +1,33 @@
 {
   "summary": {
-    "generatedAt": "2026-07-13T03:42:39.473Z",
+    "generatedAt": "2026-07-13T08:03:00.052Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\platforms\\htdocs\\asp.net-backend",
     "laravelRoutes": 687,
-    "webUkRoutes": 684,
+    "webUkRoutes": 688,
     "matchedRoutes": 681,
     "missingRoutes": 6,
-    "extraWebUkRoutes": 1,
+    "extraWebUkRoutes": 5,
     "ignoredInfrastructureRoutes": 3,
     "familyCounts": {
+      "events": {
+        "matched": 88,
+        "missing": 6,
+        "extraWebUk": 2,
+        "ignoredInfrastructure": 0
+      },
+      "listings": {
+        "matched": 19,
+        "missing": 0,
+        "extraWebUk": 1,
+        "ignoredInfrastructure": 0
+      },
+      "members": {
+        "matched": 11,
+        "missing": 0,
+        "extraWebUk": 1,
+        "ignoredInfrastructure": 0
+      },
       "volunteering": {
         "matched": 52,
         "missing": 0,
@@ -136,12 +154,6 @@
         "extraWebUk": 0,
         "ignoredInfrastructure": 0
       },
-      "events": {
-        "matched": 88,
-        "missing": 6,
-        "extraWebUk": 0,
-        "ignoredInfrastructure": 0
-      },
       "exchanges": {
         "matched": 4,
         "missing": 0,
@@ -244,12 +256,6 @@
         "extraWebUk": 0,
         "ignoredInfrastructure": 0
       },
-      "listings": {
-        "matched": 19,
-        "missing": 0,
-        "extraWebUk": 0,
-        "ignoredInfrastructure": 0
-      },
       "login": {
         "matched": 7,
         "missing": 0,
@@ -276,12 +282,6 @@
       },
       "me": {
         "matched": 6,
-        "missing": 0,
-        "extraWebUk": 0,
-        "ignoredInfrastructure": 0
-      },
-      "members": {
-        "matched": 11,
         "missing": 0,
         "extraWebUk": 0,
         "ignoredInfrastructure": 0
@@ -427,6 +427,90 @@
     }
   },
   "matrix": [
+    {
+      "method": "GET",
+      "path": "/events/my",
+      "family": "events",
+      "status": "extra-web-uk",
+      "laravelRouteName": "",
+      "laravelHandler": "",
+      "laravelView": "",
+      "laravelParamConstraints": [],
+      "laravelRouteFile": "",
+      "laravelControllerFile": "",
+      "laravelMiddleware": "",
+      "auth": "",
+      "tenantScoped": "",
+      "gates": "",
+      "apiNeeds": "",
+      "webUkPath": "/events/my",
+      "webUkView": "",
+      "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\server.js",
+      "webUkRouteKind": ""
+    },
+    {
+      "method": "POST",
+      "path": "/events/{param}/rsvp/remove",
+      "family": "events",
+      "status": "extra-web-uk",
+      "laravelRouteName": "",
+      "laravelHandler": "",
+      "laravelView": "",
+      "laravelParamConstraints": [],
+      "laravelRouteFile": "",
+      "laravelControllerFile": "",
+      "laravelMiddleware": "",
+      "auth": "",
+      "tenantScoped": "",
+      "gates": "",
+      "apiNeeds": "",
+      "webUkPath": "/events/{param}/rsvp/remove",
+      "webUkView": "",
+      "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\server.js",
+      "webUkRouteKind": ""
+    },
+    {
+      "method": "GET",
+      "path": "/listings/{param}/delete",
+      "family": "listings",
+      "status": "extra-web-uk",
+      "laravelRouteName": "",
+      "laravelHandler": "",
+      "laravelView": "",
+      "laravelParamConstraints": [],
+      "laravelRouteFile": "",
+      "laravelControllerFile": "",
+      "laravelMiddleware": "",
+      "auth": "",
+      "tenantScoped": "",
+      "gates": "",
+      "apiNeeds": "",
+      "webUkPath": "/listings/{param}/delete",
+      "webUkView": "",
+      "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\server.js",
+      "webUkRouteKind": ""
+    },
+    {
+      "method": "POST",
+      "path": "/members/{param}/connect",
+      "family": "members",
+      "status": "extra-web-uk",
+      "laravelRouteName": "",
+      "laravelHandler": "",
+      "laravelView": "",
+      "laravelParamConstraints": [],
+      "laravelRouteFile": "",
+      "laravelControllerFile": "",
+      "laravelMiddleware": "",
+      "auth": "",
+      "tenantScoped": "",
+      "gates": "",
+      "apiNeeds": "",
+      "webUkPath": "/members/{param}/connect",
+      "webUkView": "",
+      "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\server.js",
+      "webUkRouteKind": ""
+    },
     {
       "method": "GET",
       "path": "/volunteering/credentials/{param}/download",
