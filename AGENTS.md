@@ -27,6 +27,12 @@ same methods, paths, `/api/v2` aliases where expected, request/response shapes,
 auth/tenant/upload behavior, status codes, and validation/error envelopes.
 Prove compatibility with a route/API matrix and runtime smoke tests.
 
+Before starting or resuming `apps/web-uk` work, read
+[`apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md`](./apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md).
+It contains the current blocker set, concurrent-session ownership boundaries,
+and ordered Laravel-first completion queue. Older handoffs contain useful
+history but stale live metrics.
+
 This pointer exists because keeping `AGENTS.md` and `CLAUDE.md` in sync as
 separate copies caused drift. Edit `CLAUDE.md` for authoritative project
 instructions. Keep only urgent first-read guardrails duplicated here.

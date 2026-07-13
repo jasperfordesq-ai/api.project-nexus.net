@@ -19,6 +19,7 @@ Edition. The canonical Laravel source for parity is
 | [API_PARITY.md](API_PARITY.md) | API contract inventory and comparison policy. |
 | [REACT_FRONTEND_RETIREMENT.md](REACT_FRONTEND_RETIREMENT.md) | Retirement policy for the old ASP.NET React fork and contract-compatibility rules for the Laravel React frontend. |
 | [ACCESSIBLE_SHARED_FRONTEND.md](ACCESSIBLE_SHARED_FRONTEND.md) | Direction, GOV.UK upstream references, and guardrails for `apps/web-uk` as the future shared accessible frontend candidate. |
+| [../apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md](../apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md) | Current Laravel-first status, cross-session ownership boundaries, blockers, and ordered completion queue. Read this before older Web UK handoffs. |
 | [../apps/web-uk/docs/CURRENT_WEB_UK_HANDOFF.md](../apps/web-uk/docs/CURRENT_WEB_UK_HANDOFF.md) | Resume protocol, route-matrix refresh commands, certification rules, and next-step checklist for the accessible Web UK rewrite. |
 | [SCHEMA_PARITY.md](SCHEMA_PARITY.md) | Database table/entity/migration parity inventory and generated report policy. |
 | [FRONTEND_PARITY.md](FRONTEND_PARITY.md) | React and accessible frontend route parity inventory and generated report policy. |

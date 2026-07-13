@@ -23,6 +23,7 @@ Urgent first-read rules:
 
 Preparation docs that future agents must keep current:
 
+- `docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md` (read first)
 - `docs/LARAVEL_ACCESSIBLE_ROUTE_MATRIX.md`
 - `docs/BLADE_COMPONENT_PORT_AUDIT.md`
 - `docs/TENANT_ROUTING_PARITY.md`

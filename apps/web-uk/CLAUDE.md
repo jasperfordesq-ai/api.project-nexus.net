@@ -23,6 +23,8 @@ accessible frontend. See `docs/ACCESSIBLE_SHARED_FRONTEND.md` and the root
 
 Route and backend preparation docs live beside this app:
 
+- `docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md` (read first; current blockers,
+  ownership boundaries, and next-job order)
 - `docs/CURRENT_WEB_UK_HANDOFF.md`
 - `docs/LARAVEL_ACCESSIBLE_ROUTE_MATRIX.md`
 - `docs/BLADE_COMPONENT_PORT_AUDIT.md`
@@ -30,9 +32,10 @@ Route and backend preparation docs live beside this app:
 - `docs/BACKEND_SWITCHING_CONTRACT.md`
 
 If an agent is resuming this work after an interrupted session, start with
-`docs/CURRENT_WEB_UK_HANDOFF.md`. It gives the live-state refresh commands,
-current handoff checklist, route-matrix interpretation rules, and safety rules
-for working while other agents may still be committing accessible parity work.
+`docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md`, then use
+`docs/BLADE_COMPONENT_PORT_AUDIT.md` for detailed evidence. Treat
+`docs/CURRENT_WEB_UK_HANDOFF.md` as chronological implementation history rather
+than a reliable current snapshot.
 
 Generated route-matrix artifacts live under `docs/generated/` and are refreshed
 with:
@@ -46,12 +49,10 @@ workflow parity, tenant routing, auth behavior, API contracts, localization, or
 production readiness.
 
 Tenant-routing parity evidence and the current `/accessible` shared-mount
-contract live in `docs/TENANT_ROUTING_PARITY.md`. Laravel still names its route
-set `govuk-alpha` and mounts shared-host accessible routes at
-`/{tenantSlug}/alpha`, but Web UK must use the cleaner public
-`/{tenantSlug}/accessible` mount while preserving Laravel-compatible behavior.
-Legacy `/{tenantSlug}/alpha` paths should canonicalize to `/accessible` rather
-than becoming new public links.
+contract live in `docs/TENANT_ROUTING_PARITY.md`. Laravel still names the
+internal route set `govuk-alpha`, but its canonical public shared-host mount is
+now `/{tenantSlug}/accessible`. Legacy `/{tenantSlug}/alpha` paths should
+canonicalize to `/accessible` rather than becoming new public links.
 
 Do not claim route parity, workflow parity, tenant-domain parity, localization
 parity, API compatibility, production readiness, or shared-frontend readiness
