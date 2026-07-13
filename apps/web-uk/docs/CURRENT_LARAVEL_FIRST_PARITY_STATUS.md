@@ -112,21 +112,21 @@ commit as the implementation it describes.
 ## Audited Baseline
 
 The committed frontend baseline was refreshed through ASP.NET-repository commit
-`18ee7074`, and the Laravel source baseline is `c2cf4fa`. The first SHA names the
+`e7dacabd`, and the Laravel source baseline is `903d03d3`. The first SHA names the
 repository snapshot containing Web UK; it does not make ASP.NET authoritative.
 Refresh the Laravel Blade/API source and Web UK implementation before relying on
 these numbers after either source moves.
 
 | Measure | Audited result | Meaning |
 |---|---:|---|
-| Laravel accessible HTML routes | 687 | Current source inventory |
-| Web UK routes | 688 | Includes deliberate local compatibility routes |
-| Matched Laravel routes | 681/687 (99.13%) | Declaration coverage only |
+| Laravel accessible HTML routes | 689 | Current source inventory |
+| Web UK routes | 690 | Includes deliberate local compatibility routes |
+| Matched Laravel routes | 683/689 (99.13%) | Declaration coverage only |
 | Missing Laravel routes | 6 | All are Event workflows |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 47/47 suites, 1,571/1,571 tests | Fresh green code gate |
-| Locale catalog shape | 11 locales, 35 namespaces, 8,663 keys | Structural parity plus static-key resolution gate |
+| Jest | 47/47 suites, 1,588/1,588 tests | Fresh green code gate |
+| Locale catalog shape | 11 locales, 35 namespaces, 8,721 keys | Structural parity plus static-key resolution gate |
 | Blade marker check | 19/19 | Text-marker spotcheck, not visual certification |
 | Automated accessibility | Latest recorded 87/87 | Manual AT review remains open |
 
@@ -148,14 +148,14 @@ does not resolve in the English generated catalog.
 
 A fresh proof run records:
 
-- 11 locales, 35 namespaces, and 8,663 keys per locale;
+- 11 locales, 35 namespaces, and 8,721 keys per locale;
 - zero missing or extra keys in every locale;
-- 6,487 complete static references and 4,915 unique referenced keys;
+- 6,688 complete static references and 5,083 unique referenced keys;
 - zero unresolved complete static references;
 - 315 templates and zero conservative hard-coded-copy matches;
 - an English and Irish Event-template library render with no raw key leakage;
 - focused Event and Jobs-response localization/operation proof and full
-  47/47-suite, 1,571/1,571-test proof;
+  47/47-suite, 1,588/1,588-test proof;
 - green brand, lint, CSS, and `git diff --check` gates.
 
 The live Blade marker comparator also uses the canonical
@@ -214,8 +214,8 @@ After the localization P0, the remaining priority order is:
    exhaustive Laravel mutation smoke; never run those gates against the
    production-derived local database. "All quarters classified" is not the same
    as all checks passing.
-2. Reconcile low-overlap Blade/Nunjucks families, especially feed, listings,
-   search, messages, group create/detail, saved jobs, and recent Event flows.
+2. Reconcile low-overlap Blade/Nunjucks families, especially messages, group
+   create/detail, recent Event flows, and unresolved component-audit rows.
 3. Compare significant states per route: guest, member, owner, tenant admin,
    feature-disabled, empty, populated, validation failure, authorization
    failure, pagination, mutation, upload, and download.
