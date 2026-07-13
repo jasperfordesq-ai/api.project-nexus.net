@@ -152,6 +152,25 @@ history, exact-payload, optimistic-version, and fresh-draft proof passes. Live
 disposable template/materialization effects, manual assistive-technology review,
 and unchanged ASP.NET runtime proof remain open.
 
+## 2026-07-13 Effective Recurrence Revision Checkpoint
+
+The recurring-event editor now sends “this occurrence” changes through the
+existing scoped update and sends “this and future” changes through Laravel's
+signed preview plus idempotent commit contract. Only the editor's allowlisted
+content and local-time fields are committed; the opaque preview token is
+required and client-supplied patch JSON is revalidated before forwarding.
+Focused preview/render/exact-commit proof passes. Live future-occurrence effects,
+conflict variants, manual assistive-technology review, and unchanged ASP.NET
+runtime proof remain open.
+
+The six remaining accessible route gaps are canonical API-boundary gaps, not
+unimplemented browser wiring: five tenant-admin Event moderation routes depend
+on an internal Laravel database projection and publication service, and signed
+offline check-in-code attendance depends on Laravel's internal credential
+verification and attendance services. Laravel exposes no API v2 equivalents
+for either workflow. Web UK must not duplicate those internals or call ASP.NET-
+specific behavior; Laravel must first publish tenant-scoped API contracts.
+
 ## Purpose
 
 This audit lists reusable Laravel Blade accessible frontend patterns that should

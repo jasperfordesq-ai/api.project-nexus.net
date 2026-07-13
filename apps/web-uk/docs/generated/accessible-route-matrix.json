@@ -1,12 +1,12 @@
 {
   "summary": {
-    "generatedAt": "2026-07-13T03:37:57.752Z",
+    "generatedAt": "2026-07-13T03:42:39.473Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\platforms\\htdocs\\asp.net-backend",
     "laravelRoutes": 687,
-    "webUkRoutes": 683,
-    "matchedRoutes": 680,
-    "missingRoutes": 7,
+    "webUkRoutes": 684,
+    "matchedRoutes": 681,
+    "missingRoutes": 6,
     "extraWebUkRoutes": 1,
     "ignoredInfrastructureRoutes": 3,
     "familyCounts": {
@@ -137,8 +137,8 @@
         "ignoredInfrastructure": 0
       },
       "events": {
-        "matched": 87,
-        "missing": 7,
+        "matched": 88,
+        "missing": 6,
         "extraWebUk": 0,
         "ignoredInfrastructure": 0
       },
@@ -3222,6 +3222,28 @@
       "gates": "",
       "apiNeeds": "service:EventNotificationService",
       "webUkPath": "/events/{param}/recurring-edit",
+      "webUkView": "events/recurring-preview",
+      "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\routes\\events.js"
+    },
+    {
+      "method": "POST",
+      "path": "/events/{param}/recurring-edit/commit",
+      "family": "events",
+      "status": "matched",
+      "laravelRouteName": "events.recurring.commit",
+      "laravelHandler": "eventsCommitRecurringRevision",
+      "laravelView": "",
+      "laravelParamConstraints": [
+        "number"
+      ],
+      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\events.php",
+      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventsParity.php",
+      "laravelMiddleware": "'throttle:10,1'",
+      "auth": "public-or-unknown",
+      "tenantScoped": "unknown",
+      "gates": "",
+      "apiNeeds": "",
+      "webUkPath": "/events/{param}/recurring-edit/commit",
       "webUkView": "",
       "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\routes\\events.js"
     },
@@ -15081,28 +15103,6 @@
       "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\event-offline-checkin.php",
       "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventOfflineCheckinParity.php",
       "laravelMiddleware": "'throttle:60,1'",
-      "auth": "public-or-unknown",
-      "tenantScoped": "unknown",
-      "gates": "",
-      "apiNeeds": "",
-      "webUkPath": "",
-      "webUkView": "",
-      "webUkFile": ""
-    },
-    {
-      "method": "POST",
-      "path": "/events/{param}/recurring-edit/commit",
-      "family": "events",
-      "status": "missing",
-      "laravelRouteName": "events.recurring.commit",
-      "laravelHandler": "eventsCommitRecurringRevision",
-      "laravelView": "",
-      "laravelParamConstraints": [
-        "number"
-      ],
-      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\events.php",
-      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventsParity.php",
-      "laravelMiddleware": "'throttle:10,1'",
       "auth": "public-or-unknown",
       "tenantScoped": "unknown",
       "gates": "",

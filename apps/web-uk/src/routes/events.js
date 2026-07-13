@@ -1946,6 +1946,21 @@ router.post('/:id(\\d+)/polls', asyncRoute(async (req, res) => {
 router.post('/:id(\\d+)/recurring-edit', asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const scope = trimmed(req.body.scope) === 'all' ? 'all' : 'single';
+  if (scope === 'all') {
+    const start = trimmed(req.body.start_time); const end = trimmed(req.body.end_time); const patch = { title: trimmed(req.body.title, 255), description: trimmed(req.body.description, 10000), location: trimmed(req.body.location, 255) || null };
+    if (start.includes('T')) patch.local_start_time = start.split('T')[1];
+    if (end.includes('T')) patch.local_end_time = end.split('T')[1];
+    if (patch.title.length < 3 || !patch.description || !patch.local_start_time) return redirectTo(res, eventPath(id, '/recurring-edit?status=invalid'));
+    try {
+      const preview = dataFrom(await callApi(tokenFrom(req), 'POST', `/${id}/recurrence-revisions/preview`, { patch })) || {};
+      res.set('Cache-Control', 'private, no-store'); res.set('Pragma', 'no-cache'); res.set('Referrer-Policy', 'no-referrer');
+      return res.render('events/recurring-preview', { title: res.locals.t('govuk_alpha_events.recurring_edit.preview_title'), activeNav: 'events', event: { id, title: patch.title }, patch, preview, patchJson: JSON.stringify(patch), idempotencyKey: randomUUID(), csrfToken: req.csrfToken ? req.csrfToken() : '' });
+    } catch (error) {
+      if (redirectOnAuthError(error, res)) return undefined;
+      if (error instanceof ApiError && [400, 403, 404, 409, 413, 422, 429, 503].includes(error.status)) return redirectTo(res, eventPath(id, '/recurring-edit?status=preview-failed'));
+      throw error;
+    }
+  }
   return runEventAction(
     req,
     res,
@@ -1958,6 +1973,15 @@ router.post('/:id(\\d+)/recurring-edit', asyncRoute(async (req, res) => {
     eventRedirect(id, 'event-updated'),
     eventRedirect(id, 'event-update-failed')
   );
+}));
+
+router.post('/:id(\\d+)/recurring-edit/commit', requireAuth, asyncRoute(async (req, res) => {
+  const id = Number(req.params.id); const key = trimmed(req.body.idempotency_key, 191); const token = trimmed(req.body.preview_token, 8192); let patch = null;
+  try { patch = JSON.parse(trimmed(req.body.patch_json, 20000)); } catch { patch = null; }
+  const allowed = ['title', 'description', 'location', 'local_start_time', 'local_end_time'];
+  if (!key || !token || !patch || Array.isArray(patch) || !Object.keys(patch).length || Object.keys(patch).some((field) => !allowed.includes(field))) return redirectTo(res, eventPath(id, '/recurring-edit?status=preview-invalid'));
+  try { await callEventMutation(tokenFrom(req), 'POST', `/${id}/recurrence-revisions/commit`, { patch, preview_token: token }, key); return redirectTo(res, eventPath(id, '?status=event-updated')); }
+  catch (error) { if (redirectOnAuthError(error, res)) return undefined; if (error instanceof ApiError && [400, 403, 404, 409, 413, 422, 429, 503].includes(error.status)) return redirectTo(res, eventPath(id, '/recurring-edit?status=commit-failed')); throw error; }
 }));
 
 router.post('/:id(\\d+)/translate', asyncRoute(async (req, res) => {

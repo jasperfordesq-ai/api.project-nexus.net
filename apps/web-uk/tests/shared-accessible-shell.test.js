@@ -21646,6 +21646,7 @@ describe('shared accessible frontend shell', () => {
       poll_ids: [1, 2]
     });
 
+    api.callEventApi.mockResolvedValueOnce({ data: { preview_token: 'signed-revision', can_commit: true, effective_from_utc: '2026-08-01T09:00:00Z', impact: { affected_count: 4 } } });
     const recurringResponse = await post('/events/7/recurring-edit', {
       scope: 'all',
       title: ' Updated event ',
@@ -21656,21 +21657,20 @@ describe('shared accessible frontend shell', () => {
       online_link: ' https://example.org/meet ',
       allow_remote_attendance: 'on'
     });
-    expect(recurringResponse.headers.location).toBe('/events/7?status=event-updated');
-    expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/7/recurring', {
+    expect(recurringResponse.status).toBe(200);
+    expect(recurringResponse.text).toContain('action="/events/7/recurring-edit/commit"');
+    expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', '/7/recurrence-revisions/preview', {
+      patch: {
       title: 'Updated event',
       description: 'Updated description',
-      start_time: '2026-08-01T10:00',
-      end_time: null,
       location: null,
-      category_id: null,
-      max_attendees: 20,
-      is_online: true,
-      online_link: 'https://example.org/meet',
-      allow_remote_attendance: true,
-      video_url: null,
-      scope: 'all'
+      local_start_time: '10:00'
+      }
     });
+    api.callEventApi.mockResolvedValueOnce({ data: { revision_version: 3 } });
+    const recurringCommit = await post('/events/7/recurring-edit/commit', { preview_token: 'signed-revision', patch_json: JSON.stringify({ title: 'Updated event', description: 'Updated description', location: null, local_start_time: '10:00' }), idempotency_key: 'revision-commit-123' });
+    expect(recurringCommit.headers.location).toBe('/events/7?status=event-updated');
+    expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', '/7/recurrence-revisions/commit', { patch: { title: 'Updated event', description: 'Updated description', location: null, local_start_time: '10:00' }, preview_token: 'signed-revision' }, { headers: { 'Idempotency-Key': 'revision-commit-123' } });
 
     const translateResponse = await post('/events/7/translate', {
       source_text: ' Hello neighbours ',
