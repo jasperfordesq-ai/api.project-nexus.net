@@ -223,6 +223,12 @@ zero unresolved keys, all 317 templates have zero conservative localization
 matches, and the route matrix remains 683/689 matched with five documented
 extras.
 
+Podcast subscription toggles now omit `notify_new_episodes` exactly as Blade
+does. Laravel therefore applies its authoritative default of enabling new-
+episode notifications when a subscription is created, instead of Web UK
+silently storing `false`. Mocked action proof covers subscribe, unsubscribe,
+failure, and the exact payload boundary; no live subscription was changed.
+
 ## Localization P0 Closed In Current Slice
 
 The previously identified raw-key risk is fixed and guarded. The generator now

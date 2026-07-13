@@ -279,9 +279,7 @@ router.post('/:id(\\d+)/subscribe', asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   let status = 'subscribe-failed';
   try {
-    const result = await callPodcast(token, 'POST', `/${id}/subscribe`, {
-      notify_new_episodes: checked(req.body.notify_new_episodes)
-    });
+    const result = await callPodcast(token, 'POST', `/${id}/subscribe`);
     const data = dataFrom(result);
     status = data && data.subscribed === false ? 'unsubscribed' : 'subscribed';
   } catch (error) {

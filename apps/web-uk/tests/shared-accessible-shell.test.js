@@ -27690,13 +27690,17 @@ describe('shared accessible frontend shell', () => {
       .type('form')
       .send({ _csrf: csrfMatch[1], ...body });
 
-    const subscribeResponse = await post('/podcasts/7/subscribe', {
-      notify_new_episodes: 'on'
-    });
+    const subscribeResponse = await post('/podcasts/7/subscribe');
     expect(subscribeResponse.headers.location).toBe('/podcasts/7?status=subscribed');
-    expect(api.callPodcastApi).toHaveBeenLastCalledWith('test-token', 'POST', '/7/subscribe', {
-      notify_new_episodes: true
-    });
+    expect(api.callPodcastApi).toHaveBeenLastCalledWith('test-token', 'POST', '/7/subscribe');
+
+    api.callPodcastApi.mockResolvedValueOnce({ data: { subscribed: false } });
+    const unsubscribeResponse = await post('/podcasts/7/subscribe');
+    expect(unsubscribeResponse.headers.location).toBe('/podcasts/7?status=unsubscribed');
+
+    api.callPodcastApi.mockRejectedValueOnce(new api.ApiError('Subscribe unavailable', 503, {}));
+    const failedSubscribeResponse = await post('/podcasts/7/subscribe');
+    expect(failedSubscribeResponse.headers.location).toBe('/podcasts/7?status=subscribe-failed');
 
     const createResponse = await post('/podcasts/studio/new', {
       title: ' Community stories ',
