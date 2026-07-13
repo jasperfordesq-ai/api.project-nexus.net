@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-13T02:21:23.133Z
+Generated: 2026-07-13T02:27:42.232Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 687 |
-| web-uk routes | 629 |
-| Matched routes | 626 |
-| Missing routes | 61 |
+| web-uk routes | 635 |
+| Matched routes | 632 |
+| Missing routes | 55 |
 | Extra web-uk routes | 1 |
 | Ignored web-uk infrastructure routes | 3 |
 
@@ -32,7 +32,7 @@ Generated: 2026-07-13T02:21:23.133Z
 | courses | 26 | 0 | 0 | 0 |
 | dashboard | 1 | 0 | 0 | 0 |
 | event-templates | 0 | 4 | 0 | 0 |
-| events | 37 | 57 | 0 | 0 |
+| events | 43 | 51 | 0 | 0 |
 | exchanges | 4 | 0 | 0 | 0 |
 | explore | 1 | 0 | 0 | 0 |
 | faq | 1 | 0 | 0 | 0 |
@@ -97,7 +97,6 @@ Generated: 2026-07-13T02:21:23.133Z
 | GET | `/events/{param}/analytics/export.csv` | events | eventsAnalyticsExport |  | public-or-unknown |  |
 | GET | `/events/{param}/calendar` | events | eventsCalendarActions | events-calendar | public-or-unknown |  |
 | GET | `/events/{param}/calendar.ics` | events | eventsCalendarDownload |  | public-or-unknown |  |
-| GET | `/events/{param}/communications` | events | eventsCommunications |  | public-or-unknown |  |
 | GET | `/events/{param}/lifecycle-history` | events | eventsLifecycleHistory | event-lifecycle-history | auth-optional | feature:events |
 | GET | `/events/{param}/recurrence-definition-blueprints` | events | eventsRecurrenceDefinitionBlueprints | event-recurrence-blueprints | public-or-unknown |  |
 | GET | `/events/{param}/registration` | events | eventsRegistrationProduct |  | public-or-unknown |  |
@@ -114,11 +113,6 @@ Generated: 2026-07-13T02:21:23.133Z
 | GET | `/events/moderation/{param}/reject` | events | eventsModerationRejectConfirmation |  | public-or-unknown |  |
 | GET | `/events/templates` | events | eventsTemplates | event-templates | public-or-unknown |  |
 | POST | `/events/{param}/check-in/code` | events | eventsOfflineCheckinCode |  | public-or-unknown |  |
-| POST | `/events/{param}/communications` | events | eventsCommunicationsCreate |  | public-or-unknown |  |
-| POST | `/events/{param}/communications/{param}/cancel` | events | eventsCommunicationsCancel |  | public-or-unknown |  |
-| POST | `/events/{param}/communications/{param}/retry` | events | eventsCommunicationsRetry |  | public-or-unknown |  |
-| POST | `/events/{param}/communications/{param}/schedule` | events | eventsCommunicationsSchedule |  | public-or-unknown |  |
-| POST | `/events/{param}/communications/preview` | events | eventsCommunicationsPreview |  | public-or-unknown |  |
 | POST | `/events/{param}/publish` | events | publishEvent |  | public-or-unknown |  |
 | POST | `/events/{param}/recurrence-definition-blueprints/commit` | events | eventsCommitRecurrenceDefinitions |  | public-or-unknown |  |
 | POST | `/events/{param}/recurrence-definition-blueprints/preview` | events | eventsPreviewRecurrenceDefinitions | event-recurrence-blueprints | public-or-unknown |  |

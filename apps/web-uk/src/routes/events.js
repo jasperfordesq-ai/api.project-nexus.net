@@ -1202,6 +1202,106 @@ router.post('/:id(\\d+)/reminders/reset', requireAuth, asyncRoute(async (req, re
   }
 }));
 
+const COMMUNICATION_VARIANTS = ['announcement', 'follow_up', 'review_request'];
+const COMMUNICATION_SEGMENTS = ['registration_confirmed', 'waitlist_active', 'attendance_attended', 'attendance_no_show'];
+const COMMUNICATION_CHANNELS = ['email', 'in_app', 'push'];
+
+function communicationDraft(body = {}) {
+  const variant = selectedValue(body.variant, COMMUNICATION_VARIANTS);
+  const segments = [...new Set(arrayValues(body.segments).map((value) => trimmed(value)).filter((value) => COMMUNICATION_SEGMENTS.includes(value)))];
+  const channels = [...new Set(arrayValues(body.channels).map((value) => trimmed(value)).filter((value) => COMMUNICATION_CHANNELS.includes(value)))];
+  const message = trimmed(body.body, 20001);
+  if (!variant || segments.length === 0 || channels.length === 0 || !message || message.length > 20000) return null;
+  return { variant, segments, channels, body: message };
+}
+
+async function renderCommunications(req, res, options = {}) {
+  const id = Number(req.params.id);
+  const token = tokenFrom(req);
+  const page = boundedPositiveInteger(req.query.page, 1);
+  const historyPage = boundedPositiveInteger(req.query.history_page, 1);
+  const broadcastId = positiveInteger(req.query.broadcast_id);
+  const [eventResult, listResult, detailResult] = await Promise.all([
+    callApi(token, 'GET', `/${id}`),
+    callApi(token, 'GET', `/${id}/broadcasts?page=${page}&per_page=20`),
+    broadcastId ? callApi(token, 'GET', `/event-broadcasts/${broadcastId}?history_page=${historyPage}&history_per_page=50`) : null
+  ]);
+  const event = eventFrom(eventResult);
+  const listData = dataFrom(listResult) || {};
+  const detail = detailResult ? dataFrom(detailResult) : null;
+  if (detail?.broadcast && positiveInteger(detail.broadcast.event_id) !== id) {
+    return res.status(404).render('errors/404', { title: 'Broadcast not found' });
+  }
+  res.set('Cache-Control', 'private, no-store');
+  res.set('Pragma', 'no-cache');
+  return res.render('events/communications', {
+    title: res.locals.t('govuk_alpha_events.communications.title'), activeNav: 'events',
+    event: { id, title: trimmed(event.title) }, broadcasts: collectionFrom(listResult),
+    pagination: listData.meta || listData.pagination || { current_page: page, total: collectionFrom(listResult).length, per_page: 20 },
+    detail, preview: options.preview || null,
+    draft: options.draft || { variant: 'announcement', segments: ['registration_confirmed'], channels: ['email', 'in_app'], body: '' },
+    status: options.status ?? trimmed(req.query.status), idempotencyKey: randomUUID(), csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}
+
+router.get('/:id(\\d+)/communications', requireAuth, asyncRoute(async (req, res) => renderCommunications(req, res), { notFoundTitle: 'Event not found' }));
+
+router.post('/:id(\\d+)/communications/preview', requireAuth, asyncRoute(async (req, res) => {
+  const draft = communicationDraft(req.body);
+  if (!draft) return redirectTo(res, eventPath(Number(req.params.id), '/communications?status=invalid'));
+  try {
+    const result = await callApi(tokenFrom(req), 'POST', `/${Number(req.params.id)}/broadcasts/preview`, {
+      variant: draft.variant, segments: draft.segments, channels: draft.channels
+    });
+    return renderCommunications(req, res, { draft, preview: dataFrom(result) });
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    if (error instanceof ApiError && [400, 403, 404, 409, 422, 429, 503].includes(error.status)) return redirectTo(res, eventPath(Number(req.params.id), '/communications?status=failed'));
+    throw error;
+  }
+}));
+
+router.post('/:id(\\d+)/communications', requireAuth, asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const draft = communicationDraft(req.body);
+  const key = trimmed(req.body.idempotency_key, 191);
+  if (!draft || !checked(req.body.preview_confirmed) || !key) return redirectTo(res, eventPath(id, '/communications?status=invalid'));
+  try {
+    await callEventMutation(tokenFrom(req), 'POST', `/${id}/broadcasts`, draft, key);
+    return redirectTo(res, eventPath(id, '/communications?status=created'));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    if (error instanceof ApiError && [400, 403, 404, 409, 422, 429, 503].includes(error.status)) return redirectTo(res, eventPath(id, '/communications?status=failed'));
+    throw error;
+  }
+}));
+
+async function mutateCommunication(req, res, action) {
+  const id = Number(req.params.id);
+  const broadcastId = positiveInteger(req.params.broadcastId);
+  const expectedVersion = positiveInteger(req.body.expected_version);
+  const key = trimmed(req.body.idempotency_key, 191);
+  const payload = { expected_version: expectedVersion };
+  if (action === 'schedule') payload.scheduled_at = trimmed(req.body.scheduled_at) || null;
+  if (action === 'cancel') payload.reason = trimmed(req.body.reason, 501);
+  if (!broadcastId || !expectedVersion || !key || (action === 'cancel' && (!payload.reason || payload.reason.length > 500))) {
+    return redirectTo(res, eventPath(id, '/communications?status=invalid'));
+  }
+  try {
+    await callEventMutation(tokenFrom(req), 'POST', `/event-broadcasts/${broadcastId}/${action}`, payload, key);
+    const success = { schedule: 'scheduled', cancel: 'cancelled', retry: 'retried' }[action];
+    return redirectTo(res, eventPath(id, `/communications?status=${success}`));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    if (error instanceof ApiError && [400, 403, 404, 409, 422, 429, 503].includes(error.status)) return redirectTo(res, eventPath(id, '/communications?status=failed'));
+    throw error;
+  }
+}
+
+router.post('/:id(\\d+)/communications/:broadcastId(\\d+)/schedule', requireAuth, asyncRoute(async (req, res) => mutateCommunication(req, res, 'schedule')));
+router.post('/:id(\\d+)/communications/:broadcastId(\\d+)/cancel', requireAuth, asyncRoute(async (req, res) => mutateCommunication(req, res, 'cancel')));
+router.post('/:id(\\d+)/communications/:broadcastId(\\d+)/retry', requireAuth, asyncRoute(async (req, res) => mutateCommunication(req, res, 'retry')));
+
 router.post('/:id(\\d+)/check-in/credential/rotate', requireAuth, asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const credentialId = positiveInteger(req.body.credential_id);

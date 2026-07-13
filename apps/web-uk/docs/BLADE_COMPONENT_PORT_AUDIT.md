@@ -36,6 +36,16 @@ exact payload, reset, and localization proof passes. Live scheduler/delivery
 evidence, provider variants, manual assistive-technology review, and unchanged
 ASP.NET runtime proof remain open.
 
+## 2026-07-13 Event Communications Checkpoint
+
+Event organisers now have Laravel's aggregate-only broadcast workflow: private
+history and audit reads, audience/channel preview, preview-confirmed draft
+creation, capability-gated scheduling, cancellation with reason, failed-delivery
+retry, optimistic versions, and idempotency headers. Focused render and exact
+payload proof passes. Live delivery-provider execution, disposable broadcast
+fixtures, manual assistive-technology review, and unchanged ASP.NET runtime
+proof remain open.
+
 ## Purpose
 
 This audit lists reusable Laravel Blade accessible frontend patterns that should

@@ -22112,6 +22112,69 @@ describe('shared accessible frontend shell', () => {
     expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/42/reminders', { expected_revision: 6 });
   });
 
+  it('renders Laravel Event Communications history and capability-gated actions privately', async () => {
+    const api = require('../src/lib/api');
+    api.callEventApi
+      .mockResolvedValueOnce({ data: { id: 42, title: 'Community garden day' } })
+      .mockResolvedValueOnce({ data: [{ id: 8, event_id: 42, variant: 'announcement', status: 'draft', version: 3, capabilities: { schedule: true, cancel: true, retry: false } }] });
+    const response = await request(app).get('/events/42/communications').set('Cookie', signedCookieHeader());
+    expect(response.status).toBe(200);
+    expect(response.headers['cache-control']).toBe('private, no-store');
+    expect(response.text).toContain('Community garden day');
+    expect(response.text).toContain('/events/42/communications/8/schedule');
+    expect(response.text).toContain('/events/42/communications/8/cancel');
+    expect(response.text).not.toContain('/events/42/communications/8/retry');
+    expect(api.callEventApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/42/broadcasts?page=1&per_page=20');
+  });
+
+  it('previews and creates a Laravel Event Communication with exact audience and idempotency', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const shell = await agent.get('/contact').set('Cookie', signedCookieHeader());
+    const csrf = shell.text.match(/name="_csrf" value="([^"]+)"/)[1];
+    api.callEventApi
+      .mockResolvedValueOnce({ data: { recipient_count: 12, delivery_count: 24 } })
+      .mockResolvedValueOnce({ data: { id: 42, title: 'Community garden day' } })
+      .mockResolvedValueOnce({ data: [] });
+    const preview = await agent.post('/events/42/communications/preview').set('Cookie', signedCookieHeader()).type('form').send({
+      _csrf: csrf, variant: 'announcement', segments: ['registration_confirmed'], channels: ['email', 'in_app'], body: 'Please bring gloves.'
+    });
+    expect(preview.status).toBe(200);
+    expect(preview.text).toContain('name="preview_confirmed" value="1"');
+    expect(api.callEventApi).toHaveBeenNthCalledWith(1, 'test-token', 'POST', '/42/broadcasts/preview', {
+      variant: 'announcement', segments: ['registration_confirmed'], channels: ['email', 'in_app']
+    });
+    api.callEventApi.mockResolvedValueOnce({ data: { broadcast: { id: 9 } } });
+    const created = await agent.post('/events/42/communications').set('Cookie', signedCookieHeader()).type('form').send({
+      _csrf: csrf, preview_confirmed: '1', idempotency_key: 'comm-key-123', variant: 'announcement', segments: ['registration_confirmed'], channels: ['email'], body: 'Please bring gloves.'
+    });
+    expect(created.headers.location).toBe('/events/42/communications?status=created');
+    expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/broadcasts', {
+      variant: 'announcement', segments: ['registration_confirmed'], channels: ['email'], body: 'Please bring gloves.'
+    }, { headers: { 'Idempotency-Key': 'comm-key-123' } });
+  });
+
+  it('schedules, cancels and retries Laravel Event Communications with optimistic versions', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const shell = await agent.get('/contact').set('Cookie', signedCookieHeader());
+    const csrf = shell.text.match(/name="_csrf" value="([^"]+)"/)[1];
+    for (const [action, extra, status] of [
+      ['schedule', { scheduled_at: '2026-08-01T10:00' }, 'scheduled'],
+      ['cancel', { reason: 'Venue unavailable' }, 'cancelled'],
+      ['retry', {}, 'retried']
+    ]) {
+      api.callEventApi.mockResolvedValueOnce({ data: { changed: true } });
+      const response = await agent.post(`/events/42/communications/8/${action}`).set('Cookie', signedCookieHeader()).type('form').send({
+        _csrf: csrf, expected_version: '3', idempotency_key: `comm-${action}-123`, ...extra
+      });
+      expect(response.headers.location).toBe(`/events/42/communications?status=${status}`);
+      expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', `/event-broadcasts/8/${action}`, {
+        expected_version: 3, ...(action === 'schedule' ? { scheduled_at: '2026-08-01T10:00' } : {}), ...(action === 'cancel' ? { reason: 'Venue unavailable' } : {})
+      }, { headers: { 'Idempotency-Key': `comm-${action}-123` } });
+    }
+  });
+
   it('renders and issues Laravel signed Event check-in credentials without caching the secret', async () => {
     const api = require('../src/lib/api');
     api.callEventApi
