@@ -24449,6 +24449,58 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Ada Member');
   });
 
+  it('recognises an active member from Laravel flat group membership fields', async () => {
+    const api = require('../src/lib/api');
+
+    api.getGroup.mockResolvedValueOnce({
+      data: {
+        id: 484,
+        name: 'Dunmanway',
+        visibility: 'private',
+        my_role: 'member',
+        my_status: 'active'
+      }
+    });
+    api.getGroupMembers.mockResolvedValueOnce({ data: [] });
+    api.getEvents.mockResolvedValueOnce({ data: [] });
+    api.getFeedPosts.mockResolvedValueOnce({ data: [] });
+
+    const response = await request(app)
+      .get('/groups/484')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.getFeedPosts).toHaveBeenCalledWith('test-token', { group_id: '484', per_page: 20 });
+    expect(response.text).toContain('You are a member of this group.');
+    expect(response.text).toContain('View discussions');
+    expect(response.text).not.toContain('Only members can see and post to this group feed.');
+  });
+
+  it('recognises a pending member from Laravel flat group membership fields', async () => {
+    const api = require('../src/lib/api');
+
+    api.getGroup.mockResolvedValueOnce({
+      data: {
+        id: 484,
+        name: 'Dunmanway',
+        visibility: 'private',
+        my_role: 'member',
+        my_status: 'pending'
+      }
+    });
+    api.getGroupMembers.mockResolvedValueOnce({ data: [] });
+    api.getEvents.mockResolvedValueOnce({ data: [] });
+
+    const response = await request(app)
+      .get('/groups/484')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.getFeedPosts).not.toHaveBeenCalled();
+    expect(response.text).toContain('Your request to join is waiting for an admin to approve it.');
+    expect(response.text).not.toContain('action="/groups/484/join"');
+  });
+
   it('renders only current Blade pinned announcements on group detail', async () => {
     const api = require('../src/lib/api');
     api.getGroup.mockResolvedValueOnce({

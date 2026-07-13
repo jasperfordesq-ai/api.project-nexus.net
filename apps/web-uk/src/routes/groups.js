@@ -349,7 +349,16 @@ function dateInputValue(value) {
 function normalizeGroup(item, fallbackId = null) {
   const raw = item && typeof item === 'object' ? item : {};
   const viewerMembership = raw.viewer_membership || raw.viewerMembership;
-  const viewerMembershipKnown = ['my_membership', 'myMembership', 'viewer_membership', 'viewerMembership', 'membership', 'my_role', 'myRole']
+  const flatMembershipKnown = ['my_role', 'myRole', 'my_status', 'myStatus']
+    .some((key) => Object.prototype.hasOwnProperty.call(raw, key));
+  const flatMembership = flatMembershipKnown
+    ? {
+      role: raw.my_role ?? raw.myRole ?? null,
+      status: raw.my_status ?? raw.myStatus ?? null
+    }
+    : null;
+  const membership = raw.my_membership || raw.myMembership || raw.membership || viewerMembership || flatMembership;
+  const viewerMembershipKnown = ['my_membership', 'myMembership', 'viewer_membership', 'viewerMembership', 'membership', 'my_role', 'myRole', 'my_status', 'myStatus']
     .some((key) => Object.prototype.hasOwnProperty.call(raw, key));
   return {
     ...raw,
@@ -359,8 +368,8 @@ function normalizeGroup(item, fallbackId = null) {
     coverImageUrl: trimmed(raw.cover_image_url || raw.coverImageUrl || raw.cover_url || raw.coverUrl || ''),
     createdAtLabel: dateLabel(raw.created_at || raw.createdAt),
     tagsText: groupTags(raw.tags).join(', '),
-    my_membership: raw.my_membership || raw.myMembership || raw.membership || viewerMembership || null,
-    myMembership: raw.myMembership || raw.my_membership || raw.membership || viewerMembership || null,
+    my_membership: membership || null,
+    myMembership: membership || null,
     viewerMembershipKnown
   };
 }
