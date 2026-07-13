@@ -13530,12 +13530,17 @@ describe('shared accessible frontend shell', () => {
       cursor: 'current/cursor'
     });
     expect(response.text).toContain('id="feed-item-listing-42"');
+    expect(response.text).toContain('class="nexus-alpha-card-list"');
+    expect(response.text).toContain('class="nexus-alpha-card"');
     expect(response.text).toContain('Cargo bike available');
     expect(response.text).toContain('href="/acme/accessible/listings/42"');
+    expect(response.text).toContain('View this listing<span class="govuk-visually-hidden"> for Cargo bike available</span>');
     expect(response.text).toContain('src="/uploads/feed/cargo-bike-thumb.jpg"');
     expect(response.text).toContain('alt="A cargo bicycle parked outside a library"');
+    expect(response.text).toContain('class="nexus-alpha-feed-image"');
     expect(response.text).toContain('action="/acme/accessible/feed/items/listing/42/like"');
-    expect(response.text).toContain('href="/acme/accessible/feed/item/listing/42"');
+    expect(response.text).toContain('name="type" value="listings"');
+    expect(response.text).not.toContain('href="/acme/accessible/feed/item/listing/42"');
     expect(response.text).toContain('action="/acme/accessible/feed/posts/42/hide"');
     expect(response.text).toContain('action="/acme/accessible/feed/users/77/mute"');
     expect(response.text).toContain('action="/acme/accessible/feed/posts/42/report"');
@@ -13572,7 +13577,8 @@ describe('shared accessible frontend shell', () => {
 
     expect(response.status).toBe(200);
     expect(response.text).toContain('Ada Lovelace');
-    expect(response.text).toContain('href="/members/77"');
+    expect(response.text).toContain('class="nexus-alpha-avatar nexus-alpha-avatar--small" src="/avatars/ada.jpg" alt=""');
+    expect(response.text).toContain('Posted by Ada Lovelace');
     expect(response.text).toContain('Repair cafe is open.');
     expect(response.text).toContain('action="/feed/items/post/42/like"');
   });
