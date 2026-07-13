@@ -112,7 +112,7 @@ commit as the implementation it describes.
 ## Audited Baseline
 
 The committed frontend starting baseline for the current checkout was refreshed
-through ASP.NET-repository commit `5b5e3c3e`, and the Laravel source baseline is
+through ASP.NET-repository commit `bd0793ff`, and the Laravel source baseline is
 `903d03d3`. The first SHA names the
 repository snapshot containing Web UK; it does not make ASP.NET authoritative.
 Refresh the Laravel Blade/API source and Web UK implementation before relying on
@@ -126,7 +126,7 @@ these numbers after either source moves.
 | Missing Laravel routes | 6 | All are Event workflows |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 47/47 suites, 1,605/1,605 tests | Fresh green code gate |
+| Jest | 47/47 suites, 1,607/1,607 tests | Fresh green code gate |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
 | Blade marker check | 19/19 | Text-marker spotcheck, not visual certification |
 | Automated accessibility | Latest recorded 87/87 | Manual AT review remains open |
@@ -228,6 +228,25 @@ does. Laravel therefore applies its authoritative default of enabling new-
 episode notifications when a subscription is created, instead of Web UK
 silently storing `false`. Mocked action proof covers subscribe, unsubscribe,
 failure, and the exact payload boundary; no live subscription was changed.
+
+## Event Detail Attendee Roster Refresh
+
+Event detail now consumes Laravel's canonical attendee projection in Blade's
+single flat reading-order list. It renders the member display name or localized
+unknown-member fallback, trusted backend-relative avatar or initial placeholder,
+and the same going/interested/not-going status mapping and tag colours as Blade;
+the previous grouped headings and invented member-profile links are removed.
+
+The request now uses Blade's 50-row `status=all` contract, forwards the opaque
+`attendees_cursor`, preserves other query parameters on the `rel="next"` link,
+and distinguishes a failed roster load from a genuinely empty roster. The
+failure summary matches Blade's content while retaining Web UK's established
+focusable-error-summary convention. Mocked proof covers canonical rows, cursor
+encoding, query preservation, empty and failed reads, and asset resolution.
+The full non-mutating gate passes 47/47 suites and 1,607/1,607 tests; lint,
+branding, 6,891 static references / 5,254 unique keys / zero unresolved keys,
+the 317-template zero-match audit, diff check, and the unchanged 683/689 route
+matrix are green. No Laravel runtime or database mutation was run.
 
 ## Localization P0 Closed In Current Slice
 

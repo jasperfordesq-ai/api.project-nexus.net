@@ -431,6 +431,50 @@ function eventPerson(row = {}) {
   };
 }
 
+function eventAttendee(row = {}, t = (key) => key) {
+  const member = row.member && typeof row.member === 'object' ? row.member : {};
+  const registration = row.registration && typeof row.registration === 'object' ? row.registration : {};
+  const engagement = row.engagement && typeof row.engagement === 'object' ? row.engagement : {};
+  const legacyUser = row.user && typeof row.user === 'object' ? row.user : {};
+  const name = trimmed(
+    member.display_name || member.name || row.display_name || row.name || legacyUser.name
+      || [row.first_name || legacyUser.first_name, row.last_name || legacyUser.last_name].filter(Boolean).join(' ')
+  ) || t('govuk_alpha.members.unknown_member');
+  const legacyStatus = trimmed(row.rsvp_status || row.status).toLowerCase();
+  const status = registration.state === 'confirmed' || legacyStatus === 'going'
+    ? 'going'
+    : (engagement.state === 'interested' || ['interested', 'maybe'].includes(legacyStatus)
+      ? 'interested'
+      : 'not_going');
+
+  return {
+    name,
+    initial: Array.from(name)[0]?.toLocaleUpperCase() || '',
+    avatarUrl: resolveBackendAssetUrl(member.avatar_url || row.avatar_url || row.avatar || legacyUser.avatar_url || legacyUser.avatar),
+    status
+  };
+}
+
+function collectionMeta(result) {
+  const data = dataFrom(result);
+  if (result?.meta && typeof result.meta === 'object') return result.meta;
+  if (data?.meta && typeof data.meta === 'object') return data.meta;
+  return {};
+}
+
+function eventAttendeesNextPath(id, query, cursor) {
+  if (!cursor) return '';
+  const parameters = new URLSearchParams();
+  Object.entries(query || {}).forEach(([key, value]) => {
+    const candidate = Array.isArray(value) ? value[value.length - 1] : value;
+    if (candidate !== undefined && candidate !== null && candidate !== '') {
+      parameters.set(key, String(candidate));
+    }
+  });
+  parameters.set('attendees_cursor', cursor);
+  return eventPath(id, `?${parameters.toString()}`);
+}
+
 function dateTimeLocalInZone(value, timezone = 'UTC', subtractDay = false) {
   if (!value) return '';
   const date = new Date(value);
@@ -2577,10 +2621,14 @@ router.post('/new', requireAuth, audit.eventCreate(), asyncRoute(async (req, res
 router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
   const { id } = req.params;
   const token = tokenFrom(req);
+  const attendeesCursor = trimmed(req.query.attendees_cursor, 2048);
 
   const [eventResult, rsvpsResult, currentUserResult, relationshipResult] = await Promise.all([
     getEvent(token, id),
-    getEventRsvps(token, id).catch(() => ({ data: [] })),
+    getEventRsvps(token, id, { status: 'all', perPage: 50, cursor: attendeesCursor }).catch((error) => {
+      if (isAuthError(error)) throw error;
+      return { data: [], meta: {}, attendeesLoadFailed: true };
+    }),
     token ? getRequestProfile(req, token).catch((error) => {
       if (isAuthError(error)) throw error;
       return null;
@@ -2625,14 +2673,12 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
   const myRsvp = myRsvpStatus
     ? { status: myRsvpStatus === 'maybe' ? 'interested' : myRsvpStatus }
     : null;
-  const rsvps = collectionFrom(rsvpsResult);
-
-  // Group RSVPs by status
-  const rsvpsByStatus = {
-    going: rsvps.filter(r => (r.status || r.rsvp_status) === 'going'),
-    interested: rsvps.filter(r => ['interested', 'maybe'].includes(r.status || r.rsvp_status)),
-    not_going: rsvps.filter(r => (r.status || r.rsvp_status) === 'not_going')
-  };
+  const attendees = collectionFrom(rsvpsResult).map((row) => eventAttendee(row, res.locals.t));
+  const attendeesMeta = collectionMeta(rsvpsResult);
+  const attendeesNextCursor = trimmed(attendeesMeta.cursor || attendeesMeta.next_cursor, 2048);
+  const attendeesNextPath = attendeesMeta.has_more
+    ? eventAttendeesNextPath(id, req.query, attendeesNextCursor)
+    : '';
 
   const scheduleLabels = eventScheduleLabels(event, res.locals.formatLocaleDate);
   res.render('events/detail', {
@@ -2645,7 +2691,9 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
     eventStartLabel: scheduleLabels.startLabel,
     eventEndLabel: scheduleLabels.endLabel,
     recurrenceDefinitions,
-    rsvpsByStatus,
+    attendees,
+    attendeesLoadFailed: rsvpsResult.attendeesLoadFailed === true,
+    attendeesNextPath,
     isAuthenticated: Boolean(token),
     successMessage: req.flash ? req.flash('success')[0] : null,
     errorMessage: req.flash ? req.flash('error')[0] : null,

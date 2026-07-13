@@ -24084,7 +24084,7 @@ describe('shared accessible frontend shell', () => {
 
     expect(detail.status).toBe(200);
     expect(api.getEvent).toHaveBeenCalledWith('test-token', '42');
-    expect(api.getEventRsvps).toHaveBeenCalledWith('test-token', '42');
+    expect(api.getEventRsvps).toHaveBeenCalledWith('test-token', '42', { status: 'all', perPage: 50, cursor: '' });
     expect(detail.text).toContain('Bring a broken household item.');
     expect(detail.text).toContain('action="/events/42/rsvp"');
     expect(detail.text).toContain('Share by email');
@@ -24586,19 +24586,45 @@ describe('shared accessible frontend shell', () => {
     });
     api.getEventRsvps.mockResolvedValueOnce({
       data: [
-        { status: 'going', user: { id: 55, name: 'Alex Morgan' } },
-        { status: 'interested', user: { id: 56, name: 'Sam Green' } }
-      ]
+        { member: { id: 55, display_name: 'Alex Morgan', avatar_url: '/uploads/avatars/alex.png' }, registration: { state: 'confirmed' }, engagement: { state: 'none' } },
+        { member: { id: 56, display_name: 'Sam Green' }, registration: { state: 'none' }, engagement: { state: 'interested' } }
+      ],
+      meta: { cursor: 'next+page/2=', has_more: true }
     });
 
-    const response = await request(app).get('/events/42').set('Cookie', signedCookieHeader());
+    const response = await request(app).get('/events/42?view=calendar&attendees_cursor=first%2Bpage%2F1%3D').set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(200);
     expect(response.text).toContain('Who is going');
     expect(response.text).toContain('Alex Morgan');
     expect(response.text).toContain('Sam Green');
+    expect(response.text).toContain('/uploads/avatars/alex.png"');
+    expect(response.text).toContain('govuk-tag--green');
+    expect(response.text).toContain('govuk-tag--grey');
+    expect(response.text).not.toContain('href="/members/55"');
+    expect(response.text).toContain('rel="next"');
+    expect(response.text).toContain('/events/42?view=calendar&amp;attendees_cursor=next%2Bpage%2F2%3D');
+    expect(api.getEventRsvps).toHaveBeenCalledWith('test-token', '42', { status: 'all', perPage: 50, cursor: 'first+page/1=' });
     expect(response.text).not.toContain('govuk-grid-column-one-third');
     expect(response.text).not.toContain('app-attendee-list');
+  });
+
+  it('distinguishes a failed event attendee roster from an empty roster', async () => {
+    const api = require('../src/lib/api');
+    api.getEvent.mockResolvedValue({ data: { id: 42, title: 'Community garden day' } });
+    api.getEventRsvps.mockRejectedValueOnce(new Error('Roster unavailable'));
+
+    const failed = await request(app).get('/events/42').set('Cookie', signedCookieHeader());
+    expect(failed.status).toBe(200);
+    expect(failed.text).toContain('id="attendees-error-title"');
+    expect(failed.text).toContain('role="alert"');
+    expect(failed.text).toContain('href="/events/42"');
+
+    api.getEventRsvps.mockResolvedValueOnce({ data: [] });
+    const empty = await request(app).get('/events/42').set('Cookie', signedCookieHeader());
+    expect(empty.status).toBe(200);
+    expect(empty.text).not.toContain('id="attendees-error-title"');
+    expect(empty.text).not.toContain('Who is going');
   });
 
   it('renders waitlist controls only from Laravel relationship capabilities', async () => {

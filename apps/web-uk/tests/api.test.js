@@ -1381,6 +1381,23 @@ describe('API Request Functions', () => {
       expect(result.data[0].status).toBe('going');
     });
 
+    it('should forward Blade attendee cursor and page-size options', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: () => Promise.resolve({ data: [], meta: { cursor: null, has_more: false } })
+      });
+
+      await api.getEventRsvps('test-token', 6, { status: 'all', perPage: 50, cursor: 'next+page/2=' });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/events/6/attendees?status=all&per_page=50&cursor=next%2Bpage%2F2%3D',
+        expect.objectContaining({
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
+        })
+      );
+    });
+
     it('should submit Laravel v2 RSVP statuses and request the complete attendee roster', async () => {
       mockFetch
         .mockResolvedValueOnce({

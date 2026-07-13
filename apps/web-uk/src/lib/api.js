@@ -2585,10 +2585,14 @@ async function deleteEvent(token, id, data = {}) {
   });
 }
 
-async function getEventRsvps(token, eventId, status = 'all') {
+async function getEventRsvps(token, eventId, options = 'all') {
+  const parameters = options && typeof options === 'object'
+    ? options
+    : { status: options };
   const query = new URLSearchParams();
-  if (status) query.set('status', status);
-  query.set('per_page', 20);
+  if (parameters.status) query.set('status', parameters.status);
+  query.set('per_page', parameters.perPage || parameters.per_page || 20);
+  if (parameters.cursor) query.set('cursor', parameters.cursor);
   return request(`/api/v2/events/${encodeURIComponent(eventId)}/attendees?${query.toString()}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {}
   });
