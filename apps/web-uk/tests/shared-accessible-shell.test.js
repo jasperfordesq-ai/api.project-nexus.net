@@ -13683,6 +13683,7 @@ describe('shared accessible frontend shell', () => {
         type: 'post',
         content: 'Owner lifecycle update.',
         author: { id: 101, name: 'Current member' },
+        media: [{ file_url: 'https://cdn.example.test/feed/full.png', thumbnail_url: 'https://cdn.example.test/feed/thumb.png', alt_text: 'Workshop tools' }],
         reactions: { counts: { celebrate: 2 }, user_reaction: 'celebrate' },
         is_bookmarked: true,
         share_count: 3
@@ -13697,6 +13698,10 @@ describe('shared accessible frontend shell', () => {
     expect(index.text).toContain('action="/feed/posts/42/save"');
     expect(index.text).toContain('action="/feed/posts/42/update"');
     expect(index.text).toContain('action="/feed/posts/42/delete"');
+    expect(index.text).toContain('href="https://cdn.example.test/feed/full.png" target="_blank" rel="noopener noreferrer"');
+    expect(index.text).toContain('(opens in new tab)');
+    expect(index.text).toContain('<div class="govuk-warning-text">');
+    expect(index.text).toContain('<span class="govuk-visually-hidden">Warning</span>');
     expect(index.text).not.toContain('action="/feed/posts/42/share"');
     expect(index.text).not.toContain('action="/feed/posts/42/hide"');
     expect(index.text).not.toContain('action="/feed/posts/42/report"');

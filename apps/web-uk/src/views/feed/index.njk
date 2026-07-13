@@ -191,7 +191,8 @@
                   <ul class="nexus-alpha-feed-media" data-count="{{ post.media.length }}">
                     {% for media in post.media %}
                       <li>
-                        <a href="{{ media.fileUrl }}">
+                        <a href="{{ media.fileUrl }}" target="_blank" rel="noopener noreferrer">
+                          <span class="govuk-visually-hidden"> {{ t("opens_new_tab") }}</span>
                           <img src="{{ media.thumbnailUrl }}" alt="{{ media.altText or t('feed.image_alt', { title: post.title or post.typeLabel }) }}" loading="lazy" decoding="async">
                           {% if loop.last and post.mediaExtra > 0 %}
                             <span aria-hidden="true">+{{ post.mediaExtra }}</span>
@@ -325,7 +326,13 @@
                   <details class="govuk-details" data-module="govuk-details">
                     <summary class="govuk-details__summary"><span class="govuk-details__summary-text">{{ t("feed.delete_post") }}</span></summary>
                     <div class="govuk-details__text">
-                      <p class="govuk-body">{{ t("polish_discovery.delete_post_warning") }}</p>
+                      <div class="govuk-warning-text">
+                        <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
+                        <strong class="govuk-warning-text__text">
+                          <span class="govuk-visually-hidden">{{ t("states.warning_prefix") }}</span>
+                          {{ t("polish_discovery.delete_post_warning") }}
+                        </strong>
+                      </div>
                       <form method="post" action="{{ urlFor('/feed/posts/' + (post.id | string) + '/delete') }}">
                         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                         <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">{{ t("feed.delete_post_button") }}</button>
