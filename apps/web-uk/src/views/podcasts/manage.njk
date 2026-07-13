@@ -107,6 +107,16 @@
               <button class="govuk-button govuk-button--warning govuk-button--small" data-module="govuk-button">{{ t("govuk_alpha_commerce.podcast_studio.episode_action_delete") }}</button>
             </form>
           </div>
+          <form method="post" action="{{ urlFor('/podcasts/studio/' + (show.id | string) + '/update') }}" enctype="multipart/form-data" class="govuk-!-margin-top-4" novalidate>
+            <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+            <input type="hidden" name="episode_id" value="{{ episode.id }}">
+            {% set episodeField = episode %}
+            {% set episodeFieldEdit = true %}
+            {% set episodeFieldSuffix = '-' + (episode.id | string) %}
+            {% set episodeFieldVisibilities = episode.visibilityOptions %}
+            {% include "podcasts/_episode-fields.njk" %}
+            <button class="govuk-button govuk-button--secondary govuk-button--small" data-module="govuk-button">{{ t("govuk_alpha_commerce.podcast_studio.submit_edit") }}</button>
+          </form>
         </li>
       {% endfor %}
     </ul>
@@ -115,42 +125,11 @@
   <h3 class="govuk-heading-s govuk-!-margin-top-4">{{ t("govuk_alpha_commerce.podcast_studio.add_episode_heading") }}</h3>
   <form method="post" action="{{ urlFor(episodeStoreAction) }}" enctype="multipart/form-data" novalidate class="govuk-!-margin-bottom-6">
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-
-    <div class="govuk-form-group">
-      <label class="govuk-label govuk-label--s" for="episode_title">{{ t("govuk_alpha_commerce.podcast_studio.episode_title_label") }}</label>
-      <div id="episode_title-hint" class="govuk-hint">{{ t("govuk_alpha_commerce.podcast_studio.episode_title_hint") }}</div>
-      <input class="govuk-input" id="episode_title" name="episode_title" type="text" maxlength="200" aria-describedby="episode_title-hint">
-    </div>
-
-    <div class="govuk-form-group">
-      <label class="govuk-label govuk-label--s" for="episode_number">{{ t("govuk_alpha_commerce.podcast_studio.episode_number_label") }} <span class="govuk-hint govuk-!-display-inline">({{ t("govuk_alpha_commerce.common.optional") }})</span></label>
-      <div id="episode_number-hint" class="govuk-hint">{{ t("govuk_alpha_commerce.podcast_studio.episode_number_hint") }}</div>
-      <input class="govuk-input govuk-input--width-5" id="episode_number" name="episode_number" type="text" inputmode="numeric" aria-describedby="episode_number-hint">
-    </div>
-
-    <div class="govuk-form-group">
-      <label class="govuk-label govuk-label--s" for="episode_summary">{{ t("govuk_alpha_commerce.podcast_studio.episode_summary_label") }} <span class="govuk-hint govuk-!-display-inline">({{ t("govuk_alpha_commerce.common.optional") }})</span></label>
-      <div id="episode_summary-hint" class="govuk-hint">{{ t("govuk_alpha_commerce.podcast_studio.episode_summary_hint") }}</div>
-      <input class="govuk-input" id="episode_summary" name="episode_summary" type="text" maxlength="600" aria-describedby="episode_summary-hint">
-    </div>
-
-    <div class="govuk-form-group">
-      <label class="govuk-label govuk-label--s" for="episode_description">{{ t("govuk_alpha_commerce.podcast_studio.episode_description_label") }} <span class="govuk-hint govuk-!-display-inline">({{ t("govuk_alpha_commerce.common.optional") }})</span></label>
-      <div id="episode_description-hint" class="govuk-hint">{{ t("govuk_alpha_commerce.podcast_studio.episode_description_hint") }}</div>
-      <textarea class="govuk-textarea" id="episode_description" name="episode_description" rows="3" aria-describedby="episode_description-hint"></textarea>
-    </div>
-
-    <div class="govuk-form-group">
-      <label class="govuk-label govuk-label--s" for="audio">{{ t("govuk_alpha_commerce.podcast_studio.audio_file_label") }}</label>
-      <div id="audio-hint" class="govuk-hint">{{ t("govuk_alpha_commerce.podcast_studio.audio_file_hint") }}</div>
-      <input class="govuk-file-upload" id="audio" name="audio" type="file" accept="audio/*" aria-describedby="audio-hint">
-    </div>
-
-    <div class="govuk-form-group">
-      <label class="govuk-label govuk-label--s" for="audio_url">{{ t("govuk_alpha_commerce.podcast_studio.audio_url_label") }} <span class="govuk-hint govuk-!-display-inline">({{ t("govuk_alpha_commerce.common.optional") }})</span></label>
-      <div id="audio_url-hint" class="govuk-hint">{{ t("govuk_alpha_commerce.podcast_studio.audio_url_hint") }}</div>
-      <input class="govuk-input" id="audio_url" name="audio_url" type="url" inputmode="url" aria-describedby="audio_url-hint">
-    </div>
+    {% set episodeField = {} %}
+    {% set episodeFieldEdit = false %}
+    {% set episodeFieldSuffix = "" %}
+    {% set episodeFieldVisibilities = episodeVisibilities %}
+    {% include "podcasts/_episode-fields.njk" %}
 
     <button class="govuk-button govuk-button--secondary" data-module="govuk-button">{{ t("govuk_alpha_commerce.podcast_studio.add_episode_button") }}</button>
   </form>

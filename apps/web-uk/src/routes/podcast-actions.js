@@ -5,7 +5,14 @@
 
 const express = require('express');
 const fs = require('fs/promises');
-const { callPodcastApi, uploadPodcastArtwork, uploadPodcastEpisode, ApiError } = require('../lib/api');
+const {
+  callPodcastApi,
+  uploadPodcastArtwork,
+  uploadPodcastEpisode,
+  updatePodcastEpisode,
+  uploadPodcastEpisodeCover,
+  ApiError
+} = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
@@ -40,6 +47,14 @@ function dataFrom(result) {
 
 function isAuthError(error) {
   return error instanceof ApiError && error.status === 401;
+}
+
+function metaFrom(result) {
+  if (result && result.meta && typeof result.meta === 'object' && !Array.isArray(result.meta)) {
+    return result.meta;
+  }
+  const data = dataFrom(result);
+  return data && data.meta && typeof data.meta === 'object' && !Array.isArray(data.meta) ? data.meta : {};
 }
 
 function redirectTo(res, pathname) {
@@ -96,24 +111,94 @@ function showPayload(body, defaultLanguage = '') {
   return payload;
 }
 
-function episodePayload(body) {
+function nonNegativeInteger(value) {
+  const raw = trimmed(value);
+  if (raw === '') return { value: null, present: false, valid: true };
+  const number = Number(raw);
+  const integer = Math.trunc(number);
+  return {
+    value: Number.isFinite(number) && integer >= 0 ? integer : null,
+    present: true,
+    valid: Number.isFinite(number) && integer >= 0
+  };
+}
+
+function episodePayload(body, options = {}) {
   const payload = {
     title: trimmed(body.episode_title || body.title, 200),
     summary: trimmed(body.episode_summary || body.summary, 600),
-    description: trimmed(body.episode_description || body.description, 20000)
+    description: trimmed(body.episode_description || body.description, 20000),
+    explicit: checked(body.episode_explicit),
+    episode_type: ['full', 'trailer', 'bonus'].includes(trimmed(body.episode_type))
+      ? trimmed(body.episode_type)
+      : 'full',
+    visibility: ['inherit', 'public', 'members', 'private'].includes(trimmed(body.episode_visibility))
+      ? trimmed(body.episode_visibility)
+      : 'inherit'
   };
+  const errors = [];
+
+  const slug = trimmed(body.episode_slug, 200);
+  if (!options.update && slug !== '') payload.slug = slug;
 
   const audioUrl = trimmed(body.audio_url);
   if (audioUrl !== '') {
     payload.audio_url = audioUrl;
   }
 
-  const episodeNumber = positiveInteger(body.episode_number);
-  if (episodeNumber !== null) {
-    payload.episode_number = episodeNumber;
+  ['episode_number', 'season_number', 'duration_seconds', 'audio_bytes'].forEach((field) => {
+    const parsed = nonNegativeInteger(body[field]);
+    if (!parsed.valid) errors.push(field);
+    if (parsed.present) payload[field] = parsed.value;
+    else if (options.update) payload[field] = null;
+  });
+
+  const audioMime = trimmed(body.audio_mime, 120);
+  if (audioMime !== '') payload.audio_mime = audioMime;
+
+  const scheduledFor = trimmed(body.scheduled_for);
+  if (scheduledFor !== '') payload.scheduled_for = scheduledFor;
+  else if (options.update) payload.scheduled_for = null;
+
+  if (options.transcriptsEnabled) {
+    payload.transcript = trimmed(body.transcript, 200000);
+    payload.transcript_language = trimmed(body.transcript_language, 20);
   }
 
-  return payload;
+  if (options.chaptersEnabled) {
+    const chaptersJson = trimmed(body.chapters_json);
+    if (chaptersJson === '') {
+      if (options.update) payload.chapters = [];
+    } else {
+      try {
+        const chapters = JSON.parse(chaptersJson);
+        if (!Array.isArray(chapters)) errors.push('chapters_json');
+        else payload.chapters = chapters;
+      } catch {
+        errors.push('chapters_json');
+      }
+    }
+  }
+
+  return { payload, errors };
+}
+
+async function podcastMeta(token) {
+  return metaFrom(await callPodcast(token, 'GET', '/mine'));
+}
+
+async function bufferedUpload(file, fallbackName) {
+  return {
+    buffer: await fs.readFile(file.filepath),
+    filename: trimmed(file.originalFilename) || fallbackName,
+    contentType: trimmed(file.mimetype) || 'application/octet-stream',
+    size: file.size
+  };
+}
+
+function exceedsFileLimit(file, maxSizeMb) {
+  const limit = Number(maxSizeMb);
+  return Boolean(file && Number.isFinite(limit) && limit > 0 && Number(file.size) > limit * 1024 * 1024);
 }
 
 function uploadedFile(req, fieldName) {
@@ -128,6 +213,63 @@ async function removeUploadedFile(file) {
   } catch {
     // Temporary upload cleanup is best-effort only.
   }
+}
+
+async function updateEpisodeFromStudio(req, res, token, showId, episodeId) {
+  const file = uploadedFile(req, 'audio');
+  const cover = uploadedFile(req, 'cover');
+  let meta;
+  try {
+    meta = await podcastMeta(token);
+  } catch (error) {
+    await Promise.all([removeUploadedFile(file), removeUploadedFile(cover)]);
+    if (redirectOnAuthError(error, res)) return undefined;
+    return redirectTo(res, studioRedirect(showId, 'episode-save-failed'));
+  }
+  const { payload, errors } = episodePayload(req.body, {
+    update: true,
+    transcriptsEnabled: meta.enable_transcripts === true,
+    chaptersEnabled: meta.enable_chapters === true
+  });
+  if (exceedsFileLimit(file, meta.max_audio_size_mb) || exceedsFileLimit(cover, 8)) {
+    await Promise.all([removeUploadedFile(file), removeUploadedFile(cover)]);
+    return redirectTo(res, studioRedirect(showId, 'episode-save-failed'));
+  }
+  if (payload.title === '') {
+    await Promise.all([removeUploadedFile(file), removeUploadedFile(cover)]);
+    return redirectTo(res, studioRedirect(showId, 'episode-title-missing'));
+  }
+  if (errors.length > 0) {
+    await Promise.all([removeUploadedFile(file), removeUploadedFile(cover)]);
+    return redirectTo(res, studioRedirect(showId, 'episode-save-failed'));
+  }
+
+  let status = 'episode-saved';
+  try {
+    if (file) {
+      await updatePodcastEpisode(token, showId, episodeId, {
+        ...payload,
+        file: await bufferedUpload(file, 'podcast-audio')
+      });
+    } else {
+      await callPodcast(token, 'PUT', `/${showId}/episodes/${episodeId}`, payload);
+    }
+    if (cover) {
+      await uploadPodcastEpisodeCover(
+        token,
+        showId,
+        episodeId,
+        await bufferedUpload(cover, 'podcast-episode-cover')
+      );
+    }
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    status = 'episode-save-failed';
+  } finally {
+    await Promise.all([removeUploadedFile(file), removeUploadedFile(cover)]);
+  }
+
+  return redirectTo(res, studioRedirect(showId, status));
 }
 
 router.post('/:id(\\d+)/subscribe', asyncRoute(async (req, res) => {
@@ -200,10 +342,18 @@ router.post('/studio/:id(\\d+)/update', asyncRoute(async (req, res) => {
   if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
+  const episodeId = positiveInteger(req.body.episode_id);
+  if (episodeId !== null) {
+    return updateEpisodeFromStudio(req, res, token, id, episodeId);
+  }
   const payload = showPayload(req.body);
   delete payload.slug;
   if (payload.language === '') delete payload.language;
   const artwork = uploadedFile(req, 'artwork');
+  if (exceedsFileLimit(artwork, 8)) {
+    await removeUploadedFile(artwork);
+    return redirectTo(res, studioRedirect(id, 'show-save-failed'));
+  }
   if (payload.title === '') {
     await removeUploadedFile(artwork);
     return redirectTo(res, studioRedirect(id, 'show-title-missing'));
@@ -270,40 +420,71 @@ router.post('/studio/:id(\\d+)/episodes', asyncRoute(async (req, res) => {
   if (!token) return redirectTo(res, loginRedirect());
 
   const id = Number(req.params.id);
-  const payload = episodePayload(req.body);
   const file = uploadedFile(req, 'audio');
+  const cover = uploadedFile(req, 'cover');
+  let meta;
+  try {
+    meta = await podcastMeta(token);
+  } catch (error) {
+    await Promise.all([removeUploadedFile(file), removeUploadedFile(cover)]);
+    if (redirectOnAuthError(error, res)) return undefined;
+    return redirectTo(res, studioRedirect(id, 'episode-failed'));
+  }
+  const { payload, errors } = episodePayload(req.body, {
+    transcriptsEnabled: meta.enable_transcripts === true,
+    chaptersEnabled: meta.enable_chapters === true
+  });
+  if (exceedsFileLimit(file, meta.max_audio_size_mb) || exceedsFileLimit(cover, 8)) {
+    await Promise.all([removeUploadedFile(file), removeUploadedFile(cover)]);
+    return redirectTo(res, studioRedirect(id, 'episode-invalid-audio'));
+  }
   if (payload.title === '') {
-    await removeUploadedFile(file);
+    await Promise.all([removeUploadedFile(file), removeUploadedFile(cover)]);
     return redirectTo(res, studioRedirect(id, 'episode-title-missing'));
   }
   if (!payload.audio_url && !file) {
+    await removeUploadedFile(cover);
     return redirectTo(res, studioRedirect(id, 'episode-audio-missing'));
+  }
+  if (errors.length > 0) {
+    await Promise.all([removeUploadedFile(file), removeUploadedFile(cover)]);
+    return redirectTo(res, studioRedirect(id, 'episode-failed'));
   }
 
   let status = 'episode-added';
+  let episodeId = null;
   try {
-    if (file) {
-      const buffer = await fs.readFile(file.filepath);
-      await uploadPodcastEpisode(token, id, {
-        ...payload,
-        file: {
-          buffer,
-          filename: trimmed(file.originalFilename) || 'podcast-audio',
-          contentType: trimmed(file.mimetype) || 'application/octet-stream',
-          size: file.size
-        }
-      });
-    } else {
-      await callPodcast(token, 'POST', `/${id}/episodes`, payload);
+    try {
+      let result;
+      if (file) {
+        result = await uploadPodcastEpisode(token, id, {
+          ...payload,
+          file: await bufferedUpload(file, 'podcast-audio')
+        });
+      } else {
+        result = await callPodcast(token, 'POST', `/${id}/episodes`, payload);
+      }
+      const data = dataFrom(result);
+      episodeId = positiveInteger(data && (data.id || data.episode_id));
+    } catch (error) {
+      if (redirectOnAuthError(error, res)) return undefined;
+      status = error instanceof ApiError && error.status === 422 ? 'episode-invalid-audio' : 'episode-failed';
     }
-  } catch (error) {
-    if (redirectOnAuthError(error, res)) return undefined;
-    status = error instanceof ApiError && error.status === 422 ? 'episode-invalid-audio' : 'episode-failed';
-  } finally {
-    await removeUploadedFile(file);
-  }
 
-  return redirectTo(res, studioRedirect(id, status));
+    if (status === 'episode-added' && cover) {
+      try {
+        if (episodeId === null) throw new Error('Podcast episode ID missing after create');
+        await uploadPodcastEpisodeCover(token, id, episodeId, await bufferedUpload(cover, 'podcast-episode-cover'));
+      } catch (error) {
+        if (redirectOnAuthError(error, res)) return undefined;
+        status = 'episode-save-failed';
+      }
+    }
+
+    return redirectTo(res, studioRedirect(id, status));
+  } finally {
+    await Promise.all([removeUploadedFile(file), removeUploadedFile(cover)]);
+  }
 }));
 
 router.post('/studio/:id(\\d+)/episodes/:episodeId(\\d+)/publish', asyncRoute(async (req, res) => {

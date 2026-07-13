@@ -2001,18 +2001,27 @@ async function uploadPodcastArtwork(token, showId, file) {
   });
 }
 
+function appendPodcastEpisodeFields(form, data) {
+  const fields = [
+    'title', 'slug', 'summary', 'description', 'audio_url', 'audio_mime',
+    'audio_bytes', 'duration_seconds', 'episode_number', 'season_number',
+    'episode_type', 'visibility', 'transcript', 'transcript_language',
+    'scheduled_for'
+  ];
+  fields.forEach((field) => {
+    if (data[field] !== undefined && data[field] !== null) {
+      form.append(field, String(data[field]));
+    }
+  });
+  form.append('explicit', data.explicit ? '1' : '0');
+  if (data.chapters !== undefined) {
+    form.append('chapters', JSON.stringify(data.chapters));
+  }
+}
+
 async function uploadPodcastEpisode(token, showId, data) {
   const form = new globalThis.FormData();
-  form.append('title', data.title || '');
-  form.append('summary', data.summary || '');
-  form.append('description', data.description || '');
-
-  if (data.audio_url) {
-    form.append('audio_url', data.audio_url);
-  }
-  if (data.episode_number !== undefined && data.episode_number !== null) {
-    form.append('episode_number', String(data.episode_number));
-  }
+  appendPodcastEpisodeFields(form, data);
 
   if (data.file && data.file.buffer) {
     const blob = new globalThis.Blob([data.file.buffer], {
@@ -2087,6 +2096,39 @@ async function sendMessage(token, recipientId, content) {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify({ recipient_id: recipientId, body: content })
+  });
+}
+
+async function updatePodcastEpisode(token, showId, episodeId, data) {
+  const form = new globalThis.FormData();
+  form.append('_method', 'PUT');
+  appendPodcastEpisodeFields(form, data);
+
+  if (data.file && data.file.buffer) {
+    const blob = new globalThis.Blob([data.file.buffer], {
+      type: data.file.contentType || 'application/octet-stream'
+    });
+    form.append('audio', blob, data.file.filename || 'podcast-audio');
+  }
+
+  return request(`/api/v2/podcasts/${encodeURIComponent(showId)}/episodes/${encodeURIComponent(episodeId)}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form
+  });
+}
+
+async function uploadPodcastEpisodeCover(token, showId, episodeId, file) {
+  const form = new globalThis.FormData();
+  const blob = new globalThis.Blob([file.buffer], {
+    type: file.contentType || 'application/octet-stream'
+  });
+  form.append('image', blob, file.filename || 'podcast-episode-cover');
+
+  return request(`/api/v2/podcasts/${encodeURIComponent(showId)}/episodes/${encodeURIComponent(episodeId)}/cover`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form
   });
 }
 
@@ -3454,6 +3496,8 @@ module.exports = {
   callPodcastApi,
   uploadPodcastArtwork,
   uploadPodcastEpisode,
+  updatePodcastEpisode,
+  uploadPodcastEpisodeCover,
   callFederationApi,
   getConversations,
   getConversation,

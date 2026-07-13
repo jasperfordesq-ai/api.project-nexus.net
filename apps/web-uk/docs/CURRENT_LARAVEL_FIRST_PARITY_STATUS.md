@@ -112,7 +112,7 @@ commit as the implementation it describes.
 ## Audited Baseline
 
 The committed frontend starting baseline for the current checkout was refreshed
-through ASP.NET-repository commit `8f60e106`, and the Laravel source baseline is
+through ASP.NET-repository commit `5b5e3c3e`, and the Laravel source baseline is
 `903d03d3`. The first SHA names the
 repository snapshot containing Web UK; it does not make ASP.NET authoritative.
 Refresh the Laravel Blade/API source and Web UK implementation before relying on
@@ -126,7 +126,7 @@ these numbers after either source moves.
 | Missing Laravel routes | 6 | All are Event workflows |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 47/47 suites, 1,604/1,604 tests | Fresh green code gate |
+| Jest | 47/47 suites, 1,605/1,605 tests | Fresh green code gate |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
 | Blade marker check | 19/19 | Text-marker spotcheck, not visual certification |
 | Automated accessibility | Latest recorded 87/87 | Manual AT review remains open |
@@ -197,6 +197,31 @@ and rejected-artwork recovery without calling a live mutation endpoint. The
 full gate is 47/47 suites and 1,604/1,604 tests; 6,868 static references resolve
 to 5,241 unique keys with zero unresolved keys, and all 316 templates have zero
 conservative localization matches.
+
+## Podcast Episode Metadata And Cover Refresh
+
+Podcast episode create and edit now mirror Blade's full default-English field
+set: create-only slug, summary and description, episode/season/duration values,
+hosted audio or external audio URL, MIME and byte metadata, type, visibility,
+explicit flag, schedule, configuration-gated transcript and chapters, and
+optional cover artwork. Episode edit posts to Blade's existing show-update
+action with hidden `episode_id`; Web UK dispatches that form to Laravel's JSON
+or method-spoofed multipart episode update contract rather than inventing an
+extra accessible route. Covers use the dedicated
+`POST /api/v2/podcasts/{showId}/episodes/{episodeId}/cover` endpoint with field
+`image`.
+
+Audio parsing follows Laravel's current 250 MB default ceiling while still
+enforcing the tenant-advertised lower limit; covers retain the 8 MB image cap,
+and temporary files are removed on every outcome. If create succeeds and the
+separate cover call fails, the manage-page recovery state says saving failed
+instead of falsely saying the episode was not created. Mocked proof covers
+JSON and multipart create/update, metadata, cover upload, and rejected-cover
+recovery. No live Laravel mutation ran. The full gate is 47/47 suites and
+1,605/1,605 tests; 6,889 static references resolve to 5,253 unique keys with
+zero unresolved keys, all 317 templates have zero conservative localization
+matches, and the route matrix remains 683/689 matched with five documented
+extras.
 
 ## Localization P0 Closed In Current Slice
 

@@ -3663,6 +3663,51 @@ describe('API Request Functions', () => {
       expect(options.body).toBeInstanceOf(FormData);
       expect(options.body.get('image')).toBeInstanceOf(Blob);
     });
+
+    it('should update episode audio through Laravel method spoofing and upload its cover', async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { id: 99 } })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { url: '/uploads/podcasts/episode.webp' } })
+        });
+
+      await api.updatePodcastEpisode('test-token', 42, 99, {
+        title: 'Updated episode',
+        episode_number: 0,
+        explicit: true,
+        chapters: [{ title: 'Opening', starts_at_seconds: 0 }],
+        file: {
+          buffer: Buffer.from('replacement audio bytes', 'utf8'),
+          filename: 'replacement.wav',
+          contentType: 'audio/wav'
+        }
+      });
+      await api.uploadPodcastEpisodeCover('test-token', 42, 99, {
+        buffer: Buffer.from('cover bytes', 'utf8'),
+        filename: 'episode.webp',
+        contentType: 'image/webp'
+      });
+
+      const updateOptions = mockFetch.mock.calls[0][1];
+      expect(mockFetch.mock.calls[0][0]).toBe('http://localhost:5000/api/v2/podcasts/42/episodes/99');
+      expect(updateOptions.method).toBe('POST');
+      expect(updateOptions.body).toBeInstanceOf(FormData);
+      expect(updateOptions.body.get('_method')).toBe('PUT');
+      expect(updateOptions.body.get('episode_number')).toBe('0');
+      expect(updateOptions.body.get('explicit')).toBe('1');
+      expect(updateOptions.body.get('audio')).toBeInstanceOf(Blob);
+
+      const coverOptions = mockFetch.mock.calls[1][1];
+      expect(mockFetch.mock.calls[1][0]).toBe('http://localhost:5000/api/v2/podcasts/42/episodes/99/cover');
+      expect(coverOptions.method).toBe('POST');
+      expect(coverOptions.body.get('image')).toBeInstanceOf(Blob);
+    });
   });
 
   describe('callFederationApi', () => {

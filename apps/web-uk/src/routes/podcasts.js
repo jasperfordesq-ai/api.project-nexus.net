@@ -38,6 +38,7 @@ const STUDIO_SUCCESS_KEYS = {
   'show-published': 'status_show_published',
   'show-pending-review': 'status_show_pending_review',
   'episode-added': 'status_episode_added',
+  'episode-saved': 'status_show_saved',
   'episode-published': 'status_episode_published',
   'episode-deleted': 'status_episode_deleted'
 };
@@ -48,6 +49,7 @@ const STUDIO_ERROR_KEYS = {
   'show-title-missing': 'error_title',
   'show-create-failed': 'error_create',
   'episode-failed': 'status_episode_failed',
+  'episode-save-failed': 'status_episode_failed',
   'episode-title-missing': 'status_episode_title_missing',
   'episode-audio-missing': 'status_episode_audio_missing',
   'episode-invalid-audio': 'status_episode_invalid_audio',
@@ -280,7 +282,14 @@ function decorateEpisode(episode, showId = null, t = null) {
     description: stripHtml(row.description || row.summary || ''),
     cardDescription: limitedText(row.description || row.summary || '', 240),
     audioUrl: safeRelativeOrAbsoluteUrl(row.audio_url),
+    coverImageUrl: safeRelativeOrAbsoluteUrl(row.cover_image_url),
     transcript: String(row.transcript || '').trim(),
+    chaptersJson: Array.isArray(row.chapters) ? JSON.stringify(row.chapters.map((chapter) => ({
+      title: trimmed(chapter.title),
+      starts_at_seconds: Math.max(0, Number(chapter.starts_at_seconds) || 0),
+      ...(trimmed(chapter.url) ? { url: trimmed(chapter.url) } : {})
+    })), null, 2) : '',
+    scheduledFor: trimmed(row.scheduled_for).slice(0, 16),
     status,
     statusLabel: t && Object.hasOwn(EPISODE_STATUS_LABELS, status)
       ? t(`govuk_alpha_commerce.podcast_studio.episode_status_${status}`)
@@ -466,7 +475,16 @@ router.get('/studio/:id(\\d+)', asyncRoute(async (req, res) => {
       return undefined;
     }
 
-    const episodes = studioEpisodes(show, res.locals.t);
+    const episodeVisibilities = meta.enable_private_shows === true
+      ? ['inherit', 'public', 'members', 'private']
+      : ['inherit', 'public'];
+    const episodes = studioEpisodes(show, res.locals.t).map((episode) => ({
+      ...episode,
+      visibility: ['inherit', 'public', 'members', 'private'].includes(trimmed(episode.visibility))
+        ? trimmed(episode.visibility)
+        : 'inherit',
+      visibilityOptions: [...new Set([...episodeVisibilities, trimmed(episode.visibility)].filter(Boolean))]
+    }));
     return res.render('podcasts/manage', {
       title: res.locals.t('govuk_alpha_commerce.podcast_studio.title_edit'),
       activeNav: 'explore',
@@ -475,6 +493,9 @@ router.get('/studio/:id(\\d+)', asyncRoute(async (req, res) => {
       visibilities: meta.enable_private_shows === true
         ? ['public', 'members', 'private']
         : [...new Set(['public', ['members', 'private'].includes(show.visibility) ? show.visibility : null].filter(Boolean))],
+      episodeVisibilities,
+      transcriptsEnabled: meta.enable_transcripts === true,
+      chaptersEnabled: meta.enable_chapters === true,
       status: statusEntry(req.query.status, res.locals.t),
       episodeStoreAction: `/podcasts/studio/${show.id}/episodes`
     });

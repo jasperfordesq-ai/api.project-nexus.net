@@ -273,6 +273,8 @@ jest.mock('../src/lib/api', () => ({
   callPodcastApi: jest.fn().mockResolvedValue({ data: { id: 42, subscribed: true, moderation_status: 'approved' } }),
   uploadPodcastArtwork: jest.fn().mockResolvedValue({ data: { artwork_url: '/uploads/podcasts/show.jpg' } }),
   uploadPodcastEpisode: jest.fn().mockResolvedValue({ data: { id: 99 } }),
+  updatePodcastEpisode: jest.fn().mockResolvedValue({ data: { id: 99 } }),
+  uploadPodcastEpisodeCover: jest.fn().mockResolvedValue({ data: { url: '/uploads/podcasts/episode.jpg' } }),
   callFederationApi: jest.fn().mockResolvedValue({ data: { id: 42, success: true } }),
   getVolunteerOrganisations: jest.fn().mockResolvedValue({ data: [] }),
   getVolunteeringOpportunities: jest.fn().mockResolvedValue({ data: [] }),
@@ -643,6 +645,8 @@ describe('shared accessible frontend shell', () => {
     api.callPodcastApi.mockReset().mockResolvedValue({ data: { id: 42, subscribed: true, moderation_status: 'approved' } });
     api.uploadPodcastArtwork.mockReset().mockResolvedValue({ data: { artwork_url: '/uploads/podcasts/show.jpg' } });
     api.uploadPodcastEpisode.mockReset().mockResolvedValue({ data: { id: 99 } });
+    api.updatePodcastEpisode.mockReset().mockResolvedValue({ data: { id: 99 } });
+    api.uploadPodcastEpisodeCover.mockReset().mockResolvedValue({ data: { url: '/uploads/podcasts/episode.jpg' } });
     api.callFederationApi.mockReset().mockResolvedValue({ data: { id: 42, success: true } });
     api.login.mockReset();
     api.verify2fa.mockReset();
@@ -27620,13 +27624,28 @@ describe('shared accessible frontend shell', () => {
             {
               id: 99,
               title: 'First update',
+              summary: 'Episode summary',
+              description: 'Episode description',
               status: 'draft',
-              episode_number: 3
+              episode_number: 3,
+              season_number: 2,
+              duration_seconds: 900,
+              audio_url: 'https://media.example/first.mp3',
+              audio_mime: 'audio/mpeg',
+              audio_bytes: 12345,
+              explicit: true,
+              episode_type: 'bonus',
+              visibility: 'members',
+              scheduled_for: '2030-06-15T12:30:00Z',
+              transcript_language: 'en',
+              transcript: 'Episode transcript',
+              cover_image_url: '/uploads/podcasts/episode.jpg',
+              chapters: [{ title: 'Opening', starts_at_seconds: 0 }]
             }
           ]
         }
       ],
-      meta: { enable_private_shows: true }
+      meta: { enable_private_shows: true, enable_transcripts: true, enable_chapters: true }
     });
 
     const response = await request(app)
@@ -27645,6 +27664,11 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('podcasts@example.test');
     expect(response.text).toContain('Episode 3');
     expect(response.text).toContain('First update');
+    expect(response.text).toContain('Episode transcript');
+    expect(response.text).toContain('Opening');
+    expect(response.text).toContain('/uploads/podcasts/episode.jpg');
+    expect(response.text).toContain('action="/podcasts/studio/42/update"');
+    expect(response.text).toContain('name="episode_id" value="99"');
     expect(response.text).toContain('Add an episode');
     expect(response.text).toContain('Audio link');
     expect(response.text).toContain('Delete this show?');
@@ -27748,7 +27772,10 @@ describe('shared accessible frontend shell', () => {
       summary: 'Short summary',
       description: 'Longer notes',
       audio_url: 'https://media.example/audio.mp3',
-      episode_number: 3
+      episode_number: 3,
+      explicit: false,
+      episode_type: 'full',
+      visibility: 'inherit'
     });
 
     const publishEpisodeResponse = await post('/podcasts/studio/42/episodes/99/publish');
@@ -27794,9 +27821,21 @@ describe('shared accessible frontend shell', () => {
       .field('episode_summary', ' Short summary ')
       .field('episode_description', ' Longer notes ')
       .field('episode_number', '3')
+      .field('season_number', '2')
+      .field('duration_seconds', '900')
+      .field('audio_mime', 'audio/mpeg')
+      .field('audio_bytes', '12345')
+      .field('episode_type', 'bonus')
+      .field('episode_visibility', 'public')
+      .field('episode_explicit', '1')
+      .field('scheduled_for', '2030-06-15T12:30')
       .attach('audio', Buffer.from('fake mp3 podcast bytes', 'utf8'), {
         filename: 'first-update.mp3',
         contentType: 'audio/mpeg'
+      })
+      .attach('cover', Buffer.from('fake episode cover bytes', 'utf8'), {
+        filename: 'first-update.webp',
+        contentType: 'image/webp'
       });
 
     expect(response.status).toBe(302);
@@ -27806,12 +27845,79 @@ describe('shared accessible frontend shell', () => {
       summary: 'Short summary',
       description: 'Longer notes',
       episode_number: 3,
+      season_number: 2,
+      duration_seconds: 900,
+      audio_mime: 'audio/mpeg',
+      audio_bytes: 12345,
+      episode_type: 'bonus',
+      visibility: 'public',
+      explicit: true,
+      scheduled_for: '2030-06-15T12:30',
       file: expect.objectContaining({
         filename: 'first-update.mp3',
         contentType: 'audio/mpeg',
         buffer: Buffer.from('fake mp3 podcast bytes', 'utf8')
       })
     }));
+    expect(api.uploadPodcastEpisodeCover).toHaveBeenCalledWith('test-token', 42, 99, expect.objectContaining({
+      filename: 'first-update.webp',
+      contentType: 'image/webp',
+      buffer: Buffer.from('fake episode cover bytes', 'utf8')
+    }));
+
+    const updateEpisodeResponse = await agent
+      .post('/podcasts/studio/42/update')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .field('_csrf', csrfMatch[1])
+      .field('episode_id', '99')
+      .field('episode_title', 'Updated first episode')
+      .field('episode_summary', 'Updated summary')
+      .field('episode_number', '0')
+      .field('episode_type', 'trailer')
+      .field('episode_visibility', 'inherit')
+      .attach('audio', Buffer.from('replacement audio bytes', 'utf8'), {
+        filename: 'replacement.wav',
+        contentType: 'audio/wav'
+      })
+      .attach('cover', Buffer.from('replacement cover bytes', 'utf8'), {
+        filename: 'replacement.png',
+        contentType: 'image/png'
+      });
+
+    expect(updateEpisodeResponse.status).toBe(302);
+    expect(updateEpisodeResponse.headers.location).toBe('/podcasts/studio/42?status=episode-saved');
+    expect(api.updatePodcastEpisode).toHaveBeenCalledWith('test-token', 42, 99, expect.objectContaining({
+      title: 'Updated first episode',
+      summary: 'Updated summary',
+      episode_number: 0,
+      episode_type: 'trailer',
+      visibility: 'inherit',
+      file: expect.objectContaining({
+        filename: 'replacement.wav',
+        contentType: 'audio/wav',
+        buffer: Buffer.from('replacement audio bytes', 'utf8')
+      })
+    }));
+    expect(api.uploadPodcastEpisodeCover).toHaveBeenLastCalledWith('test-token', 42, 99, expect.objectContaining({
+      filename: 'replacement.png',
+      contentType: 'image/png',
+      buffer: Buffer.from('replacement cover bytes', 'utf8')
+    }));
+
+    api.uploadPodcastEpisodeCover.mockRejectedValueOnce(new api.ApiError('Cover rejected', 422));
+    const rejectedEpisodeCoverResponse = await agent
+      .post('/podcasts/studio/42/episodes')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .field('_csrf', csrfMatch[1])
+      .field('episode_title', 'Episode with rejected cover')
+      .field('audio_url', 'https://media.example/rejected-cover.mp3')
+      .attach('cover', Buffer.from('rejected episode cover bytes', 'utf8'), {
+        filename: 'rejected-cover.gif',
+        contentType: 'image/gif'
+      });
+
+    expect(rejectedEpisodeCoverResponse.status).toBe(302);
+    expect(rejectedEpisodeCoverResponse.headers.location).toBe('/podcasts/studio/42?status=episode-save-failed');
 
     const artworkResponse = await agent
       .post('/podcasts/studio/42/update')
