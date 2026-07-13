@@ -969,17 +969,17 @@ router.post('/:id(\\d+)/submit', requireAuth, asyncRoute(async (req, res) => tra
 router.post('/:id(\\d+)/publish', requireAuth, asyncRoute(async (req, res) => transitionEventPublication(req, res, 'publish')));
 
 router.get('/templates', requireAuth, asyncRoute(async (req, res) => {
-  const filter = selectedValue(req.query.filter, ['active', 'archived', 'all'], 'active'); const cursor = positiveInteger(req.query.cursor); const query = new URLSearchParams({ status: filter, per_page: '20' }); if (cursor) query.set('cursor', String(cursor));
+  const filter = selectedValue(req.query.filter, ['active', 'archived', 'all'], 'active'); const cursor = trimmed(req.query.cursor, 4096); const query = new URLSearchParams({ status: filter, per_page: '20' }); if (cursor) query.set('cursor', cursor);
   const result = await callEventTemplateApi(tokenFrom(req), 'GET', `?${query}`);
   res.set('Cache-Control', 'private, no-store');
-  return res.render('events/templates', { title: res.locals.t('event_templates.title'), activeNav: 'events', templates: collectionFrom(result), pagination: result?.meta || {}, filter, status: trimmed(req.query.status), csrfToken: req.csrfToken ? req.csrfToken() : '' });
+  return res.render('events/templates', { title: res.locals.t('event_templates.title'), activeNav: 'events', templates: collectionFrom(result), pagination: result?.meta || {}, filter, cursor, status: trimmed(req.query.status), csrfToken: req.csrfToken ? req.csrfToken() : '' });
 }));
 
 router.get('/:id(\\d+)/template-preview', requireAuth, asyncRoute(async (req, res) => {
   const id = Number(req.params.id); const templateId = positiveInteger(req.query.template_id); const token = tokenFrom(req);
   const [eventResult, previewResult, templateResult] = await Promise.all([callApi(token, 'GET', `/${id}`), callApi(token, 'POST', `/${id}/template-preview`), templateId ? callEventTemplateApi(token, 'GET', `/${templateId}`) : Promise.resolve(null)]);
   res.set('Cache-Control', 'private, no-store');
-  return res.render('events/template-capture-preview', { title: res.locals.t('event_templates.capture_preview_title'), activeNav: 'events', event: eventFrom(eventResult), preview: dataFrom(previewResult) || {}, template: dataFrom(templateResult), idempotencyKey: randomUUID(), csrfToken: req.csrfToken ? req.csrfToken() : '' });
+  return res.render('events/template-capture-preview', { title: res.locals.t('event_templates.capture_preview_title'), activeNav: 'events', event: eventFrom(eventResult), preview: dataFrom(previewResult) || {}, template: dataFrom(templateResult), status: trimmed(req.query.status), idempotencyKey: randomUUID(), csrfToken: req.csrfToken ? req.csrfToken() : '' });
 }, { notFoundTitle: 'Event not found' }));
 
 router.post('/:id(\\d+)/templates', requireAuth, asyncRoute(async (req, res) => {
@@ -991,7 +991,7 @@ router.post('/:id(\\d+)/templates', requireAuth, asyncRoute(async (req, res) => 
     return redirectTo(res, `/events/templates?status=${templateId ? 'revised' : 'captured'}`);
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    if (error instanceof ApiError && [400, 403, 404, 409, 422, 429, 503].includes(error.status)) return redirectTo(res, eventPath(id, '/template-preview?status=failed'));
+    if (error instanceof ApiError && [400, 403, 404, 409, 422, 429, 503].includes(error.status)) return redirectTo(res, eventPath(id, `/template-preview?status=failed${templateId ? `&template_id=${templateId}` : ''}`));
     throw error;
   }
 }));

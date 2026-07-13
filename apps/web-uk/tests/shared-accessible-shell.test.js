@@ -23523,15 +23523,26 @@ describe('shared accessible frontend shell', () => {
     const translateEnglish = createTranslator('en');
     const translateIrish = createTranslator('ga');
     api.callEventTemplateApi
-      .mockResolvedValueOnce({ data: [{ id: 7, status: 'active', current_version: 2, source_event: { id: 42, title: 'Community garden day' }, capabilities: { materialize: true, revise: true, view_audit: true } }], meta: { next_cursor: 8 } })
-      .mockResolvedValueOnce({ data: { id: 7, source_event: { title: 'Community garden day' } } })
-      .mockResolvedValueOnce({ data: [{ id: 9, action: 'captured', template_version: 2, immutable: true, created_at: '2026-07-13T12:00:00Z' }], meta: {} });
+      .mockResolvedValueOnce({ data: [{ id: 7, status: 'active', current_version: 2, version: { configuration: { title: 'Reusable garden day' } }, source_event: { id: 42, title: 'Community garden day' }, usage: { materialization_count: 3 }, capabilities: { materialize: true, revise: true, view_audit: true } }], meta: { has_more: true, next_cursor: 8 } })
+      .mockResolvedValueOnce({ data: { id: 7, version: { configuration: { title: 'Reusable garden day' } }, source_event: { title: 'Community garden day' } } })
+      .mockResolvedValueOnce({ data: [{ id: 9, action: 'materialized', template_version: 2, source_event_id: 42, materialized_event_id: 99, created_at: '2026-07-13T12:00:00Z', evidence: { snapshot_hash: 'abcdef1234567890', archive_reason_recorded: true, copied_fields: ['title', 'private_answers'], override_fields: ['location', 'attendees'] } }], meta: { has_more: true, next_cursor: 'opaque+cursor/10=' } });
     const library = await request(app).get('/events/templates?filter=active').set('Cookie', signedCookieHeader());
     expect(library.status).toBe(200); expect(library.text).toContain('/event-templates/7/materialize'); expect(library.text).toContain('/events/42/template-preview?template_id=7');
     expect(library.text).toContain(translateEnglish('event_templates.title'));
     expect(library.text).not.toContain('event_templates.title');
-    const history = await request(app).get('/event-templates/7/history').set('Cookie', signedCookieHeader());
-    expect(history.status).toBe(200); expect(history.text).toContain('Community garden day'); expect(history.text).toContain('2026-07-13T12:00:00Z');
+    expect(library.text).toContain('Reusable garden day');
+    expect(library.text).toContain(translateEnglish('event_templates.safety_title'));
+    expect(library.text).toContain(translateEnglish('event_templates.use_count', { count: 3 }));
+    const history = await request(app).get('/event-templates/7/history?cursor=incoming%2Bcursor%2F9%3D&filter=archived&library_cursor=library%2Bcursor%2F8%3D').set('Cookie', signedCookieHeader());
+    expect(history.status).toBe(200); expect(history.text).toContain('Reusable garden day'); expect(history.text).toContain('2026-07-13T12:00:00Z');
+    expect(history.text).toContain(translateEnglish('event_templates.audit_immutable'));
+    expect(history.text).toContain('abcdef1234567890');
+    expect(history.text).toContain(translateEnglish('event_templates.audit_event_reference', { id: 99 }));
+    expect(history.text).not.toContain('event_templates.fields.private_answers');
+    expect(history.text).not.toContain('event_templates.fields.attendees');
+    expect(history.text).toContain('/events/templates?filter=archived&amp;cursor=library%2Bcursor%2F8%3D');
+    expect(history.text).toContain('/event-templates/7/history?cursor=opaque%2Bcursor%2F10%3D&amp;filter=archived&amp;library_cursor=library%2Bcursor%2F8%3D');
+    expect(api.callEventTemplateApi).toHaveBeenCalledWith('test-token', 'GET', '/7/history?per_page=20&cursor=incoming%2Bcursor%2F9%3D');
     api.callEventTemplateApi.mockResolvedValueOnce({ data: [], meta: {} });
     const gaLibrary = await request(app).get('/events/templates?filter=active&locale=ga').set('Cookie', signedCookieHeader());
     expect(gaLibrary.status).toBe(200);
@@ -23541,9 +23552,13 @@ describe('shared accessible frontend shell', () => {
 
   it('previews, captures and revises Laravel event templates', async () => {
     const api = require('../src/lib/api'); const agent = request.agent(app); const shell = await agent.get('/contact').set('Cookie', signedCookieHeader()); const csrf = shell.text.match(/name="_csrf" value="([^"]+)"/)[1];
-    api.callEventApi.mockResolvedValueOnce({ data: { id: 42, title: 'Community garden day' } }).mockResolvedValueOnce({ data: { copied_fields: ['title'], skipped_fields: ['attendees'] } });
+    api.callEventApi.mockResolvedValueOnce({ data: { id: 42, title: 'Community garden day' } }).mockResolvedValueOnce({ data: { configuration: { title: 'Reusable garden day' }, copied_fields: ['title'], checklist: [{ code: 'event_template_check_source_manage' }] } });
     const preview = await agent.get('/events/42/template-preview').set('Cookie', signedCookieHeader());
     expect(preview.status).toBe(200); expect(preview.text).toContain('action="/events/42/templates"');
+    expect(preview.text).toContain('Reusable garden day');
+    expect(preview.text).toContain(createTranslator('en')('event_templates.safe_description'));
+    expect(preview.text).toContain(createTranslator('en')('event_templates.never_copied.notifications'));
+    expect(preview.text).toContain(createTranslator('en')('event_templates.checks.event_template_check_source_manage'));
     api.callEventApi.mockResolvedValueOnce({ data: { template: { id: 7 } } });
     const captured = await agent.post('/events/42/templates').set('Cookie', signedCookieHeader()).type('form').send({ _csrf: csrf, idempotency_key: 'capture-123' });
     expect(captured.headers.location).toBe('/events/templates?status=captured');
@@ -23559,10 +23574,16 @@ describe('shared accessible frontend shell', () => {
     api.callEventTemplateApi.mockResolvedValueOnce({ data: template });
     const form = await agent.get('/event-templates/7/materialize').set('Cookie', signedCookieHeader());
     expect(form.status).toBe(200); expect(form.text).toContain('value="Garden copy"');
+    expect(form.text).toContain(createTranslator('en')('event_templates.draft_only_description'));
+    expect(form.text).toContain('id="template-start-time"');
     const fields = { _csrf: csrf, template_version: '2', title: 'Autumn garden', start_time: '2026-09-01T10:00', end_time: '2026-09-01T12:00', location: 'Village hall', max_attendees: '20', timezone: 'Europe/Dublin' };
-    api.callEventTemplateApi.mockResolvedValueOnce({ data: { kind: 'materialization', will_create: { publication_status: 'draft' } } }).mockResolvedValueOnce({ data: template });
+    api.callEventTemplateApi.mockResolvedValueOnce({ data: { kind: 'materialization', configuration: { title: 'Autumn garden' }, schedule: { timezone: 'Europe/Dublin' }, checklist: [{ code: 'event_template_check_version_current' }], will_create: { publication_status: 'draft' } } }).mockResolvedValueOnce({ data: template });
     const preview = await agent.post('/event-templates/7/materialize/preview').set('Cookie', signedCookieHeader()).type('form').send(fields);
     expect(preview.status).toBe(200); expect(preview.text).toContain('action="/event-templates/7/materialize"');
+    expect(preview.text).toContain(createTranslator('en')('event_templates.ready_description'));
+    expect(preview.text).toContain('Autumn garden');
+    expect(preview.text).toContain(createTranslator('en')('event_templates.checks.event_template_check_version_current'));
+    expect(preview.text).toContain(createTranslator('en')('event_templates.change_details'));
     api.callEventTemplateApi.mockResolvedValueOnce({ data: { event: { id: 99 }, created: true } });
     const created = await agent.post('/event-templates/7/materialize').set('Cookie', signedCookieHeader()).type('form').send({ ...fields, idempotency_key: 'materialize-123' });
     expect(created.headers.location).toBe('/events/99/edit');
