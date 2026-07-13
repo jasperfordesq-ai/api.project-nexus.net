@@ -24,11 +24,11 @@
       {% if directStatus and directStatus.type == "error" %}
         {{ govukErrorSummary({
           titleText: t("govuk_alpha.states.error_title"),
-          errorList: [{ text: directStatus.message, href: "#body" }]
+          errorList: [{ text: directStatus.message, href: directStatus.href }]
         }) }}
       {% endif %}
 
-      <span class="govuk-caption-xl">{{ t("govuk_alpha.messages.title") }}</span>
+      <span class="govuk-caption-l">{{ t("govuk_alpha.messages.title") }}</span>
       <h1 class="govuk-heading-xl">{{ t("govuk_alpha.messages.conversation_title", { name: conversation.otherUser.name }) }}</h1>
 
       {% if listing %}
@@ -48,12 +48,18 @@
           </strong>
         </div>
       {% elseif restricted %}
-        <div class="govuk-warning-text">
-          <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
-          <strong class="govuk-warning-text__text">
-            <span class="govuk-visually-hidden">{{ t("govuk_alpha.states.warning") }}</span>
-            {{ t("govuk_alpha.messages.restricted_detail") }}
-          </strong>
+        <div class="govuk-notification-banner" data-module="govuk-notification-banner" role="region" aria-labelledby="conversation-restricted-title">
+          <div class="govuk-notification-banner__header">
+            <h2 class="govuk-notification-banner__title" id="conversation-restricted-title">{{ t("govuk_alpha.messages.disabled_title") }}</h2>
+          </div>
+          <div class="govuk-notification-banner__content"><p class="govuk-body">{{ t("govuk_alpha.messages.restricted_detail") }}</p></div>
+        </div>
+      {% elseif safeguarding and safeguarding.restricted %}
+        <div id="safeguarding-notice" class="govuk-notification-banner" data-module="govuk-notification-banner" role="region" aria-labelledby="conversation-safeguarding-title">
+          <div class="govuk-notification-banner__header">
+            <h2 class="govuk-notification-banner__title" id="conversation-safeguarding-title">{{ safeguarding.title or t("safeguarding.errors.contact_restricted_title") }}</h2>
+          </div>
+          <div class="govuk-notification-banner__content"><p class="govuk-body">{{ safeguarding.detail or safeguarding.message or t("safeguarding.errors.contact_restricted") }}</p></div>
         </div>
       {% endif %}
 
@@ -177,12 +183,12 @@
                           <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">{{ t("govuk_alpha.messages.delete_legend") }}</legend>
                           <div class="govuk-radios govuk-radios--small">
                             <div class="govuk-radios__item">
-                              <input class="govuk-radios__input" id="delete-scope-self-{{ message.id }}" name="scope" type="radio" value="self" aria-describedby="delete-scope-self-hint-{{ message.id }}">
+                              <input class="govuk-radios__input" id="delete-scope-self-{{ message.id }}" name="scope" type="radio" value="self" checked aria-describedby="delete-scope-self-hint-{{ message.id }}">
                               <label class="govuk-label govuk-radios__label" for="delete-scope-self-{{ message.id }}">{{ t("govuk_alpha.messages.delete_scope_self") }}</label>
                               <div id="delete-scope-self-hint-{{ message.id }}" class="govuk-hint govuk-radios__hint">{{ t("govuk_alpha.messages.delete_scope_self_hint") }}</div>
                             </div>
                             <div class="govuk-radios__item">
-                              <input class="govuk-radios__input" id="delete-scope-everyone-{{ message.id }}" name="scope" type="radio" value="everyone" checked aria-describedby="delete-scope-everyone-hint-{{ message.id }}">
+                              <input class="govuk-radios__input" id="delete-scope-everyone-{{ message.id }}" name="scope" type="radio" value="everyone" aria-describedby="delete-scope-everyone-hint-{{ message.id }}">
                               <label class="govuk-label govuk-radios__label" for="delete-scope-everyone-{{ message.id }}">{{ t("govuk_alpha.messages.delete_scope_everyone") }}</label>
                               <div id="delete-scope-everyone-hint-{{ message.id }}" class="govuk-hint govuk-radios__hint">{{ t("govuk_alpha.messages.delete_scope_everyone_hint") }}</div>
                             </div>

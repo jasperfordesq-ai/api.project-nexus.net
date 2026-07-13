@@ -231,6 +231,9 @@ const GROUP_ERROR_STATUSES = new Set([
   'group-member-limit',
   'group-member-failed',
   'group-leave-failed',
+  'group-vetting-required',
+  'group-contact-restricted',
+  'group-policy-unavailable',
   'reaction-invalid',
   'reaction-forbidden',
   'reaction-failed'
@@ -239,9 +242,14 @@ const GROUP_ERROR_STATUSES = new Set([
 function groupStatus(status, t) {
   const value = trimmed(status);
   if (!GROUP_SUCCESS_STATUSES.has(value) && !GROUP_ERROR_STATUSES.has(value)) return null;
+  const safeguardingKey = {
+    'group-vetting-required': 'safeguarding.errors.vetting_required_title',
+    'group-contact-restricted': 'safeguarding.errors.contact_restricted_title',
+    'group-policy-unavailable': 'safeguarding.errors.policy_unavailable_title'
+  }[value];
   return {
     type: GROUP_SUCCESS_STATUSES.has(value) ? 'success' : 'error',
-    message: t(`govuk_alpha_messages.status.${value.replaceAll('-', '_')}`)
+    message: t(safeguardingKey || `govuk_alpha_messages.status.${value.replaceAll('-', '_')}`)
   };
 }
 
@@ -278,7 +286,13 @@ function directStatus(status, t) {
   const successKey = DIRECT_SUCCESS_STATUS_KEYS[value];
   if (successKey) return { type: 'success', message: t(successKey) };
   const errorKey = DIRECT_ERROR_STATUS_KEYS[value];
-  return errorKey ? { type: 'error', message: t(errorKey) } : null;
+  return errorKey ? {
+    type: 'error',
+    message: t(errorKey),
+    href: value.startsWith('message-') && [
+      'message-vetting-required', 'message-contact-restricted', 'message-policy-unavailable'
+    ].includes(value) ? '#safeguarding-notice' : '#body'
+  } : null;
 }
 
 function groupName(group, t = null) {
@@ -449,6 +463,11 @@ async function renderDirectConversation(req, res, userId) {
     || restriction.broker_messaging_only
     || restriction.messaging_disabled
   );
+  const safeguarding = normalized.conversation.safeguarding
+    && typeof normalized.conversation.safeguarding === 'object'
+    ? normalized.conversation.safeguarding
+    : null;
+  const safeguardingRestricted = Boolean(safeguarding && safeguarding.restricted);
 
   return res.render('messages/direct-conversation', {
     title: res.locals.t('govuk_alpha.messages.conversation_title', { name: normalized.conversation.otherUser.name }),
@@ -464,7 +483,8 @@ async function renderDirectConversation(req, res, userId) {
     currentUserId,
     directMessagingEnabled,
     restricted,
-    canSend: directMessagingEnabled && !restricted,
+    safeguarding,
+    canSend: directMessagingEnabled && !restricted && !safeguardingRestricted,
     translationEnabled: tenantFeatureEnabled(req, 'message_translation', true),
     translation: messageTranslationFromFlash(req),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
@@ -484,6 +504,22 @@ function groupMemberFailureStatus(error) {
   if (code.includes('NOT_FOUND')) return 'group-member-not-found';
   if (code.includes('LIMIT')) return 'group-member-limit';
   return 'group-member-failed';
+}
+
+function directSafeguardingFailureStatus(error) {
+  return {
+    SAFEGUARDING_POLICY_UNAVAILABLE: 'message-policy-unavailable',
+    VETTING_REQUIRED: 'message-vetting-required',
+    SAFEGUARDING_CONTACT_RESTRICTED: 'message-contact-restricted'
+  }[apiErrorCode(error)] || null;
+}
+
+function groupSafeguardingFailureStatus(error) {
+  return {
+    SAFEGUARDING_POLICY_UNAVAILABLE: 'group-policy-unavailable',
+    VETTING_REQUIRED: 'group-vetting-required',
+    SAFEGUARDING_CONTACT_RESTRICTED: 'group-contact-restricted'
+  }[apiErrorCode(error)] || null;
 }
 
 function translateFailureStatus(error) {
@@ -553,7 +589,7 @@ router.post('/:userId(\\d+)/m/:messageId(\\d+)/delete', asyncRoute(async (req, r
 
   const userId = Number(req.params.userId);
   const messageId = Number(req.params.messageId);
-  const scope = ['self', 'everyone'].includes(req.body.scope) ? req.body.scope : 'everyone';
+  const scope = ['self', 'everyone'].includes(req.body.scope) ? req.body.scope : 'self';
   let status = 'message-deleted';
   try {
     await callMessage(token, 'DELETE', `/${messageId}`, { scope });
@@ -626,7 +662,7 @@ router.post('/:userId(\\d+)/voice', asyncRoute(async (req, res) => {
     });
   } catch (error) {
     if (redirectOnAuthError(error, req, res)) return undefined;
-    return redirectTo(res, messageRedirect(userId, 'voice-failed'));
+    return redirectTo(res, messageRedirect(userId, directSafeguardingFailureStatus(error) || 'voice-failed'));
   } finally {
     await removeUploadedFile(file);
   }
@@ -671,7 +707,8 @@ router.post('/groups/:conversationId(\\d+)', asyncRoute(async (req, res) => {
     await callConversation(token, 'POST', `/${conversationId}/messages`, { body });
   } catch (error) {
     if (redirectOnAuthError(error, req, res)) return undefined;
-    status = error instanceof ApiError && error.status === 403 ? 'group-message-forbidden' : 'group-message-failed';
+    status = groupSafeguardingFailureStatus(error)
+      || (error instanceof ApiError && error.status === 403 ? 'group-message-forbidden' : 'group-message-failed');
   }
 
   return redirectTo(res, groupRedirect(conversationId, status));
@@ -690,7 +727,7 @@ router.post('/groups/:conversationId(\\d+)/members', asyncRoute(async (req, res)
     await callConversation(token, 'POST', `/${conversationId}/participants`, { user_id: userId });
   } catch (error) {
     if (redirectOnAuthError(error, req, res)) return undefined;
-    status = groupMemberFailureStatus(error);
+    status = groupSafeguardingFailureStatus(error) || groupMemberFailureStatus(error);
   }
 
   return redirectTo(res, groupRedirect(conversationId, status));
@@ -849,6 +886,10 @@ router.get('/groups/:conversationId(\\d+)', requireAuth, asyncRoute(async (req, 
   }));
 
   const access = messageAccess(req, restriction);
+  const safeguarding = meta.safeguarding && typeof meta.safeguarding === 'object'
+    ? meta.safeguarding
+    : null;
+  const canSend = access.canSend && !(safeguarding && safeguarding.restricted);
   res.render('messages/group-conversation', {
     title: groupName(conversation, res.locals.t),
     conversation: {
@@ -862,6 +903,8 @@ router.get('/groups/:conversationId(\\d+)', requireAuth, asyncRoute(async (req, 
     viewerRole,
     isAdmin: viewerRole === 'admin',
     ...access,
+    safeguarding,
+    canSend,
     searchQuery,
     meta: {
       hasMore: Boolean(meta.has_more),
@@ -981,9 +1024,10 @@ router.post('/:id(\\d+)', requireAuth, audit.messageSend(), asyncRoute(async (re
     }
     if (error instanceof ApiError && error.status !== 401) {
       const code = apiErrorCode(error);
-      const status = code.includes('FEATURE_DISABLED') || code.includes('MESSAGING_DISABLED')
+      const status = directSafeguardingFailureStatus(error)
+        || (code.includes('FEATURE_DISABLED') || code.includes('MESSAGING_DISABLED')
         ? 'message-disabled'
-        : (code.includes('ATTACHMENT') ? 'attachment-failed' : 'message-failed');
+        : (code.includes('ATTACHMENT') ? 'attachment-failed' : 'message-failed'));
       return redirectTo(res, messageRedirect(recipientId, status));
     }
     throw error;

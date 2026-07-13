@@ -26495,6 +26495,12 @@ describe('shared accessible frontend shell', () => {
     expect(removeMemberResponse.headers.location).toBe('/messages/groups/33?status=group-member-removed');
     expect(api.callConversationApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/33/participants/66');
 
+    const safeDefaultDeleteResponse = await post('/messages/77/m/12/delete');
+    expect(safeDefaultDeleteResponse.headers.location).toBe('/messages/77?status=message-deleted');
+    expect(api.callMessageApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/12', {
+      scope: 'self'
+    });
+
     const reactResponse = await post('/messages/groups/33/m/12/react', {
       emoji: '\u2764\ufe0f'
     });
@@ -26797,6 +26803,48 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('action="/messages/groups/33/m/12/react"');
     expect(response.text).toContain('action="/messages/groups/33/members/55/remove"');
     expect(response.text).toContain('action="/messages/groups/33/members/101/remove"');
+    expect(response.text).toContain('This action is permanent and cannot be undone.');
+    expect(response.text).toContain('govuk-button govuk-button--warning');
+  });
+
+  it('renders the group conversation safeguarding projection and suppresses contact controls', async () => {
+    const api = require('../src/lib/api');
+    api.getProfile.mockResolvedValueOnce({ data: { id: 101, name: 'Avery Stone' } });
+    api.callConversationApi.mockImplementation(async (_token, method, pathName) => {
+      if (method === 'GET' && pathName === '/33/messages?per_page=50&direction=older') {
+        return {
+          data: [{ id: 12, sender_id: 55, body: 'Existing message', sender: { name: 'Casey Quinn' } }],
+          meta: {
+            conversation: { id: 33, group_name: 'Project team' },
+            safeguarding: {
+              restricted: true,
+              title: 'Safeguarding check needed',
+              detail: 'Complete the required safeguarding check before contacting this group.'
+            },
+            has_more: false
+          }
+        };
+      }
+      if (method === 'GET' && pathName === '/33/participants') {
+        return { data: [
+          { id: 101, name: 'Avery Stone', role: 'admin' },
+          { id: 55, name: 'Casey Quinn', role: 'member' }
+        ] };
+      }
+      throw new Error(`Unexpected conversation call ${method} ${pathName}`);
+    });
+
+    const response = await request(app)
+      .get('/messages/groups/33?status=group-vetting-required')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('id="safeguarding-notice"');
+    expect(response.text).toContain('Safeguarding check needed');
+    expect(response.text).toContain('Complete the required safeguarding check before contacting this group.');
+    expect(response.text).not.toContain('<form method="post" action="/messages/groups/33" class="govuk-!-margin-top-6">');
+    expect(response.text).not.toContain('action="/messages/groups/33/members"');
+    expect(response.text).not.toContain('action="/messages/groups/33/m/12/react"');
   });
 
   it('renders and submits Laravel-style message attachments with multipart file data', async () => {
@@ -26854,8 +26902,8 @@ describe('shared accessible frontend shell', () => {
     expect(page.text).toContain('Repair guide');
     expect(page.text).toContain('action="/messages/77/m/13/edit"');
     expect(page.text).toContain('action="/messages/77/m/13/delete"');
-    expect(page.text).toContain('name="scope" type="radio" value="self"');
-    expect(page.text).toContain('name="scope" type="radio" value="everyone" checked');
+    expect(page.text).toContain('name="scope" type="radio" value="self" checked');
+    expect(page.text).toContain('name="scope" type="radio" value="everyone" aria-describedby=');
     expect(page.text).toContain('name="context_type" value="listing"');
     expect(page.text).toContain('name="context_id" value="42"');
     expect(csrfMatch).not.toBeNull();
@@ -26984,8 +27032,8 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('value="tools"');
     expect(response.text).toContain('href="/messages/77?listing=42&amp;q=tools&amp;cursor=next-page"');
     expect(response.text).toContain('action="/messages/77"');
-    expect(response.text).toContain('name="scope" type="radio" value="self"');
-    expect(response.text).toContain('name="scope" type="radio" value="everyone" checked');
+    expect(response.text).toContain('name="scope" type="radio" value="self" checked');
+    expect(response.text).toContain('name="scope" type="radio" value="everyone" aria-describedby=');
     expect(response.text).not.toContain('type="hidden" name="scope" value="everyone"');
     expect(response.text).toContain('name="context_type" value="listing"');
     expect(response.text).toContain('name="context_id" value="42"');
@@ -27062,10 +27110,92 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('src="/uploads/voice-note.webm"');
     expect(response.text).toContain('Recorded transcript');
     expect(response.text).toContain('action="/messages/77/m/3/edit"');
-    expect(response.text).toContain('name="scope" type="radio" value="everyone" checked');
+    expect(response.text).toContain('name="scope" type="radio" value="self" checked');
     expect(response.text).not.toContain('<form method="post" action="/messages/77" enctype="multipart/form-data"');
     expect(response.text.indexOf('This message was deleted.')).toBeLessThan(response.text.indexOf('Recorded transcript'));
     expect(response.text.indexOf('Recorded transcript')).toBeLessThan(response.text.indexOf('Newest reply'));
+  });
+
+  it('renders Laravel conversation safeguarding notices before a member types', async () => {
+    const api = require('../src/lib/api');
+    api.getProfile.mockResolvedValue({ data: { id: 101, name: 'Signed in member' } });
+    api.callMessageApi.mockImplementation(async (_token, method, pathName) => {
+      if (method === 'GET' && pathName === '/77?per_page=50&direction=older') {
+        return {
+          data: [],
+          meta: {
+            conversation: {
+              id: 77,
+              other_user: { id: 77, name: 'Morgan Lee' },
+              safeguarding: {
+                restricted: true,
+                code: 'SAFEGUARDING_CONTACT_RESTRICTED',
+                title: 'Coordinator arrangement needed',
+                detail: 'A coordinator must arrange contact with this member.'
+              }
+            },
+            has_more: false
+          }
+        };
+      }
+      if (method === 'GET' && pathName === '/restriction-status') {
+        return { data: { direct_messaging_enabled: true, restricted: false } };
+      }
+      throw new Error(`Unexpected message API call: ${method} ${pathName}`);
+    });
+
+    const response = await request(app)
+      .get('/messages/77?status=message-contact-restricted')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('<span class="govuk-caption-l">Messages</span>');
+    expect(response.text).toContain('id="safeguarding-notice"');
+    expect(response.text).toContain('Coordinator arrangement needed');
+    expect(response.text).toContain('A coordinator must arrange contact with this member.');
+    expect(response.text).toContain('href="#safeguarding-notice"');
+    expect(response.text).not.toContain('<form method="post" action="/messages/77" enctype="multipart/form-data"');
+    expect(response.text).not.toContain('action="/messages/77/voice"');
+  });
+
+  it('preserves Laravel safeguarding outcomes for direct and group message writes', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', signedCookieHeader());
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+    expect(csrfMatch).not.toBeNull();
+
+    api.callMessageApi.mockRejectedValueOnce(new api.ApiError('Vetting required', 403, {
+      errors: [{ code: 'VETTING_REQUIRED' }]
+    }));
+    const direct = await agent
+      .post('/messages/77')
+      .set('Cookie', signedCookieHeader())
+      .type('form')
+      .send({ _csrf: csrfMatch[1], body: 'Hello' });
+    expect(direct.headers.location).toBe('/messages/77?status=message-vetting-required');
+
+    api.callConversationApi.mockRejectedValueOnce(new api.ApiError('Policy unavailable', 503, {
+      errors: [{ code: 'SAFEGUARDING_POLICY_UNAVAILABLE' }]
+    }));
+    const group = await agent
+      .post('/messages/groups/33')
+      .set('Cookie', signedCookieHeader())
+      .type('form')
+      .send({ _csrf: csrfMatch[1], body: 'Hello group' });
+    expect(group.headers.location).toBe('/messages/groups/33?status=group-policy-unavailable');
+
+    api.callConversationApi.mockRejectedValueOnce(new api.ApiError('Contact restricted', 403, {
+      errors: [{ code: 'SAFEGUARDING_CONTACT_RESTRICTED' }]
+    }));
+    const addMember = await agent
+      .post('/messages/groups/33/members')
+      .set('Cookie', signedCookieHeader())
+      .type('form')
+      .send({ _csrf: csrfMatch[1], user_id: '66' });
+    expect(addMember.headers.location).toBe('/messages/groups/33?status=group-contact-restricted');
   });
 
   it('persists a Laravel message translation across the no-JavaScript redirect', async () => {
