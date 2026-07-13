@@ -9900,6 +9900,12 @@ describe('shared accessible frontend shell', () => {
           name: 'Garden helpers',
           query_params: { q: 'garden' },
           last_result_count: 4
+        },
+        {
+          id: 13,
+          name: 'Latest opportunities',
+          query_params: {},
+          last_result_count: 0
         }
       ]
     });
@@ -9938,8 +9944,12 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('teaching');
     expect(signed.text).toContain(t('govuk_alpha_search.saved.save_this'));
     expect(signed.text).toContain(t('govuk_alpha_search.saved.name_label'));
-    expect(signed.text).toContain(tc('govuk_alpha_search.saved.count', 1, { count: 1 }));
+    expect(signed.text).toContain(tc('govuk_alpha_search.saved.count', 2, { count: 2 }));
     expect(signed.text).toContain('Garden helpers');
+    expect(signed.text).toContain('Latest opportunities');
+    expect(signed.text).toContain(t('govuk_alpha_search.saved.no_query'));
+    expect(signed.text).toContain(t('govuk_alpha_search.saved.last_result_count', { count: '4' }));
+    expect(signed.text).toContain(t('govuk_alpha_search.saved.last_result_count', { count: '0' }));
     expect(signed.text).toContain(t('govuk_alpha_search.saved.run'));
     expect(signed.text).toContain(t('govuk_alpha_search.saved.delete'));
     expect(signed.text).toContain(tc('govuk_alpha_search.results.count', 4, { count: 4 }));

@@ -97,7 +97,10 @@ describe('request-scoped jobs status localization', () => {
     const destination = await request(app).get(rejected.headers.location);
     expect(destination.status).toBe(200);
     expect(destination.body.locals.jobFormErrors).toEqual([
-      createTranslator(locale)('jobs_t3.error_title_required')
+      {
+        href: '#title',
+        text: createTranslator(locale)('jobs_t3.error_title_required')
+      }
     ]);
   });
 

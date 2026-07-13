@@ -282,6 +282,7 @@ function savedSearchRows(result, t) {
       id: intFrom(object.id),
       name: textFrom(object.name, t ? t('govuk_alpha_search.saved.delete_summary') : 'Saved search'),
       query: textFrom(queryParams.q),
+      hasLastResultCount: object.last_result_count !== null && object.last_result_count !== undefined,
       lastResultCount: object.last_result_count === null || object.last_result_count === undefined
         ? ''
         : intFrom(object.last_result_count).toLocaleString(getRequestIntlLocale())

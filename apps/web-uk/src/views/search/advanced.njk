@@ -176,8 +176,8 @@
             <span>
               <strong>{{ saved.name }}</strong>
               <span class="nexus-alpha-meta">
-                {% if saved.query %}{{ saved.query }}{% else %}No keyword{% endif %}
-                {% if saved.lastResultCount %} &middot; Last run: {{ saved.lastResultCount }} results{% endif %}
+                {% if saved.query %}{{ saved.query }}{% else %}{{ t("govuk_alpha_search.saved.no_query") }}{% endif %}
+                {% if saved.hasLastResultCount %} &middot; {{ t("govuk_alpha_search.saved.last_result_count", { count: saved.lastResultCount }) }}{% endif %}
               </span>
             </span>
             <span class="nexus-alpha-actions">
@@ -185,7 +185,7 @@
                 <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                 <button type="submit" class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button" aria-label="{{ t('govuk_alpha_search.saved.run_aria', { name: saved.name }) }}">{{ t("govuk_alpha_search.saved.run") }}</button>
               </form>
-              <a class="govuk-link" href="{{ urlFor('/search/saved/' + (saved.id | string) + '/delete') }}" aria-label="{{ t('govuk_alpha_search.saved.delete_aria', { name: saved.name }) }}">{{ t("jobs_t3.delete_button") }}</a>
+              <a class="govuk-link" href="{{ urlFor('/search/saved/' + (saved.id | string) + '/delete') }}" aria-label="{{ t('govuk_alpha_search.saved.delete_aria', { name: saved.name }) }}">{{ t("govuk_alpha_search.saved.delete") }}</a>
             </span>
           </li>
         {% endfor %}

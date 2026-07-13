@@ -33,6 +33,7 @@ jest.mock('../src/lib/api', () => ({
   validateToken: jest.fn(),
   getProfile: jest.fn(),
   getListings: jest.fn(),
+  getListingCategories: jest.fn(),
   getBalance: jest.fn(),
   getUnreadCount: jest.fn(),
   getTransactions: jest.fn(),
@@ -836,11 +837,16 @@ describe('Protected Routes', () => {
       expect(response.headers.location).toBe('/login?status=auth-required');
     });
 
-    it('GET /listings should require authentication', async () => {
+    it('GET /listings should remain public like Laravel Blade', async () => {
+      const api = require('../src/lib/api');
+      api.getListings.mockResolvedValueOnce({ data: [], meta: {} });
+      api.getListingCategories.mockResolvedValueOnce({ data: [] });
+
       const response = await request(app).get('/listings');
 
-      expect(response.status).toBe(302);
-      expect(response.headers.location).toBe('/login?status=auth-required');
+      expect(response.status).toBe(200);
+      expect(response.text).toContain('<h1 class="govuk-heading-xl">Listings</h1>');
+      expect(response.text).toContain('href="/login?status=auth-required"');
     });
 
     it('GET /wallet should redirect to login', async () => {
