@@ -5,6 +5,7 @@
 
 const express = require('express');
 const fs = require('fs/promises');
+const { randomUUID } = require('node:crypto');
 const { URL } = require('node:url');
 const {
   getEvents,
@@ -325,6 +326,56 @@ function dateTimeLocal(value) {
   return text.length >= 16 ? text.slice(0, 16) : text;
 }
 
+const PEOPLE_FILTERS = {
+  registration_state: ['none', 'invited', 'pending', 'confirmed', 'declined', 'cancelled'],
+  waitlist_state: ['none', 'active', 'waiting', 'offered', 'accepted', 'expired', 'cancelled'],
+  attendance_state: ['not_checked_in', 'checked_in', 'checked_out', 'attended', 'no_show'],
+  engagement_state: ['none', 'interested']
+};
+
+function selectedValue(value, allowed, fallback = '') {
+  const candidate = trimmed(value);
+  return allowed.includes(candidate) ? candidate : fallback;
+}
+
+function eventPeopleQuery(query = {}) {
+  return {
+    page: boundedPositiveInteger(query.page, 1),
+    per_page: 25,
+    search: trimmed(query.search, 255),
+    registration_state: selectedValue(query.registration_state, PEOPLE_FILTERS.registration_state),
+    waitlist_state: selectedValue(query.waitlist_state, PEOPLE_FILTERS.waitlist_state),
+    attendance_state: selectedValue(query.attendance_state, PEOPLE_FILTERS.attendance_state),
+    engagement_state: selectedValue(query.engagement_state, PEOPLE_FILTERS.engagement_state),
+    sort: selectedValue(query.sort, ['name', 'registration', 'waitlist', 'attendance'], 'name'),
+    direction: selectedValue(query.direction, ['asc', 'desc'], 'asc')
+  };
+}
+
+function eventPeoplePath(id, query, page = query.page) {
+  const parameters = new URLSearchParams();
+  Object.entries({ ...query, page }).forEach(([key, value]) => {
+    if (value !== '' && key !== 'per_page') parameters.set(key, String(value));
+  });
+  return eventPath(id, `/people?${parameters.toString()}`);
+}
+
+function eventPerson(row = {}) {
+  const member = row.member && typeof row.member === 'object' ? row.member : {};
+  const registration = row.registration && typeof row.registration === 'object' ? row.registration : {};
+  const waitlist = row.waitlist && typeof row.waitlist === 'object' ? row.waitlist : {};
+  const attendance = row.attendance && typeof row.attendance === 'object' ? row.attendance : {};
+  return {
+    id: positiveInteger(member.id || row.user_id),
+    name: trimmed(member.display_name || member.name),
+    registrationState: selectedValue(registration.state, PEOPLE_FILTERS.registration_state, 'none'),
+    registrationVersion: Math.max(0, Number.parseInt(registration.version ?? registration.registration_version ?? 0, 10) || 0),
+    waitlistState: selectedValue(waitlist.state, PEOPLE_FILTERS.waitlist_state, 'none'),
+    waitlistPosition: positiveInteger(waitlist.position),
+    attendanceState: selectedValue(attendance.state, PEOPLE_FILTERS.attendance_state, 'not_checked_in')
+  };
+}
+
 function occurrenceFrom(item, currentEventId) {
   const row = item && typeof item === 'object' ? item : {};
   const id = positiveInteger(row.id);
@@ -384,6 +435,42 @@ router.get('/:id(\\d+)/map', asyncRoute(async (req, res) => {
     title: res.locals.t('govuk_alpha_events.map.title'),
     activeNav: 'events',
     map
+  });
+}, { notFoundTitle: 'Event not found' }));
+
+router.get('/:id(\\d+)/people', requireAuth, asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const token = tokenFrom(req);
+  const query = eventPeopleQuery(req.query);
+  const parameters = new URLSearchParams(Object.entries(query).map(([key, value]) => [key, String(value)]));
+  const [eventResult, peopleResult] = await Promise.all([
+    callApi(token, 'GET', `/${id}`),
+    callApi(token, 'GET', `/${id}/people?${parameters.toString()}`)
+  ]);
+  const event = eventFrom(eventResult);
+  const meta = peopleResult?.meta && typeof peopleResult.meta === 'object' ? peopleResult.meta : {};
+  const people = (Array.isArray(peopleResult?.data) ? peopleResult.data : [])
+    .map(eventPerson)
+    .filter((person) => person.id !== null);
+  const totalPages = Math.max(0, Number.parseInt(meta.total_pages, 10) || 0);
+
+  res.render('events/people', {
+    title: res.locals.t('govuk_alpha.events.people_title'),
+    activeNav: 'events',
+    event: { id, title: trimmed(event.title) },
+    people,
+    metrics: meta.metrics && typeof meta.metrics === 'object' ? meta.metrics : {},
+    canManageAttendance: meta.capabilities?.manage_attendance === true,
+    total: Math.max(0, Number.parseInt(meta.total, 10) || 0),
+    query,
+    filters: PEOPLE_FILTERS,
+    status: trimmed(req.query.status),
+    updated: Math.max(0, Number.parseInt(req.query.updated, 10) || 0),
+    failed: Math.max(0, Number.parseInt(req.query.failed, 10) || 0),
+    idempotencyKey: randomUUID(),
+    csrfToken: req.csrfToken ? req.csrfToken() : '',
+    previousHref: query.page > 1 ? eventPeoplePath(id, query, query.page - 1) : '',
+    nextHref: query.page < totalPages ? eventPeoplePath(id, query, query.page + 1) : ''
   });
 }, { notFoundTitle: 'Event not found' }));
 
@@ -537,6 +624,41 @@ function pollIdsFrom(value) {
   });
   return Array.from(unique);
 }
+
+router.post('/:id(\\d+)/people', requireAuth, asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const action = selectedValue(req.body.action, ['approve', 'reject', 'cancel']);
+  const userIds = pollIdsFrom(req.body.user_ids).slice(0, 101);
+  const reason = trimmed(req.body.reason, 1000);
+  const confirmed = checked(req.body.confirmation);
+  if (!action || userIds.length === 0 || userIds.length > 100 || !confirmed
+    || (['reject', 'cancel'].includes(action) && !reason)) {
+    return redirectTo(res, eventPath(id, '/people?status=people-invalid'));
+  }
+
+  const requestKey = trimmed(req.body.idempotency_key, 128) || randomUUID();
+  const operations = userIds.map((userId) => ({
+    user_id: userId,
+    action,
+    expected_version: Math.max(0, Number.parseInt(req.body[`version_${userId}`], 10) || 0),
+    idempotency_key: `accessible-people:${requestKey}:${action}:${userId}`,
+    reason: reason || null
+  }));
+
+  try {
+    const result = dataFrom(await callApi(tokenFrom(req), 'POST', `/${id}/people/bulk`, { operations })) || {};
+    const updated = Math.max(0, Number.parseInt(result.succeeded, 10) || 0);
+    const failed = Math.max(0, Number.parseInt(result.failed, 10) || 0);
+    const status = failed > 0 ? 'people-partial' : 'people-updated';
+    return redirectTo(res, eventPath(id, `/people?status=${status}&updated=${updated}&failed=${failed}`));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    if (error instanceof ApiError && [400, 403, 404, 409, 422].includes(error.status)) {
+      return redirectTo(res, eventPath(id, '/people?status=people-failed'));
+    }
+    throw error;
+  }
+}));
 
 router.post('/:id(\\d+)/waitlist', asyncRoute(async (req, res) => {
   const id = Number(req.params.id);

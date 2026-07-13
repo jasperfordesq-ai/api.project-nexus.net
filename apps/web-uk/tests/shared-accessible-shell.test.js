@@ -21393,6 +21393,107 @@ describe('shared accessible frontend shell', () => {
     expect(writtenAddress.text).not.toContain('https://www.openstreetmap.org/export/embed.html');
   });
 
+  it('renders the Laravel Event People roster and submits canonical bulk operations', async () => {
+    const api = require('../src/lib/api');
+    api.callEventApi
+      .mockResolvedValueOnce({ data: { id: 42, title: 'Community garden day' } })
+      .mockResolvedValueOnce({
+        data: [{
+          member: { id: 55, display_name: 'Alex Morgan' },
+          registration: { state: 'pending', version: 7 },
+          waitlist: { state: 'waiting', position: 2 },
+          attendance: { state: 'not_checked_in' }
+        }],
+        meta: {
+          current_page: 1,
+          total: 26,
+          total_pages: 2,
+          metrics: { confirmed: 8, waitlisted: 3, checked_in: 1 },
+          capabilities: { manage_attendance: true }
+        }
+      });
+
+    const response = await request(app)
+      .get('/events/42/people?search=Alex&registration_state=pending')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Community garden day');
+    expect(response.text).toContain('Alex Morgan');
+    expect(response.text).toContain('name="version_55" value="7"');
+    expect(response.text).toContain('name="registration_state"');
+    expect(response.text).toContain('value="pending" selected');
+    expect(response.text).toContain('href="/events/42/check-in"');
+    expect(response.text).toContain('href="/events/42/people?');
+    expect(api.callEventApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/42');
+    expect(api.callEventApi).toHaveBeenNthCalledWith(
+      2,
+      'test-token',
+      'GET',
+      '/42/people?page=1&per_page=25&search=Alex&registration_state=pending&waitlist_state=&attendance_state=&engagement_state=&sort=name&direction=asc'
+    );
+
+    api.callEventApi.mockResolvedValueOnce({ data: { succeeded: 1, failed: 0 } });
+    const agent = request.agent(app);
+    const shell = await agent.get('/contact').set('Cookie', signedCookieHeader());
+    const csrf = shell.text.match(/name="_csrf" value="([^"]+)"/)[1];
+    const updated = await agent
+      .post('/events/42/people')
+      .set('Cookie', signedCookieHeader())
+      .type('form')
+      .send({
+        _csrf: csrf,
+        'user_ids[]': '55',
+        version_55: '7',
+        action: 'approve',
+        confirmation: '1',
+        idempotency_key: 'people-test-key'
+      });
+
+    expect(updated.status).toBe(302);
+    expect(updated.headers.location).toBe('/events/42/people?status=people-updated&updated=1&failed=0');
+    expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/people/bulk', {
+      operations: [{
+        user_id: 55,
+        action: 'approve',
+        expected_version: 7,
+        idempotency_key: 'accessible-people:people-test-key:approve:55',
+        reason: null
+      }]
+    });
+  });
+
+  it('rejects invalid Event People bulk actions before the Laravel API', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const shell = await agent.get('/contact').set('Cookie', signedCookieHeader());
+    const csrf = shell.text.match(/name="_csrf" value="([^"]+)"/)[1];
+    const response = await agent
+      .post('/events/42/people')
+      .set('Cookie', signedCookieHeader())
+      .type('form')
+      .send({ _csrf: csrf, 'user_ids[]': '55', action: 'reject', confirmation: '1' });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/events/42/people?status=people-invalid');
+    expect(api.callEventApi).not.toHaveBeenCalled();
+  });
+
+  it('fails the Event People roster closed when Laravel denies organizer access', async () => {
+    const api = require('../src/lib/api');
+    api.callEventApi
+      .mockResolvedValueOnce({ data: { id: 42, title: 'Community garden day' } })
+      .mockRejectedValueOnce(new api.ApiError('Forbidden', 403));
+
+    const response = await request(app)
+      .get('/events/42/people')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(403);
+    expect(response.text).not.toContain('people-action');
+    expect(response.text).not.toContain('Alex Morgan');
+  });
+
   it('submits Laravel event action aliases and redirects signed-out visitors', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');
