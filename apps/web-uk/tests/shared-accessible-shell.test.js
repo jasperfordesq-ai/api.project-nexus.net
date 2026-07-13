@@ -19906,6 +19906,21 @@ describe('shared accessible frontend shell', () => {
       email_enabled: true,
       push_enabled: false
     });
+
+    api.callGroupApi.mockRejectedValueOnce(new api.ApiError('Safeguarding policy unavailable', 409, {
+      errors: [{ code: 'SAFEGUARDING_POLICY_UNAVAILABLE' }]
+    }));
+    const safeguardingResponse = await agent
+      .post('/acme/accessible/groups/42/requests/77')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], action: 'accept' });
+
+    expect(safeguardingResponse.status).toBe(302);
+    expect(safeguardingResponse.headers.location).toBe('/acme/accessible/groups/42/manage?status=request-safeguarding-unavailable');
+    expect(api.callGroupApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/requests/77', {
+      action: 'accept'
+    });
   });
 
   it('renders the Laravel group invite page for signed-in group admins', async () => {
@@ -20581,8 +20596,8 @@ describe('shared accessible frontend shell', () => {
 
   it('renders the Laravel group manage page for signed-in group admins', async () => {
     const api = require('../src/lib/api');
-    api.getProfile.mockReset().mockResolvedValueOnce({ data: { id: 10, role: 'member' } });
-    api.getGroup.mockReset().mockResolvedValueOnce({
+    api.getProfile.mockReset().mockResolvedValue({ data: { id: 10, role: 'member' } });
+    api.getGroup.mockReset().mockResolvedValue({
       data: {
         id: 42,
         name: 'Neighbourhood Repairs',
@@ -20594,7 +20609,7 @@ describe('shared accessible frontend shell', () => {
         }
       }
     });
-    api.getGroupMembers.mockReset().mockResolvedValueOnce({
+    api.getGroupMembers.mockReset().mockResolvedValue({
       data: [
         { id: 10, name: 'Pat Owner', role: 'owner' },
         { id: 55, name: 'Avery Admin', role: 'admin' },
@@ -20602,7 +20617,7 @@ describe('shared accessible frontend shell', () => {
       ],
       meta: { cursor: null, per_page: 100, has_more: false }
     });
-    api.callGroupApi.mockReset().mockResolvedValueOnce({
+    api.callGroupApi.mockReset().mockResolvedValue({
       data: [
         { id: 77, name: 'Riley Requester' }
       ]
@@ -20612,11 +20627,15 @@ describe('shared accessible frontend shell', () => {
     const signed = await request(app)
       .get('/groups/42/manage?status=member-promoted')
       .set('Cookie', signedCookieHeader());
+    const safeguardingUnavailable = await request(app)
+      .get('/groups/42/manage?status=request-safeguarding-unavailable')
+      .set('Cookie', signedCookieHeader());
 
     expect(unsigned.status).toBe(302);
     expect(unsigned.headers.location).toBe('/login?status=auth-required');
     expect(signed.status).toBe(200);
     expect(signed.text).toContain('Manage members');
+    expect(signed.text).toContain('<span class="govuk-caption-l">Neighbourhood Repairs</span>');
     expect(signed.text).toContain('Neighbourhood Repairs');
     expect(signed.text).toContain('The member is now an admin.');
     expect(signed.text).toContain('Join requests');
@@ -20631,7 +20650,10 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('value="promote"');
     expect(signed.text).toContain('value="remove"');
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
-    expect(api.getGroup).toHaveBeenCalledTimes(1);
+    expect(safeguardingUnavailable.status).toBe(200);
+    expect(safeguardingUnavailable.text).toContain('We cannot confirm the community safeguarding policy right now. No message has been sent. Please try again shortly.');
+    expect(safeguardingUnavailable.text).not.toContain('govuk-error-summary__list');
+    expect(api.getGroup).toHaveBeenCalledTimes(2);
     expect(api.getGroup).toHaveBeenCalledWith('test-token', '42');
     expect(api.getGroupMembers).toHaveBeenCalledWith('test-token', '42', { per_page: 100 });
     expect(api.callGroupApi).toHaveBeenCalledWith('test-token', 'GET', '/42/requests');

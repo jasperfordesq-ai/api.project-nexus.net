@@ -62,7 +62,7 @@ const localeResults = SUPPORTED_LOCALES.map((locale) => {
 });
 
 const result = {
-  source: 'Laravel lang/{locale}/{govuk_alpha*,event_*}.php via generated catalogs',
+  source: 'Laravel lang/{locale}/{govuk_alpha*,event_*,safeguarding}.php via generated catalogs',
   supportedLocales: SUPPORTED_LOCALES.length,
   authoritativeNamespaces: namespaceNames.length,
   authoritativeEnglishStringKeys: englishKeys.length,

@@ -4,13 +4,12 @@
 {# See NOTICE file for attribution and acknowledgements. #}
 
 {% extends "layouts/base.njk" %}
-{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
 {% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
 
 {% block mainContent %}
   <a class="govuk-back-link" href="{{ urlFor('/groups/' + (group.id | string)) }}">{{ t("groups.back_to_group") }}</a>
 
-  <span class="govuk-caption-xl">{{ group.name }}</span>
+  <span class="govuk-caption-l">{{ group.name }}</span>
   <h1 class="govuk-heading-xl">{{ t("groups.manage.title") }}</h1>
   <p class="govuk-body-l">{{ t("groups.manage.description") }}</p>
 
@@ -21,14 +20,12 @@
       text: statusBanner.message
     }) }}
   {% elif statusBanner and statusBanner.type == "error" %}
-    {{ govukErrorSummary({
-      titleText: statusBanner.title,
-      errorList: [
-        {
-          text: statusBanner.message
-        }
-      ]
-    }) }}
+    <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+      <div role="alert">
+        <h2 class="govuk-error-summary__title">{{ statusBanner.title }}</h2>
+        <div class="govuk-error-summary__body"><p class="govuk-body">{{ statusBanner.message }}</p></div>
+      </div>
+    </div>
   {% endif %}
 
   {% if isPrivate %}

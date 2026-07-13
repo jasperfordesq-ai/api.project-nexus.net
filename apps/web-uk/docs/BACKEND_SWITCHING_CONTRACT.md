@@ -107,11 +107,12 @@ calls. Date, number, currency, and list formatting must use the same request
 locale instead of fixed `en-GB` or `en-IE` values.
 
 The catalog boundary is also backend-neutral: Web UK imports the authoritative
-Laravel locale files into 11 generated catalogs, each with 35 namespaces and
-8,663 string keys. Future ASP.NET mode must accept the same locale/profile and
+Laravel locale files into 11 generated catalogs, each with 36 namespaces and
+8,837 string keys. The imported boundary includes `govuk_alpha*.php`,
+`event_*.php`, and `safeguarding.php`. Future ASP.NET mode must accept the same locale/profile and
 `Accept-Language` contracts; it must not require ASP.NET-specific template
 branches. Structural catalog parity is not translation completeness. The
-read-only Laravel source still has 4,019-4,080 English-identical values in each
+read-only Laravel source still has 4,096-4,199 English-identical values in each
 non-English locale and 13 wholly English-identical namespaces.
 Contextual route titles, headings, validation/status copy, ARIA labels, and
 residual template strings also remain under review. Therefore localization and

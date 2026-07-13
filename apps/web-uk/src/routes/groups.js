@@ -91,17 +91,13 @@ const GROUP_FILE_ALLOWED_MIME_TYPES = new Set([
   'video/mp4', 'video/webm',
   'audio/mpeg', 'audio/wav', 'audio/ogg'
 ]);
-const GROUP_MANAGE_SUCCESS_MESSAGES = {
-  'member-promoted': 'The member is now an admin.',
-  'member-demoted': 'The member is no longer an admin.',
-  'member-removed': 'The member has been removed from the group.',
-  'request-approved': 'The join request has been approved.',
-  'request-rejected': 'The join request has been rejected.'
-};
-const GROUP_MANAGE_ERROR_MESSAGES = {
-  'member-failed': 'The member could not be updated. Please try again.',
-  'request-failed': 'The join request could not be updated. Please try again.'
-};
+const GROUP_MANAGE_SUCCESS_STATES = new Set([
+  'member-promoted', 'member-demoted', 'member-removed', 'request-approved', 'request-rejected'
+]);
+const GROUP_MANAGE_ERROR_STATES = new Set([
+  'member-failed', 'request-failed', 'request-safeguarding-restricted',
+  'request-safeguarding-unavailable'
+]);
 const GROUP_PAGE_SUCCESS_MESSAGES = {
   'group-created': 'Your group has been created.',
   'group-updated': 'The group settings have been saved.',
@@ -617,6 +613,15 @@ function groupFileValidationStatus(file) {
   return null;
 }
 
+function groupRequestFailureStatus(error) {
+  const code = apiErrorCode(error);
+  if (code === 'SAFEGUARDING_POLICY_UNAVAILABLE') return 'request-safeguarding-unavailable';
+  if (code.startsWith('SAFEGUARDING_') || code === 'VETTING_REQUIRED') {
+    return 'request-safeguarding-restricted';
+  }
+  return 'request-failed';
+}
+
 function groupPageStatus(status) {
   const value = trimmed(status);
   return {
@@ -798,7 +803,7 @@ function fileStatus(status, t = (key) => key) {
 
 function manageStatus(status, t = (key) => key) {
   const value = trimmed(status);
-  if (Object.prototype.hasOwnProperty.call(GROUP_MANAGE_SUCCESS_MESSAGES, value)) {
+  if (GROUP_MANAGE_SUCCESS_STATES.has(value)) {
     return {
       statusBanner: {
         type: 'success',
@@ -808,12 +813,16 @@ function manageStatus(status, t = (key) => key) {
     };
   }
 
-  if (Object.prototype.hasOwnProperty.call(GROUP_MANAGE_ERROR_MESSAGES, value)) {
+  if (GROUP_MANAGE_ERROR_STATES.has(value)) {
     return {
       statusBanner: {
         type: 'error',
         title: t('states.error_title'),
-        message: t(`groups.states.${value}`)
+        message: value === 'request-safeguarding-restricted'
+          ? t('safeguarding.errors.interaction_not_allowed')
+          : value === 'request-safeguarding-unavailable'
+            ? t('safeguarding.errors.policy_unavailable')
+            : t(`groups.states.${value}`)
       }
     };
   }
@@ -1900,7 +1909,9 @@ router.post('/:id(\\d+)/requests/:requesterId(\\d+)', requireAuth, asyncRoute(as
   const requesterId = Number(req.params.requesterId);
   const action = trimmed(req.body.action) === 'reject' ? 'reject' : 'accept';
 
-  return requireGroupAction(req, res, groupSubpageRedirect(res, id, 'manage', 'request-failed'), async (token) => {
+  return requireGroupAction(req, res, (error) => (
+    groupSubpageRedirect(res, id, 'manage', groupRequestFailureStatus(error))
+  ), async (token) => {
     await callGroup(token, 'POST', `/${id}/requests/${requesterId}`, { action });
     return res.redirect(groupSubpageRedirect(res, id, 'manage', action === 'reject' ? 'request-rejected' : 'request-approved'));
   });

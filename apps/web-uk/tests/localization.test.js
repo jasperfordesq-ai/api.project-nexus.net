@@ -137,7 +137,8 @@ describe('translation and formatter foundation', () => {
     const expectedNamespaces = Object.keys(english.namespaces);
     const expectedLeafCount = countStringLeaves(english.namespaces);
 
-    expect(expectedNamespaces).toHaveLength(35);
+    expect(expectedNamespaces).toHaveLength(36);
+    expect(expectedNamespaces).toContain('safeguarding');
     expect(expectedLeafCount).toBeGreaterThan(8500);
     for (const locale of SUPPORTED_LOCALES) {
       const catalog = catalogFor(locale);
