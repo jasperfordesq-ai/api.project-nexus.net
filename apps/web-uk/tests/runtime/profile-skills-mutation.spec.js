@@ -18,6 +18,15 @@ function rowsFrom(result) {
   return [];
 }
 
+function matchPreferencesFrom(result) {
+  const data = result?.data ?? result ?? {};
+  return {
+    notification_frequency: String(data.notification_frequency || 'monthly'),
+    notify_hot_matches: Boolean(data.notify_hot_matches),
+    notify_mutual_matches: Boolean(data.notify_mutual_matches)
+  };
+}
+
 async function authenticate(page) {
   await page.goto(`${mountPath}/login`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
   await page.locator('input[name="email"]').fill(smoke.email);
@@ -103,5 +112,53 @@ test('adds and removes a disposable member skill through Web UK', async ({ page 
       if (existing?.id) await callUserSettingsApi(token, 'DELETE', `/skills/${existing.id}`);
     }
     expect(rowsFrom(await callUserSettingsApi(token, 'GET', '/skills')).some(skill => skill?.skill_name === skillName)).toBe(false);
+  }
+});
+
+test('changes and restores match notification preferences through Web UK', async ({ page }) => {
+  const auth = await login(smoke.email, smoke.password, smoke.tenant);
+  const token = auth.access_token;
+  const initial = matchPreferencesFrom(await callUserSettingsApi(token, 'GET', '/match-preferences'));
+  const frequencies = ['daily', 'weekly', 'monthly', 'fortnightly', 'never'];
+  const changed = {
+    notification_frequency: frequencies.find(value => value !== initial.notification_frequency),
+    notify_hot_matches: !initial.notify_hot_matches,
+    notify_mutual_matches: !initial.notify_mutual_matches
+  };
+  let preferencesChanged = false;
+
+  expect(token).toBeTruthy();
+  expect(changed.notification_frequency).toBeTruthy();
+
+  try {
+    await page.setViewportSize({ width: 320, height: 640 });
+    await authenticate(page);
+    await page.goto(`${mountPath}/profile/settings`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
+    await expect(page.locator('h1')).toHaveText('Edit your profile');
+
+    await page.locator('#notification_frequency').selectOption(changed.notification_frequency);
+    await page.locator('#notify_hot_matches').setChecked(changed.notify_hot_matches);
+    await page.locator('#notify_mutual_matches').setChecked(changed.notify_mutual_matches);
+    preferencesChanged = true;
+    await submit(page, '/profile/match-preferences', page.locator(`form[action$="/profile/match-preferences"] button`));
+
+    await expect(page.getByText('Your match notification settings have been saved.', { exact: true })).toHaveCount(1);
+    await expect(page.locator('#notification_frequency')).toHaveValue(changed.notification_frequency);
+    await expect(page.locator('#notify_hot_matches')).toBeChecked({ checked: changed.notify_hot_matches });
+    await expect(page.locator('#notify_mutual_matches')).toBeChecked({ checked: changed.notify_mutual_matches });
+    expect(matchPreferencesFrom(await callUserSettingsApi(token, 'GET', '/match-preferences'))).toEqual(changed);
+    await expectAccessibleReflow(page);
+
+    await page.locator('#notification_frequency').selectOption(initial.notification_frequency);
+    await page.locator('#notify_hot_matches').setChecked(initial.notify_hot_matches);
+    await page.locator('#notify_mutual_matches').setChecked(initial.notify_mutual_matches);
+    await submit(page, '/profile/match-preferences', page.locator(`form[action$="/profile/match-preferences"] button`));
+    expect(matchPreferencesFrom(await callUserSettingsApi(token, 'GET', '/match-preferences'))).toEqual(initial);
+    preferencesChanged = false;
+  } finally {
+    if (preferencesChanged) {
+      await callUserSettingsApi(token, 'PUT', '/match-preferences', initial);
+    }
+    expect(matchPreferencesFrom(await callUserSettingsApi(token, 'GET', '/match-preferences'))).toEqual(initial);
   }
 });
