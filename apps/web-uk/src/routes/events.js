@@ -368,7 +368,7 @@ router.get('/browse', asyncRoute(async (req, res) => {
   const selectedCategoryId = positiveInteger(req.query.category_id);
 
   return res.render('events/browse', {
-    title: 'Browse events by category',
+    title: res.locals.t('govuk_alpha_events.browse.title'),
     activeNav: 'events',
     categories,
     selectedCategoryId

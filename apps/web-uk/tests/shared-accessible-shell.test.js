@@ -20964,6 +20964,13 @@ describe('shared accessible frontend shell', () => {
     expect(mounted.status).toBe(200);
     expect(mounted.text).toContain('href="/acme/accessible/events"');
     expect(mounted.text).toContain('method="get" action="/acme/accessible/events"');
+
+    api.getEventCategories.mockResolvedValueOnce({ data: [] });
+    const empty = await request(app).get('/events/browse');
+    expect(empty.status).toBe(200);
+    expect(empty.text).toContain('No event categories have been set up for this community yet.');
+    expect(empty.text).toContain('href="/events">View all events</a>');
+    expect(empty.text).not.toContain('method="get" action="/events"');
   });
 
   it('renders the Laravel event poll attachment page for signed-in organisers', async () => {
