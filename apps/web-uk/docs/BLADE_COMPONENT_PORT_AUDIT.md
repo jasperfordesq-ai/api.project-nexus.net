@@ -25,6 +25,13 @@ aligned and proven by a focused live `12/12` rerun. The four remaining failures
 are the same two feed-schema endpoints counted once for rendering and once for
 body content; no additional product regression was exposed.
 
+Quarter four also reached a terminal `238`-check result. The current member is
+now correctly tracked as permission-gated for `/events/6/polls`, and the live
+`/polls/4` question marker is current; a focused live rerun passed `12/12` and
+the harness passed `43/43`. Its four remaining failures are again the known two
+feed-schema endpoints counted for rendering and content. All four exhaustive
+quarters have now reached terminal classification.
+
 ## 2026-07-13 Laravel Runtime Classification Checkpoint
 
 The first quarter of the exhaustive Laravel runtime smoke exposed three
