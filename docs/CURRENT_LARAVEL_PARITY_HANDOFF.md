@@ -68,10 +68,25 @@ and adds exact append-only `event_attendance_activity`. All 124 migrations
 replayed on blank disposable PostgreSQL, EF model drift is clean, and focused
 privacy/history/manager/attendance/bulk/CSV/tenant proof passed 4/4.
 
-The live comparator now reports 4,441 ASP.NET operations, 2,521/2,592 matched,
-and 71 missing. The schema comparator reports 377 Laravel migration files, 130
-ASP.NET migration source files, 128 runtime IDs, 370 ASP.NET table names, 179
-exact matches, 276 missing Laravel names, and 191 ASP.NET-only names.
+The live comparator now reports 4,452 ASP.NET operations, 2,532/2,592 matched,
+and 60 missing. The schema comparator reports 377 Laravel migration files, 131
+ASP.NET migration source files, 129 runtime IDs, 378 ASP.NET table names, 187
+exact matches, 268 missing Laravel names, and 191 ASP.NET-only names.
+
+Event Safety is the latest completed backend slice. Requirements use versioned
+draft/publish/archive heads plus immutable snapshots and history. Code-of-
+conduct evidence is append-only and policy-hash bound. Guardian identity and
+email are protected at rest; capability tokens are one-shot SHA-256 verifiers,
+delivered through the real email boundary, publicly granted through a non-
+enumerable response, and recorded in versioned history. Participation denials
+and withdrawals are manager-only, versioned, tenant-scoped, and projected with
+privacy-safe member/reviewer history. Focused lifecycle/privacy/tenant proof
+passed 4/4.
+
+Migration `20260713015034_EventSafetyWorkflowParity` adds all eight exact
+Laravel safety tables, eight workflow checks, and thirteen immutability/no-
+delete triggers. Blank PostgreSQL replay applied 129/129 migrations and EF
+reports no model drift.
 
 Event Offline Check-in is the latest completed backend slice. All fourteen
 workspace, credential, device, manifest, sync, batch, conflict, resolution, and
@@ -563,7 +578,7 @@ Earlier published slice evidence retained for context:
 - earlier volunteering-chain proof reached
   `20260711031959_NullableTransactionLedgerLegs`; the current migration proof
   is recorded above;
-- API route comparator: 2,521/2,592 current Laravel/supplemental operations
+- API route comparator: 2,532/2,592 current Laravel/supplemental operations
   matched, 102 route-shape gaps after Event People closure;
 - historical schema comparator: 134/361 Laravel tables matched, 227 missing, 194
   ASP.NET-only; the current result above supersedes it and remains a global red

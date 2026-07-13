@@ -15,15 +15,15 @@ blank PostgreSQL replay.
 | Source | Count | Notes |
 | --- | ---: | --- |
 | Laravel migrations | 377 | PHP migration files under `database/migrations`. |
-| ASP.NET migration source files | 130 | Static comparator migration-source count. |
-| ASP.NET runtime migrations | 128 | Blank replay applied every recorded EF migration through `20260713004944_EventOfflineCheckinWorkflowParity`; `has-pending-model-changes` is green. |
+| ASP.NET migration source files | 131 | Static comparator migration-source count. |
+| ASP.NET runtime migrations | 129 | Blank replay applied every recorded EF migration through `20260713015034_EventSafetyWorkflowParity`; `has-pending-model-changes` is green. |
 | Laravel created tables | 298 | Unique `Schema::create(...)` table names. |
 | Laravel touched tables | 128 | Unique `Schema::table(...)` table names. |
 | Laravel explicit model tables | 267 | Unique `protected/public $table = ...` model declarations. |
 | Laravel source tables | 455 | Union of migration-created, migration-touched, and explicit model tables. |
-| ASP.NET tables | 370 | Static table union after adding canonical offline-check-in storage. |
-| Exact matched tables | 179 | Current exact table-name matches. |
-| Missing Laravel tables | 276 | Laravel source names not represented exactly in ASP.NET. |
+| ASP.NET tables | 378 | Static table union after adding canonical Event Safety storage. |
+| Exact matched tables | 187 | Current exact table-name matches. |
+| Missing Laravel tables | 268 | Laravel source names not represented exactly in ASP.NET. |
 | Extra ASP.NET tables | 191 | .NET table names with no exact Laravel table name. |
 
 These counts are not a parity score. Static table-name matching will overstate
@@ -33,7 +33,7 @@ triage and compatibility decisions before any table can be marked equivalent.
 
 ## 2026-07-12 Runtime Migration, Direct-Message, And Safeguarding Evidence Status
 
-`20260713004944_EventOfflineCheckinWorkflowParity` is the current latest
+`20260713004944_EventOfflineCheckinWorkflowParity` is the preceding
 migration and runtime ID 128. It adds exact `event_checkin_credentials`,
 `event_checkin_devices`, `event_offline_sync_batches`,
 `event_offline_sync_items`, and `event_offline_sync_decisions` storage. Twenty-
@@ -42,6 +42,14 @@ subject completeness, and attendance-linked accepted decisions. Seven triggers
 make submitted items and decisions immutable and prohibit deletion of the five
 evidence aggregates. A blank replay applied 128/128 migrations, model drift is
 clean, and direct item tampering failed with SQLSTATE `P0001`.
+
+`20260713015034_EventSafetyWorkflowParity` supersedes that runtime checkpoint
+as migration 129. It adds the eight exact safety requirement/version/history,
+code acknowledgement, guardian consent/history, and participation denial/
+history tables. Eight database checks enforce lifecycle, policy, hash, age,
+relationship, and effective-window invariants; thirteen triggers protect
+immutable evidence and prohibit deletion of safety records. Blank replay passed
+129/129 and EF model drift remains clean.
 
 `20260712221737_EventPeopleAttendanceWorkflowParity` is the current latest
 migration and runtime ID 124. It deterministically upgrades existing attendance

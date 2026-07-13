@@ -441,7 +441,7 @@ route coverage is not a completion score.
 
 | Surface | Score | Meaning |
 | --- | ---: | --- |
-| ASP.NET static API method/path inventory | 973/1000 | 2,521 of 2,592 current Laravel operations matched, with 71 route-shape gaps after the fourteen-route Event Offline Check-in family closed; this remains route-shape coverage rather than behavioral parity |
+| ASP.NET static API method/path inventory | 977/1000 | 2,532 of 2,592 current Laravel operations matched, with 60 route-shape gaps after the Event Safety family closed; this remains route-shape coverage rather than behavioral parity |
 | ASP.NET implementation parity | 640/1000 | Broad implementation with material workflow, schema, integration, and localization gaps |
 | ASP.NET certification confidence | 420/1000 | Current full-suite and frontend-on-ASP proof is insufficient |
 | Web UK Laravel-first implementation | 910/1000 | Route conversion is advanced; several source and presentation gaps remain |
@@ -452,11 +452,11 @@ route coverage is not a completion score.
 
 | Check | Current result or retained historical evidence |
 | --- | --- |
-| ASP.NET static operations | 4,441 |
+| ASP.NET static operations | 4,452 |
 | Laravel source operations | 2,592 |
-| Static method/path matches | 2,521 matched, 71 missing |
+| Static method/path matches | 2,532 matched, 60 missing |
 | Explicit admin compatibility behavior | At least 196 of 329 `AdminExplicitParityController` route declarations reached generic fallbacks at audit time |
-| Schema inventory | Live: 377 Laravel migration files, 130 ASP.NET migration source files, 455 Laravel source tables, 370 ASP.NET tables, 179 exact matches, 276 missing Laravel names, and 191 ASP.NET-only names. EF applied 128 migrations in the latest blank replay. |
+| Schema inventory | Live: 377 Laravel migration files, 131 ASP.NET migration source files, 455 Laravel source tables, 378 ASP.NET tables, 187 exact matches, 268 missing Laravel names, and 191 ASP.NET-only names. EF applied 129 migrations in the latest blank replay. |
 | ASP.NET backend localization comparator | 7/11 locales, 49/605 namespaces, 157 comparable English keys matched, 5,018 missing |
 | Web UK authoritative locale catalogs | 11/11 locales, 24 namespaces, and 7,337 string keys per locale with zero missing or extra keys relative to English |
 | Web UK translation depth | Each non-English Laravel catalog still has 3,903-3,951 English-identical values (53.2%-53.9%); 16 namespaces are wholly English-identical in the read-only source |

@@ -76,6 +76,14 @@ public class NexusDbContext : DbContext
     public DbSet<EventOfflineSyncBatch> EventOfflineSyncBatches => Set<EventOfflineSyncBatch>();
     public DbSet<EventOfflineSyncItem> EventOfflineSyncItems => Set<EventOfflineSyncItem>();
     public DbSet<EventOfflineSyncDecision> EventOfflineSyncDecisions => Set<EventOfflineSyncDecision>();
+    public DbSet<EventSafetyRequirement> EventSafetyRequirements => Set<EventSafetyRequirement>();
+    public DbSet<EventSafetyRequirementVersion> EventSafetyRequirementVersions => Set<EventSafetyRequirementVersion>();
+    public DbSet<EventSafetyRequirementHistory> EventSafetyRequirementHistory => Set<EventSafetyRequirementHistory>();
+    public DbSet<EventSafetyCodeAcknowledgement> EventSafetyCodeAcknowledgements => Set<EventSafetyCodeAcknowledgement>();
+    public DbSet<EventGuardianConsent> EventGuardianConsents => Set<EventGuardianConsent>();
+    public DbSet<EventGuardianConsentHistory> EventGuardianConsentHistory => Set<EventGuardianConsentHistory>();
+    public DbSet<EventParticipationDenial> EventParticipationDenials => Set<EventParticipationDenial>();
+    public DbSet<EventParticipationDenialHistory> EventParticipationDenialHistory => Set<EventParticipationDenialHistory>();
     public DbSet<FeedPost> FeedPosts => Set<FeedPost>();
     public DbSet<FeedActivity> FeedActivities => Set<FeedActivity>();
     public DbSet<PostLike> PostLikes => Set<PostLike>();
