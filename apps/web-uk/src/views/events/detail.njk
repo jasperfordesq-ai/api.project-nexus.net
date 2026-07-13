@@ -49,10 +49,20 @@
         <span class="govuk-caption-l">{{ t("events.detail_title") }}</span>
         <h1 class="govuk-heading-xl">{{ event.title }}</h1>
         {% set permissions = event.permissions or {} %}
-        {% if permissions.manage_people or permissions.check_in %}
+        {% set canManageRegistrationRoster = permissions.manage_registration and permissions.manage_people %}
+        {% set hasRegistration = relationship and relationship.registrationState and relationship.registrationState != 'none' %}
+        {% if canManageRegistrationRoster or hasRegistration or isOwner or permissions.manage_people or permissions.check_in or permissions.broadcast or recurrenceDefinitions or permissions.edit %}
           <nav class="govuk-button-group" aria-label="{{ t('govuk_alpha.events.operations_navigation') }}">
+            {% if canManageRegistrationRoster or hasRegistration or isOwner %}<a class="govuk-button govuk-button--secondary" href="{{ urlFor('/events/' + (event.id | string) + '/registration') }}">{{ t("event_registration.title") }}</a>{% endif %}
             {% if permissions.manage_people %}<a class="govuk-button govuk-button--secondary" href="{{ urlFor('/events/' + (event.id | string) + '/people') }}">{{ t("govuk_alpha.events.people_title") }}</a>{% endif %}
             {% if permissions.check_in %}<a class="govuk-button govuk-button--secondary" href="{{ urlFor('/events/' + (event.id | string) + '/check-in') }}">{{ t("govuk_alpha.events.check_in_title") }}</a>{% endif %}
+            {% if permissions.broadcast %}<a class="govuk-button govuk-button--secondary" href="{{ urlFor('/events/' + (event.id | string) + '/communications') }}">{{ t("govuk_alpha.events.communications.title") }}</a>{% endif %}
+            {% if recurrenceDefinitions %}<a class="govuk-button govuk-button--secondary" href="{{ urlFor('/events/' + (event.id | string) + '/recurrence-definition-blueprints') }}">{{ t("event_recurrence_blueprints.tab") }}</a>{% endif %}
+            {% if isOwner %}
+              <a class="govuk-button govuk-button--secondary" href="{{ urlFor('/events/' + (event.id | string) + '/analytics') }}">{{ t("govuk_alpha.events.analytics.link") }}</a>
+              <a class="govuk-button govuk-button--secondary" href="{{ urlFor('/events/templates') }}">{{ t("event_templates.title") }}</a>
+            {% endif %}
+            {% if permissions.edit %}<a class="govuk-button govuk-button--secondary" href="{{ urlFor('/events/' + (event.id | string) + '/lifecycle-history') }}">{{ t("event_lifecycle_history.link") }}</a>{% endif %}
           </nav>
         {% endif %}
         {% set attendeeCount = event.attendeeCount or event.attendee_count or 0 %}

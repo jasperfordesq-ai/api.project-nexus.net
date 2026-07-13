@@ -23478,10 +23478,15 @@ describe('shared accessible frontend shell', () => {
         attendee_count: 3,
         max_attendees: 20,
         start_time: '2026-08-01T10:00:00',
-        permissions: { manage_people: true, check_in: true, submit_for_review: true }
+        organizer: { id: 101 },
+        permissions: { manage_people: true, check_in: true, manage_registration: true, broadcast: true, manage_agenda: true, edit: true, submit_for_review: true },
+        series: { recurrence: { recurrence_id: '20260801T090000Z', parent_event_id: 42, is_template: false, engine: 'sabre-vobject', engine_version: '2' } }
       }
     });
     api.getEventRsvps.mockResolvedValueOnce({ data: [] });
+    api.callEventApi
+      .mockResolvedValueOnce({ data: { registration: { state: 'confirmed' } } })
+      .mockResolvedValueOnce({ data: { engine: 'v2', schema_ready: true, supports_definition_blueprints: true, rollout_state: 'v2_rolling' } });
 
     const response = await request(app)
       .get('/events/42')
@@ -23504,8 +23509,40 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('No RSVPs yet. Be the first to respond!');
     expect(response.text).toContain('href="/events/42/people"');
     expect(response.text).toContain('href="/events/42/check-in"');
+    expect(response.text).toContain('href="/events/42/registration"');
+    expect(response.text).toContain('href="/events/42/communications"');
+    expect(response.text).toContain('href="/events/42/recurrence-definition-blueprints"');
+    expect(response.text).toContain('href="/events/42/analytics"');
+    expect(response.text).toContain('href="/events/templates"');
+    expect(response.text).toContain('href="/events/42/lifecycle-history"');
     expect(response.text).toContain('action="/events/42/submit"');
     expect(response.text).toContain('Submit for review');
+    expect(api.callEventApi).toHaveBeenCalledWith('test-token', 'GET', '/recurrence-capabilities');
+  });
+
+  it('fails closed for owner and recurrence operation links without their current Laravel capabilities', async () => {
+    const api = require('../src/lib/api');
+    api.getEvent.mockResolvedValueOnce({
+      data: {
+        id: 43,
+        title: 'Member-led recurring event',
+        organizer: { id: 202 },
+        permissions: { manage_agenda: true },
+        series: { recurrence: { recurrence_id: '20260802T090000Z', parent_event_id: 43, is_template: false, engine: 'sabre-vobject', engine_version: '2' } }
+      }
+    });
+    api.getEventRsvps.mockResolvedValueOnce({ data: [] });
+    api.callEventApi
+      .mockResolvedValueOnce({ data: { registration: { state: 'none' } } })
+      .mockResolvedValueOnce({ data: { engine: 'v2', schema_ready: true, supports_definition_blueprints: false, rollout_state: 'v2_finite' } });
+
+    const response = await request(app).get('/events/43').set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).not.toContain('href="/events/43/recurrence-definition-blueprints"');
+    expect(response.text).not.toContain('href="/events/43/analytics"');
+    expect(response.text).not.toContain('href="/events/templates"');
+    expect(api.callEventApi).toHaveBeenCalledWith('test-token', 'GET', '/recurrence-capabilities');
   });
 
   it('submits and publishes events through Laravel publication transitions', async () => {

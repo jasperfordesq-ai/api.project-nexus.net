@@ -254,7 +254,12 @@ function idFrom(value) {
 
 function eventOwnerId(event) {
   const user = event && typeof event.user === 'object' ? event.user : {};
-  return positiveInteger(event.user_id || event.userId || user.id);
+  const organizer = event && typeof event.organizer === 'object' ? event.organizer : {};
+  const creator = event && typeof event.created_by === 'object' ? event.created_by : {};
+  return positiveInteger(
+    event.user_id || event.userId || event.organizer_id || event.organizerId
+      || event.created_by_id || event.createdById || user.id || organizer.id || creator.id
+  );
 }
 
 function coordinate(value) {
@@ -892,6 +897,25 @@ function recurrenceBlueprintContext(result) {
     staff: permissions.manage_staff === true
   };
   return { event, recurrenceId, allowedSections };
+}
+
+function recurrenceDefinitionCandidate(event) {
+  const context = recurrenceBlueprintContext(event);
+  const recurrence = event?.series?.recurrence || event?.recurrence || {};
+  return Object.values(context.allowedSections).some(Boolean)
+    && recurrence.is_template !== true
+    && positiveInteger(recurrence.parent_event_id ?? recurrence.parentEventId) !== null
+    && /^\d{8}T\d{6}Z$/.test(context.recurrenceId)
+    && trimmed(recurrence.engine) === 'sabre-vobject'
+    && trimmed(recurrence.engine_version ?? recurrence.engineVersion) === '2';
+}
+
+function recurrenceCapabilitiesAllowDefinitions(result) {
+  const capabilities = dataFrom(result) || {};
+  return capabilities.engine === 'v2'
+    && capabilities.schema_ready === true
+    && capabilities.supports_definition_blueprints === true
+    && capabilities.rollout_state === 'v2_rolling';
 }
 
 function recurrenceBlueprintSections(body, allowed) {
@@ -2278,6 +2302,16 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
   event.isArchived = event.is_archived;
   event.can_edit = !event.is_archived && Boolean(token) && (canEditFromApi || isCurrentUserOwner);
   event.canEdit = event.can_edit;
+  let recurrenceDefinitions = false;
+  if (token && recurrenceDefinitionCandidate(event)) {
+    try {
+      recurrenceDefinitions = recurrenceCapabilitiesAllowDefinitions(
+        await callApi(token, 'GET', '/recurrence-capabilities')
+      );
+    } catch (error) {
+      if (isAuthError(error)) throw error;
+    }
+  }
   const rawRsvp = event.myRsvp ?? event.my_rsvp ?? event.user_rsvp ?? event.rsvp_status;
   const myRsvpStatus = trimmed(
     rawRsvp && typeof rawRsvp === 'object' ? rawRsvp.status : rawRsvp
@@ -2294,11 +2328,14 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
     not_going: rsvps.filter(r => (r.status || r.rsvp_status) === 'not_going')
   };
 
+  const relationship = eventRelationship(relationshipResult);
   res.render('events/detail', {
     title: event.title,
     event,
     myRsvp,
-    relationship: eventRelationship(relationshipResult),
+    relationship,
+    isOwner: isCurrentUserOwner,
+    recurrenceDefinitions,
     rsvpsByStatus,
     isAuthenticated: Boolean(token),
     successMessage: req.flash ? req.flash('success')[0] : null,
