@@ -24808,6 +24808,7 @@ describe('shared accessible frontend shell', () => {
     expect(form.text).toContain('name="visibility"');
     expect(form.text).toContain('value="private"');
     expect(form.text).toContain('id="location" name="location"');
+    expect(form.text).toContain('govuk-input govuk-!-width-two-thirds');
     expect(form.text).toContain('id="tags" name="tags"');
     expect(form.text).toContain('id="cover" name="cover" type="file"');
     expect(form.text).toContain('Bring members together around a shared interest in Project NEXUS Accessible.');
@@ -24820,6 +24821,7 @@ describe('shared accessible frontend shell', () => {
     expect(failedForm.status).toBe(200);
     expect(failedForm.text).toContain('There is a problem creating your group');
     expect(failedForm.text).toContain('Your group could not be created. Please try again.');
+    expect(failedForm.text.indexOf('Create a group')).toBeLessThan(failedForm.text.indexOf('There is a problem creating your group'));
 
     const created = await agent
       .post('/groups/new')
@@ -24985,6 +24987,27 @@ describe('shared accessible frontend shell', () => {
     expect(invalid.status).toBe(200);
     expect(invalid.text).toContain('Select a valid visibility.');
     expect(invalid.text).toContain('href="#visibility"');
+
+    api.createGroup.mockRejectedValueOnce(new api.ApiError('Validation failed', 422, {
+      errors: [{ code: 'VALIDATION_ERROR', field: 'location', message: 'The location must not be greater than 255 characters.' }]
+    }));
+    const longLocation = 'x'.repeat(256);
+    const invalidLocation = await agent
+      .post('/groups/new')
+      .set('Cookie', signedCookieHeader())
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        name: 'Repair circle',
+        description: 'Share repair skills.',
+        location: longLocation,
+        visibility: 'private'
+      });
+
+    expect(invalidLocation.status).toBe(200);
+    expect(api.createGroup).toHaveBeenLastCalledWith('test-token', expect.objectContaining({ location: longLocation }));
+    expect(invalidLocation.text).toContain('The location must not be greater than 255 characters.');
+    expect(invalidLocation.text).toContain('href="#location"');
   });
 
   it('requires the visible no-JavaScript owner confirmation before deleting a group', async () => {
