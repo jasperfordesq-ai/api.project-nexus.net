@@ -14,7 +14,14 @@ const { runLaravelRuntimeSmokeAgainstApp } = require('./laravel-runtime-smoke');
 
 async function main() {
   const result = await runLaravelRuntimeSmokeAgainstApp(app);
-  console.log(JSON.stringify(result, null, 2));
+  const output = process.env.SMOKE_COMPACT === '1'
+    ? {
+        ok: result.ok,
+        total: result.checks.length,
+        failed: result.checks.filter((check) => !check.ok)
+      }
+    : result;
+  console.log(JSON.stringify(output, null, 2));
   if (!result.ok) {
     process.exitCode = 1;
   }

@@ -873,12 +873,16 @@ async function refreshSignedSession(config, cookieJar) {
 }
 
 function addCheck(checks, name, ok, detail, meta = {}) {
-  checks.push({
+  const check = {
     name,
     ok,
     detail,
     ...meta
-  });
+  };
+  checks.push(check);
+  if (process.env.SMOKE_PROGRESS === '1') {
+    process.stderr.write(`[smoke] ${ok ? 'PASS' : 'FAIL'} ${name}\n`);
+  }
 }
 
 function modulePageCheckName(path) {
@@ -1784,7 +1788,19 @@ function listenForRuntimeSmoke(app, host = '127.0.0.1') {
 
 function closeRuntimeSmokeServer(server) {
   return new Promise((resolve, reject) => {
-    server.close((error) => (error ? reject(error) : resolve()));
+    let settled = false;
+    const finish = (error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(forceTimer);
+      if (error) reject(error); else resolve();
+    };
+    const forceTimer = setTimeout(() => {
+      if (typeof server.closeAllConnections === 'function') server.closeAllConnections();
+      finish();
+    }, 5000);
+    server.close(finish);
+    if (typeof server.closeIdleConnections === 'function') server.closeIdleConnections();
   });
 }
 
