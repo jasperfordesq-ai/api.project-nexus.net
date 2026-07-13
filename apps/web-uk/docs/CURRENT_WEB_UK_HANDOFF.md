@@ -98,11 +98,12 @@ tests, ESLint, the branding guard, and the `315`-template localization audit.
 Avatar upload remains uncertified because the current Laravel bearer API can
 null the profile field but cannot prove deletion of the stored file.
 
-## Current Verified Checkpoint (2026-07-12)
+## Historical Verified Checkpoint (2026-07-12)
 
-This is the current evidence boundary. Older dated slices below remain useful
-implementation history, but their suite sizes, route counts, smoke totals, and
-scores must not be reused as current results.
+This is retained implementation history. The 2026-07-13 source refresh above
+and `CURRENT_LARAVEL_FIRST_PARITY_STATUS.md` are the current evidence boundary;
+the suite sizes, route counts, smoke totals, and scores below must not be reused
+as current results.
 
 - Jest: `45/45` suites and `1,465/1,465` tests passed.
 - Static/build gates: ESLint, brand policy, and CSS compilation passed.

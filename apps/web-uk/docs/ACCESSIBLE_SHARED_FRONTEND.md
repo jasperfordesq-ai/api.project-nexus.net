@@ -51,11 +51,11 @@ CSS pixels, with RTL/reflow and serious/critical
 axe assertions. Authenticated cases have a 90-second ceiling to accommodate the
 observed local Laravel API latency; the accessibility assertions are unchanged.
 
-Localization is structurally complete across `11` locales, `24` namespaces,
-and `7,337` keys per locale. It is not linguistically complete: the non-English
-catalogs each retain roughly `3,903-3,951` English-identical values and `16`
+Localization is structurally complete across `11` locales, `35` namespaces,
+and `8,663` keys per locale. It is not linguistically complete: the non-English
+catalogs each retain roughly `4,019-4,080` English-identical values and `13`
 namespaces are wholly English in the authoritative read-only Laravel source.
-The conservative audit reports `290` templates and `0` remaining safe exact
+The conservative audit reports `315` templates and `0` remaining safe exact
 matches; that result does not cover contextual copy, pluralisation, dynamic
 labels, validation language, or manual RTL review.
 

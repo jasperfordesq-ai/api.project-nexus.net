@@ -366,7 +366,7 @@ fixed 320px credentials-table overflow and proved pending-state rendering,
 axe/structure/reflow, deletion, and final API absence.
 
 Localization remains open because each non-English catalog has roughly
-`3,903-3,951` English-identical keys and `16` wholly English namespaces in the
+`4,019-4,080` English-identical keys and `13` wholly English namespaces in the
 authoritative read-only Laravel source. ASP.NET switching also remains future
 and uncertified. Remaining live upload/destructive rows require disposable fixtures.
 

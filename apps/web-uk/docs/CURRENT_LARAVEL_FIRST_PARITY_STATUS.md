@@ -51,8 +51,8 @@ commit as the implementation it describes.
 
 ## Audited Baseline
 
-The audit was refreshed from ASP.NET-repo commit `5870ed54` plus the scoped
-worktree slice recorded below, and Laravel-repo commit `c2cf4fa`. Refresh both
+The audit was refreshed through ASP.NET-repo commit `9ecb5cb2` and
+Laravel-repo commit `c2cf4fa`. Refresh both
 repositories before relying on these numbers after either source moves.
 
 | Measure | Audited result | Meaning |
@@ -88,7 +88,7 @@ A fresh proof run records:
 
 - 11 locales, 35 namespaces, and 8,663 keys per locale;
 - zero missing or extra keys in every locale;
-- 6,356 complete static references and 4,811 unique referenced keys;
+- 6,400 complete static references and 4,847 unique referenced keys;
 - zero unresolved complete static references;
 - 315 templates and zero conservative hard-coded-copy matches;
 - an English and Irish Event-template library render with no raw key leakage;
@@ -146,7 +146,7 @@ success, unsafe orchestration, or a generic preparation page.
 After the localization P0, the remaining priority order is:
 
 1. Repair the local Laravel schema drift around
-   `visible_events.publication_status`, then rerun the complete exhaustive
+   `events.accessibility_step_free`, then rerun the complete exhaustive
    Laravel smoke. "All quarters classified" is not the same as all checks
    passing.
 2. Reconcile low-overlap Blade/Nunjucks families, especially feed, listings,
