@@ -264,7 +264,7 @@ function formatCoordinate(value) {
   return Number(value).toFixed(6).replace(/0+$/, '').replace(/\.$/, '');
 }
 
-function eventMapState(event) {
+function eventMapState(event, t = (key) => key) {
   const lat = coordinate(event.latitude ?? event.lat);
   const lng = coordinate(event.longitude ?? event.lng);
   const location = trimmed(event.location);
@@ -279,7 +279,7 @@ function eventMapState(event) {
 
   return {
     id: event.id,
-    title: trimmed(event.title) || 'Location',
+    title: trimmed(event.title) || t('govuk_alpha_events.map.caption'),
     location,
     isOnline,
     hasCoordinates,
@@ -378,10 +378,10 @@ router.get('/browse', asyncRoute(async (req, res) => {
 router.get('/:id(\\d+)/map', asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const result = await callApi(tokenFrom(req), 'GET', `/${id}`);
-  const map = eventMapState(eventFrom(result));
+  const map = eventMapState(eventFrom(result), res.locals.t);
 
   res.render('events/map', {
-    title: 'Event location',
+    title: res.locals.t('govuk_alpha_events.map.title'),
     activeNav: 'events',
     map
   });

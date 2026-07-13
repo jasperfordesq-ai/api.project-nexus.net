@@ -21306,11 +21306,20 @@ describe('shared accessible frontend shell', () => {
           longitude: 0,
           is_online: false
         }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          id: 45,
+          title: 'Village walk',
+          location: 'Library steps',
+          is_online: false
+        }
       });
 
     const mapped = await request(app).get('/events/42/map');
     const online = await request(app).get('/events/43/map');
     const zeroCoordinate = await request(app).get('/events/44/map');
+    const writtenAddress = await request(app).get('/events/45/map');
 
     expect(mapped.status).toBe(200);
     expect(api.callEventApi).toHaveBeenNthCalledWith(1, '', 'GET', '/42');
@@ -21369,6 +21378,14 @@ describe('shared accessible frontend shell', () => {
     expect(zeroCoordinate.text).toContain('0, 0');
     expect(zeroCoordinate.text).toContain('marker=0%2C0');
     expect(zeroCoordinate.text).not.toContain('No map available');
+
+    expect(writtenAddress.status).toBe(200);
+    expect(api.callEventApi).toHaveBeenNthCalledWith(4, '', 'GET', '/45');
+    expect(writtenAddress.text).toContain('Village walk');
+    expect(writtenAddress.text).toContain('This event does not have map coordinates set.');
+    expect(writtenAddress.text).toContain('A written address is shown on the event page.');
+    expect(writtenAddress.text).toContain('Library steps');
+    expect(writtenAddress.text).not.toContain('https://www.openstreetmap.org/export/embed.html');
   });
 
   it('submits Laravel event action aliases and redirects signed-out visitors', async () => {
