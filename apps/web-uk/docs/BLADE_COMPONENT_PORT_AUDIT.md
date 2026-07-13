@@ -453,6 +453,11 @@ now requires active membership or administration before loading content, and
 the discussion-create form now rejects pending/non-members like Blade. Focused
 allowed/denied proof passes without calling content APIs for denied users.
 
+2026-07-13 announcement-edit owner follow-up: the edit GET now uses the signed
+profile plus `owner_id` fallback as well as embedded membership, matching Blade's
+`canModify` guard while retaining the pre-lookup `403` for other users. Focused
+owner/denial/collection proof passes.
+
 | Blade pattern | Laravel source | ASP.NET target | Status |
 | --- | --- | --- | --- |
 | Custom dark header | `accessible-frontend/views/layout.blade.php` | `src/views/layouts/base.njk`, `src/lib/accessible-shell.js` | Partial. Text brand, language selector, My account link, and tenant-only service navigation are present. The no-JS language selector mirrors Blade's `request()->except(['locale'])` behavior for scalar query params, preserving filters/status/return values while excluding `locale`. My account now exposes `aria-current` across Blade's complete account-family active-nav set, and active Sign in/Register items use the source strong fallback. Tenant bootstrap `logo_dark_url`/`logo_url` and validated wide/landscape/square shape metadata now render Laravel's aspect-ratio-aware image brand, while untrusted external origins are rejected and CSP permits only the configured backend origin. Focused source/render tests passed, and a real default-English `timebanking-org` browser check loaded the `392x105` logo at `179x48`, with exact tenant alt text and no horizontal overflow. Web UK's mandatory non-government header disclosure remains an intentional branding-policy divergence from Blade. Validated per-tenant header colours remain blocked because Laravel's public bootstrap response does not expose `header_bg_color` or `header_accent_color`; full manual visual/assistive-technology proof also remains open. |

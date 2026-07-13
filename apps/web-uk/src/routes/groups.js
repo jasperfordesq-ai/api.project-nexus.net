@@ -1253,10 +1253,9 @@ router.get('/:id(\\d+)/announcements', requireAuth, asyncRoute(async (req, res) 
 
 router.get('/:id(\\d+)/announcements/:annId(\\d+)/edit', requireAuth, asyncRoute(async (req, res) => {
   const { id, annId } = req.params;
-  const groupResult = await getGroup(req.token, id);
-  const group = normalizeGroup(dataFrom(groupResult)?.group || dataFrom(groupResult), Number(id));
-  if (!isGroupAdmin(group)) {
-    return res.status(403).render('errors/403', { title: 'Forbidden' });
+  const { group, profile } = await groupAccessContext(req, id);
+  if (isKnownGroupAdmin(group, profile) !== true) {
+    return renderForbidden(res);
   }
 
   const announcementsResult = await callGroup(req.token, 'GET', `/${id}/announcements`);

@@ -20125,9 +20125,8 @@ describe('shared accessible frontend shell', () => {
       data: {
         id: 42,
         name: 'Garden Helpers',
-        my_membership: {
-          role: 'admin'
-        }
+        owner_id: 101,
+        my_membership: null
       }
     });
     api.callGroupApi.mockReset().mockResolvedValueOnce({
@@ -20202,7 +20201,7 @@ describe('shared accessible frontend shell', () => {
     expect(api.callGroupApi).not.toHaveBeenCalled();
   });
 
-  it('renders the Laravel group announcement edit page for signed-in group admins', async () => {
+  it('renders the Laravel group announcement edit page for the signed-in group owner', async () => {
     const api = require('../src/lib/api');
     api.getGroup.mockReset().mockResolvedValueOnce({
       data: {
