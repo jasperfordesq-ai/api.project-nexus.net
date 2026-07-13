@@ -21608,6 +21608,12 @@ describe('shared accessible frontend shell', () => {
     expect(leaveResponse.headers.location).toBe('/events/7?status=waitlist-left');
     expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/7/waitlist');
 
+    const acceptResponse = await post('/events/7/waitlist/accept', { idempotency_key: 'offer-test-key' });
+    expect(acceptResponse.headers.location).toBe('/events/7?status=waitlist-offer-accepted');
+    expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', '/7/registration/waitlist/accept', {
+      idempotency_key: 'offer-test-key'
+    });
+
     const checkinResponse = await post('/events/7/attendees/55/check-in');
     expect(checkinResponse.headers.location).toBe('/events/7?status=checkin-success');
     expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', '/7/attendees/55/check-in');
