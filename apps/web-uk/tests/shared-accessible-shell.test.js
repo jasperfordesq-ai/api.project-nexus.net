@@ -20184,6 +20184,22 @@ describe('shared accessible frontend shell', () => {
     expect(api.getGroup).toHaveBeenCalledWith('test-token', '42');
     expect(api.callGroupApi).toHaveBeenCalledTimes(1);
     expect(api.callGroupApi).toHaveBeenCalledWith('test-token', 'GET', '/42/announcements');
+
+    api.getGroup.mockResolvedValueOnce({
+      data: {
+        id: 42,
+        name: 'Garden Helpers',
+        viewer_membership: null
+      }
+    });
+    api.callGroupApi.mockClear();
+    const outsider = await request(app)
+      .get('/groups/42/announcements')
+      .set('Cookie', signedCookieHeader());
+
+    expect(outsider.status).toBe(403);
+    expect(outsider.text).toContain(englishForbiddenTitle);
+    expect(api.callGroupApi).not.toHaveBeenCalled();
   });
 
   it('renders the Laravel group announcement edit page for signed-in group admins', async () => {
@@ -20386,6 +20402,21 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
     expect(api.getGroup).toHaveBeenCalledTimes(1);
     expect(api.getGroup).toHaveBeenCalledWith('test-token', '42');
+    expect(api.callGroupApi).not.toHaveBeenCalled();
+
+    api.getGroup.mockResolvedValueOnce({
+      data: {
+        id: 42,
+        name: 'Garden Helpers',
+        viewer_membership: { role: 'member', status: 'pending' }
+      }
+    });
+    const pendingMember = await request(app)
+      .get('/groups/42/discussions/new')
+      .set('Cookie', signedCookieHeader());
+
+    expect(pendingMember.status).toBe(403);
+    expect(pendingMember.text).toContain(englishForbiddenTitle);
     expect(api.callGroupApi).not.toHaveBeenCalled();
   });
 

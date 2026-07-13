@@ -1228,15 +1228,15 @@ router.get('/:id(\\d+)/image', requireAuth, asyncRoute(async (req, res) => {
 
 router.get('/:id(\\d+)/announcements', requireAuth, asyncRoute(async (req, res) => {
   const id = req.params.id;
-  const [groupResult, announcementsResult] = await Promise.all([
-    getGroup(req.token, id),
-    callGroup(req.token, 'GET', `/${id}/announcements`).catch((error) => {
-      if (isAuthError(error)) throw error;
-      return { data: { items: [] } };
-    })
-  ]);
+  const { group, profile } = await groupAccessContext(req, id);
+  if (!isActiveGroupMember(group, profile)) {
+    return renderForbidden(res);
+  }
 
-  const group = normalizeGroup(dataFrom(groupResult)?.group || dataFrom(groupResult), Number(id));
+  const announcementsResult = await callGroup(req.token, 'GET', `/${id}/announcements`).catch((error) => {
+    if (isAuthError(error)) throw error;
+    return { data: { items: [] } };
+  });
   const announcements = collectionFrom(announcementsResult)
     .map(normalizeAnnouncement)
     .filter((announcement) => announcement.id !== null);
@@ -1246,7 +1246,7 @@ router.get('/:id(\\d+)/announcements', requireAuth, asyncRoute(async (req, res) 
     activeNav: 'explore',
     group,
     announcements,
-    isAdmin: isGroupAdmin(group),
+    isAdmin: isGroupAdmin(group, profile),
     ...announcementStatus(req.query.status)
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Group not found' }));
@@ -1304,8 +1304,10 @@ router.get('/:id(\\d+)/discussions', requireAuth, asyncRoute(async (req, res) =>
 
 router.get('/:id(\\d+)/discussions/new', requireAuth, asyncRoute(async (req, res) => {
   const id = req.params.id;
-  const groupResult = await getGroup(req.token, id);
-  const group = normalizeGroup(dataFrom(groupResult)?.group || dataFrom(groupResult), Number(id));
+  const { group, profile } = await groupAccessContext(req, id);
+  if (!isActiveGroupMember(group, profile)) {
+    return renderForbidden(res);
+  }
 
   return res.render('groups/discussion-create', {
     title: 'Start a discussion',
