@@ -1,12 +1,12 @@
 {
   "summary": {
-    "generatedAt": "2026-07-13T02:27:42.232Z",
+    "generatedAt": "2026-07-13T02:36:32.391Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\platforms\\htdocs\\asp.net-backend",
     "laravelRoutes": 687,
-    "webUkRoutes": 635,
-    "matchedRoutes": 632,
-    "missingRoutes": 55,
+    "webUkRoutes": 639,
+    "matchedRoutes": 636,
+    "missingRoutes": 51,
     "extraWebUkRoutes": 1,
     "ignoredInfrastructureRoutes": 3,
     "familyCounts": {
@@ -131,8 +131,8 @@
         "ignoredInfrastructure": 0
       },
       "events": {
-        "matched": 43,
-        "missing": 51,
+        "matched": 47,
+        "missing": 47,
         "extraWebUk": 0,
         "ignoredInfrastructure": 0
       },
@@ -2261,6 +2261,51 @@
     },
     {
       "method": "GET",
+      "path": "/events/{param}/tickets",
+      "family": "events",
+      "status": "matched",
+      "laravelRouteName": "events.tickets.index",
+      "laravelHandler": "eventsTickets",
+      "laravelView": "event-tickets",
+      "laravelParamConstraints": [
+        "number"
+      ],
+      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\event-tickets.php",
+      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventTicketsParity.php",
+      "laravelMiddleware": "",
+      "auth": "public-or-unknown",
+      "tenantScoped": "unknown",
+      "gates": "",
+      "apiNeeds": "",
+      "webUkPath": "/events/{param}/tickets",
+      "webUkView": "events/tickets",
+      "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\routes\\events.js"
+    },
+    {
+      "method": "GET",
+      "path": "/events/{param}/tickets/entitlements/{param}/cancel",
+      "family": "events",
+      "status": "matched",
+      "laravelRouteName": "events.tickets.cancel.form",
+      "laravelHandler": "eventsTicketCancelForm",
+      "laravelView": "event-ticket-cancel",
+      "laravelParamConstraints": [
+        "number",
+        "number"
+      ],
+      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\event-tickets.php",
+      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventTicketsParity.php",
+      "laravelMiddleware": "",
+      "auth": "public-or-unknown",
+      "tenantScoped": "unknown",
+      "gates": "",
+      "apiNeeds": "",
+      "webUkPath": "/events/{param}/tickets/entitlements/{param}/cancel",
+      "webUkView": "events/ticket-cancel",
+      "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\routes\\events.js"
+    },
+    {
+      "method": "GET",
       "path": "/events/{param}/translate",
       "family": "events",
       "status": "matched",
@@ -2808,6 +2853,52 @@
       "gates": "feature:events",
       "apiNeeds": "",
       "webUkPath": "/events/{param}/safety",
+      "webUkView": "",
+      "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\routes\\events.js"
+    },
+    {
+      "method": "POST",
+      "path": "/events/{param}/tickets/{param}/allocate",
+      "family": "events",
+      "status": "matched",
+      "laravelRouteName": "events.tickets.allocate",
+      "laravelHandler": "eventsTicketAllocate",
+      "laravelView": "",
+      "laravelParamConstraints": [
+        "number",
+        "number"
+      ],
+      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\event-tickets.php",
+      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventTicketsParity.php",
+      "laravelMiddleware": "'throttle:20,1'",
+      "auth": "public-or-unknown",
+      "tenantScoped": "unknown",
+      "gates": "",
+      "apiNeeds": "",
+      "webUkPath": "/events/{param}/tickets/{param}/allocate",
+      "webUkView": "",
+      "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\routes\\events.js"
+    },
+    {
+      "method": "POST",
+      "path": "/events/{param}/tickets/entitlements/{param}/cancel",
+      "family": "events",
+      "status": "matched",
+      "laravelRouteName": "events.tickets.cancel",
+      "laravelHandler": "eventsTicketCancel",
+      "laravelView": "",
+      "laravelParamConstraints": [
+        "number",
+        "number"
+      ],
+      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\event-tickets.php",
+      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventTicketsParity.php",
+      "laravelMiddleware": "'throttle:20,1'",
+      "auth": "public-or-unknown",
+      "tenantScoped": "unknown",
+      "gates": "",
+      "apiNeeds": "",
+      "webUkPath": "/events/{param}/tickets/entitlements/{param}/cancel",
       "webUkView": "",
       "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\routes\\events.js"
     },
@@ -14247,51 +14338,6 @@
     },
     {
       "method": "GET",
-      "path": "/events/{param}/tickets",
-      "family": "events",
-      "status": "missing",
-      "laravelRouteName": "events.tickets.index",
-      "laravelHandler": "eventsTickets",
-      "laravelView": "event-tickets",
-      "laravelParamConstraints": [
-        "number"
-      ],
-      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\event-tickets.php",
-      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventTicketsParity.php",
-      "laravelMiddleware": "",
-      "auth": "public-or-unknown",
-      "tenantScoped": "unknown",
-      "gates": "",
-      "apiNeeds": "",
-      "webUkPath": "",
-      "webUkView": "",
-      "webUkFile": ""
-    },
-    {
-      "method": "GET",
-      "path": "/events/{param}/tickets/entitlements/{param}/cancel",
-      "family": "events",
-      "status": "missing",
-      "laravelRouteName": "events.tickets.cancel.form",
-      "laravelHandler": "eventsTicketCancelForm",
-      "laravelView": "event-ticket-cancel",
-      "laravelParamConstraints": [
-        "number",
-        "number"
-      ],
-      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\event-tickets.php",
-      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventTicketsParity.php",
-      "laravelMiddleware": "",
-      "auth": "public-or-unknown",
-      "tenantScoped": "unknown",
-      "gates": "",
-      "apiNeeds": "",
-      "webUkPath": "",
-      "webUkView": "",
-      "webUkFile": ""
-    },
-    {
-      "method": "GET",
       "path": "/events/calendar-subscriptions",
       "family": "events",
       "status": "missing",
@@ -15014,52 +15060,6 @@
       ],
       "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\event-templates.php",
       "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventTemplatesParity.php",
-      "laravelMiddleware": "'throttle:20,1'",
-      "auth": "public-or-unknown",
-      "tenantScoped": "unknown",
-      "gates": "",
-      "apiNeeds": "",
-      "webUkPath": "",
-      "webUkView": "",
-      "webUkFile": ""
-    },
-    {
-      "method": "POST",
-      "path": "/events/{param}/tickets/{param}/allocate",
-      "family": "events",
-      "status": "missing",
-      "laravelRouteName": "events.tickets.allocate",
-      "laravelHandler": "eventsTicketAllocate",
-      "laravelView": "",
-      "laravelParamConstraints": [
-        "number",
-        "number"
-      ],
-      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\event-tickets.php",
-      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventTicketsParity.php",
-      "laravelMiddleware": "'throttle:20,1'",
-      "auth": "public-or-unknown",
-      "tenantScoped": "unknown",
-      "gates": "",
-      "apiNeeds": "",
-      "webUkPath": "",
-      "webUkView": "",
-      "webUkFile": ""
-    },
-    {
-      "method": "POST",
-      "path": "/events/{param}/tickets/entitlements/{param}/cancel",
-      "family": "events",
-      "status": "missing",
-      "laravelRouteName": "events.tickets.cancel",
-      "laravelHandler": "eventsTicketCancel",
-      "laravelView": "",
-      "laravelParamConstraints": [
-        "number",
-        "number"
-      ],
-      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\event-tickets.php",
-      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventTicketsParity.php",
       "laravelMiddleware": "'throttle:20,1'",
       "auth": "public-or-unknown",
       "tenantScoped": "unknown",

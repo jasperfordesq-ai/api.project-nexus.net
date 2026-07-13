@@ -22175,6 +22175,62 @@ describe('shared accessible frontend shell', () => {
     }
   });
 
+  it('renders the private Laravel Event Ticket catalogue with server-declared allocation gates', async () => {
+    const api = require('../src/lib/api');
+    api.callEventApi
+      .mockResolvedValueOnce({ data: { id: 42, title: 'Community garden day' } })
+      .mockResolvedValueOnce({ data: {
+        permissions: { allocate_self: true },
+        own_entitlements: [{ id: 91, ticket_type_id: 7, kind: 'free', status: 'confirmed', units: 1, version: 2 }],
+        ticket_types: [
+          { id: 7, name: 'General admission', description: 'Free place', kind: 'free', status: 'active', per_member_limit: 2, availability: { allocation_remaining: 10, member_remaining: 1, sales_window_open: true, materialization_supported: true, eligibility: { eligible: true } } },
+          { id: 8, name: 'Credit place', kind: 'time_credit', status: 'active', unit_price_credits: 3, per_member_limit: 1, availability: { allocation_remaining: 4, member_remaining: 1, sales_window_open: true, materialization_supported: false, eligibility: { eligible: true } } }
+        ]
+      } });
+    const response = await request(app).get('/events/42/tickets').set('Cookie', signedCookieHeader());
+    expect(response.status).toBe(200);
+    expect(response.headers['cache-control']).toBe('private, no-store');
+    expect(response.text).toContain('Community garden day');
+    expect(response.text).toContain('/events/42/tickets/7/allocate');
+    expect(response.text).toContain('/events/42/tickets/entitlements/91/cancel');
+    expect(response.text).not.toContain('/events/42/tickets/8/allocate');
+    expect(api.callEventApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/42/tickets');
+  });
+
+  it('allocates a free Laravel Event Ticket with units and idempotency', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const shell = await agent.get('/contact').set('Cookie', signedCookieHeader());
+    const csrf = shell.text.match(/name="_csrf" value="([^"]+)"/)[1];
+    api.callEventApi.mockResolvedValueOnce({ data: { changed: true } });
+    const response = await agent.post('/events/42/tickets/7/allocate').set('Cookie', signedCookieHeader()).type('form').send({
+      _csrf: csrf, units: '2', idempotency_key: 'ticket-allocate-123'
+    });
+    expect(response.headers.location).toBe('/events/42/tickets?status=allocated');
+    expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/tickets/7/allocate', { units: 2 }, { headers: { 'Idempotency-Key': 'ticket-allocate-123' } });
+  });
+
+  it('renders and submits Laravel free-ticket cancellation with reason and optimistic version', async () => {
+    const api = require('../src/lib/api');
+    api.callEventApi.mockResolvedValueOnce({ data: {
+      permissions: { allocate_self: true },
+      own_entitlements: [{ id: 91, ticket_type_id: 7, kind: 'free', status: 'confirmed', units: 1, version: 2 }],
+      ticket_types: [{ id: 7, name: 'General admission', kind: 'free' }]
+    } });
+    const page = await request(app).get('/events/42/tickets/entitlements/91/cancel').set('Cookie', signedCookieHeader());
+    expect(page.status).toBe(200);
+    expect(page.text).toContain('name="expected_version" value="2"');
+    const agent = request.agent(app);
+    const shell = await agent.get('/contact').set('Cookie', signedCookieHeader());
+    const csrf = shell.text.match(/name="_csrf" value="([^"]+)"/)[1];
+    api.callEventApi.mockResolvedValueOnce({ data: { changed: true } });
+    const response = await agent.post('/events/42/tickets/entitlements/91/cancel').set('Cookie', signedCookieHeader()).type('form').send({
+      _csrf: csrf, expected_version: '2', idempotency_key: 'ticket-cancel-123', reason: 'No longer able to attend'
+    });
+    expect(response.headers.location).toBe('/events/42/tickets?status=cancelled');
+    expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/ticket-entitlements/91/cancel', { expected_version: 2, reason: 'No longer able to attend' }, { headers: { 'Idempotency-Key': 'ticket-cancel-123' } });
+  });
+
   it('renders and issues Laravel signed Event check-in credentials without caching the secret', async () => {
     const api = require('../src/lib/api');
     api.callEventApi

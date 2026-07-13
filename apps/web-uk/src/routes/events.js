@@ -1302,6 +1302,74 @@ router.post('/:id(\\d+)/communications/:broadcastId(\\d+)/schedule', requireAuth
 router.post('/:id(\\d+)/communications/:broadcastId(\\d+)/cancel', requireAuth, asyncRoute(async (req, res) => mutateCommunication(req, res, 'cancel')));
 router.post('/:id(\\d+)/communications/:broadcastId(\\d+)/retry', requireAuth, asyncRoute(async (req, res) => mutateCommunication(req, res, 'retry')));
 
+async function ticketCatalogue(token, eventId) {
+  const result = await callApi(token, 'GET', `/${eventId}/tickets`);
+  const data = dataFrom(result) || {};
+  return data.catalogue || data;
+}
+
+router.get('/:id(\\d+)/tickets', requireAuth, asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const token = tokenFrom(req);
+  const [eventResult, catalogue] = await Promise.all([callApi(token, 'GET', `/${id}`), ticketCatalogue(token, id)]);
+  const event = eventFrom(eventResult);
+  res.set('Cache-Control', 'private, no-store');
+  res.set('Pragma', 'no-cache');
+  return res.render('events/tickets', {
+    title: res.locals.t('event_tickets.title'), activeNav: 'events', event: { id, title: trimmed(event.title) },
+    catalogue, ticketNames: Object.fromEntries(collectionFrom({ data: catalogue.ticket_types || [] }).map((ticket) => [ticket.id, ticket])),
+    status: trimmed(req.query.status), idempotencyKey: randomUUID(), csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}, { notFoundTitle: 'Event not found' }));
+
+router.post('/:id(\\d+)/tickets/:ticketTypeId(\\d+)/allocate', requireAuth, asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const ticketTypeId = positiveInteger(req.params.ticketTypeId);
+  const units = positiveInteger(req.body.units);
+  const key = trimmed(req.body.idempotency_key, 512);
+  if (!ticketTypeId || !units || units > 1000 || !key) return redirectTo(res, eventPath(id, '/tickets?status=invalid'));
+  try {
+    await callEventMutation(tokenFrom(req), 'POST', `/${id}/tickets/${ticketTypeId}/allocate`, { units }, key);
+    return redirectTo(res, eventPath(id, '/tickets?status=allocated'));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    if (error instanceof ApiError && [400, 403, 404, 409, 422, 429, 503].includes(error.status)) return redirectTo(res, eventPath(id, '/tickets?status=allocate-failed'));
+    throw error;
+  }
+}));
+
+router.get('/:id(\\d+)/tickets/entitlements/:entitlementId(\\d+)/cancel', requireAuth, asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const entitlementId = positiveInteger(req.params.entitlementId);
+  const catalogue = await ticketCatalogue(tokenFrom(req), id);
+  const entitlement = arrayValues(catalogue.own_entitlements).find((item) => positiveInteger(item?.id) === entitlementId);
+  const ticket = arrayValues(catalogue.ticket_types).find((item) => positiveInteger(item?.id) === positiveInteger(entitlement?.ticket_type_id));
+  if (!entitlement || !ticket || entitlement.kind !== 'free') return res.status(404).render('errors/404', { title: 'Ticket not found' });
+  res.set('Cache-Control', 'private, no-store');
+  res.set('Pragma', 'no-cache');
+  return res.render('events/ticket-cancel', {
+    title: res.locals.t('event_tickets.cancel_title'), activeNav: 'events', eventId: id, entitlement, ticket,
+    status: trimmed(req.query.status), idempotencyKey: randomUUID(), csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}, { notFoundTitle: 'Ticket not found' }));
+
+router.post('/:id(\\d+)/tickets/entitlements/:entitlementId(\\d+)/cancel', requireAuth, asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const entitlementId = positiveInteger(req.params.entitlementId);
+  const expectedVersion = positiveInteger(req.body.expected_version);
+  const key = trimmed(req.body.idempotency_key, 512);
+  const reason = trimmed(req.body.reason, 501);
+  if (!entitlementId || !expectedVersion || !key || !reason || reason.length > 500) return redirectTo(res, eventPath(id, `/tickets/entitlements/${entitlementId || 0}/cancel?status=invalid`));
+  try {
+    await callEventMutation(tokenFrom(req), 'POST', `/${id}/ticket-entitlements/${entitlementId}/cancel`, { expected_version: expectedVersion, reason }, key);
+    return redirectTo(res, eventPath(id, '/tickets?status=cancelled'));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    if (error instanceof ApiError && [400, 403, 404, 409, 422, 429, 503].includes(error.status)) return redirectTo(res, eventPath(id, `/tickets/entitlements/${entitlementId}/cancel?status=failed`));
+    throw error;
+  }
+}));
+
 router.post('/:id(\\d+)/check-in/credential/rotate', requireAuth, asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const credentialId = positiveInteger(req.body.credential_id);

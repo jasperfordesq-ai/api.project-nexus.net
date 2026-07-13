@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-13T02:27:42.232Z
+Generated: 2026-07-13T02:36:32.391Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 687 |
-| web-uk routes | 635 |
-| Matched routes | 632 |
-| Missing routes | 55 |
+| web-uk routes | 639 |
+| Matched routes | 636 |
+| Missing routes | 51 |
 | Extra web-uk routes | 1 |
 | Ignored web-uk infrastructure routes | 3 |
 
@@ -32,7 +32,7 @@ Generated: 2026-07-13T02:27:42.232Z
 | courses | 26 | 0 | 0 | 0 |
 | dashboard | 1 | 0 | 0 | 0 |
 | event-templates | 0 | 4 | 0 | 0 |
-| events | 43 | 51 | 0 | 0 |
+| events | 47 | 47 | 0 | 0 |
 | exchanges | 4 | 0 | 0 | 0 |
 | explore | 1 | 0 | 0 | 0 |
 | faq | 1 | 0 | 0 | 0 |
@@ -103,8 +103,6 @@ Generated: 2026-07-13T02:27:42.232Z
 | GET | `/events/{param}/registration/forms/{param}` | events | eventsRegistrationFormEditor | event-registration-form-editor | public-or-unknown |  |
 | GET | `/events/{param}/registration/forms/new` | events | eventsRegistrationFormEditor | event-registration-form-editor | public-or-unknown |  |
 | GET | `/events/{param}/template-preview` | events | eventsTemplateCapturePreview | event-template-capture-preview | public-or-unknown |  |
-| GET | `/events/{param}/tickets` | events | eventsTickets | event-tickets | public-or-unknown |  |
-| GET | `/events/{param}/tickets/entitlements/{param}/cancel` | events | eventsTicketCancelForm | event-ticket-cancel | public-or-unknown |  |
 | GET | `/events/calendar-subscriptions` | events | eventsCalendarSubscriptions |  | public-or-unknown |  |
 | GET | `/events/calendar-subscriptions/{param}/revoke` | events | eventsConfirmCalendarSubscriptionRevoke |  | public-or-unknown |  |
 | GET | `/events/calendar.ics` | events | eventsCalendarFeed |  | public-or-unknown |  |
@@ -138,8 +136,6 @@ Generated: 2026-07-13T02:27:42.232Z
 | POST | `/events/{param}/registration/submissions/export` | events | eventsRegistrationExportAnswers |  | public-or-unknown |  |
 | POST | `/events/{param}/submit` | events | submitEventForReview |  | public-or-unknown |  |
 | POST | `/events/{param}/templates` | events | eventsTemplateCapture |  | public-or-unknown |  |
-| POST | `/events/{param}/tickets/{param}/allocate` | events | eventsTicketAllocate |  | public-or-unknown |  |
-| POST | `/events/{param}/tickets/entitlements/{param}/cancel` | events | eventsTicketCancel |  | public-or-unknown |  |
 | POST | `/events/calendar-subscriptions` | events | eventsCreateCalendarSubscription |  | public-or-unknown |  |
 | POST | `/events/calendar-subscriptions/{param}/revoke` | events | eventsRevokeCalendarSubscription |  | public-or-unknown |  |
 | POST | `/events/moderation/{param}/approve` | events | eventsModerationApprove |  | public-or-unknown |  |

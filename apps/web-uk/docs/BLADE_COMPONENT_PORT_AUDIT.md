@@ -46,6 +46,16 @@ payload proof passes. Live delivery-provider execution, disposable broadcast
 fixtures, manual assistive-technology review, and unchanged ASP.NET runtime
 proof remain open.
 
+## 2026-07-13 Event Tickets Checkpoint
+
+Attendees now have Laravel's private free-ticket catalogue, server-declared
+eligibility and capacity gates, idempotent self-allocation, a dedicated
+cancellation confirmation page, cancellation reasons, and optimistic entitlement
+versions. Time-credit materialisation remains visibly fail-closed as required by
+Laravel. Focused rendering and exact allocation/cancellation payload proof passes.
+Disposable live entitlement effects, reconciliation, manual assistive-technology
+review, and unchanged ASP.NET runtime proof remain open.
+
 ## Purpose
 
 This audit lists reusable Laravel Blade accessible frontend patterns that should
