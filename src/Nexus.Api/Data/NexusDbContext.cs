@@ -71,6 +71,11 @@ public class NexusDbContext : DbContext
     public DbSet<EventStaffAssignment> EventStaffAssignments => Set<EventStaffAssignment>();
     public DbSet<EventStaffAssignmentHistory> EventStaffAssignmentHistory => Set<EventStaffAssignmentHistory>();
     public DbSet<EventCalendarFeedToken> EventCalendarFeedTokens => Set<EventCalendarFeedToken>();
+    public DbSet<EventCheckinCredential> EventCheckinCredentials => Set<EventCheckinCredential>();
+    public DbSet<EventCheckinDevice> EventCheckinDevices => Set<EventCheckinDevice>();
+    public DbSet<EventOfflineSyncBatch> EventOfflineSyncBatches => Set<EventOfflineSyncBatch>();
+    public DbSet<EventOfflineSyncItem> EventOfflineSyncItems => Set<EventOfflineSyncItem>();
+    public DbSet<EventOfflineSyncDecision> EventOfflineSyncDecisions => Set<EventOfflineSyncDecision>();
     public DbSet<FeedPost> FeedPosts => Set<FeedPost>();
     public DbSet<FeedActivity> FeedActivities => Set<FeedActivity>();
     public DbSet<PostLike> PostLikes => Set<PostLike>();

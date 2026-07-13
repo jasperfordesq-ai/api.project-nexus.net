@@ -68,6 +68,7 @@ public class Event : ITenantEntity
     public string FederatedVisibility { get; set; } = "none";
     public long CalendarSequence { get; set; }
     public long AgendaVersion { get; set; }
+    public long CheckinManifestVersion { get; set; }
 
     /// <summary>
     /// Whether the event has been cancelled.

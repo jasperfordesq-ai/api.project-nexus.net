@@ -1,6 +1,6 @@
 # Laravel Parity Implementation Backlog
 
-Last reviewed: 2026-07-12
+Last reviewed: 2026-07-13
 
 Canonical source: `C:\platforms\htdocs\staging` (read-only).
 
@@ -11,18 +11,18 @@ localization parity artifacts.
 
 ## Current Generated Rollup
 
-Generated with `scripts/export-laravel-parity-backlog.ps1` on 2026-07-12 after
+Generated with `scripts/export-laravel-parity-backlog.ps1` on 2026-07-13 after
 refreshing the API and schema artifacts and reusing the current frontend and
 localization artifacts.
 
 | Metric | Count |
 | --- | ---: |
-| Total open backlog items | 6,502 |
-| P0 items | 131 |
-| P1 items | 6,367 |
+| Total open backlog items | 6,457 |
+| P0 items | 100 |
+| P1 items | 6,353 |
 | P2 items | 4 |
-| API items | 85 |
-| Schema items | 281 |
+| API items | 71 |
+| Schema items | 276 |
 | Frontend items | 532 |
 | Localization items | 5,578 |
 

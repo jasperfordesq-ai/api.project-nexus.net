@@ -1,6 +1,6 @@
 # Schema Parity Map
 
-Last reviewed: 2026-07-12
+Last reviewed: 2026-07-13
 
 Laravel source of truth: `C:\platforms\htdocs\staging\database\migrations` and
 `C:\platforms\htdocs\staging\app\Models`.
@@ -8,22 +8,22 @@ Laravel source of truth: `C:\platforms\htdocs\staging\database\migrations` and
 ## Current Source Counts
 
 The static schema-table counts were regenerated with
-`scripts/compare-laravel-schema-parity.ps1` on 2026-07-12 after the event
-broadcast workflow slice. Runtime migration counts come from a separate
+`scripts/compare-laravel-schema-parity.ps1` on 2026-07-13 after the event
+offline-check-in workflow slice. Runtime migration counts come from a separate
 blank PostgreSQL replay.
 
 | Source | Count | Notes |
 | --- | ---: | --- |
 | Laravel migrations | 377 | PHP migration files under `database/migrations`. |
-| ASP.NET migration source files | 126 | Main migration `.cs` files excluding designers and the model snapshot. |
-| ASP.NET runtime migrations | 127 | Blank replay applied every recorded EF migration through `20260713000700_EventCalendarWorkflowParity`; `has-pending-model-changes` is green. |
+| ASP.NET migration source files | 130 | Static comparator migration-source count. |
+| ASP.NET runtime migrations | 128 | Blank replay applied every recorded EF migration through `20260713004944_EventOfflineCheckinWorkflowParity`; `has-pending-model-changes` is green. |
 | Laravel created tables | 298 | Unique `Schema::create(...)` table names. |
 | Laravel touched tables | 128 | Unique `Schema::table(...)` table names. |
 | Laravel explicit model tables | 267 | Unique `protected/public $table = ...` model declarations. |
 | Laravel source tables | 455 | Union of migration-created, migration-touched, and explicit model tables. |
-| ASP.NET tables | 365 | Static table union after adding canonical calendar-feed-token storage. |
-| Exact matched tables | 174 | Current exact table-name matches. |
-| Missing Laravel tables | 281 | Laravel source names not represented exactly in ASP.NET. |
+| ASP.NET tables | 370 | Static table union after adding canonical offline-check-in storage. |
+| Exact matched tables | 179 | Current exact table-name matches. |
+| Missing Laravel tables | 276 | Laravel source names not represented exactly in ASP.NET. |
 | Extra ASP.NET tables | 191 | .NET table names with no exact Laravel table name. |
 
 These counts are not a parity score. Static table-name matching will overstate
@@ -32,6 +32,16 @@ tables versus .NET `volunteer_*` tables. Those aliases still need explicit
 triage and compatibility decisions before any table can be marked equivalent.
 
 ## 2026-07-12 Runtime Migration, Direct-Message, And Safeguarding Evidence Status
+
+`20260713004944_EventOfflineCheckinWorkflowParity` is the current latest
+migration and runtime ID 128. It adds exact `event_checkin_credentials`,
+`event_checkin_devices`, `event_offline_sync_batches`,
+`event_offline_sync_items`, and `event_offline_sync_decisions` storage. Twenty-
+one PostgreSQL checks enforce secret verifiers, state/version/count bounds,
+subject completeness, and attendance-linked accepted decisions. Seven triggers
+make submitted items and decisions immutable and prohibit deletion of the five
+evidence aggregates. A blank replay applied 128/128 migrations, model drift is
+clean, and direct item tampering failed with SQLSTATE `P0001`.
 
 `20260712221737_EventPeopleAttendanceWorkflowParity` is the current latest
 migration and runtime ID 124. It deterministically upgrades existing attendance

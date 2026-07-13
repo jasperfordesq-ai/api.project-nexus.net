@@ -1,6 +1,6 @@
 # Current Laravel Backend Parity Handoff
 
-Last reviewed: 2026-07-12
+Last reviewed: 2026-07-13
 
 > **Current audit notice (2026-07-12):** Read the verified slice below and
 > `docs/FULL_PARITY_REMEDIATION_RUNBOOK.md` before using the historical numeric
@@ -68,10 +68,26 @@ and adds exact append-only `event_attendance_activity`. All 124 migrations
 replayed on blank disposable PostgreSQL, EF model drift is clean, and focused
 privacy/history/manager/attendance/bulk/CSV/tenant proof passed 4/4.
 
-The live comparator now reports 4,427 ASP.NET operations, 2,507/2,592 matched,
-and 85 missing. The schema comparator reports 377 Laravel migration files, 129
-ASP.NET migration source files, 127 runtime IDs, 365 ASP.NET table names, 174
-exact matches, 281 missing Laravel names, and 191 ASP.NET-only names.
+The live comparator now reports 4,441 ASP.NET operations, 2,521/2,592 matched,
+and 71 missing. The schema comparator reports 377 Laravel migration files, 130
+ASP.NET migration source files, 128 runtime IDs, 370 ASP.NET table names, 179
+exact matches, 276 missing Laravel names, and 191 ASP.NET-only names.
+
+Event Offline Check-in is the latest completed backend slice. All fourteen
+workspace, credential, device, manifest, sync, batch, conflict, resolution, and
+online-scan routes are owned under both route prefixes. Credentials are PII-free
+Ed25519 `nqx2` tokens with deterministic public verification keys and one-way
+server verifiers; credential and device secrets are one-shot and never returned
+on idempotent replay. Sync batches, immutable submitted items, append-only
+decisions, attendance transitions, and conflict resolution are tenant-scoped,
+versioned, and idempotent. Strict projections match the canonical React schemas
+and redact contact, profile, credential, and device-secret material.
+
+Migration `20260713004944_EventOfflineCheckinWorkflowParity` adds all five exact
+Laravel table names, 21 workflow checks, and seven append-only/no-delete
+triggers. All 128 migrations replayed on blank disposable PostgreSQL, EF model
+drift is clean, direct item tampering failed with PostgreSQL `P0001`, and focused
+signed-token/device/manifest/sync/conflict/privacy/tenant proof passed 4/4.
 
 Event Calendar is the latest completed backend slice. Its seven calendar,
 ICS/action, feed-token, and anonymous personal-feed routes now share one
@@ -547,7 +563,7 @@ Earlier published slice evidence retained for context:
 - earlier volunteering-chain proof reached
   `20260711031959_NullableTransactionLedgerLegs`; the current migration proof
   is recorded above;
-- API route comparator: 2,507/2,592 current Laravel/supplemental operations
+- API route comparator: 2,521/2,592 current Laravel/supplemental operations
   matched, 102 route-shape gaps after Event People closure;
 - historical schema comparator: 134/361 Laravel tables matched, 227 missing, 194
   ASP.NET-only; the current result above supersedes it and remains a global red
