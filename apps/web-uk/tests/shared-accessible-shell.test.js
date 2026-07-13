@@ -24424,6 +24424,31 @@ describe('shared accessible frontend shell', () => {
     expect(api.getGroupMembers).toHaveBeenCalledWith('test-token', '484', { per_page: 100 });
   });
 
+  it('preserves an explicit zero Laravel member count on group detail', async () => {
+    const api = require('../src/lib/api');
+
+    api.getGroup.mockResolvedValueOnce({
+      data: {
+        id: 484,
+        name: 'Dunmanway',
+        visibility: 'public',
+        member_count: 0
+      }
+    });
+    api.getGroupMembers.mockResolvedValueOnce({
+      data: [{ id: 101, name: 'Ada Member', role: 'owner' }]
+    });
+    api.getEvents.mockResolvedValueOnce({ data: [] });
+
+    const response = await request(app)
+      .get('/groups/484')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toMatch(/<dt class="govuk-summary-list__key">Members<\/dt>\s*<dd class="govuk-summary-list__value">\s*0\s*<\/dd>/);
+    expect(response.text).toContain('Ada Member');
+  });
+
   it('renders only current Blade pinned announcements on group detail', async () => {
     const api = require('../src/lib/api');
     api.getGroup.mockResolvedValueOnce({

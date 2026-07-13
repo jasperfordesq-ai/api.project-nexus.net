@@ -1067,6 +1067,11 @@ router.get('/:id(\\d+)', requireAuth, asyncRoute(async (req, res) => {
   ]);
 
   const members = collectionFrom(membersResult);
+  const memberCountSource = group.member_count ?? group.memberCount;
+  const parsedMemberCount = Number(memberCountSource);
+  const displayMemberCount = memberCountSource === null || memberCountSource === undefined
+    ? members.length
+    : (Number.isFinite(parsedMemberCount) ? Math.trunc(parsedMemberCount) : 0);
   const events = collectionFrom(eventsResult)
     .map((event) => ({
       ...event,
@@ -1102,6 +1107,7 @@ router.get('/:id(\\d+)', requireAuth, asyncRoute(async (req, res) => {
   res.render('groups/detail', {
     title: group.name,
     group,
+    displayMemberCount,
     members,
     events,
     groupFeed,

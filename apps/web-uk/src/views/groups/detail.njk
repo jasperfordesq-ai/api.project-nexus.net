@@ -10,8 +10,6 @@
 
 {% block mainContent %}
   {% set isPrivate = group.visibility != "public" %}
-  {% set memberCount = group.memberCount or group.member_count or members.length or 0 %}
-
   <span class="govuk-caption-xl">{{ t("groups.caption", { community: tenantName or serviceName }) }}</span>
   <div class="nexus-alpha-module-row">
     <h1 class="govuk-heading-xl govuk-!-margin-bottom-2">{{ group.name }}</h1>
@@ -48,7 +46,7 @@
     <div class="govuk-summary-list__row">
       <dt class="govuk-summary-list__key">{{ t("polish_groups.meta_members_label") }}</dt>
       <dd class="govuk-summary-list__value">
-        {{ memberCount }}
+        {{ displayMemberCount }}
         {% if isAdmin %}&ensp;<a class="govuk-link" href="{{ urlFor('/groups/' + (group.id | string) + '/manage') }}">{{ t("polish_groups.meta_manage_link") }}</a>{% endif %}
       </dd>
     </div>
