@@ -22321,6 +22321,24 @@ describe('shared accessible frontend shell', () => {
     expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'DELETE', '/calendar/feed-tokens/5');
   });
 
+  it('renders immutable Laravel Event lifecycle evidence with opaque cursor pagination', async () => {
+    const api = require('../src/lib/api');
+    api.callEventApi
+      .mockResolvedValueOnce({ data: { id: 42, title: 'Community garden day' } })
+      .mockResolvedValueOnce({ data: [{
+        lifecycle_version: 4, created_at: '2026-07-13T12:00:00Z', reason: 'Approved after review',
+        publication: { from: 'submitted', to: 'published' }, operational: { from: 'scheduled', to: 'scheduled' },
+        actor: { id: 7, display_name: 'Tenant administrator' }, evidence: { axes_changed: ['publication'], cascade: {}, notifications_suppressed: false }
+      }], meta: { has_more: true, next_cursor: 'opaque+cursor/2=', per_page: 20 } });
+    const response = await request(app).get('/events/42/lifecycle-history').set('Cookie', signedCookieHeader());
+    expect(response.status).toBe(200);
+    expect(response.headers['cache-control']).toBe('private, no-store');
+    expect(response.text).toContain('Community garden day');
+    expect(response.text).toContain('Tenant administrator');
+    expect(response.text).toContain('opaque%2Bcursor%2F2%3D');
+    expect(api.callEventApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/42/lifecycle-history?per_page=20');
+  });
+
   it('renders and issues Laravel signed Event check-in credentials without caching the secret', async () => {
     const api = require('../src/lib/api');
     api.callEventApi

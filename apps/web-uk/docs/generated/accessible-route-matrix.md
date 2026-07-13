@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-13T02:47:35.304Z
+Generated: 2026-07-13T02:51:57.405Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 687 |
-| web-uk routes | 648 |
-| Matched routes | 645 |
-| Missing routes | 42 |
+| web-uk routes | 649 |
+| Matched routes | 646 |
+| Missing routes | 41 |
 | Extra web-uk routes | 1 |
 | Ignored web-uk infrastructure routes | 3 |
 
@@ -32,7 +32,7 @@ Generated: 2026-07-13T02:47:35.304Z
 | courses | 26 | 0 | 0 | 0 |
 | dashboard | 1 | 0 | 0 | 0 |
 | event-templates | 0 | 4 | 0 | 0 |
-| events | 56 | 38 | 0 | 0 |
+| events | 57 | 37 | 0 | 0 |
 | exchanges | 4 | 0 | 0 | 0 |
 | explore | 1 | 0 | 0 | 0 |
 | faq | 1 | 0 | 0 | 0 |
@@ -93,7 +93,6 @@ Generated: 2026-07-13T02:47:35.304Z
 | GET | `/event-templates/{param}/materialize` | event-templates | eventsTemplateMaterializeForm |  | public-or-unknown |  |
 | POST | `/event-templates/{param}/materialize` | event-templates | eventsTemplateMaterialize |  | public-or-unknown |  |
 | POST | `/event-templates/{param}/materialize/preview` | event-templates | eventsTemplateMaterializePreview |  | public-or-unknown |  |
-| GET | `/events/{param}/lifecycle-history` | events | eventsLifecycleHistory | event-lifecycle-history | auth-optional | feature:events |
 | GET | `/events/{param}/recurrence-definition-blueprints` | events | eventsRecurrenceDefinitionBlueprints | event-recurrence-blueprints | public-or-unknown |  |
 | GET | `/events/{param}/registration` | events | eventsRegistrationProduct |  | public-or-unknown |  |
 | GET | `/events/{param}/registration/forms/{param}` | events | eventsRegistrationFormEditor | event-registration-form-editor | public-or-unknown |  |

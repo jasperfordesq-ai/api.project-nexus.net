@@ -1491,6 +1491,25 @@ router.post('/calendar-subscriptions/:tokenId(\\d+)/revoke', requireAuth, asyncR
   }
 }));
 
+router.get('/:id(\\d+)/lifecycle-history', requireAuth, asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const perPage = boundedPositiveInteger(req.query.per_page, 20, 100);
+  const cursor = trimmed(req.query.cursor, 2048);
+  const query = new URLSearchParams({ per_page: String(perPage) });
+  if (cursor) query.set('cursor', cursor);
+  const token = tokenFrom(req);
+  const [eventResult, historyResult] = await Promise.all([
+    callApi(token, 'GET', `/${id}`), callApi(token, 'GET', `/${id}/lifecycle-history?${query.toString()}`)
+  ]);
+  const event = eventFrom(eventResult);
+  res.set('Cache-Control', 'private, no-store');
+  res.set('Pragma', 'no-cache');
+  return res.render('events/lifecycle-history', {
+    title: res.locals.t('event_lifecycle_history.title'), activeNav: 'events', event: { id, title: trimmed(event.title) },
+    entries: collectionFrom(historyResult), pagination: historyResult?.meta || {}, perPage
+  });
+}, { notFoundTitle: 'Event not found' }));
+
 router.post('/:id(\\d+)/check-in/credential/rotate', requireAuth, asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const credentialId = positiveInteger(req.body.credential_id);

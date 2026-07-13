@@ -75,6 +75,15 @@ download-header, one-shot-secret, and destructive-confirmation proof passes.
 Live calendar-client imports, disposable token effects, manual assistive-
 technology review, and unchanged ASP.NET runtime proof remain open.
 
+## 2026-07-13 Event Lifecycle History Checkpoint
+
+Event managers now have Laravel's private immutable lifecycle ledger with
+publication/operational transitions, actor and reason evidence, no-store
+responses, bounded page sizes, and opaque cursor pagination. Focused transition
+rendering and encoded-cursor proof passes. Live series/cascade evidence,
+manual assistive-technology review, and unchanged ASP.NET runtime proof remain
+open.
+
 ## Purpose
 
 This audit lists reusable Laravel Blade accessible frontend patterns that should

@@ -1,12 +1,12 @@
 {
   "summary": {
-    "generatedAt": "2026-07-13T02:47:35.304Z",
+    "generatedAt": "2026-07-13T02:51:57.405Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\platforms\\htdocs\\asp.net-backend",
     "laravelRoutes": 687,
-    "webUkRoutes": 648,
-    "matchedRoutes": 645,
-    "missingRoutes": 42,
+    "webUkRoutes": 649,
+    "matchedRoutes": 646,
+    "missingRoutes": 41,
     "extraWebUkRoutes": 1,
     "ignoredInfrastructureRoutes": 3,
     "familyCounts": {
@@ -131,8 +131,8 @@
         "ignoredInfrastructure": 0
       },
       "events": {
-        "matched": 56,
-        "missing": 38,
+        "matched": 57,
+        "missing": 37,
         "extraWebUk": 0,
         "ignoredInfrastructure": 0
       },
@@ -2213,6 +2213,28 @@
       "apiNeeds": "",
       "webUkPath": "/events/{param}/edit",
       "webUkView": "events/edit",
+      "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\routes\\events.js"
+    },
+    {
+      "method": "GET",
+      "path": "/events/{param}/lifecycle-history",
+      "family": "events",
+      "status": "matched",
+      "laravelRouteName": "events.lifecycle-history",
+      "laravelHandler": "eventsLifecycleHistory",
+      "laravelView": "event-lifecycle-history",
+      "laravelParamConstraints": [
+        "number"
+      ],
+      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\event-lifecycle-history.php",
+      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventLifecycleHistoryParity.php",
+      "laravelMiddleware": "",
+      "auth": "auth-optional",
+      "tenantScoped": "yes",
+      "gates": "feature:events",
+      "apiNeeds": "",
+      "webUkPath": "/events/{param}/lifecycle-history",
+      "webUkView": "events/lifecycle-history",
       "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\routes\\events.js"
     },
     {
@@ -14302,28 +14324,6 @@
       "auth": "public-or-unknown",
       "tenantScoped": "unknown",
       "gates": "",
-      "apiNeeds": "",
-      "webUkPath": "",
-      "webUkView": "",
-      "webUkFile": ""
-    },
-    {
-      "method": "GET",
-      "path": "/events/{param}/lifecycle-history",
-      "family": "events",
-      "status": "missing",
-      "laravelRouteName": "events.lifecycle-history",
-      "laravelHandler": "eventsLifecycleHistory",
-      "laravelView": "event-lifecycle-history",
-      "laravelParamConstraints": [
-        "number"
-      ],
-      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\event-lifecycle-history.php",
-      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventLifecycleHistoryParity.php",
-      "laravelMiddleware": "",
-      "auth": "auth-optional",
-      "tenantScoped": "yes",
-      "gates": "feature:events",
       "apiNeeds": "",
       "webUkPath": "",
       "webUkView": "",
