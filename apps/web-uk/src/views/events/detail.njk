@@ -185,31 +185,36 @@
 
       {# Event information #}
       {% set organizer = event.createdBy or event.created_by or event.organizer or event.user %}
-      {% set organizerName = organizer.name or (((organizer.firstName or organizer.first_name or "") + " " + (organizer.lastName or organizer.last_name or "")) | trim) if organizer else "" %}
+      {% set organizerName = event.organizer_name or organizer.display_name or organizer.displayName or organizer.name or (((organizer.firstName or organizer.first_name or "") + " " + (organizer.lastName or organizer.last_name or "")) | trim) if organizer else "" %}
       {% set eventStartTime = event.start_time or event.startTime %}
       {% set eventEndTime = event.end_time or event.endTime %}
+      {% set eventLocation = event.location_label %}
       {% set onlineLink = event.online_link or event.onlineLink %}
       {% set videoUrl = event.video_url or event.videoUrl %}
       {% set category = event.category %}
       {% set categoryName = category.name if category else (event.category_name or event.categoryName) %}
-      {% set canSeeVideo = (event.canEdit or event.can_edit) or (myRsvp and myRsvp.status in ["going", "interested"]) %}
       <h2 class="govuk-heading-l">{{ t("events.summary_title") }}</h2>
       <dl class="govuk-summary-list">
         {% if eventStartTime %}
           <div class="govuk-summary-list__row">
             <dt class="govuk-summary-list__key">{{ t("events.starts") }}</dt>
-            <dd class="govuk-summary-list__value">{{ eventStartTime | formatEventDate }}</dd>
+            <dd class="govuk-summary-list__value">{{ eventStartLabel or (eventStartTime | formatEventDate) }}{% if event.all_day %} · {{ t("govuk_alpha.events.all_day") }}{% endif %}</dd>
           </div>
         {% endif %}
-        {% if eventEndTime %}
+        {% if eventEndLabel or (eventEndTime and not event.all_day) %}
           <div class="govuk-summary-list__row">
             <dt class="govuk-summary-list__key">{{ t("events.ends") }}</dt>
-            <dd class="govuk-summary-list__value">{{ eventEndTime | formatEventDate }}</dd>
+            <dd class="govuk-summary-list__value">{{ eventEndLabel or (eventEndTime | formatEventDate) }}</dd>
           </div>
         {% endif %}
         <div class="govuk-summary-list__row">
           <dt class="govuk-summary-list__key">{{ t("events.location") }}</dt>
-          <dd class="govuk-summary-list__value">{{ event.location or t("events.online") }}</dd>
+          <dd class="govuk-summary-list__value">
+            {{ eventLocation or t("events.online") }}
+            {% if mapsEnabled and event.location_mode != "online" and event.location_latitude is not none and event.location_longitude is not none %}
+              <br><a class="govuk-link" href="{{ urlFor('/events/' + (event.id | string) + '/map') }}">{{ t("govuk_alpha_events.nav.view_location") }}</a>
+            {% endif %}
+          </dd>
         </div>
         {% if onlineLink %}
           <div class="govuk-summary-list__row">
@@ -217,16 +222,16 @@
             <dd class="govuk-summary-list__value"><a class="govuk-link" href="{{ onlineLink }}" rel="noopener noreferrer">{{ t("events.online_link_text") }}</a></dd>
           </div>
         {% endif %}
-        {% if videoUrl and canSeeVideo %}
+        {% if videoUrl %}
           <div class="govuk-summary-list__row">
             <dt class="govuk-summary-list__key">{{ t("events.polish_events.video_url_summary_label") }}</dt>
             <dd class="govuk-summary-list__value"><a class="govuk-link" href="{{ videoUrl }}" rel="noopener noreferrer">{{ t("events.polish_events.video_url_link_text") }}</a></dd>
           </div>
         {% endif %}
-        {% if organizer and organizer.id and organizerName %}
+        {% if organizerName %}
           <div class="govuk-summary-list__row">
             <dt class="govuk-summary-list__key">{{ t("events.organiser") }}</dt>
-            <dd class="govuk-summary-list__value"><a href="{{ urlFor('/members/' + (organizer.id | string)) }}" class="govuk-link">{{ organizerName }}</a></dd>
+            <dd class="govuk-summary-list__value">{{ organizerName }}</dd>
           </div>
         {% endif %}
         {% if categoryName %}
@@ -244,6 +249,32 @@
           <dd class="govuk-summary-list__value">{{ tc("events.interested", interestedCount, { count: interestedCount }) }}</dd>
         </div>
       </dl>
+
+      {% set venueAccessibility = event.venue_accessibility or {} %}
+      {% if venueAccessibility.provided and event.location_mode != "online" %}
+        <section class="govuk-!-margin-top-7" aria-labelledby="venue-accessibility-heading">
+          <h2 class="govuk-heading-l" id="venue-accessibility-heading">{{ t("event_accessibility.detail.title") }}</h2>
+          <p class="govuk-body">{{ t("event_accessibility.detail.intro") }}</p>
+          <dl class="govuk-summary-list">
+            {% for key in ["step_free_access", "accessible_toilet", "hearing_loop", "quiet_space", "seating_available", "accessible_parking"] %}
+              {% set value = venueAccessibility[key] %}
+              {% set accessStatus = "yes" if value == true else ("no" if value == false else "unknown") %}
+              <div class="govuk-summary-list__row">
+                <dt class="govuk-summary-list__key">{{ t("event_accessibility.features." + key) }}</dt>
+                <dd class="govuk-summary-list__value">{{ t("event_accessibility.status." + accessStatus) }}</dd>
+              </div>
+            {% endfor %}
+            {% for key in ["parking_details", "transit_details", "assistance_contact", "notes"] %}
+              {% if venueAccessibility[key] %}
+                <div class="govuk-summary-list__row">
+                  <dt class="govuk-summary-list__key">{{ t("event_accessibility.detail." + key) }}</dt>
+                  <dd class="govuk-summary-list__value">{{ venueAccessibility[key] }}</dd>
+                </div>
+              {% endif %}
+            {% endfor %}
+          </dl>
+        </section>
+      {% endif %}
 
       {% if isAuthenticated %}
         <p class="govuk-body govuk-!-margin-top-4">

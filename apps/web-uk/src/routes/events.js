@@ -29,7 +29,7 @@ const {
 const { requireAuth } = require('../middleware/auth');
 const { asyncRoute } = require('../lib/routeHelpers');
 const { audit } = require('../lib/auditLogger');
-const { localeOptions, resolveBackendAssetUrl } = require('../lib/accessible-shell');
+const { flagEnabled, localeOptions, resolveBackendAssetUrl } = require('../lib/accessible-shell');
 const { getRequestProfile } = require('../lib/request-profile');
 
 const router = express.Router();
@@ -171,7 +171,10 @@ function eventFrom(result) {
 
 function eventWithAssetUrls(value) {
   const event = value && typeof value === 'object' ? value : {};
-  const coverImage = resolveBackendAssetUrl(event.cover_image || event.coverImage);
+  const primaryImage = event.primary_image && typeof event.primary_image === 'object'
+    ? event.primary_image
+    : {};
+  const coverImage = resolveBackendAssetUrl(event.cover_image || event.coverImage || primaryImage.url);
   return {
     ...event,
     cover_image: coverImage,
@@ -411,6 +414,73 @@ function offlineCredentialFrom(result) {
     revokedAt: trimmed(value.revoked_at ?? value.revokedAt),
     token: trimmed(value.token, 4096),
     tokenOneShot: value.token_one_shot === true
+  };
+}
+
+function currentEventDetail(event) {
+  const schedule = event.schedule && typeof event.schedule === 'object' ? event.schedule : {};
+  const location = event.location && typeof event.location === 'object' ? event.location : {};
+  const organizer = event.organizer && typeof event.organizer === 'object' ? event.organizer : {};
+  const metrics = event.metrics && typeof event.metrics === 'object' ? event.metrics : {};
+  const accessibility = location.accessibility && typeof location.accessibility === 'object'
+    ? location.accessibility
+    : (event.venue_accessibility && typeof event.venue_accessibility === 'object' ? event.venue_accessibility : {});
+  const onlineAccess = event.online_access && typeof event.online_access === 'object' ? event.online_access : null;
+  const publicationState = trimmed(schedule.publication_state || event.publication_status || event.publicationState || event.status).toLowerCase();
+  const operationalState = trimmed(schedule.operational_state || schedule.state || event.operational_status || event.operationalStatus || event.status).toLowerCase();
+  const legacyLocation = typeof event.location === 'string' ? event.location : '';
+
+  return {
+    ...event,
+    start_time: schedule.start_at ?? event.start_time ?? event.startTime,
+    end_time: schedule.end_at ?? event.end_time ?? event.endTime,
+    timezone: trimmed(schedule.timezone || event.timezone) || 'UTC',
+    all_day: schedule.all_day === true || event.all_day === true || event.allDay === true,
+    location_label: trimmed(location.label ?? event.location_label ?? legacyLocation),
+    location_mode: trimmed(location.mode || event.location_mode) || 'in_person',
+    location_latitude: location.latitude ?? event.latitude ?? event.coordinates?.lat ?? null,
+    location_longitude: location.longitude ?? event.longitude ?? event.coordinates?.lng ?? null,
+    venue_accessibility: accessibility,
+    organizer_name: trimmed(organizer.display_name || organizer.displayName || organizer.name),
+    attendee_count: Number(metrics.confirmed_count ?? event.attendee_count ?? event.attendeeCount ?? 0) || 0,
+    interested_count: Number(metrics.interested_count ?? event.interested_count ?? event.interestedCount ?? 0) || 0,
+    cancellation_reason: trimmed(schedule.cancellation_reason ?? event.cancellation_reason ?? event.cancellationReason),
+    is_cancelled: event.is_cancelled === true || event.isCancelled === true || operationalState === 'cancelled',
+    is_archived: event.is_archived === true || event.isArchived === true || publicationState === 'archived',
+    online_link: safeExternalHttpUrl(
+      onlineAccess
+        ? (trimmed(onlineAccess.reveal_state).toLowerCase() === 'available' ? onlineAccess.join_url : '')
+        : (event.online_link ?? event.onlineLink)
+    ),
+    video_url: safeExternalHttpUrl(
+      onlineAccess
+        ? (trimmed(onlineAccess.reveal_state).toLowerCase() === 'available' ? onlineAccess.video_url : '')
+        : (event.video_url ?? event.videoUrl)
+    )
+  };
+}
+
+function eventScheduleLabels(event, formatDate) {
+  const formatter = typeof formatDate === 'function' ? formatDate : (value) => trimmed(value);
+  const start = event.start_time ? new Date(event.start_time) : null;
+  const end = event.end_time ? new Date(event.end_time) : null;
+  const validStart = start && !Number.isNaN(start.getTime()) ? start : null;
+  const validEnd = end && !Number.isNaN(end.getTime()) ? end : null;
+  const common = { day: 'numeric', month: 'long', year: 'numeric', timeZone: event.timezone || 'UTC' };
+
+  if (event.all_day) {
+    const startLabel = validStart ? formatter(validStart, common) : trimmed(event.start_time);
+    const inclusiveEnd = validEnd && validStart && validEnd > validStart
+      ? new Date(validEnd.getTime() - 86400000)
+      : null;
+    const endLabel = inclusiveEnd ? formatter(inclusiveEnd, common) : '';
+    return { startLabel, endLabel: endLabel && endLabel !== startLabel ? endLabel : '' };
+  }
+
+  const options = { ...common, hour: 'numeric', minute: '2-digit', timeZoneName: 'short' };
+  return {
+    startLabel: validStart ? formatter(validStart, options) : trimmed(event.start_time),
+    endLabel: validEnd ? formatter(validEnd, options) : trimmed(event.end_time)
   };
 }
 
@@ -2287,19 +2357,15 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
     }) : Promise.resolve(null)
   ]);
 
-  const event = eventFrom(eventResult);
-  event.online_link = safeExternalHttpUrl(event.online_link ?? event.onlineLink);
+  const event = currentEventDetail(eventFrom(eventResult));
   event.onlineLink = event.online_link;
-  event.video_url = safeExternalHttpUrl(event.video_url ?? event.videoUrl);
   event.videoUrl = event.video_url;
   const ownerId = eventOwnerId(event);
   const currentUserId = idFrom(currentUserResult);
   const isCurrentUserOwner = ownerId !== null && currentUserId !== null && String(ownerId) === String(currentUserId);
-  const canEditFromApi = event.can_edit === true || event.canEdit === true;
-  event.is_archived = event.is_archived === true
-    || event.isArchived === true
-    || trimmed(event.operational_status ?? event.operationalStatus ?? event.status).toLowerCase() === 'archived';
+  const canEditFromApi = event.can_edit === true || event.canEdit === true || event.permissions?.edit === true;
   event.isArchived = event.is_archived;
+  event.isCancelled = event.is_cancelled;
   event.can_edit = !event.is_archived && Boolean(token) && (canEditFromApi || isCurrentUserOwner);
   event.canEdit = event.can_edit;
   let recurrenceDefinitions = false;
@@ -2329,12 +2395,16 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
   };
 
   const relationship = eventRelationship(relationshipResult);
+  const scheduleLabels = eventScheduleLabels(event, res.locals.formatLocaleDate);
   res.render('events/detail', {
     title: event.title,
     event,
     myRsvp,
     relationship,
     isOwner: isCurrentUserOwner,
+    mapsEnabled: flagEnabled(req.accessibleRouting?.tenant || {}, 'maps', 'features', false),
+    eventStartLabel: scheduleLabels.startLabel,
+    eventEndLabel: scheduleLabels.endLabel,
     recurrenceDefinitions,
     rsvpsByStatus,
     isAuthenticated: Boolean(token),

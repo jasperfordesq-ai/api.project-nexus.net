@@ -23534,6 +23534,89 @@ describe('shared accessible frontend shell', () => {
     expect(api.callEventApi).toHaveBeenCalledWith('test-token', 'GET', '/recurrence-capabilities');
   });
 
+  it('renders the current nested Laravel Event v2 summary without legacy flat aliases', async () => {
+    const api = require('../src/lib/api');
+    api.getEvent.mockResolvedValueOnce({
+      data: {
+        contract_version: 2,
+        id: 44,
+        title: 'Accessible all-day workshop',
+        description: 'A practical community workshop.',
+        primary_image: { url: '/storage/events/workshop.jpg' },
+        organizer: { id: 202, display_name: 'Morgan Organizer' },
+        category: { id: 9, name: 'Learning' },
+        location: {
+          label: 'Community centre',
+          latitude: 51.5,
+          longitude: -0.1,
+          mode: 'in_person',
+          accessibility: {
+            provided: true,
+            step_free_access: true,
+            accessible_toilet: false,
+            hearing_loop: null,
+            quiet_space: true,
+            seating_available: true,
+            accessible_parking: false,
+            parking_details: 'Two bays beside the entrance.'
+          }
+        },
+        schedule: {
+          start_at: '2026-08-02T00:00:00Z',
+          end_at: '2026-08-03T00:00:00Z',
+          timezone: 'Europe/Dublin',
+          all_day: true,
+          publication_state: 'archived',
+          operational_state: 'cancelled',
+          cancellation_reason: 'Venue unavailable'
+        },
+        online_access: {
+          reveal_state: 'available',
+          join_url: 'https://meet.example.test/workshop',
+          video_url: 'https://video.example.test/workshop'
+        },
+        metrics: { confirmed_count: 7, interested_count: 4 },
+        permissions: { edit: true }
+      }
+    });
+    api.getEventRsvps.mockResolvedValueOnce({ data: [] });
+    api.callEventApi.mockResolvedValueOnce({ data: { registration: { state: 'none' } } });
+    api.getTenantBootstrap.mockResolvedValueOnce({
+      data: {
+        id: 2,
+        name: 'Acme Timebank',
+        slug: 'acme',
+        modules: { events: true },
+        features: { events: true, maps: true }
+      }
+    });
+
+    const response = await request(app).get('/acme/accessible/events/44').set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Community centre');
+    expect(response.text).toContain('href="/acme/accessible/events/44/map"');
+    expect(response.text).not.toContain('[object Object]');
+    expect(response.text).toContain('Morgan Organizer');
+    expect(response.text).not.toContain('href="/members/202"');
+    expect(response.text).toContain('Learning');
+    expect(response.text).toContain('All day');
+    expect(response.text).toContain('7 people going');
+    expect(response.text).toContain('4 people interested');
+    expect(response.text).toContain('href="https://meet.example.test/workshop"');
+    expect(response.text).toContain('href="https://video.example.test/workshop"');
+    expect(response.text).toContain('Venue accessibility');
+    expect(response.text).toContain('Step-free access');
+    expect(response.text).toContain('Accessible toilet');
+    expect(response.text).toContain('Not known');
+    expect(response.text).toContain('Two bays beside the entrance.');
+    expect(response.text).toContain('Venue unavailable');
+    expect(response.text.indexOf('Venue unavailable')).toBeLessThan(response.text.indexOf('class="app-page-header"'));
+    expect(response.text).toContain('id="event-archived-title"');
+    expect(response.text).not.toContain('href="/acme/accessible/events/44/edit"');
+    expect(response.text).not.toContain('action="/acme/accessible/events/44/rsvp"');
+  });
+
   it('fails closed for owner and recurrence operation links without their current Laravel capabilities', async () => {
     const api = require('../src/lib/api');
     api.getEvent.mockResolvedValueOnce({

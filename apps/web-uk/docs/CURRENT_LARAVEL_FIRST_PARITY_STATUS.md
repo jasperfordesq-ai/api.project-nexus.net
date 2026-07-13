@@ -51,8 +51,8 @@ commit as the implementation it describes.
 
 ## Audited Baseline
 
-The audit was refreshed from ASP.NET-repo commit `979c123f` plus the scoped
-Event detail hierarchy slice recorded below, and Laravel-repo commit `c2cf4fa`. Refresh both
+The audit was refreshed from ASP.NET-repo commit `213be7d3` plus the scoped
+current-v2 Event detail projection slice recorded below, and Laravel-repo commit `c2cf4fa`. Refresh both
 repositories before relying on these numbers after either source moves.
 
 | Measure | Audited result | Meaning |
@@ -63,7 +63,7 @@ repositories before relying on these numbers after either source moves.
 | Missing Laravel routes | 6 | All are Event workflows |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 47/47 suites, 1,569/1,569 tests | Fresh green code gate |
+| Jest | 47/47 suites, 1,570/1,570 tests | Fresh green code gate |
 | Locale catalog shape | 11 locales, 35 namespaces, 8,663 keys | Structural parity plus static-key resolution gate |
 | Blade marker check | 19/19 | Text-marker spotcheck, not visual certification |
 | Automated accessibility | Latest recorded 87/87 | Manual AT review remains open |
@@ -88,12 +88,12 @@ A fresh proof run records:
 
 - 11 locales, 35 namespaces, and 8,663 keys per locale;
 - zero missing or extra keys in every locale;
-- 6,413 complete static references and 4,853 unique referenced keys;
+- 6,417 complete static references and 4,857 unique referenced keys;
 - zero unresolved complete static references;
 - 315 templates and zero conservative hard-coded-copy matches;
 - an English and Irish Event-template library render with no raw key leakage;
 - focused Event localization/operation proof and full 47/47-suite,
-  1,569/1,569-test proof;
+  1,570/1,570-test proof;
 - green brand, lint, CSS, and `git diff --check` gates.
 
 The live Blade marker comparator also uses the canonical
