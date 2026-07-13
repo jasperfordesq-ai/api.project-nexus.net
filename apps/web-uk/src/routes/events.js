@@ -1510,6 +1510,80 @@ router.get('/:id(\\d+)/lifecycle-history', requireAuth, asyncRoute(async (req, r
   });
 }, { notFoundTitle: 'Event not found' }));
 
+async function registrationProductState(token, id, query = '') {
+  const attendee = dataFrom(await callApi(token, 'GET', `/${id}/registration-product`)) || {};
+  let organizer = null;
+  try { organizer = dataFrom(await callApi(token, 'GET', `/${id}/registration-product/manage${query}`)) || {}; }
+  catch (error) { if (!(error instanceof ApiError) || error.status !== 403) throw error; }
+  return { attendee, organizer };
+}
+
+function registrationQuestions(value) {
+  const rows = value && typeof value === 'object' ? Object.values(value).slice(0, 100) : [];
+  return rows.filter((row) => row && checked(row.enabled)).map((row, index) => {
+    const type = selectedValue(row.question_type, ['short_text', 'long_text', 'single_choice', 'multiple_choice', 'dietary', 'accessibility', 'consent', 'waiver']);
+    const choices = ['single_choice', 'multiple_choice'].includes(type) ? trimmed(row.choices, 10000).split(/\r?\n/).map((item) => item.trim()).filter(Boolean) : null;
+    const validation = {};
+    for (const field of ['min_length', 'max_length']) { const parsed = Number.parseInt(row[field], 10); if (Number.isInteger(parsed) && parsed >= 0) validation[field] = parsed; }
+    const conditionKey = trimmed(row.condition_key, 191);
+    return { stable_key: trimmed(row.stable_key, 191) || `question_${index + 1}`, question_type: type, prompt: trimmed(row.prompt, 2000), help_text: trimmed(row.help_text, 2000) || null, is_required: checked(row.is_required), data_classification: selectedValue(row.data_classification, ['public', 'internal', 'confidential', 'sensitive'], 'internal'), purpose: trimmed(row.purpose, 2000), retention_days: positiveInteger(row.retention_days), choice_options: choices, validation_rules: Object.keys(validation).length ? validation : null, visibility_rules: conditionKey ? { match: 'all', conditions: [{ question_key: conditionKey, operator: selectedValue(row.condition_operator, ['equals', 'not_equals', 'contains', 'not_contains'], 'equals'), value: trimmed(row.condition_value, 1000) }] } : null, displayed_text: ['consent', 'waiver'].includes(type) ? trimmed(row.displayed_text, 10000) : null, displayed_text_version: ['consent', 'waiver'].includes(type) ? trimmed(row.displayed_text_version, 191) : null };
+  }).filter((question) => question.question_type && question.prompt && question.purpose && question.retention_days);
+}
+
+router.get('/:id(\\d+)/registration', requireAuth, asyncRoute(async (req, res) => {
+  const id = Number(req.params.id); const token = tokenFrom(req); const query = new URLSearchParams();
+  for (const collection of ['submissions', 'campaigns', 'guests']) for (const suffix of ['page', 'per_page']) { const key = `${collection}_${suffix}`; if (positiveInteger(req.query[key])) query.set(key, String(positiveInteger(req.query[key]))); }
+  const [eventResult, state] = await Promise.all([callApi(token, 'GET', `/${id}`), registrationProductState(token, id, query.size ? `?${query}` : '')]);
+  res.set('Cache-Control', 'private, no-store');
+  return res.render('events/registration', { title: res.locals.t('event_registration.title'), activeNav: 'events', event: { id, title: trimmed(eventFrom(eventResult).title) }, ...state, status: trimmed(req.query.status), idempotencyKey: randomUUID(), csrfToken: req.csrfToken ? req.csrfToken() : '' });
+}, { notFoundTitle: 'Event not found' }));
+
+router.post('/:id(\\d+)/registration/settings', requireAuth, asyncRoute(async (req, res) => {
+  const id = Number(req.params.id); const key = trimmed(req.body.idempotency_key, 191); const expectedRevision = Number.parseInt(req.body.expected_revision, 10); const approvalMode = selectedValue(req.body.approval_mode, ['auto', 'manual']); const perMemberLimit = positiveInteger(req.body.per_member_limit); const guestRetentionDays = positiveInteger(req.body.guest_retention_days); const guestsEnabled = checked(req.body.guests_enabled); const maxGuests = guestsEnabled ? positiveInteger(req.body.max_guests_per_registration) : 0;
+  if (!key || !Number.isInteger(expectedRevision) || expectedRevision < 0 || !approvalMode || !perMemberLimit || !guestRetentionDays || maxGuests === null) return redirectTo(res, eventPath(id, '/registration?status=invalid'));
+  const payload = { approval_mode: approvalMode, opens_at: trimmed(req.body.opens_at) || null, closes_at: trimmed(req.body.closes_at) || null, cancellation_cutoff_at: trimmed(req.body.cancellation_cutoff_at) || null, per_member_limit: perMemberLimit, guests_enabled: guestsEnabled, max_guests_per_registration: maxGuests, guest_retention_days: guestRetentionDays, expected_revision: expectedRevision };
+  try { await callEventMutation(tokenFrom(req), 'PUT', `/${id}/registration-product/settings`, payload, key); return redirectTo(res, eventPath(id, '/registration?status=settings-saved')); }
+  catch (error) { if (redirectOnAuthError(error, res)) return undefined; if (error instanceof ApiError && [400, 403, 404, 409, 422, 429, 503].includes(error.status)) return redirectTo(res, eventPath(id, '/registration?status=failed')); throw error; }
+}));
+
+router.post('/:id(\\d+)/registration/settings/publish', requireAuth, asyncRoute(async (req, res) => {
+  const id = Number(req.params.id); const revision = positiveInteger(req.body.expected_revision); const key = trimmed(req.body.idempotency_key, 191);
+  if (!revision || !key) return redirectTo(res, eventPath(id, '/registration?status=invalid'));
+  try { await callEventMutation(tokenFrom(req), 'POST', `/${id}/registration-product/settings/publish`, { expected_revision: revision }, key); return redirectTo(res, eventPath(id, '/registration?status=settings-published')); }
+  catch (error) { if (redirectOnAuthError(error, res)) return undefined; if (error instanceof ApiError && [400, 403, 404, 409, 422, 429, 503].includes(error.status)) return redirectTo(res, eventPath(id, '/registration?status=failed')); throw error; }
+}));
+
+async function renderRegistrationForm(req, res) {
+  const id = Number(req.params.id); const formId = positiveInteger(req.params.formId); const state = await registrationProductState(tokenFrom(req), id);
+  if (!state.organizer) return renderForbidden(res, new Error('You do not have permission to manage registration forms.'));
+  const form = formId ? arrayValues(state.organizer.forms).find((item) => positiveInteger(item?.id) === formId) : null;
+  if (formId && (!form || form.status !== 'draft')) return res.status(404).render('errors/404', { title: 'Registration form not found' });
+  res.set('Cache-Control', 'private, no-store');
+  return res.render('events/registration-form', { title: res.locals.t(`event_registration.forms.editor.${form ? 'edit_title' : 'create_title'}`), activeNav: 'events', eventId: id, form, questionRows: [...arrayValues(form?.questions), ...Array(5).fill({})], settingsRevision: positiveInteger(state.organizer.settings?.revision) || 1, idempotencyKey: randomUUID(), csrfToken: req.csrfToken ? req.csrfToken() : '' });
+}
+router.get('/:id(\\d+)/registration/forms/new', requireAuth, asyncRoute(renderRegistrationForm));
+router.get('/:id(\\d+)/registration/forms/:formId(\\d+)', requireAuth, asyncRoute(renderRegistrationForm));
+
+async function saveRegistrationForm(req, res) {
+  const id = Number(req.params.id); const formId = positiveInteger(req.params.formId); const key = trimmed(req.body.idempotency_key, 191); const settingsRevision = positiveInteger(req.body.expected_settings_revision); const formRevision = formId ? positiveInteger(req.body.expected_form_revision) : null; const name = trimmed(req.body.name, 255); const description = trimmed(req.body.description, 2000) || null; const questions = registrationQuestions(req.body.questions);
+  if (!key || !settingsRevision || !name || questions.length === 0 || (formId && !formRevision)) return redirectTo(res, eventPath(id, formId ? `/registration/forms/${formId}?status=invalid` : '/registration/forms/new?status=invalid'));
+  const path = formId ? `/${id}/registration-product/forms/${formId}` : `/${id}/registration-product/forms`; const method = formId ? 'PUT' : 'POST'; const payload = { name, description, questions, expected_settings_revision: settingsRevision, ...(formId ? { expected_form_revision: formRevision } : {}) };
+  try { await callEventMutation(tokenFrom(req), method, path, payload, key); return redirectTo(res, eventPath(id, '/registration?status=form-saved')); }
+  catch (error) { if (redirectOnAuthError(error, res)) return undefined; if (error instanceof ApiError && [400, 403, 404, 409, 422, 429, 503].includes(error.status)) return redirectTo(res, eventPath(id, formId ? `/registration/forms/${formId}?status=failed` : '/registration/forms/new?status=failed')); throw error; }
+}
+router.post('/:id(\\d+)/registration/forms/new', requireAuth, asyncRoute(saveRegistrationForm));
+router.post('/:id(\\d+)/registration/forms/:formId(\\d+)', requireAuth, asyncRoute(saveRegistrationForm));
+
+async function transitionRegistrationForm(req, res, action) {
+  const id = Number(req.params.id); const formId = positiveInteger(req.params.formId); const key = trimmed(req.body.idempotency_key, 191); const settingsRevision = positiveInteger(req.body.expected_settings_revision); const formRevision = positiveInteger(req.body.expected_form_revision);
+  if (!formId || !key || !settingsRevision || (action === 'publish' && !formRevision)) return redirectTo(res, eventPath(id, '/registration?status=invalid'));
+  const payload = { expected_settings_revision: settingsRevision, ...(action === 'publish' ? { expected_form_revision: formRevision } : {}) };
+  try { await callEventMutation(tokenFrom(req), 'POST', `/${id}/registration-product/forms/${formId}/${action}`, payload, key); return redirectTo(res, eventPath(id, `/registration?status=form-${action === 'fork' ? 'forked' : 'published'}`)); }
+  catch (error) { if (redirectOnAuthError(error, res)) return undefined; if (error instanceof ApiError && [400, 403, 404, 409, 422, 429, 503].includes(error.status)) return redirectTo(res, eventPath(id, '/registration?status=failed')); throw error; }
+}
+router.post('/:id(\\d+)/registration/forms/:formId(\\d+)/publish', requireAuth, asyncRoute(async (req, res) => transitionRegistrationForm(req, res, 'publish')));
+router.post('/:id(\\d+)/registration/forms/:formId(\\d+)/fork', requireAuth, asyncRoute(async (req, res) => transitionRegistrationForm(req, res, 'fork')));
+
 router.post('/:id(\\d+)/check-in/credential/rotate', requireAuth, asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const credentialId = positiveInteger(req.body.credential_id);

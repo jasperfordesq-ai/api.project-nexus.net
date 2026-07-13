@@ -84,6 +84,18 @@ rendering and encoded-cursor proof passes. Live series/cascade evidence,
 manual assistive-technology review, and unchanged ASP.NET runtime proof remain
 open.
 
+## 2026-07-13 Event Registration Settings and Forms Checkpoint
+
+The attendee-first registration page now loads organizer controls only when the
+canonical manager projection authorizes them. Organizers can save and publish
+versioned settings, create/update governed form drafts, publish immutable forms,
+and fork published revisions with exact idempotency and optimistic-revision
+contracts. Question types, classifications, retention, choices, consent text,
+validation, and conditional visibility are normalized to Laravel's schema.
+Focused authorization/render/payload proof passes. Submission, campaign, guest,
+retention, live disposable effects, manual assistive-technology review, and
+unchanged ASP.NET runtime proof remain open.
+
 ## Purpose
 
 This audit lists reusable Laravel Blade accessible frontend patterns that should

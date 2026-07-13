@@ -22339,6 +22339,52 @@ describe('shared accessible frontend shell', () => {
     expect(api.callEventApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/42/lifecycle-history?per_page=20');
   });
 
+  it('renders attendee-first Laravel Event Registration with organizer settings and form capabilities', async () => {
+    const api = require('../src/lib/api');
+    api.callEventApi
+      .mockResolvedValueOnce({ data: { id: 42, title: 'Community garden day' } })
+      .mockResolvedValueOnce({ data: { registration: { status: 'confirmed' } } })
+      .mockResolvedValueOnce({ data: { settings: { status: 'draft', revision: 3, approval_mode: 'manual', per_member_limit: 2, guests_enabled: true, max_guests_per_registration: 2, guest_retention_days: 30 }, forms: [{ id: 8, name: 'Access needs', status: 'draft', revision: 2 }, { id: 9, name: 'Published questions', status: 'published', revision: 4 }] } });
+    const response = await request(app).get('/events/42/registration').set('Cookie', signedCookieHeader());
+    expect(response.status).toBe(200);
+    expect(response.headers['cache-control']).toBe('private, no-store');
+    expect(response.text).toContain('Community garden day');
+    expect(response.text).toContain('/events/42/registration/forms/8');
+    expect(response.text).toContain('/events/42/registration/forms/9/fork');
+    expect(response.text).toContain('name="expected_revision" value="3"');
+    expect(api.callEventApi).toHaveBeenNthCalledWith(3, 'test-token', 'GET', '/42/registration-product/manage');
+  });
+
+  it('saves and publishes Laravel Event Registration settings with exact revisions and idempotency', async () => {
+    const api = require('../src/lib/api'); const agent = request.agent(app); const shell = await agent.get('/contact').set('Cookie', signedCookieHeader()); const csrf = shell.text.match(/name="_csrf" value="([^"]+)"/)[1];
+    api.callEventApi.mockResolvedValueOnce({ data: { changed: true } });
+    const saved = await agent.post('/events/42/registration/settings').set('Cookie', signedCookieHeader()).type('form').send({ _csrf: csrf, idempotency_key: 'settings-save-123', expected_revision: '3', approval_mode: 'manual', opens_at: '2026-08-01T09:00', closes_at: '2026-08-10T17:00', cancellation_cutoff_at: '', per_member_limit: '2', guests_enabled: '1', max_guests_per_registration: '3', guest_retention_days: '30' });
+    expect(saved.headers.location).toBe('/events/42/registration?status=settings-saved');
+    expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/42/registration-product/settings', expect.objectContaining({ approval_mode: 'manual', expected_revision: 3, guests_enabled: true, max_guests_per_registration: 3 }), { headers: { 'Idempotency-Key': 'settings-save-123' } });
+    api.callEventApi.mockResolvedValueOnce({ data: { changed: true } });
+    const published = await agent.post('/events/42/registration/settings/publish').set('Cookie', signedCookieHeader()).type('form').send({ _csrf: csrf, idempotency_key: 'settings-publish-123', expected_revision: '4' });
+    expect(published.headers.location).toBe('/events/42/registration?status=settings-published');
+    expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/registration-product/settings/publish', { expected_revision: 4 }, { headers: { 'Idempotency-Key': 'settings-publish-123' } });
+  });
+
+  it('creates a Laravel Event Registration form with normalized governed questions', async () => {
+    const api = require('../src/lib/api'); const agent = request.agent(app); const shell = await agent.get('/contact').set('Cookie', signedCookieHeader()); const csrf = shell.text.match(/name="_csrf" value="([^"]+)"/)[1];
+    api.callEventApi.mockResolvedValueOnce({ data: { changed: true } });
+    const response = await agent.post('/events/42/registration/forms/new').set('Cookie', signedCookieHeader()).type('form').send({ _csrf: csrf, idempotency_key: 'form-create-123', expected_settings_revision: '3', name: 'Access needs', description: 'Planning questions', questions: { 0: { enabled: '1', stable_key: 'access_needs', question_type: 'multiple_choice', prompt: 'What support is needed?', purpose: 'Plan reasonable adjustments', retention_days: '365', data_classification: 'sensitive', choices: 'Step-free access\nQuiet space', is_required: '1', min_length: '0', max_length: '500' } } });
+    expect(response.headers.location).toBe('/events/42/registration?status=form-saved');
+    expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/registration-product/forms', expect.objectContaining({ name: 'Access needs', expected_settings_revision: 3, questions: [expect.objectContaining({ stable_key: 'access_needs', question_type: 'multiple_choice', data_classification: 'sensitive', choice_options: ['Step-free access', 'Quiet space'], retention_days: 365 })] }), { headers: { 'Idempotency-Key': 'form-create-123' } });
+  });
+
+  it('publishes and forks Laravel Event Registration forms with optimistic revisions', async () => {
+    const api = require('../src/lib/api'); const agent = request.agent(app); const shell = await agent.get('/contact').set('Cookie', signedCookieHeader()); const csrf = shell.text.match(/name="_csrf" value="([^"]+)"/)[1];
+    for (const [action, body, status] of [['publish', { expected_form_revision: '2' }, 'form-published'], ['fork', {}, 'form-forked']]) {
+      api.callEventApi.mockResolvedValueOnce({ data: { changed: true } });
+      const response = await agent.post(`/events/42/registration/forms/8/${action}`).set('Cookie', signedCookieHeader()).type('form').send({ _csrf: csrf, idempotency_key: `form-${action}-123`, expected_settings_revision: '3', ...body });
+      expect(response.headers.location).toBe(`/events/42/registration?status=${status}`);
+      expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', `/42/registration-product/forms/8/${action}`, { expected_settings_revision: 3, ...(action === 'publish' ? { expected_form_revision: 2 } : {}) }, { headers: { 'Idempotency-Key': `form-${action}-123` } });
+    }
+  });
+
   it('renders and issues Laravel signed Event check-in credentials without caching the secret', async () => {
     const api = require('../src/lib/api');
     api.callEventApi
