@@ -13,6 +13,7 @@ const {
   updateListing,
   deleteListing,
   getListingCategories,
+  getBookmarks,
   setListingSkillTags,
   uploadListingImage,
   callListingApi,
@@ -1196,9 +1197,10 @@ router.get('/', asyncRoute(async (req, res) => {
     params.radius_km = Number(near);
   }
 
-  const [listingResult, categoriesResult] = await Promise.all([
+  const [listingResult, categoriesResult, bookmarksResult] = await Promise.all([
     getListings(token, params).then(result => ({ result, error: false })).catch(() => ({ result: { data: [], meta: {} }, error: true })),
-    getListingCategories(token).catch(() => ({ data: [] }))
+    getListingCategories(token).catch(() => ({ data: [] })),
+    token ? getBookmarks(token, { type: 'listing', page: 1, per_page: 50 }).catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
   ]);
   const result = listingResult.result;
   const listings = collectionFrom(result).map(listing => ({
@@ -1211,6 +1213,10 @@ router.get('/', asyncRoute(async (req, res) => {
   const categories = collectionFrom(categoriesResult)
     .map(category => ({ id: positiveInteger(category && category.id), name: trimmed(category && category.name) }))
     .filter(category => category.id && category.name);
+  const savedListingIds = new Set(collectionFrom(bookmarksResult)
+    .map(bookmark => positiveInteger(bookmark && (bookmark.bookmarkable_id ?? bookmark.bookmarkableId ?? bookmark.item_id ?? bookmark.itemId)))
+    .filter(Boolean));
+  for (const listing of listings) listing.isSaved = savedListingIds.has(positiveInteger(listing.id));
   const meta = result?.meta || {};
   const pagination = {
     hasMore: Boolean(meta.has_more),

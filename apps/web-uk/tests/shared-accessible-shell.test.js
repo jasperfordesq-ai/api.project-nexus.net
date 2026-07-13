@@ -24892,6 +24892,7 @@ describe('shared accessible frontend shell', () => {
     api.getProfile.mockClear();
     api.getProfile.mockResolvedValueOnce({ id: 101, latitude: 51.9, longitude: -8.5 });
     api.getListingCategories.mockResolvedValueOnce({ data: [{ id: 9, name: 'Home and garden' }] });
+    api.getBookmarks.mockResolvedValueOnce({ data: [{ bookmarkable_type: 'listing', bookmarkable_id: 42 }] });
     api.getListings.mockResolvedValueOnce({
       data: [{
         id: 42,
@@ -24924,6 +24925,8 @@ describe('shared accessible frontend shell', () => {
       radius_km: 10
     });
     expect(index.text).toContain('Public ladder offer');
+    expect(api.getBookmarks).toHaveBeenCalledWith('test-token', { type: 'listing', page: 1, per_page: 50 });
+    expect(index.text).toContain('<strong class="govuk-tag govuk-tag--green">Saved</strong>');
     expect(index.text).toContain('<option value="9" selected>Home and garden</option>');
     expect(index.text).toContain('href="/listings?q=ladder&amp;type=offer&amp;category_id=9&amp;hours=short&amp;service=remote&amp;near=10&amp;posted=7&amp;sort=recommended&amp;cursor=next-page"');
     expect(index.text).toContain('href="/listings/new"');
