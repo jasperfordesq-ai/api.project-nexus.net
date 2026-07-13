@@ -163,12 +163,21 @@
     <div class="nexus-alpha-card-list">
       {% for event in events %}
         <article class="nexus-alpha-card">
-          <h3 class="govuk-heading-m govuk-!-margin-bottom-2"><a class="govuk-link" href="{{ urlFor('/events/' + (event.id | string)) }}">{{ event.title }}</a></h3>
-          <dl class="nexus-alpha-inline-list">
-            {% if event.startsAt or event.starts_at or event.start_time %}<div><dt>{{ t("groups_t1.event_starts") }}</dt><dd>{{ (event.startsAt or event.starts_at or event.start_time) | formatDate }}</dd></div>{% endif %}
-            <div><dt>{{ t("groups_t1.event_location") }}</dt><dd>{{ event.location or t("groups_t1.event_online") }}</dd></div>
-          </dl>
-          <a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor('/events/' + (event.id | string)) }}">{{ t("actions.view_details") }}</a>
+          <div class="nexus-alpha-listing-row">
+            {% if event.coverImage %}
+              <div class="nexus-alpha-listing-row__media">
+                <img class="nexus-alpha-card-thumb" src="{{ event.coverImage }}" alt="" width="120" height="90" loading="lazy" decoding="async">
+              </div>
+            {% endif %}
+            <div class="nexus-alpha-listing-row__body">
+              <h3 class="govuk-heading-m govuk-!-margin-bottom-2"><a class="govuk-link" href="{{ urlFor('/events/' + (event.id | string)) }}">{{ event.title }}</a></h3>
+              <dl class="nexus-alpha-inline-list">
+                {% if event.startsAt %}<div><dt>{{ t("groups_t1.event_starts") }}</dt><dd>{{ event.startsAt | formatBladeDateTime }}</dd></div>{% endif %}
+                <div><dt>{{ t("groups_t1.event_location") }}</dt><dd>{{ event.location or t("groups_t1.event_online") }}</dd></div>
+              </dl>
+              <a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor('/events/' + (event.id | string)) }}">{{ t("actions.view_details") }}</a>
+            </div>
+          </div>
         </article>
       {% endfor %}
     </div>

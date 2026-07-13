@@ -24361,6 +24361,7 @@ describe('shared accessible frontend shell', () => {
         id: 484,
         name: 'Dunmanway',
         description: 'Hub for Dunmanway neighbours',
+        visibility: 'public',
         member_count: 12,
         created_at: '2026-06-01T09:00:00'
       }
@@ -24369,7 +24370,15 @@ describe('shared accessible frontend shell', () => {
       data: [{ id: 101, name: 'Ada Member', role: 'owner' }],
       meta: { cursor: null, per_page: 100, has_more: false }
     });
-    api.getEvents.mockResolvedValueOnce({ data: [] });
+    api.getEvents.mockResolvedValueOnce({
+      data: [{
+        id: 42,
+        title: 'Community repair morning',
+        start_time: '2026-08-01T10:00:00',
+        location: '',
+        cover_image: '/uploads/events/repair-morning.png'
+      }]
+    });
 
     const response = await request(app)
       .get('/groups/484')
@@ -24379,6 +24388,10 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Dunmanway');
     expect(response.text).toContain('Hub for Dunmanway neighbours');
     expect(response.text).toContain('Ada Member');
+    expect(response.text).toContain('Community repair morning');
+    expect(response.text).toContain('1 August 2026, 10:00am');
+    expect(response.text).toContain(`src="${getApiBaseUrl()}/uploads/events/repair-morning.png" alt=""`);
+    expect(response.text).toContain('>Online</dd>');
     expect(api.getGroupMembers).toHaveBeenCalledWith('test-token', '484', { per_page: 100 });
   });
 

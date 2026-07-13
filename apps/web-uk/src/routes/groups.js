@@ -1055,7 +1055,15 @@ router.get('/:id(\\d+)', requireAuth, asyncRoute(async (req, res) => {
   ]);
 
   const members = collectionFrom(membersResult);
-  const events = collectionFrom(eventsResult);
+  const events = collectionFrom(eventsResult)
+    .map((event) => ({
+      ...event,
+      id: positiveInteger(event?.id),
+      title: trimmed(event?.title),
+      startsAt: event?.start_time || event?.start_date || event?.starts_at || event?.startsAt || '',
+      coverImage: resolveBackendAssetUrl(event?.cover_image || event?.cover_image_url || event?.coverImage || event?.coverImageUrl)
+    }))
+    .filter((event) => event.id !== null && event.title !== '');
   const groupFeed = collectionFrom(feedResult)
     .map((item) => normalizeGroupFeedPost(item, res.locals.t('govuk_alpha.feed.unknown_author')));
   const pinnedAnnouncements = collectionFrom(announcementsResult)
