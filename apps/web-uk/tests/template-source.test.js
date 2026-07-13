@@ -510,7 +510,8 @@ describe('tenant-aware template helper conversion', () => {
     expect(source).not.toMatch(/action="\/groups/);
     expect(source).toMatch(/urlFor\(["']\/groups/);
     expect(source).toMatch(/urlFor\(["']\/members/);
-    expect(templates[5]).toContain('class="nexus-alpha-table-scroll" role="region" aria-label="Pending group invitations table" tabindex="0"');
+    expect(templates[5]).toContain("class=\"nexus-alpha-table-scroll\" role=\"region\" aria-label=\"{{ t('govuk_alpha_groups.invite.pending_heading') }}\" tabindex=\"0\"");
+    expect(templates[5]).toContain('class="govuk-table__caption govuk-table__caption--s govuk-visually-hidden">{{ t("govuk_alpha_groups.invite.pending_heading") }}</caption>');
   });
 
   it('keeps group route redirects behind the active tenant URL helper', () => {

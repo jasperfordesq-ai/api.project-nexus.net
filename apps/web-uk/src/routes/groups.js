@@ -43,19 +43,17 @@ const DOWNLOAD_HEADER_NAMES = [
   'etag',
   'last-modified'
 ];
-const GROUP_INVITE_SUCCESS_MESSAGES = {
-  'invite-link-created': 'A new invite link was generated.',
-  'invite-emails-sent': 'The invitations have been sent.',
-  'invite-revoked': 'The invitation has been revoked.'
-};
-const GROUP_INVITE_ERROR_MESSAGES = {
-  'invite-link-failed': 'The invite link could not be generated. Please try again.',
-  'invite-emails-required': 'Enter at least one email address.',
-  'invite-emails-too-many': 'You can invite up to 50 email addresses at a time.',
-  'invite-email-failed': 'The invitations could not be sent. Please try again.',
-  'invite-revoke-failed': 'The invitation could not be revoked.',
-  'invite-forbidden': 'You do not have permission to invite members to this group.'
-};
+const GROUP_INVITE_SUCCESS_STATES = new Set(['invite-link-created', 'invite-emails-sent', 'invite-revoked']);
+const GROUP_INVITE_ERROR_STATES = new Set([
+  'invite-link-failed',
+  'invite-emails-required',
+  'invite-emails-too-many',
+  'invite-email-failed',
+  'invite-revoke-failed',
+  'invite-forbidden',
+  'invite-safeguarding-restricted',
+  'invite-safeguarding-unavailable'
+]);
 const GROUP_IMAGE_SUCCESS_MESSAGES = {
   'avatar-updated': 'The group avatar has been updated.',
   'cover-updated': 'The cover image has been updated.'
@@ -422,7 +420,7 @@ function normalizeInvite(item) {
     id: positiveInteger(raw.id),
     type,
     email: trimmed(raw.email || ''),
-    inviterName: trimmed(raw.inviter_name || raw.inviterName || raw.created_by_name || raw.createdByName || '') || '-',
+    inviterName: trimmed(raw.inviter_name || raw.inviterName || raw.created_by_name || raw.createdByName || '') || '—',
     expiresAtLabel: dateLabel(raw.expires_at || raw.expiresAt) || '-'
   };
 }
@@ -653,24 +651,29 @@ function inviteGeneratedLink(result) {
   return trimmed(data.generated_link || data.generatedLink || data.invite_url || data.inviteUrl || '');
 }
 
-function inviteStatus(status) {
+function inviteStatus(status, t = (key) => key) {
   const value = trimmed(status);
-  if (Object.prototype.hasOwnProperty.call(GROUP_INVITE_SUCCESS_MESSAGES, value)) {
+  if (GROUP_INVITE_SUCCESS_STATES.has(value)) {
     return {
       statusBanner: {
         type: 'success',
-        title: 'Success',
-        message: GROUP_INVITE_SUCCESS_MESSAGES[value]
+        title: t('govuk_alpha_groups.common.success_title'),
+        message: t(`govuk_alpha_groups.states.${value}`)
       }
     };
   }
 
-  if (Object.prototype.hasOwnProperty.call(GROUP_INVITE_ERROR_MESSAGES, value)) {
+  if (GROUP_INVITE_ERROR_STATES.has(value)) {
+    const message = value === 'invite-safeguarding-restricted'
+      ? 'The recipient’s community safeguarding policy does not allow this direct interaction. Ask a coordinator for help.'
+      : value === 'invite-safeguarding-unavailable'
+        ? 'We cannot confirm the community safeguarding policy right now. No message has been sent. Please try again shortly.'
+        : t(`govuk_alpha_groups.states.${value}`);
     return {
       statusBanner: {
         type: 'error',
-        title: 'There is a problem',
-        message: GROUP_INVITE_ERROR_MESSAGES[value]
+        title: t('govuk_alpha_groups.common.error_title'),
+        message
       }
     };
   }
@@ -1173,7 +1176,7 @@ router.get('/:id(\\d+)/invite', requireAuth, asyncRoute(async (req, res) => {
     group,
     generatedLink: inviteGeneratedLink(invitesResult),
     pendingInvites,
-    ...inviteStatus(req.query.status)
+    ...inviteStatus(req.query.status, res.locals.t)
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Group not found' }));
 
