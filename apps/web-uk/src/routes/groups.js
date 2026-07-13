@@ -18,6 +18,7 @@ const {
   uploadGroupImage,
   uploadGroupFile,
   downloadGroupFile,
+  getFeedPosts,
   createFeedPostV2,
   getEvents,
   ApiError
@@ -465,6 +466,51 @@ function groupMembership(group) {
     || group?.viewerMembership
     || group?.membership
     || null;
+}
+
+function plainParagraphs(value) {
+  const text = String(value || '')
+    .replace(/<\/p>\s*<p[^>]*>/gi, '\n\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .trim();
+
+  if (!text) return [];
+  return text.split(/\n{2,}/).map((paragraph) => paragraph.trim()).filter(Boolean);
+}
+
+function normalizeGroupFeedPost(item, unknownAuthor) {
+  const raw = item && typeof item === 'object' ? item : {};
+  const author = raw.author && typeof raw.author === 'object' ? raw.author : {};
+  const mediaRows = Array.isArray(raw.media) && raw.media.length > 0
+    ? raw.media
+    : (raw.image_url ? [{ file_url: raw.image_url }] : []);
+  const createdAt = trimmed(raw.created_at || raw.createdAt);
+  const createdDate = createdAt ? new Date(createdAt) : null;
+
+  return {
+    authorName: trimmed(author.name || raw.author_name || raw.authorName) || unknownAuthor,
+    authorAvatar: resolveBackendAssetUrl(author.avatar_url || author.avatarUrl || raw.author_avatar_url || raw.authorAvatarUrl),
+    createdAt: createdDate && !Number.isNaN(createdDate.getTime()) ? createdDate.toISOString() : '',
+    createdAtLabel: createdDate && !Number.isNaN(createdDate.getTime())
+      ? createdDate.toLocaleString(getRequestIntlLocale(), {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+      : '',
+    contentParagraphs: plainParagraphs(raw.content),
+    media: mediaRows.slice(0, 4).map((media) => {
+      const fullUrl = resolveBackendAssetUrl(media?.file_url || media?.fileUrl || media?.url);
+      return {
+        fullUrl,
+        thumbnailUrl: resolveBackendAssetUrl(media?.thumbnail_url || media?.thumbnailUrl) || fullUrl,
+        altText: trimmed(media?.alt_text || media?.altText, 500)
+      };
+    }).filter((media) => media.fullUrl)
+  };
 }
 
 function isPlatformAdmin(profile) {
@@ -984,9 +1030,11 @@ router.post('/new', requireAuth, audit.groupCreate(), asyncRoute(async (req, res
 // View group details
 router.get('/:id(\\d+)', requireAuth, asyncRoute(async (req, res) => {
   const { id } = req.params;
+  const groupResult = await getGroup(req.token, id);
+  const group = normalizeGroup(dataFrom(groupResult)?.group || dataFrom(groupResult), Number(id));
+  const isMember = isActiveGroupMember(group);
 
-  const [groupResult, membersResult, eventsResult, announcementsResult] = await Promise.all([
-    getGroup(req.token, id),
+  const [membersResult, eventsResult, announcementsResult, feedResult] = await Promise.all([
     getGroupMembers(req.token, id, { per_page: 100 }).catch((error) => {
       if (isAuthError(error)) throw error;
       if (error instanceof ApiError && error.status === 403) return { data: [] };
@@ -999,12 +1047,19 @@ router.get('/:id(\\d+)', requireAuth, asyncRoute(async (req, res) => {
     callGroup(req.token, 'GET', `/${id}/announcements`).catch((error) => {
       if (isAuthError(error)) throw error;
       return { data: [] };
-    })
+    }),
+    isMember
+      ? getFeedPosts(req.token, { group_id: id, per_page: 20 }).catch((error) => {
+        if (isAuthError(error)) throw error;
+        return { data: [] };
+      })
+      : Promise.resolve({ data: [] })
   ]);
 
-  const group = normalizeGroup(dataFrom(groupResult)?.group || dataFrom(groupResult), Number(id));
   const members = collectionFrom(membersResult);
   const events = collectionFrom(eventsResult);
+  const groupFeed = collectionFrom(feedResult)
+    .map((item) => normalizeGroupFeedPost(item, res.locals.t('govuk_alpha.feed.unknown_author')));
   const pinnedAnnouncements = collectionFrom(announcementsResult)
     .filter((announcement) => trimmed(announcement?.title) !== '')
     .map(normalizeAnnouncement)
@@ -1023,7 +1078,6 @@ router.get('/:id(\\d+)', requireAuth, asyncRoute(async (req, res) => {
   const myMembership = group.myMembership || group.my_membership;
   const membershipStatus = trimmed(myMembership?.status || myMembership?.state);
   const isAdmin = isGroupAdmin(group);
-  const isMember = isActiveGroupMember(group);
   const isPending = membershipStatus === 'pending';
   const statusMessages = groupPageStatus(req.query.status);
 
@@ -1032,6 +1086,7 @@ router.get('/:id(\\d+)', requireAuth, asyncRoute(async (req, res) => {
     group,
     members,
     events,
+    groupFeed,
     pinnedAnnouncements,
     subGroups,
     myMembership,
@@ -1787,19 +1842,35 @@ router.post('/:id(\\d+)/discussions/:discussionId(\\d+)/reply', requireAuth, asy
 router.post('/:id(\\d+)/feed', requireAuth, asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const content = trimmed(req.body.content, 20000);
+  const image = uploadedFile(req, 'image');
 
   if (content === '') {
+    await removeUploadedFile(image);
     return res.redirect(groupRedirect(res, id, 'group-post-empty', '#group-feed'));
   }
 
-  return requireGroupAction(req, res, groupRedirect(res, id, 'group-post-failed', '#group-feed'), async (token) => {
-    await createFeedPostV2(token, {
-      content,
-      visibility: 'public',
-      group_id: id
+  try {
+    return await requireGroupAction(req, res, groupRedirect(res, id, 'group-post-failed', '#group-feed'), async (token) => {
+      const file = image ? {
+        buffer: await fs.readFile(image.filepath),
+        filename: image.originalFilename || image.filename || 'group-feed-image',
+        contentType: image.mimetype || image.contentType || 'application/octet-stream'
+      } : null;
+      const payload = {
+        content,
+        visibility: 'public',
+        group_id: id
+      };
+      if (file) {
+        payload.image = file;
+        payload.image_alt = trimmed(req.body.image_alt, 500);
+      }
+      await createFeedPostV2(token, payload);
+      return res.redirect(groupRedirect(res, id, 'group-posted', '#group-feed'));
     });
-    return res.redirect(groupRedirect(res, id, 'group-posted', '#group-feed'));
-  });
+  } finally {
+    await removeUploadedFile(image);
+  }
 }));
 
 router.post('/:id(\\d+)/members/:memberId(\\d+)', requireAuth, asyncRoute(async (req, res) => {

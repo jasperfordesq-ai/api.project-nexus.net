@@ -24289,6 +24289,110 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('Invalid subgroup');
   });
 
+  it('renders the member-only Blade group feed from the filtered Laravel feed contract', async () => {
+    const api = require('../src/lib/api');
+    api.getGroup.mockResolvedValueOnce({
+      data: {
+        id: 484,
+        name: 'Dunmanway',
+        visibility: 'private',
+        viewer_membership: { status: 'active', role: 'member' }
+      }
+    });
+    api.getFeedPosts.mockResolvedValueOnce({
+      data: [
+        {
+          id: 71,
+          author: { name: 'Ada Member', avatar_url: '/uploads/avatars/ada.png' },
+          content: '<p>Working bee on Friday.</p><p>Bring gloves.</p>',
+          created_at: '2026-07-13T09:30:00Z',
+          media: [{
+            file_url: '/uploads/feed/garden.jpg',
+            thumbnail_url: '/uploads/feed/garden-thumb.jpg',
+            alt_text: 'Volunteers planting herbs'
+          }]
+        }
+      ],
+      meta: { per_page: 20, has_more: false }
+    });
+
+    const response = await request(app)
+      .get('/acme/accessible/groups/484')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.getFeedPosts).toHaveBeenCalledWith('test-token', { group_id: '484', per_page: 20 });
+    expect(response.text).toContain('id="group-feed"');
+    expect(response.text).toContain('Share something with the group');
+    expect(response.text).toContain('name="image" type="file"');
+    expect(response.text).toContain('name="image_alt" type="text" maxlength="500"');
+    expect(response.text).toContain('Posted by Ada Member');
+    expect(response.text).toContain('Working bee on Friday.');
+    expect(response.text).toContain('Bring gloves.');
+    expect(response.text).not.toContain('&lt;p&gt;');
+    expect(response.text).toContain(`src="${getApiBaseUrl()}/uploads/avatars/ada.png" alt=""`);
+    expect(response.text).toContain(`href="${getApiBaseUrl()}/uploads/feed/garden.jpg"`);
+    expect(response.text).toContain('alt="Volunteers planting herbs"');
+  });
+
+  it('does not request or expose the Laravel group feed to a non-member', async () => {
+    const api = require('../src/lib/api');
+    api.getGroup.mockResolvedValueOnce({
+      data: {
+        id: 482,
+        name: 'Macroom',
+        visibility: 'public',
+        viewer_membership: null
+      }
+    });
+
+    const response = await request(app)
+      .get('/groups/482')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.getFeedPosts).not.toHaveBeenCalled();
+    expect(response.text).toContain('Only members can see and post to this group feed.');
+    expect(response.text).not.toContain('Share something with the group');
+  });
+
+  it('forwards Blade group-feed image uploads to the Laravel multipart contract', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const page = await agent
+      .get('/groups/42')
+      .set('Cookie', signedCookieHeader());
+    const csrfMatch = page.text.match(/name="_csrf" value="([^"]+)"/);
+
+    expect(page.status).toBe(200);
+    expect(csrfMatch).not.toBeNull();
+
+    const response = await agent
+      .post('/groups/42/feed')
+      .set('Cookie', signedCookieHeader())
+      .field('_csrf', csrfMatch[1])
+      .field('content', ' Garden day update ')
+      .field('image_alt', ' Volunteers planting herbs ')
+      .attach('image', Buffer.from('fake group feed image', 'utf8'), {
+        filename: 'garden.webp',
+        contentType: 'image/webp'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/groups/42?status=group-posted#group-feed');
+    expect(api.createFeedPostV2).toHaveBeenCalledWith('test-token', {
+      content: 'Garden day update',
+      visibility: 'public',
+      group_id: 42,
+      image: expect.objectContaining({
+        filename: 'garden.webp',
+        contentType: 'image/webp',
+        buffer: Buffer.from('fake group feed image', 'utf8')
+      }),
+      image_alt: 'Volunteers planting herbs'
+    });
+  });
+
   it('keeps a public group detail available when Laravel denies its member roster', async () => {
     const api = require('../src/lib/api');
 
