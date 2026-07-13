@@ -7,6 +7,7 @@ const express = require('express');
 const {
   searchV2,
   getSavedSearches,
+  getListingCategories,
   saveSavedSearch,
   deleteSavedSearch,
   runSavedSearch,
@@ -255,6 +256,44 @@ function groupedSearchResults(rows) {
   return grouped;
 }
 
+function filteredSearchResults(rows, state) {
+  const from = state.filters.date_from ? new Date(`${state.filters.date_from}T00:00:00Z`) : null;
+  const to = state.filters.date_to ? new Date(`${state.filters.date_to}T23:59:59.999Z`) : null;
+  const location = state.filters.location.toLocaleLowerCase(getRequestIntlLocale());
+
+  return (Array.isArray(rows) ? rows : []).filter((row) => {
+    const item = objectFrom(row);
+    const rawDate = textFrom(item.type === 'event' ? (item.start_time || item.start_date) : item.created_at);
+    if (rawDate) {
+      const date = new Date(rawDate);
+      if (!Number.isNaN(date.getTime())) {
+        if (from && date < from) return false;
+        if (to && date > to) return false;
+      }
+    }
+
+    if (location) {
+      const itemLocation = textFrom(item.location).toLocaleLowerCase(getRequestIntlLocale());
+      if (itemLocation && !itemLocation.includes(location)) return false;
+    }
+    return true;
+  });
+}
+
+function groupedForTab(grouped, activeTab) {
+  if (activeTab !== 'all') return grouped;
+  return Object.fromEntries(Object.entries(grouped).map(([type, rows]) => [type, rows.slice(0, 4)]));
+}
+
+function categoryRows(result) {
+  const rows = Array.isArray(result?.data) ? result.data : [];
+  return rows.map((row) => {
+    const item = objectFrom(row);
+    return { id: intFrom(item.id), name: textFrom(item.name) };
+  }).filter((row) => row.id > 0 && row.name !== '')
+    .sort((left, right) => left.name.localeCompare(right.name, getRequestIntlLocale()));
+}
+
 function resultCounts(grouped, total) {
   return {
     all: total,
@@ -308,26 +347,27 @@ router.get('/advanced', asyncRoute(async (req, res) => {
   const hasSearched = state.searchQuery !== '';
   let searchResult = { data: [], meta: { search: { total: 0 } } };
   let savedResult = { data: [] };
+  let categoriesResult = { data: [] };
   let searchError = false;
 
   try {
-    const calls = [getSavedSearches(token)];
+    const calls = [getSavedSearches(token), getListingCategories(token).catch(() => ({ data: [] }))];
     if (hasSearched) {
       calls.unshift(searchV2(token, apiSearchParams(state)));
     }
     const results = await Promise.all(calls);
     if (hasSearched) {
-      [searchResult, savedResult] = results;
+      [searchResult, savedResult, categoriesResult] = results;
     } else {
-      [savedResult] = results;
+      [savedResult, categoriesResult] = results;
     }
   } catch (error) {
     if (redirectAuthIfNeeded(error, res)) return undefined;
     searchError = hasSearched;
   }
 
-  const grouped = groupedSearchResults(searchResult.data);
-  const total = intFrom(searchResult?.meta?.search?.total) || Object.values(grouped).reduce((sum, rows) => sum + rows.length, 0);
+  const grouped = groupedSearchResults(filteredSearchResults(searchResult.data, state));
+  const total = Object.values(grouped).reduce((sum, rows) => sum + rows.length, 0);
   const counts = resultCounts(grouped, total);
   const savedSearches = savedSearchRows(savedResult, res.locals.t);
 
@@ -336,6 +376,7 @@ router.get('/advanced', asyncRoute(async (req, res) => {
     activeNav: 'explore',
     communityName: res.locals.tenantName || res.locals.serviceName || 'this community',
     status: allowed(req.query.status, new Set(['search-saved', 'search-deleted', 'search-save-failed', 'search-delete-failed']), ''),
+    tryAgainHref: req.originalUrl,
     ...state,
     tabHrefs: advancedTabHrefs(state),
     hasSearched,
@@ -344,10 +385,15 @@ router.get('/advanced', asyncRoute(async (req, res) => {
     counts,
     resultCountLabel: resultCountLabel(total, res.locals.tc),
     grouped,
+    displayGrouped: groupedForTab(grouped, state.activeTab),
+    categories: categoryRows(categoriesResult),
     savedSearches,
     savedCountLabel: savedCountLabel(savedSearches.length, res.locals.tc),
     truncate,
-    membersCountLabel: (count) => membersCountLabel(count, res.locals.tc)
+    membersCountLabel: (count) => membersCountLabel(count, res.locals.tc),
+    formatEventDate: (value) => value ? res.locals.formatLocaleDate(value, {
+      day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit'
+    }) : ''
   });
 }));
 

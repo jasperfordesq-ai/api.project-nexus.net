@@ -9863,22 +9863,29 @@ describe('shared accessible frontend shell', () => {
           description: 'Help with raised beds and compost.',
           listing_type: 'offer',
           hours_estimate: 2,
+          image_url: 'https://cdn.example.test/garden.jpg',
           is_featured: true
         },
+        { type: 'listing', id: 43, title: 'Tool sharing', listing_type: 'offer' },
+        { type: 'listing', id: 44, title: 'Compost advice', listing_type: 'request' },
+        { type: 'listing', id: 45, title: 'Seedling swap', listing_type: 'offer' },
+        { type: 'listing', id: 46, title: 'Fifth listing hidden on All', listing_type: 'offer' },
+        { type: 'listing', id: 47, title: 'Different town filtered out', listing_type: 'offer', location: 'Elsewhere' },
         {
           type: 'user',
           id: 77,
           name: 'Avery Stone',
           bio: 'Gardening mentor',
-          location: 'Town'
+          location: 'Town',
+          avatar_url: 'https://cdn.example.test/avery.jpg'
         },
         {
           type: 'event',
           id: 88,
           title: 'Seed swap',
           description: 'Bring seeds to share.',
-          location: 'Community hall',
-          start_date: '2026-07-20T10:00:00Z'
+          location: 'Town community hall',
+          start_time: '2026-07-20T10:00:00Z'
         },
         {
           type: 'group',
@@ -9886,10 +9893,11 @@ describe('shared accessible frontend shell', () => {
           name: 'Garden circle',
           description: 'Weekly growing group.',
           members_count: 6
-        }
+        },
+        { type: 'event', id: 89, title: 'Old event filtered out', location: 'Town', start_time: '2026-06-20T10:00:00Z' }
       ],
       meta: {
-        search: { total: 4, query: 'garden', type: 'all' },
+        search: { total: 99, query: 'garden', type: 'all' },
         pagination: { has_more: false }
       }
     });
@@ -9909,6 +9917,7 @@ describe('shared accessible frontend shell', () => {
         }
       ]
     });
+    api.getListingCategories.mockResolvedValueOnce({ data: [{ id: 3, name: 'Gardening' }] });
 
     const unsigned = await request(app).get('/search/advanced?q=garden');
     const signed = await request(app)
@@ -9928,6 +9937,7 @@ describe('shared accessible frontend shell', () => {
       skills: 'repair,teaching'
     });
     expect(api.getSavedSearches).toHaveBeenCalledWith('test-token');
+    expect(api.getListingCategories).toHaveBeenCalledWith('test-token');
     expect(signed.text).toContain(t('govuk_alpha_search.saved.saved_banner'));
     expect(signed.text).toContain(t('govuk_alpha_search.advanced.caption', { community: 'Project NEXUS Accessible' }));
     expect(signed.text).toContain(t('govuk_alpha_search.advanced.title'));
@@ -9938,6 +9948,8 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain(t('govuk_alpha_search.filters.summary_with_count', { count: 6 }));
     expect(signed.text).toContain(t('govuk_alpha_search.filters.content_type'));
     expect(signed.text).toContain(t('govuk_alpha_search.filters.type_listings'));
+    expect(signed.text).toContain('<option value="3" selected>Gardening</option>');
+    expect(signed.text).toContain(t('govuk_alpha_search.filters.sort_newest'));
     expect(signed.text).toContain(t('govuk_alpha_search.filters.skills'));
     expect(signed.text).toContain(t('govuk_alpha_search.filters.active_skills'));
     expect(signed.text).toContain('repair');
@@ -9952,18 +9964,28 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain(t('govuk_alpha_search.saved.last_result_count', { count: '0' }));
     expect(signed.text).toContain(t('govuk_alpha_search.saved.run'));
     expect(signed.text).toContain(t('govuk_alpha_search.saved.delete'));
-    expect(signed.text).toContain(tc('govuk_alpha_search.results.count', 4, { count: 4 }));
-    expect(signed.text).toContain(t('govuk_alpha_search.results.tab_all', { count: 4 }));
-    expect(signed.text).toContain(t('govuk_alpha_search.results.tab_listings', { count: 1 }));
+    expect(signed.text).toContain(tc('govuk_alpha_search.results.count', 8, { count: 8 }));
+    expect(signed.text).toContain(t('govuk_alpha_search.results.tab_all', { count: 8 }));
+    expect(signed.text).toContain(t('govuk_alpha_search.results.tab_listings', { count: 5 }));
     expect(signed.text).toContain(t('govuk_alpha_search.results.tab_users', { count: 1 }));
     expect(signed.text).toContain('href="/search/advanced?q=garden&amp;type=listings&amp;category_id=3&amp;sort=newest&amp;skills=repair%2Cteaching&amp;date_from=2026-07-01&amp;location=Town&amp;tab=users"');
     expect(signed.text).toContain(t('govuk_alpha_search.results.tab_events', { count: 1 }));
     expect(signed.text).toContain(t('govuk_alpha_search.results.tab_groups', { count: 1 }));
     expect(signed.text).toContain('Garden help');
+    expect(signed.text).toContain('Tool sharing');
+    expect(signed.text).toContain('Compost advice');
+    expect(signed.text).toContain('Seedling swap');
+    expect(signed.text).not.toContain('Fifth listing hidden on All');
+    expect(signed.text).not.toContain('Different town filtered out');
+    expect(signed.text).not.toContain('Old event filtered out');
+    expect(signed.text).toContain(t('govuk_alpha_search.results.image_alt', { title: 'Garden help' }));
+    expect(signed.text).toContain(t('govuk_alpha_search.results.hours_estimate', { hours: 2 }));
     expect(signed.text).toContain(t('govuk_alpha_search.results.listing_offering'));
     expect(signed.text).toContain('Avery Stone');
+    expect(signed.text).toContain(t('govuk_alpha_search.results.image_alt', { title: 'Avery Stone' }));
     expect(signed.text).toContain('Seed swap');
     expect(signed.text).toContain('Garden circle');
+    expect(signed.text).toContain(t('govuk_alpha_search.results.view_group'));
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
   });
 
@@ -10071,7 +10093,7 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain(t('govuk_alpha_search.saved.delete_summary'));
     expect(signed.text).toContain('Garden helpers');
     expect(signed.text).toContain('gardening');
-    expect(signed.text).toContain(t('states.error_title'));
+    expect(signed.text).toContain(t('govuk_alpha_search.states.error_title'));
     expect(signed.text).toContain(t('govuk_alpha_search.saved.delete_warning'));
     expect(signed.text).toContain('action="/search/saved/12/delete"');
     expect(signed.text).toContain(t('govuk_alpha_search.saved.delete_confirm'));
