@@ -86,6 +86,7 @@ const { localization } = require('./middleware/localization');
 const { tenantFeatureGate } = require('./middleware/tenant-feature-gates');
 const { tenantRouting } = require('./middleware/tenant-routing');
 const { requestTenantContext } = require('./middleware/request-tenant-context');
+const { requireAuth } = require('./middleware/auth');
 
 const app = express();
 
@@ -252,11 +253,14 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false
 }));
 
-// Request logging
-if (NODE_ENV === 'production') {
-  app.use(morgan('combined'));
-} else {
-  app.use(morgan('dev'));
+// Request logging. Broad local smoke runs can opt out so their terminal output
+// remains a concise certification report instead of hundreds of access lines.
+if (process.env.DISABLE_REQUEST_LOGGING !== '1') {
+  if (NODE_ENV === 'production') {
+    app.use(morgan('combined'));
+  } else {
+    app.use(morgan('dev'));
+  }
 }
 
 // Static assets (before rate limiter so static file requests don't count against limits)
@@ -708,7 +712,7 @@ app.get('/account', async (req, res) => {
 
 app.use('/explore', exploreRoutes);
 
-app.get('/volunteering', (req, res) => {
+app.get('/volunteering', requireAuth, (req, res) => {
   const { callVolunteeringApi, getVolunteeringCategories, getVolunteeringOpportunities } = require('./lib/api');
   const token = req.signedCookies.token || '';
   if (res.locals.volunteeringDisabled) {
@@ -930,7 +934,7 @@ app.get('/volunteering', (req, res) => {
     });
 });
 
-app.get('/volunteering/opportunities/:id(\\d+)', (req, res) => {
+app.get('/volunteering/opportunities/:id(\\d+)', requireAuth, (req, res) => {
   const token = req.signedCookies.token || '';
   const { ApiError, getVolunteerOpportunity } = require('./lib/api');
 
@@ -1608,7 +1612,7 @@ app.use('/exchanges', doubleCsrfProtection, postOnly(formLimiter), exchangeRoute
 app.use('/goals', doubleCsrfProtection, postOnly(formLimiter), goalsRoutes);
 app.use('/ideation', doubleCsrfProtection, postOnly(formLimiter), ideationRoutes, ideationActionRoutes);
 app.use('/group-exchanges', doubleCsrfProtection, postOnly(formLimiter), groupExchangeRoutes, groupExchangeActionRoutes);
-app.use('/kb', kbRoutes);
+app.use('/kb', requireAuth, kbRoutes);
 app.use(supportRoutes);
 app.use(legalRoutes);
 app.use(publicInfoRoutes);
@@ -1685,25 +1689,47 @@ function redirectTo(res, pathname) {
   return res.redirect(urlFor(pathname));
 }
 
+// Retired pre-Laravel paths are deliberately absent from the member routers.
+// Keep their 404 contract ahead of module-level authentication so an obsolete
+// URL is not mistaken for a valid page that merely needs a login.
+function renderLegacyNotFound(req, res) {
+  return res.status(404).render('errors/404', { title: 'Page not found' });
+}
+
+app.get('/listings/:id(\\d+)/delete', renderLegacyNotFound);
+app.get(['/feed/new', '/feed/:id(\\d+)', '/feed/:id(\\d+)/edit'], renderLegacyNotFound);
+app.post([
+  '/feed/new',
+  '/feed/:id(\\d+)/edit',
+  '/feed/:id(\\d+)/delete',
+  '/feed/:id(\\d+)/like',
+  '/feed/:id(\\d+)/unlike',
+  '/feed/:id(\\d+)/comments',
+  '/feed/:id(\\d+)/comments/:commentId(\\d+)/delete'
+], renderLegacyNotFound);
+app.get('/events/my', renderLegacyNotFound);
+app.post('/events/:id(\\d+)/rsvp/remove', renderLegacyNotFound);
+app.post('/members/:id(\\d+)/connect', renderLegacyNotFound);
+
 // Protected routes with CSRF and rate limiting
 app.use('/dashboard', doubleCsrfProtection, dashboardRoutes);
-app.use('/listings', doubleCsrfProtection, postOnly(formLimiter), listingsRoutes);
+app.use('/listings', requireAuth, doubleCsrfProtection, postOnly(formLimiter), listingsRoutes);
 app.use('/profile', doubleCsrfProtection, profileRoutes);
 app.use('/activity', doubleCsrfProtection, activityRoutes);
 app.use('/wallet', doubleCsrfProtection, postOnly(walletLimiter), walletRoutes);
 app.use('/messages', doubleCsrfProtection, postOnly(formLimiter), messagesRoutes);
 app.use('/podcasts', doubleCsrfProtection, postOnly(formLimiter), podcastActionRoutes);
 app.use('/connections', doubleCsrfProtection, postOnly(formLimiter), connectionsRoutes);
-app.use('/members', doubleCsrfProtection, membersRoutes);
+app.use('/members', requireAuth, doubleCsrfProtection, membersRoutes);
 app.use('/notifications', doubleCsrfProtection, notificationsRoutes);
 app.use('/settings', doubleCsrfProtection, settingsRoutes);
 app.use('/groups', doubleCsrfProtection, postOnly(formLimiter), groupsRoutes);
-app.use('/events', doubleCsrfProtection, postOnly(formLimiter), eventsRoutes);
+app.use('/events', requireAuth, doubleCsrfProtection, postOnly(formLimiter), eventsRoutes);
 app.use('/event-templates', doubleCsrfProtection, postOnly(formLimiter), eventTemplateRoutes);
 app.use('/marketplace', doubleCsrfProtection, postOnly(formLimiter), marketplaceActionRoutes);
-app.use('/volunteering', doubleCsrfProtection, postOnly(formLimiter), volunteeringActionRoutes);
-app.use('/feed', doubleCsrfProtection, postOnly(formLimiter), feedActionRoutes);
-app.use('/feed', doubleCsrfProtection, postOnly(formLimiter), feedRoutes);
+app.use('/volunteering', requireAuth, doubleCsrfProtection, postOnly(formLimiter), volunteeringActionRoutes);
+app.use('/feed', requireAuth, doubleCsrfProtection, postOnly(formLimiter), feedActionRoutes);
+app.use('/feed', requireAuth, doubleCsrfProtection, postOnly(formLimiter), feedRoutes);
 app.use('/matches', doubleCsrfProtection, postOnly(formLimiter), matchesRoutes);
 app.use('/achievements', doubleCsrfProtection, postOnly(formLimiter), achievementsRoutes);
 app.use('/leaderboard', doubleCsrfProtection, leaderboardRoutes);

@@ -836,11 +836,11 @@ describe('Protected Routes', () => {
       expect(response.headers.location).toBe('/login?status=auth-required');
     });
 
-    it('GET /listings should render the public Laravel-backed directory', async () => {
+    it('GET /listings should require authentication', async () => {
       const response = await request(app).get('/listings');
 
-      expect(response.status).toBe(200);
-      expect(response.text).toContain('Listings');
+      expect(response.status).toBe(302);
+      expect(response.headers.location).toBe('/login?status=auth-required');
     });
 
     it('GET /wallet should redirect to login', async () => {

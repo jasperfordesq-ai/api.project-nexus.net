@@ -656,7 +656,7 @@ describe('shared accessible frontend shell', () => {
     api.voteFeedPoll.mockReset().mockResolvedValue({ data: { id: 42 } });
   });
 
-  it('keeps anonymous shared-mount events and listings inside the routed tenant', async () => {
+  it('keeps signed shared-mount events and listings inside the routed tenant', async () => {
     const api = require('../src/lib/api');
     const { getRequestTenantSlug } = require('../src/lib/request-tenant-context');
     const calls = [];
@@ -672,20 +672,20 @@ describe('shared accessible frontend shell', () => {
     });
 
     const [eventsResponse, listingsResponse] = await Promise.all([
-      request(app).get('/acme/accessible/events?tenant_slug=untrusted-query'),
-      request(app).get('/acme/accessible/listings?tenant_slug=untrusted-query')
+      request(app).get('/acme/accessible/events?tenant_slug=untrusted-query').set('Cookie', signedCookieHeader()),
+      request(app).get('/acme/accessible/listings?tenant_slug=untrusted-query').set('Cookie', signedCookieHeader())
     ]);
 
     expect(eventsResponse.status).toBe(200);
     expect(listingsResponse.status).toBe(200);
     expect(calls).toEqual(expect.arrayContaining([
-      expect.objectContaining({ surface: 'events', tenantSlug: 'acme', token: '' }),
-      expect.objectContaining({ surface: 'listings', tenantSlug: 'acme', token: '' })
+      expect.objectContaining({ surface: 'events', tenantSlug: 'acme', token: 'test-token' }),
+      expect.objectContaining({ surface: 'listings', tenantSlug: 'acme', token: 'test-token' })
     ]));
     expect(calls.every(({ params }) => params.tenant_slug === undefined)).toBe(true);
   });
 
-  it('keeps anonymous parent and custom-domain public calls inside their routed tenants', async () => {
+  it('keeps signed parent and custom-domain member calls inside their routed tenants', async () => {
     const api = require('../src/lib/api');
     const { getRequestTenantSlug } = require('../src/lib/request-tenant-context');
     const calls = [];
@@ -709,15 +709,15 @@ describe('shared accessible frontend shell', () => {
     });
 
     const [customResponse, parentResponse] = await Promise.all([
-      request(app).get('/events').set('Host', 'acme-accessible.test'),
-      request(app).get('/dunmanway/listings').set('Host', 'parent-domain.test')
+      request(app).get('/events').set('Host', 'acme-accessible.test').set('Cookie', signedCookieHeader()),
+      request(app).get('/dunmanway/listings').set('Host', 'parent-domain.test').set('Cookie', signedCookieHeader())
     ]);
 
     expect(customResponse.status).toBe(200);
     expect(parentResponse.status).toBe(200);
     expect(calls).toEqual(expect.arrayContaining([
-      { surface: 'events', tenantSlug: 'acme', token: '' },
-      { surface: 'listings', tenantSlug: 'dunmanway', token: '' }
+      { surface: 'events', tenantSlug: 'acme', token: 'test-token' },
+      { surface: 'listings', tenantSlug: 'dunmanway', token: 'test-token' }
     ]));
   });
 
@@ -735,8 +735,8 @@ describe('shared accessible frontend shell', () => {
     });
 
     const [tenantOneResponse, tenantTwoResponse] = await Promise.all([
-      request(app).get('/tenant-one/accessible/events'),
-      request(app).get('/tenant-two/accessible/events')
+      request(app).get('/tenant-one/accessible/events').set('Cookie', signedCookieHeader()),
+      request(app).get('/tenant-two/accessible/events').set('Cookie', signedCookieHeader())
     ]);
 
     expect(tenantOneResponse.status).toBe(200);
@@ -10857,17 +10857,14 @@ describe('shared accessible frontend shell', () => {
     expect(missing.text).toContain('Page not found');
   });
 
-  it('renders Laravel\'s public members shell without exposing or loading directory data', async () => {
+  it('requires authentication before rendering the Laravel members shell', async () => {
     const api = require('../src/lib/api');
 
     const response = await request(app).get('/members');
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login?status=auth-required');
     expect(api.getUsers).not.toHaveBeenCalled();
-    expect(response.text).toContain('Sign in to search members of');
-    expect(response.text).toContain('href="/login"');
-    expect(response.text).toContain('href="/register"');
-    expect(response.text).not.toContain('id="search"');
   });
 
   it('renders the signed Laravel members index when the members API is unavailable', async () => {
@@ -12871,7 +12868,7 @@ describe('shared accessible frontend shell', () => {
     });
   });
 
-  it('renders the public Laravel feed hashtag discovery page', async () => {
+  it('renders the signed Laravel feed hashtag discovery page', async () => {
     const api = require('../src/lib/api');
 
     api.getFeedHashtags.mockResolvedValueOnce({
@@ -12881,10 +12878,10 @@ describe('shared accessible frontend shell', () => {
       ]
     });
 
-    const response = await request(app).get('/feed/hashtags');
+    const response = await request(app).get('/feed/hashtags').set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(200);
-    expect(api.getFeedHashtags).toHaveBeenCalledWith('', { limit: 50, days: 7 });
+    expect(api.getFeedHashtags).toHaveBeenCalledWith('test-token', { limit: 50, days: 7 });
     expect(response.text).toContain('href="/feed"');
     expect(response.text).toContain('Back to the feed');
     expect(response.text).toContain('Discover topics at');
@@ -12913,10 +12910,10 @@ describe('shared accessible frontend shell', () => {
       ]
     });
 
-    const response = await request(app).get('/feed/hashtags?q=repair%25_cafe');
+    const response = await request(app).get('/feed/hashtags?q=repair%25_cafe').set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(200);
-    expect(api.getFeedHashtags).toHaveBeenCalledWith('', { q: 'repaircafe', limit: 50 });
+    expect(api.getFeedHashtags).toHaveBeenCalledWith('test-token', { q: 'repaircafe', limit: 50 });
     expect(response.text).toContain('Search results');
     expect(response.text).toContain('value="repair%_cafe"');
     expect(response.text).toContain('Clear search and show trending');
@@ -12926,17 +12923,14 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
-  it('renders Laravel\'s public feed shell without calling the protected API', async () => {
+  it('requires authentication before rendering the Laravel feed shell', async () => {
     const api = require('../src/lib/api');
 
     const response = await request(app).get('/feed');
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login?status=auth-required');
     expect(api.getFeedPosts).not.toHaveBeenCalled();
-    expect(response.text).toContain('Sign in or register to read and post community feed updates');
-    expect(response.text).toContain('href="/login"');
-    expect(response.text).toContain('href="/register"');
-    expect(response.text).not.toContain('action="/feed/posts"');
   });
 
   it('renders the signed Laravel feed index when the feed API is unavailable', async () => {
@@ -12963,7 +12957,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('Page not found');
   });
 
-  it('renders the public Laravel feed hashtag detail page with post cards', async () => {
+  it('renders the signed Laravel feed hashtag detail page with post cards', async () => {
     const api = require('../src/lib/api');
 
     api.getFeedHashtagPosts.mockResolvedValueOnce({
@@ -12995,10 +12989,10 @@ describe('shared accessible frontend shell', () => {
       }
     });
 
-    const response = await request(app).get('/feed/hashtag/Repair');
+    const response = await request(app).get('/feed/hashtag/Repair').set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(200);
-    expect(api.getFeedHashtagPosts).toHaveBeenCalledWith('', 'repair', { limit: 20 });
+    expect(api.getFeedHashtagPosts).toHaveBeenCalledWith('test-token', 'repair', { limit: 20 });
     expect(response.text).toContain('href="/feed/hashtags"');
     expect(response.text).toContain('Back to hashtags');
     expect(response.text).toContain('Posts tagged at');
@@ -13050,7 +13044,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Celebrate (3)');
   });
 
-  it('renders the public Laravel feed post permalink page', async () => {
+  it('renders the signed Laravel feed post permalink page', async () => {
     const api = require('../src/lib/api');
 
     api.getFeedPostV2.mockResolvedValueOnce({
@@ -13084,17 +13078,16 @@ describe('shared accessible frontend shell', () => {
       }
     });
 
-    const response = await request(app).get('/feed/posts/42');
+    const response = await request(app).get('/feed/posts/42').set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(200);
-    expect(api.getFeedPostV2).toHaveBeenCalledWith('', 42);
-    expect(api.getComments).not.toHaveBeenCalled();
+    expect(api.getFeedPostV2).toHaveBeenCalledWith('test-token', 42);
+    expect(api.getComments).toHaveBeenCalled();
     expect(response.text).toContain('href="/feed"');
     expect(response.text).toContain('Back to the feed');
     expect(response.text).toContain('<span class="govuk-caption-l">Project NEXUS Accessible</span>');
     expect(response.text).toContain('<h1');
     expect(response.text).toContain('Post');
-    expect(response.text).toContain('Sign in to use this page.');
     expect(response.text).toContain('Posted by Ada Lovelace');
     expect(response.text).toContain('Repair cafe is open.');
     expect(response.text).toContain('Bring your bike lights.');
@@ -13104,11 +13097,11 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('1 comment');
     expect(response.text).toContain('Comments');
     expect(response.text).toContain('There are no comments yet.');
-    expect(response.text).not.toContain('name="content"');
+    expect(response.text).toContain('name="content"');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
-  it('renders the public Laravel polymorphic feed item permalink page', async () => {
+  it('renders the signed Laravel polymorphic feed item permalink page', async () => {
     const api = require('../src/lib/api');
 
     api.getFeedItemV2.mockResolvedValueOnce({
@@ -13134,18 +13127,17 @@ describe('shared accessible frontend shell', () => {
       }
     });
 
-    const response = await request(app).get('/feed/item/listing/42');
+    const response = await request(app).get('/feed/item/listing/42').set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(200);
-    expect(api.getFeedItemV2).toHaveBeenCalledWith('', 'listing', 42);
-    expect(api.getComments).not.toHaveBeenCalled();
+    expect(api.getFeedItemV2).toHaveBeenCalledWith('test-token', 'listing', 42);
+    expect(api.getComments).toHaveBeenCalled();
     expect(response.text).toContain('href="/feed"');
     expect(response.text).toContain('Back to the feed');
     expect(response.text).toContain('A shared item at Project NEXUS Accessible');
     expect(response.text).toContain('<h1');
     expect(response.text).toContain('Borrow a cargo bike');
     expect(response.text).toContain('Listing');
-    expect(response.text).toContain('Sign in to take part in the feed.');
     expect(response.text).toContain('id="feed-item-listing-42"');
     expect(response.text).toContain('Posted by Grace Hopper');
     expect(response.text).toContain('Available for local errands.');
@@ -13157,7 +13149,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('0 comments');
     expect(response.text).toContain('Comments');
     expect(response.text).toContain('No comments yet.');
-    expect(response.text).not.toContain('name="content"');
+    expect(response.text).toContain('name="content"');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
@@ -13237,7 +13229,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('action="/feed/comments/13/update"');
   });
 
-  it('keeps public feed permalink documents available when Laravel protects the v2 payload APIs', async () => {
+  it('protects feed permalink documents before calling Laravel v2 payload APIs', async () => {
     const api = require('../src/lib/api');
     const { ApiError } = api;
     api.getFeedPostV2.mockRejectedValueOnce(new ApiError('Unauthenticated', 401, {}));
@@ -13247,11 +13239,11 @@ describe('shared accessible frontend shell', () => {
     const item = await request(app).get('/feed/item/listing/42');
 
     for (const response of [post, item]) {
-      expect(response.status).toBe(200);
-      expect(response.headers.location).toBeUndefined();
-      expect(response.text).toContain('Sign in');
-      expect(response.text).toContain('This post is no longer available.');
+      expect(response.status).toBe(302);
+      expect(response.headers.location).toBe('/login?status=auth-required');
     }
+    expect(api.getFeedPostV2).not.toHaveBeenCalled();
+    expect(api.getFeedItemV2).not.toHaveBeenCalled();
   });
 
   it('unwraps the Laravel v2 comments envelope on an authenticated feed permalink', async () => {
@@ -13836,7 +13828,7 @@ describe('shared accessible frontend shell', () => {
     });
   });
 
-  it('redirects signed-out Laravel feed aliases using feed status redirects', async () => {
+  it('redirects signed-out Laravel feed aliases to the auth-required login', async () => {
     const api = require('../src/lib/api');
     const agent = request.agent(app);
     const first = await agent.get('/contact');
@@ -13847,14 +13839,14 @@ describe('shared accessible frontend shell', () => {
       .type('form')
       .send({ _csrf: csrfMatch[1], content: 'Signed out post' });
     expect(createResponse.status).toBe(302);
-    expect(createResponse.headers.location).toBe('/feed');
+    expect(createResponse.headers.location).toBe('/login?status=auth-required');
 
     const actionResponse = await agent
       .post('/feed/posts/42/share')
       .type('form')
       .send({ _csrf: csrfMatch[1] });
     expect(actionResponse.status).toBe(302);
-    expect(actionResponse.headers.location).toBe('/feed?status=auth-required#feed-item-post-42');
+    expect(actionResponse.headers.location).toBe('/login?status=auth-required');
     expect(api.createFeedPostV2).not.toHaveBeenCalled();
     expect(api.shareFeedItem).not.toHaveBeenCalled();
   });
@@ -15655,7 +15647,9 @@ describe('shared accessible frontend shell', () => {
     api.getVolunteeringCategories.mockResolvedValueOnce({
       data: [{ id: 3, name: 'Food support' }]
     });
-    const response = await request(app).get('/volunteering?q=kitchen&category_id=3&is_remote=1');
+    const response = await request(app)
+      .get('/volunteering?q=kitchen&category_id=3&is_remote=1')
+      .set('Cookie', signedCookieHeader());
 
     expect(staticPageRoutes.pages['/volunteering']).toBeUndefined();
     expect(api.getVolunteeringOpportunities).toHaveBeenCalledWith({
@@ -15663,8 +15657,8 @@ describe('shared accessible frontend shell', () => {
       category_id: '3',
       is_remote: true,
       per_page: 20
-    }, '');
-    expect(api.getVolunteeringCategories).toHaveBeenCalledWith('');
+    }, 'test-token');
+    expect(api.getVolunteeringCategories).toHaveBeenCalledWith('test-token');
     expect(response.status).toBe(200);
     expect(response.text).toContain('Project NEXUS Accessible');
     expect(response.text).toContain('Volunteering');
@@ -15673,7 +15667,6 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Browse organisations');
     expect(response.text).toContain('How volunteering works');
     expect(response.text).toContain('Find an opportunity that suits you.');
-    expect(response.text).toContain('Sign in to apply for opportunities and track your volunteering.');
     expect(response.text).toContain('action="/volunteering"');
     expect(response.text).toContain('Search opportunities');
     expect(response.text).toContain('value="kitchen"');
@@ -15688,7 +15681,6 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Derry');
     expect(response.text).toContain('Food support');
     expect(response.text).toContain('Help prepare meals and welcome visitors');
-    expect(response.text).not.toContain('href="/organisations/opportunities/77/apply"');
     expect(response.text).toContain('href="/volunteering?q=kitchen&amp;category_id=3&amp;is_remote=1&amp;cursor=next-cursor"');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
@@ -15697,7 +15689,7 @@ describe('shared accessible frontend shell', () => {
     const api = require('../src/lib/api');
     api.getVolunteeringOpportunities.mockRejectedValueOnce(new api.ApiOfflineError());
 
-    const response = await request(app).get('/volunteering');
+    const response = await request(app).get('/volunteering').set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(200);
     expect(response.text).toContain('Volunteering');
@@ -17776,9 +17768,11 @@ describe('shared accessible frontend shell', () => {
       }
     });
 
-    const response = await request(app).get('/volunteering/opportunities/77');
+    const response = await request(app)
+      .get('/volunteering/opportunities/77')
+      .set('Cookie', signedCookieHeader());
 
-    expect(api.getVolunteerOpportunity).toHaveBeenCalledWith('77', '');
+    expect(api.getVolunteerOpportunity).toHaveBeenCalledWith('77', 'test-token');
     expect(response.status).toBe(200);
     expect(response.text).toContain('href="/volunteering"');
     expect(response.text).toContain('Back to volunteering');
@@ -17799,10 +17793,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Available shifts');
     expect(response.text).toContain('10 places');
     expect(response.text).toContain('3 places left');
-    expect(response.text).toContain('Sign in to apply for opportunities and track your volunteering.');
-    expect(response.text).toContain('href="/login"');
-    expect(response.text).toContain('href="/register"');
-    expect(response.text).not.toContain('method="post" action="/volunteering/opportunities/77/apply"');
+    expect(response.text).toContain('method="post" action="/volunteering/opportunities/77/apply"');
   });
 
   it('renders Blade inline apply and approved-applicant shift controls on opportunity detail', async () => {
@@ -17861,9 +17852,11 @@ describe('shared accessible frontend shell', () => {
     const api = require('../src/lib/api');
     api.getVolunteerOpportunity.mockRejectedValueOnce(new api.ApiError('Not found', 404));
 
-    const response = await request(app).get('/volunteering/opportunities/999');
+    const response = await request(app)
+      .get('/volunteering/opportunities/999')
+      .set('Cookie', signedCookieHeader());
 
-    expect(api.getVolunteerOpportunity).toHaveBeenCalledWith('999', '');
+    expect(api.getVolunteerOpportunity).toHaveBeenCalledWith('999', 'test-token');
     expect(response.status).toBe(404);
     expect(response.text).toContain('Page not found');
   });
@@ -20941,11 +20934,13 @@ describe('shared accessible frontend shell', () => {
       ]
     });
 
-    const response = await request(app).get('/events/browse?category_id=4');
+    const response = await request(app)
+      .get('/events/browse?category_id=4')
+      .set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(200);
     expect(staticPageRoutes.pages['/events/browse']).toBeUndefined();
-    expect(api.getEventCategories).toHaveBeenCalledWith('');
+    expect(api.getEventCategories).toHaveBeenCalledWith('test-token');
     expect(response.text).toContain('href="/events"');
     expect(response.text).toContain('Back to events');
     expect(response.text).toContain('Events');
@@ -20968,14 +20963,16 @@ describe('shared accessible frontend shell', () => {
       ]
     });
 
-    const mounted = await request(app).get('/acme/accessible/events/browse?category_id=4');
+    const mounted = await request(app)
+      .get('/acme/accessible/events/browse?category_id=4')
+      .set('Cookie', signedCookieHeader());
 
     expect(mounted.status).toBe(200);
     expect(mounted.text).toContain('href="/acme/accessible/events"');
     expect(mounted.text).toContain('method="get" action="/acme/accessible/events"');
 
     api.getEventCategories.mockResolvedValueOnce({ data: [] });
-    const empty = await request(app).get('/events/browse');
+    const empty = await request(app).get('/events/browse').set('Cookie', signedCookieHeader());
     expect(empty.status).toBe(200);
     expect(empty.text).toContain('No event categories have been set up for this community yet.');
     expect(empty.text).toContain('href="/events">View all events</a>');
@@ -21325,13 +21322,13 @@ describe('shared accessible frontend shell', () => {
         }
       });
 
-    const mapped = await request(app).get('/events/42/map');
-    const online = await request(app).get('/events/43/map');
-    const zeroCoordinate = await request(app).get('/events/44/map');
-    const writtenAddress = await request(app).get('/events/45/map');
+    const mapped = await request(app).get('/events/42/map').set('Cookie', signedCookieHeader());
+    const online = await request(app).get('/events/43/map').set('Cookie', signedCookieHeader());
+    const zeroCoordinate = await request(app).get('/events/44/map').set('Cookie', signedCookieHeader());
+    const writtenAddress = await request(app).get('/events/45/map').set('Cookie', signedCookieHeader());
 
     expect(mapped.status).toBe(200);
-    expect(api.callEventApi).toHaveBeenNthCalledWith(1, '', 'GET', '/42');
+    expect(api.callEventApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/42');
     expect(mapped.text).toContain('href="/events/42"');
     expect(mapped.text).toContain('Back to event');
     expect(mapped.text).toContain('Community garden day');
@@ -21367,14 +21364,16 @@ describe('shared accessible frontend shell', () => {
       }
     });
 
-    const mounted = await request(app).get('/acme/accessible/events/42/map');
+    const mounted = await request(app)
+      .get('/acme/accessible/events/42/map')
+      .set('Cookie', signedCookieHeader());
 
     expect(mounted.status).toBe(200);
     expect(mounted.text).toContain('href="/acme/accessible/events/42"');
     expect(mounted.text).toContain('View this location on OpenStreetMap');
 
     expect(online.status).toBe(200);
-    expect(api.callEventApi).toHaveBeenNthCalledWith(2, '', 'GET', '/43');
+    expect(api.callEventApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/43');
     expect(online.text).toContain('Remote planning');
     expect(online.text).toContain('No map available');
     expect(online.text).toContain('This is an online event, so it has no physical location to map.');
@@ -21382,14 +21381,14 @@ describe('shared accessible frontend shell', () => {
     expect(online.text).not.toContain('shared accessible frontend preparation page');
 
     expect(zeroCoordinate.status).toBe(200);
-    expect(api.callEventApi).toHaveBeenNthCalledWith(3, '', 'GET', '/44');
+    expect(api.callEventApi).toHaveBeenNthCalledWith(3, 'test-token', 'GET', '/44');
     expect(zeroCoordinate.text).toContain('Equator meetup');
     expect(zeroCoordinate.text).toContain('0, 0');
     expect(zeroCoordinate.text).toContain('marker=0%2C0');
     expect(zeroCoordinate.text).not.toContain('No map available');
 
     expect(writtenAddress.status).toBe(200);
-    expect(api.callEventApi).toHaveBeenNthCalledWith(4, '', 'GET', '/45');
+    expect(api.callEventApi).toHaveBeenNthCalledWith(4, 'test-token', 'GET', '/45');
     expect(writtenAddress.text).toContain('Village walk');
     expect(writtenAddress.text).toContain('This event does not have map coordinates set.');
     expect(writtenAddress.text).toContain('A written address is shown on the event page.');
@@ -23223,7 +23222,7 @@ describe('shared accessible frontend shell', () => {
     const api = require('../src/lib/api');
     api.getEvents.mockResolvedValueOnce({ data: [], meta: { has_more: false } });
 
-    const unfiltered = await request(app).get('/events');
+    const unfiltered = await request(app).get('/events').set('Cookie', signedCookieHeader());
 
     expect(unfiltered.status).toBe(200);
     expect(unfiltered.text).toContain('No results found');
@@ -23232,39 +23231,36 @@ describe('shared accessible frontend shell', () => {
     expect(unfiltered.text).not.toContain('Be the first to organise an event');
 
     api.getEvents.mockResolvedValueOnce({ data: [], meta: { has_more: false } });
-    const filtered = await request(app).get('/events?q=repair');
+    const filtered = await request(app).get('/events?q=repair').set('Cookie', signedCookieHeader());
 
     expect(filtered.status).toBe(200);
     expect(filtered.text).toContain('href="/events">Clear filters</a>');
   });
 
-  it('keeps the public Event shell accessible when Laravel denies the public collection', async () => {
+  it('returns to login when Laravel rejects the signed Event collection token', async () => {
     const api = require('../src/lib/api');
     api.getEvents.mockRejectedValueOnce(new api.ApiError('Authentication required', 401, {
       errors: [{ code: 'auth_required', message: 'Authentication required' }]
     }));
     api.getEventCategories.mockResolvedValueOnce({ data: [{ id: 4, name: 'Community' }] });
 
-    const response = await request(app).get('/events');
+    const response = await request(app).get('/events').set('Cookie', signedCookieHeader());
 
-    expect(response.status).toBe(200);
-    expect(response.headers.location).toBeUndefined();
-    expect(response.text).toContain('Events could not be loaded. Try again.');
-    expect(response.text).toContain('Sign in to create a new event');
-    expect(response.text).toContain('name="category_id"');
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/login');
   });
 
-  it('allows anonymous Laravel event browse and detail while keeping RSVP and management authenticated', async () => {
+  it('renders signed Laravel event browse and detail with RSVP controls', async () => {
     const api = require('../src/lib/api');
     api.getEvents.mockResolvedValueOnce({
       data: [{ id: 42, title: 'Public repair cafe', start_time: '2026-08-01T10:00:00Z' }],
       meta: { cursor: null, has_more: false, per_page: 20 }
     });
 
-    const index = await request(app).get('/events');
+    const index = await request(app).get('/events').set('Cookie', signedCookieHeader());
 
     expect(index.status).toBe(200);
-    expect(api.getEvents).toHaveBeenCalledWith('', {
+    expect(api.getEvents).toHaveBeenCalledWith('test-token', {
       per_page: 20,
       cursor: undefined,
       q: '',
@@ -23272,7 +23268,7 @@ describe('shared accessible frontend shell', () => {
       when: 'upcoming'
     });
     expect(index.text).toContain('Public repair cafe');
-    expect(index.text).not.toContain('href="/events/new"');
+    expect(index.text).toContain('href="/events/new"');
 
     api.getEvent.mockResolvedValueOnce({
       data: {
@@ -23285,14 +23281,13 @@ describe('shared accessible frontend shell', () => {
     });
     api.getEventRsvps.mockResolvedValueOnce({ data: [] });
 
-    const detail = await request(app).get('/events/42');
+    const detail = await request(app).get('/events/42').set('Cookie', signedCookieHeader());
 
     expect(detail.status).toBe(200);
-    expect(api.getEvent).toHaveBeenCalledWith('', '42');
-    expect(api.getEventRsvps).toHaveBeenCalledWith('', '42');
+    expect(api.getEvent).toHaveBeenCalledWith('test-token', '42');
+    expect(api.getEventRsvps).toHaveBeenCalledWith('test-token', '42');
     expect(detail.text).toContain('Bring a broken household item.');
-    expect(detail.text).toContain('Sign in to RSVP to events');
-    expect(detail.text).not.toContain('action="/events/42/rsvp"');
+    expect(detail.text).toContain('action="/events/42/rsvp"');
     expect(detail.text).not.toContain('action="/events/42/delete"');
   });
 
@@ -23997,7 +23992,7 @@ describe('shared accessible frontend shell', () => {
     const api = require('../src/lib/api');
     api.getListings.mockResolvedValueOnce({ data: [], meta: { has_more: false } });
 
-    const unfiltered = await request(app).get('/listings');
+    const unfiltered = await request(app).get('/listings').set('Cookie', signedCookieHeader());
 
     expect(unfiltered.status).toBe(200);
     expect(unfiltered.text).toContain('No results found');
@@ -24006,13 +24001,15 @@ describe('shared accessible frontend shell', () => {
     expect(unfiltered.text).not.toContain('Create your first listing');
 
     api.getListings.mockResolvedValueOnce({ data: [], meta: { has_more: false } });
-    const filtered = await request(app).get('/listings?search=ladder&type=offer');
+    const filtered = await request(app)
+      .get('/listings?search=ladder&type=offer')
+      .set('Cookie', signedCookieHeader());
 
     expect(filtered.status).toBe(200);
     expect(filtered.text).toContain('href="/listings">Clear filters</a>');
   });
 
-  it('allows anonymous Laravel listing browse and detail with exact cursor filters', async () => {
+  it('renders signed Laravel listing browse and detail with exact cursor filters', async () => {
     const api = require('../src/lib/api');
     api.getProfile.mockClear();
     api.getListings.mockResolvedValueOnce({
@@ -24026,10 +24023,12 @@ describe('shared accessible frontend shell', () => {
       meta: { cursor: 'next-page', has_more: true, per_page: 20, total_items: 21 }
     });
 
-    const index = await request(app).get('/listings?search=ladder&type=offer&cursor=current-page');
+    const index = await request(app)
+      .get('/listings?search=ladder&type=offer&cursor=current-page')
+      .set('Cookie', signedCookieHeader());
 
     expect(index.status).toBe(200);
-    expect(api.getListings).toHaveBeenCalledWith('', {
+    expect(api.getListings).toHaveBeenCalledWith('test-token', {
       per_page: 20,
       q: 'ladder',
       type: 'offer',
@@ -24037,8 +24036,7 @@ describe('shared accessible frontend shell', () => {
     });
     expect(index.text).toContain('Public ladder offer');
     expect(index.text).toContain('href="/listings?search=ladder&amp;type=offer&amp;cursor=next-page"');
-    expect(index.text).not.toContain('href="/listings/new"');
-    expect(api.getProfile).not.toHaveBeenCalled();
+    expect(index.text).toContain('href="/listings/new"');
 
     api.getListing.mockResolvedValueOnce({
       data: {
@@ -24053,13 +24051,12 @@ describe('shared accessible frontend shell', () => {
       }
     });
 
-    const detail = await request(app).get('/listings/42');
+    const detail = await request(app).get('/listings/42').set('Cookie', signedCookieHeader());
 
     expect(detail.status).toBe(200);
-    expect(api.getListing).toHaveBeenCalledWith('', '42');
+    expect(api.getListing).toHaveBeenCalledWith('test-token', '42');
     expect(detail.text).toContain('A safe ladder available to neighbours.');
     expect(detail.text).toContain('4.5 (6 reviews)');
-    expect(detail.text).toContain('Sign in or register to request an exchange');
     expect(detail.text).not.toContain('action="/listings/42/delete"');
   });
 

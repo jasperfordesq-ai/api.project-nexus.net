@@ -224,7 +224,7 @@ function createWebServer(requests, {
       ['/account', 'My account'],
       ['/wallet', 'Wallet'],
       ['/wallet/export.csv', 'Date,Type,Description'],
-      ['/wallet/manage', 'Manage credits'],
+      ['/wallet/manage', 'Manage your credits'],
       ['/wallet/recipients', 'results'],
       ['/messages', 'Messages'],
       ['/messages/groups', 'Group conversations'],
@@ -331,13 +331,13 @@ function createWebServer(requests, {
       ['/polls', 'Polls'],
       ['/polls/parity/create', 'Create a poll'],
       ['/polls/parity/manage', 'Manage my polls'],
-      ['/polls/20', 'Polls at this community'],
+      ['/polls/20', 'testing 12!!! testing 12!!! testing 12!!!'],
       ['/polls/20/rank', 'Polls at this community'],
       ['/polls/8', 'Polls at this community'],
       ['/polls/4', 'Polls at this community'],
       ['/jobs', 'Jobs'],
-      ['/jobs/90764', 'Apply for this opportunity'],
-      ['/jobs/90764/qualified', 'Am I qualified?'],
+      ['/jobs/90001', 'Apply for this opportunity'],
+      ['/jobs/90001/qualified', 'Am I qualified?'],
       ['/jobs/saved', 'Saved opportunities'],
       ['/jobs/applications', 'My applications'],
       ['/jobs/mine', 'My postings'],
@@ -485,18 +485,8 @@ function createWebServer(requests, {
     ]);
 
     const modulePages = new Set([
-      '/volunteering',
-      '/kb',
       '/help',
-      '/feed',
-      '/feed/posts/796',
-      '/feed/item/listing/42',
-      '/members',
-      '/password/reset',
-      '/events',
-      '/events/6',
-      '/listings',
-      '/listings/90992'
+      '/password/reset'
     ]);
     if (req.method === 'GET' && modulePages.has(req.url)) {
       res.writeHead(200, { 'content-type': 'text/html' });
@@ -506,6 +496,15 @@ function createWebServer(requests, {
 
     const signedModulePages = new Set([
       '/',
+      '/volunteering',
+      '/kb',
+      '/feed',
+      '/feed/posts/796',
+      '/feed/item/listing/42',
+      '/events',
+      '/listings',
+      '/listings/90992',
+      '/federation/listings',
       '/explore',
       '/saved',
       '/notifications',
@@ -589,8 +588,8 @@ function createWebServer(requests, {
       '/feed/item/listing/42',
       '/messages/77',
       '/messages/new/77',
-      '/jobs/90764',
-      '/jobs/90764/qualified',
+      '/jobs/90001',
+      '/jobs/90001/qualified',
       '/groups/484',
       '/groups/484/invite',
       '/groups/484/notifications',
@@ -632,7 +631,6 @@ function createWebServer(requests, {
       '/blog/test-sitemap-blog-post/likers/like',
       '/events/14',
       '/events/14/map',
-      '/events/14/polls',
       '/events/14/translate',
       '/groups/482',
       '/groups/482/announcements',
@@ -717,7 +715,6 @@ function createWebServer(requests, {
       '/guide',
       '/ideation',
       '/ideation/campaigns',
-      '/ideation/new',
       '/ideation/outcomes',
       '/ideation/tags',
       '/jobs',
@@ -815,10 +812,14 @@ function createWebServer(requests, {
       ['/groups/482/manage', 403],
       ['/groups/482/files', 403],
       ['/groups/482/files/1/download', 403],
-      ['/jobs/90764/edit', 403],
-      ['/jobs/90764/analytics', 403],
-      ['/jobs/90764/pipeline', 403],
-      ['/jobs/90764/applications', 403],
+      ['/jobs/90001/edit', 403],
+      ['/jobs/90001/analytics', 403],
+      ['/jobs/90001/pipeline', 403],
+      ['/jobs/90001/applications', 403],
+      ['/ideation/new', 403],
+      ['/events/14/polls', 403],
+      ['/events/6/recurring-edit', 403],
+      ['/events/14/recurring-edit', 403],
       ['/courses/instructor/1/analytics', 403],
       ['/courses/instructor/1/grading', 403],
       ['/listings/42/analytics', 403],
@@ -853,7 +854,6 @@ function createWebServer(requests, {
     const signedRedirectPages = new Map([
       ['/login/two-factor', '/login?status=two-factor-expired'],
       ['/onboarding', '/dashboard'],
-      ['/events/6/recurring-edit', '/events/6/edit'],
       ['/groups/484/edit', '/groups/484'],
       ['/courses/42/certificate', '/courses/42?status=certificate-failed'],
       ['/courses/1/certificate', '/courses/1?status=certificate-failed'],
@@ -862,16 +862,14 @@ function createWebServer(requests, {
       ['/federation/members/353/transfer', '/federation/opt-in'],
       ['/federation/members/351', '/federation/opt-in'],
       ['/federation/groups', '/federation/opt-in'],
-      ['/federation/listings', '/federation/opt-in'],
       ['/federation/events', '/federation/opt-in'],
       ['/federation/connections', '/federation/opt-in'],
       ['/federation/messages', '/federation/opt-in'],
       ['/federation/messages/conversation/77', '/federation/messages'],
-      ['/jobs/90764/applications/export.csv', '/jobs/90764/applications?status=export-failed'],
+      ['/jobs/90001/applications/export.csv', '/jobs/90001/applications?status=export-failed'],
       ['/courses/1/learn', '/courses/1?status=enrol-required'],
       ['/federation/messages/conversation/353', '/federation/messages'],
       ['/onboarding/profile', '/dashboard'],
-      ['/events/14/recurring-edit', '/events/14/edit'],
       ['/groups/482/edit', '/groups/482'],
       ['/onboarding/interests', '/dashboard'],
       ['/onboarding/safeguarding', '/dashboard'],
@@ -891,6 +889,16 @@ function createWebServer(requests, {
     }
 
     const unsignedAuthRequiredPages = new Set([
+      '/volunteering',
+      '/kb',
+      '/feed',
+      '/feed/posts/796',
+      '/feed/item/listing/42',
+      '/members',
+      '/events',
+      '/events/6',
+      '/listings',
+      '/listings/90992',
       '/federation/listings/1/1',
       '/federation/partners/1',
       '/ideation/1',
@@ -1074,7 +1082,7 @@ describe('Laravel runtime smoke harness', () => {
       '/organisations/636',
       '/organisations/636/jobs',
       '/organisations/opportunities/307/apply',
-      '/jobs/90764',
+      '/jobs/90001',
       '/groups/484',
       '/groups/484/invite',
       '/groups/484/notifications',
@@ -1097,16 +1105,16 @@ describe('Laravel runtime smoke harness', () => {
 
     expect(options.modulePagePaths).toEqual(expect.arrayContaining([
       '/groups/484/discussions/new',
-      '/jobs/90764/qualified'
+      '/jobs/90001/qualified'
     ]));
     expect(options.gatedPagePaths).toEqual(expect.arrayContaining([
-      { path: '/jobs/90764/edit', status: 403 },
-      { path: '/jobs/90764/analytics', status: 403 },
-      { path: '/jobs/90764/pipeline', status: 403 },
-      { path: '/jobs/90764/applications', status: 403 }
+      { path: '/jobs/90001/edit', status: 403 },
+      { path: '/jobs/90001/analytics', status: 403 },
+      { path: '/jobs/90001/pipeline', status: 403 },
+      { path: '/jobs/90001/applications', status: 403 },
+      { path: '/events/6/recurring-edit', status: 403 }
     ]));
     expect(options.redirectPagePaths).toEqual(expect.arrayContaining([
-      { path: '/events/6/recurring-edit', location: '/events/6/edit' },
       { path: '/groups/484/edit', location: '/groups/484' }
     ]));
   });
@@ -1174,6 +1182,7 @@ describe('Laravel runtime smoke harness', () => {
       '/courses/instructor/2/edit',
       '/federation/partners/1',
       '/federation/partners/5',
+      '/federation/listings',
       '/ideation/23',
       '/ideation/22',
       '/ideation/2',
@@ -1185,7 +1194,8 @@ describe('Laravel runtime smoke harness', () => {
     expect(options.gatedPagePaths).toEqual(expect.arrayContaining([
       { path: '/resources/10/delete', status: 403 },
       { path: '/coupons/1', status: 403 },
-      { path: '/coupons/2', status: 403 }
+      { path: '/coupons/2', status: 403 },
+      { path: '/ideation/new', status: 403 }
     ]));
     expect(options.redirectPagePaths).toEqual(expect.arrayContaining([
       { path: '/courses/1/learn', location: '/courses/1?status=enrol-required' },
@@ -1194,7 +1204,6 @@ describe('Laravel runtime smoke harness', () => {
       { path: '/federation/members/353/transfer', location: '/federation/opt-in' },
       { path: '/federation/members/351', location: '/federation/opt-in' },
       { path: '/federation/groups', location: '/federation/opt-in' },
-      { path: '/federation/listings', location: '/federation/opt-in' },
       { path: '/federation/events', location: '/federation/opt-in' },
       { path: '/federation/connections', location: '/federation/opt-in' },
       { path: '/federation/messages', location: '/federation/opt-in' },
@@ -1206,7 +1215,6 @@ describe('Laravel runtime smoke harness', () => {
       '/federation/members/353/transfer',
       '/federation/members/351',
       '/federation/groups',
-      '/federation/listings',
       '/federation/events',
       '/federation/connections',
       '/federation/messages'
@@ -1262,7 +1270,7 @@ describe('Laravel runtime smoke harness', () => {
     ]));
     expect(options.redirectPagePaths).toEqual(expect.arrayContaining([
       { path: '/courses/1/certificate', location: '/courses/1?status=certificate-failed' },
-      { path: '/jobs/90764/applications/export.csv', location: '/jobs/90764/applications?status=export-failed' },
+      { path: '/jobs/90001/applications/export.csv', location: '/jobs/90001/applications?status=export-failed' },
       { path: '/onboarding/profile', location: '/dashboard' }
     ]));
   });
@@ -1286,7 +1294,6 @@ describe('Laravel runtime smoke harness', () => {
     expect(options.modulePagePaths).toEqual(expect.arrayContaining([
       '/events/14',
       '/events/14/map',
-      '/events/14/polls',
       '/events/14/translate',
       '/groups/482',
       '/groups/482/announcements',
@@ -1307,11 +1314,14 @@ describe('Laravel runtime smoke harness', () => {
       '/blog/timebank-ireland/likers/like'
     ]));
     expect(options.redirectPagePaths).toEqual(expect.arrayContaining([
-      { path: '/events/14/recurring-edit', location: '/events/14/edit' },
       { path: '/groups/482/edit', location: '/groups/482' },
       { path: '/onboarding/interests', location: '/dashboard' },
       { path: '/onboarding/safeguarding', location: '/dashboard' },
       { path: '/onboarding/confirm', location: '/dashboard' }
+    ]));
+    expect(options.gatedPagePaths).toEqual(expect.arrayContaining([
+      { path: '/events/14/polls', status: 403 },
+      { path: '/events/14/recurring-edit', status: 403 }
     ]));
   });
 
@@ -1432,7 +1442,7 @@ describe('Laravel runtime smoke harness', () => {
       { path: '/account', text: 'My account' },
       { path: '/wallet', text: 'Wallet' },
       { path: '/wallet/export.csv', text: 'Date,Type,Description' },
-      { path: '/wallet/manage', text: 'Manage credits' },
+      { path: '/wallet/manage', text: 'Manage your credits' },
       { path: '/wallet/recipients', text: 'results' },
       { path: '/messages', text: 'Messages' },
       { path: '/messages/groups', text: 'Group conversations' },
@@ -1526,7 +1536,6 @@ describe('Laravel runtime smoke harness', () => {
       { path: '/events/6/translate', text: 'Translate event description' },
       { path: '/events/14', text: 'Location' },
       { path: '/events/14/map', text: 'Event location' },
-      { path: '/events/14/polls', text: 'Polls for this event' },
       { path: '/events/14/translate', text: 'Translate event description' },
       { path: '/listings', text: 'Listings' },
       { path: '/listings/new', text: 'Create listing' },
@@ -1540,13 +1549,13 @@ describe('Laravel runtime smoke harness', () => {
       { path: '/polls', text: 'Polls' },
       { path: '/polls/parity/create', text: 'Create a poll' },
       { path: '/polls/parity/manage', text: 'Manage my polls' },
-      { path: '/polls/20', text: 'Polls at this community' },
+      { path: '/polls/20', text: 'testing 12!!! testing 12!!! testing 12!!!' },
       { path: '/polls/20/rank', text: 'Polls at this community' },
       { path: '/polls/8', text: 'Polls at this community' },
       { path: '/polls/4', text: 'Polls at this community' },
       { path: '/jobs', text: 'Jobs' },
-      { path: '/jobs/90764', text: 'Apply for this opportunity' },
-      { path: '/jobs/90764/qualified', text: 'Am I qualified?' },
+      { path: '/jobs/90001', text: 'Apply for this opportunity' },
+      { path: '/jobs/90001/qualified', text: 'Am I qualified?' },
       { path: '/jobs/employers/14', text: 'Open opportunities and reviews for this employer' },
       { path: '/courses', text: 'Courses' },
       { path: '/courses/mine', text: 'My learning' },
@@ -1580,7 +1589,6 @@ describe('Laravel runtime smoke harness', () => {
       { path: '/marketplace/seller/1', text: 'Items for sale' },
       { path: '/ideation', text: 'Ideas' },
       { path: '/ideation/campaigns', text: 'Campaigns' },
-      { path: '/ideation/new', text: 'Create challenge' },
       { path: '/ideation/outcomes', text: 'Outcomes' },
       { path: '/ideation/tags', text: 'Browse by tag' },
       { path: '/ideation/23', text: 'Ideas' },
@@ -1816,7 +1824,7 @@ describe('Laravel runtime smoke harness', () => {
     expect(body.get('tenant_slug')).toBe('hour-timebank');
   });
 
-  it('smokes the default public Laravel-backed module pages', async () => {
+  it('keeps only Laravel-public pages unsigned and verifies member modules require authentication', async () => {
     const requests = [];
     const laravel = createLaravelServer(requests);
     const web = createWebServer(requests);
@@ -1828,18 +1836,18 @@ describe('Laravel runtime smoke harness', () => {
     const checks = Object.fromEntries(result.checks.map((check) => [check.name, check.ok]));
 
     expect(checks).toEqual(expect.objectContaining({
-      'public-module-page-volunteering-renders-unsigned': true,
-      'public-module-page-kb-renders-unsigned': true,
       'public-module-page-help-renders-unsigned': true,
-      'public-module-page-feed-renders-unsigned': true,
-      'public-module-page-feed-posts-796-renders-unsigned': true,
-      'public-module-page-feed-item-listing-42-renders-unsigned': true,
-      'public-module-page-members-renders-unsigned': true,
       'public-module-page-password-reset-renders-unsigned': true,
-      'public-module-page-events-renders-unsigned': true,
-      'public-module-page-events-6-renders-unsigned': true,
-      'public-module-page-listings-renders-unsigned': true,
-      'public-module-page-listings-90992-renders-unsigned': true
+      'auth-required-page-volunteering-redirects-login-status-auth-required': true,
+      'auth-required-page-kb-redirects-login-status-auth-required': true,
+      'auth-required-page-feed-redirects-login-status-auth-required': true,
+      'auth-required-page-feed-posts-796-redirects-login-status-auth-required': true,
+      'auth-required-page-feed-item-listing-42-redirects-login-status-auth-required': true,
+      'auth-required-page-members-redirects-login-status-auth-required': true,
+      'auth-required-page-events-redirects-login-status-auth-required': true,
+      'auth-required-page-events-6-redirects-login-status-auth-required': true,
+      'auth-required-page-listings-redirects-login-status-auth-required': true,
+      'auth-required-page-listings-90992-redirects-login-status-auth-required': true
     }));
     expect(requests.map((request) => `${request.method} ${request.url}`)).toEqual(expect.arrayContaining([
       'GET /volunteering',
@@ -1855,7 +1863,7 @@ describe('Laravel runtime smoke harness', () => {
       'GET /listings',
       'GET /listings/90992'
     ]));
-    const publicPaths = [
+    const unsignedPaths = [
       '/volunteering',
       '/kb',
       '/help',
@@ -1869,7 +1877,7 @@ describe('Laravel runtime smoke harness', () => {
       '/listings',
       '/listings/90992'
     ];
-    expect(publicPaths.every((path) => requests.some((request) => (
+    expect(unsignedPaths.every((path) => requests.some((request) => (
       request.method === 'GET'
       && request.url === path
       && !request.cookie.includes('token=')
@@ -2021,8 +2029,8 @@ describe('Laravel runtime smoke harness', () => {
       'module-page-feed-item-listing-42-renders': true,
       'module-page-messages-77-renders': true,
       'module-page-messages-new-77-renders': true,
-      'module-page-jobs-90764-renders': true,
-      'module-page-jobs-90764-qualified-renders': true,
+      'module-page-jobs-90001-renders': true,
+      'module-page-jobs-90001-qualified-renders': true,
       'module-page-groups-484-renders': true,
       'module-page-groups-484-invite-renders': true,
       'module-page-groups-484-notifications-renders': true,
@@ -2088,7 +2096,7 @@ describe('Laravel runtime smoke harness', () => {
       'module-page-guide-renders': true,
       'module-page-ideation-renders': true,
       'module-page-ideation-campaigns-renders': true,
-      'module-page-ideation-new-renders': true,
+      'gated-page-ideation-new-returns-403': true,
       'module-page-ideation-outcomes-renders': true,
       'module-page-ideation-tags-renders': true,
       'module-page-jobs-renders': true,
@@ -2101,10 +2109,13 @@ describe('Laravel runtime smoke harness', () => {
       'module-page-jobs-saved-renders': true,
       'gated-page-jobs-bias-audit-returns-403': true,
       'gated-page-jobs-talent-search-returns-403': true,
-      'gated-page-jobs-90764-edit-returns-403': true,
-      'gated-page-jobs-90764-analytics-returns-403': true,
-      'gated-page-jobs-90764-pipeline-returns-403': true,
-      'gated-page-jobs-90764-applications-returns-403': true,
+      'gated-page-jobs-90001-edit-returns-403': true,
+      'gated-page-jobs-90001-analytics-returns-403': true,
+      'gated-page-jobs-90001-pipeline-returns-403': true,
+      'gated-page-jobs-90001-applications-returns-403': true,
+      'gated-page-events-14-polls-returns-403': true,
+      'gated-page-events-6-recurring-edit-returns-403': true,
+      'gated-page-events-14-recurring-edit-returns-403': true,
       'gated-page-listings-42-analytics-returns-403': true,
       'gated-page-group-exchanges-1-returns-403': true,
       'gated-page-messages-groups-33-returns-403': true,
@@ -2148,7 +2159,6 @@ describe('Laravel runtime smoke harness', () => {
       'module-page-report-a-problem-renders': true,
       'redirect-page-login-two-factor-redirects-login-status-two-factor-expired': true,
       'redirect-page-onboarding-redirects-dashboard': true,
-      'redirect-page-events-6-recurring-edit-redirects-events-6-edit': true,
       'redirect-page-groups-484-edit-redirects-groups-484': true,
       'redirect-page-courses-42-certificate-redirects-courses-42-status-certificate-failed': true,
       'redirect-page-federation-members-redirects-federation-opt-in': true,
@@ -2156,7 +2166,7 @@ describe('Laravel runtime smoke harness', () => {
       'redirect-page-federation-members-353-transfer-redirects-federation-opt-in': true,
       'redirect-page-federation-members-351-redirects-federation-opt-in': true,
       'redirect-page-federation-groups-redirects-federation-opt-in': true,
-      'redirect-page-federation-listings-redirects-federation-opt-in': true,
+      'module-page-federation-listings-renders': true,
       'redirect-page-federation-events-redirects-federation-opt-in': true,
       'redirect-page-federation-connections-redirects-federation-opt-in': true,
       'redirect-page-federation-messages-redirects-federation-opt-in': true,
@@ -2180,10 +2190,10 @@ describe('Laravel runtime smoke harness', () => {
     expect(checkByName['gated-page-coupons-returns-403'].status).toBe(403);
     expect(checkByName['gated-page-jobs-bias-audit-returns-403'].status).toBe(403);
     expect(checkByName['gated-page-jobs-talent-search-returns-403'].status).toBe(403);
-    expect(checkByName['gated-page-jobs-90764-edit-returns-403'].status).toBe(403);
-    expect(checkByName['gated-page-jobs-90764-analytics-returns-403'].status).toBe(403);
-    expect(checkByName['gated-page-jobs-90764-pipeline-returns-403'].status).toBe(403);
-    expect(checkByName['gated-page-jobs-90764-applications-returns-403'].status).toBe(403);
+    expect(checkByName['gated-page-jobs-90001-edit-returns-403'].status).toBe(403);
+    expect(checkByName['gated-page-jobs-90001-analytics-returns-403'].status).toBe(403);
+    expect(checkByName['gated-page-jobs-90001-pipeline-returns-403'].status).toBe(403);
+    expect(checkByName['gated-page-jobs-90001-applications-returns-403'].status).toBe(403);
     expect(checkByName['gated-page-listings-42-analytics-returns-403'].status).toBe(403);
     expect(checkByName['gated-page-group-exchanges-1-returns-403'].status).toBe(403);
     expect(checkByName['gated-page-messages-groups-33-returns-403'].status).toBe(403);
@@ -2201,7 +2211,8 @@ describe('Laravel runtime smoke harness', () => {
     expect(checkByName['gated-page-groups-482-files-1-download-returns-403'].status).toBe(403);
     expect(checkByName['gated-page-marketplace-coupons-returns-403'].status).toBe(403);
     expect(checkByName['gated-page-marketplace-coupons-5-edit-returns-403'].status).toBe(403);
-    expect(checkByName['redirect-page-events-6-recurring-edit-redirects-events-6-edit'].location).toBe('/events/6/edit');
+    expect(checkByName['gated-page-events-6-recurring-edit-returns-403'].status).toBe(403);
+    expect(checkByName['gated-page-events-14-recurring-edit-returns-403'].status).toBe(403);
     expect(checkByName['redirect-page-groups-484-edit-redirects-groups-484'].location).toBe('/groups/484');
     expect(checkByName['redirect-page-courses-42-certificate-redirects-courses-42-status-certificate-failed'].location).toBe('/courses/42?status=certificate-failed');
     expect(checkByName['redirect-page-federation-members-redirects-federation-opt-in'].location).toBe('/federation/opt-in');
@@ -2209,7 +2220,6 @@ describe('Laravel runtime smoke harness', () => {
     expect(checkByName['redirect-page-federation-members-353-transfer-redirects-federation-opt-in'].location).toBe('/federation/opt-in');
     expect(checkByName['redirect-page-federation-members-351-redirects-federation-opt-in'].location).toBe('/federation/opt-in');
     expect(checkByName['redirect-page-federation-groups-redirects-federation-opt-in'].location).toBe('/federation/opt-in');
-    expect(checkByName['redirect-page-federation-listings-redirects-federation-opt-in'].location).toBe('/federation/opt-in');
     expect(checkByName['redirect-page-federation-events-redirects-federation-opt-in'].location).toBe('/federation/opt-in');
     expect(checkByName['redirect-page-federation-connections-redirects-federation-opt-in'].location).toBe('/federation/opt-in');
     expect(checkByName['redirect-page-federation-messages-redirects-federation-opt-in'].location).toBe('/federation/opt-in');
@@ -2222,7 +2232,7 @@ describe('Laravel runtime smoke harness', () => {
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/listings').at(-1).cookie).toContain('token=signed-token');
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/events/6').at(-1).cookie).toContain('token=signed-token');
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/groups/484').at(-1).cookie).toContain('token=signed-token');
-    expect(requests.filter((request) => request.method === 'GET' && request.url === '/jobs/90764/qualified').at(-1).cookie).toContain('token=signed-token');
+    expect(requests.filter((request) => request.method === 'GET' && request.url === '/jobs/90001/qualified').at(-1).cookie).toContain('token=signed-token');
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/groups/484/discussions/new').at(-1).cookie).toContain('token=signed-token');
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/members/77/insights').at(-1).cookie).toContain('token=signed-token');
     expect(requests.filter((request) => request.method === 'GET' && request.url === '/feed/item/listing/42').at(-1).cookie).toContain('token=signed-token');
@@ -2327,7 +2337,7 @@ describe('Laravel runtime smoke harness', () => {
       'body-text-page-account-contains-my-account': true,
       'body-text-page-wallet-contains-wallet': true,
       'body-text-page-wallet-export-csv-contains-date-type-description': true,
-      'body-text-page-wallet-manage-contains-manage-credits': true,
+      'body-text-page-wallet-manage-contains-manage-your-credits': true,
       'body-text-page-wallet-recipients-contains-results': true,
       'body-text-page-messages-contains-messages': true,
       'body-text-page-messages-groups-contains-group-conversations': true,
@@ -2425,7 +2435,6 @@ describe('Laravel runtime smoke harness', () => {
       'body-text-page-events-6-translate-contains-translate-event-description': true,
       'body-text-page-events-14-contains-location': true,
       'body-text-page-events-14-map-contains-event-location': true,
-      'body-text-page-events-14-polls-contains-polls-for-this-event': true,
       'body-text-page-events-14-translate-contains-translate-event-description': true,
       'body-text-page-listings-contains-listings': true,
       'body-text-page-listings-new-contains-create-listing': true,
@@ -2439,13 +2448,13 @@ describe('Laravel runtime smoke harness', () => {
       'body-text-page-polls-contains-polls': true,
       'body-text-page-polls-parity-create-contains-create-a-poll': true,
       'body-text-page-polls-parity-manage-contains-manage-my-polls': true,
-      'body-text-page-polls-20-contains-polls-at-this-community': true,
+      'body-text-page-polls-20-contains-testing-12-testing-12-testing-12': true,
       'body-text-page-polls-20-rank-contains-polls-at-this-community': true,
       'body-text-page-polls-8-contains-polls-at-this-community': true,
       'body-text-page-polls-4-contains-polls-at-this-community': true,
       'body-text-page-jobs-contains-jobs': true,
-      'body-text-page-jobs-90764-contains-apply-for-this-opportunity': true,
-      'body-text-page-jobs-90764-qualified-contains-am-i-qualified': true,
+      'body-text-page-jobs-90001-contains-apply-for-this-opportunity': true,
+      'body-text-page-jobs-90001-qualified-contains-am-i-qualified': true,
       'body-text-page-jobs-saved-contains-saved-opportunities': true,
       'body-text-page-jobs-applications-contains-my-applications': true,
       'body-text-page-jobs-mine-contains-my-postings': true,
@@ -2492,7 +2501,6 @@ describe('Laravel runtime smoke harness', () => {
       'body-text-page-marketplace-seller-1-contains-items-for-sale': true,
       'body-text-page-ideation-contains-ideas': true,
       'body-text-page-ideation-campaigns-contains-campaigns': true,
-      'body-text-page-ideation-new-contains-create-challenge': true,
       'body-text-page-ideation-outcomes-contains-outcomes': true,
       'body-text-page-ideation-tags-contains-browse-by-tag': true,
       'body-text-page-ideation-23-contains-ideas': true,

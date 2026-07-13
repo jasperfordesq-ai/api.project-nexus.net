@@ -2,6 +2,23 @@
 
 Last reviewed: 2026-07-13
 
+## 2026-07-13 Member Authentication Runtime Checkpoint
+
+The second quarter of the exhaustive Laravel runtime smoke reached a terminal
+`240`-check result. It exposed stale Web UK expectations for member-only
+knowledge-base, listings, members, events, volunteering, and feed routes, plus
+current fixture and permission changes. Web UK now applies the matching signed-
+member boundary, preserves explicit `404` tombstones for retired routes, and
+tracks the current job, poll, wallet, federation, recurring-event, and gated
+fixtures. A focused live rerun passed `48/48`; the full Web UK gate passes
+`46/46` suites and `1567/1567` tests.
+
+The remaining five feed-detail failures are the existing read-only Laravel
+schema blocker: authenticated feed queries reference missing MySQL column
+`visible_events.publication_status`. They are retained as failures rather than
+masked by Web UK. Remaining runtime quarters, disposable mutation proof, manual
+assistive-technology review, and unchanged ASP.NET operation remain open.
+
 ## 2026-07-13 Laravel Runtime Classification Checkpoint
 
 The first quarter of the exhaustive Laravel runtime smoke exposed three
