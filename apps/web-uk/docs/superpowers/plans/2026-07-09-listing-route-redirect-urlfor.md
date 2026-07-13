@@ -4,7 +4,7 @@
 
 **Goal:** Convert remaining legacy listing route redirects to the active Web UK tenant/custom-domain URL helper.
 
-**Architecture:** Laravel serves shared-host accessible routes under `/{tenantSlug}/alpha` and strips that prefix on accessible custom domains. Web UK intentionally exposes `/{tenantSlug}/accessible` on shared hosts and uses `res.locals.urlFor()` as the route-local equivalent for tenant mounts, parent-domain child paths, and slugless custom-domain hosts.
+**Architecture:** Laravel and Web UK serve canonical shared-host accessible routes under `/{tenantSlug}/accessible` and strip that prefix on accessible custom domains. Legacy `/{tenantSlug}/alpha` requests are redirect compatibility only and must never be emitted as public links. Web UK uses `res.locals.urlFor()` as the route-local equivalent for tenant mounts, parent-domain child paths, and slugless custom-domain hosts.
 
 **Tech Stack:** Express 4, Jest, Supertest, Nunjucks, GOV.UK Frontend.
 
