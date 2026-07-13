@@ -511,13 +511,12 @@ router.get('/', requireAuth, asyncRoute(async (req, res) => {
   const type = allowed(req.query.type, SIMPLE_SEARCH_TYPES, 'all');
 
   // If no query, show empty search page
-  if (!query || query.length < 2) {
+  if (!query) {
     return res.render('search/index', {
       title: res.locals.t('search.title'),
       query: '',
       type: 'all',
-      results: null,
-      errorMessage: query && query.length < 2 ? res.locals.t('search.no_query') : null
+      results: null
     });
   }
 

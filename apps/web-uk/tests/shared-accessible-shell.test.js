@@ -9835,6 +9835,28 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('href="/listings">Browse listings</a>');
   });
 
+  it('submits and preserves a one-character search like Laravel Blade', async () => {
+    const api = require('../src/lib/api');
+    api.searchV2.mockResolvedValueOnce({
+      data: [],
+      meta: { search: { query: 'x', total: 0, type: 'all' } }
+    });
+
+    const response = await request(app)
+      .get('/search?q=x')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.searchV2).toHaveBeenCalledWith('test-token', {
+      q: 'x',
+      type: 'all',
+      per_page: 30
+    });
+    expect(response.text).toContain('name="q" type="search" value="x"');
+    expect(response.text).toContain('No results found. Try a different search.');
+    expect(response.text).not.toContain('Enter a search term to find listings, members, events and groups.');
+  });
+
   it('matches Blade empty results when the simple search service fails', async () => {
     const api = require('../src/lib/api');
     api.searchV2.mockRejectedValueOnce(new api.ApiError('Search unavailable', 503));
