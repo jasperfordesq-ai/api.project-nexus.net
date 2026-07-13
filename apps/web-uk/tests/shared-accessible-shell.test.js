@@ -21094,6 +21094,61 @@ describe('shared accessible frontend shell', () => {
     expect(mounted.text).toContain('method="post" action="/acme/accessible/events/7/translate"');
   });
 
+  it('renders a successful event translation once after the no-JavaScript redirect', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const cookie = signedCookieHeader();
+    const csrf = await csrfTokenFor(agent, '/contact', cookie);
+
+    const posted = await agent
+      .post('/events/7/translate')
+      .set('Cookie', cookie)
+      .type('form')
+      .send({
+        _csrf: csrf,
+        source_text: 'Hello neighbours',
+        source_locale: 'en',
+        target_locale: 'ga'
+      });
+
+    expect(posted.status).toBe(302);
+    expect(posted.headers.location).toBe('/events/7/translate?status=translate-done');
+
+    api.callEventApi.mockResolvedValueOnce({
+      data: { id: 7, title: 'Repair cafe planning', description: 'Hello neighbours' }
+    });
+    const translated = await agent
+      .get(posted.headers.location)
+      .set('Cookie', cookie);
+
+    expect(translated.status).toBe(200);
+    expect(translated.text).toContain('Translated description');
+    expect(translated.text).toContain('Dia duit');
+    expect(translated.text).toContain('This translation was produced automatically.');
+    expect(translated.text).toContain('<option value="ga" selected>Gaeilge</option>');
+
+    api.callEventApi.mockResolvedValueOnce({
+      data: { id: 7, title: 'Repair cafe planning', description: 'Hello neighbours' }
+    });
+    const consumed = await agent
+      .get('/events/7/translate?status=translate-done')
+      .set('Cookie', cookie);
+
+    expect(consumed.status).toBe(200);
+    expect(consumed.text).not.toContain('Dia duit');
+    expect(consumed.text).not.toContain('Translated description');
+
+    api.callUgcTranslateApi.mockRejectedValueOnce(new api.ApiError('Translation unavailable', 503));
+    const failed = await agent
+      .post('/events/7/translate')
+      .set('Cookie', cookie)
+      .type('form')
+      .send({ _csrf: csrf, source_text: 'Hello neighbours', target_locale: 'ga' });
+
+    expect(failed.status).toBe(302);
+    expect(failed.headers.location).toBe('/events/7/translate?status=translate-failed');
+  });
+
   it('renders the Laravel recurring event edit page for signed-in organisers', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');

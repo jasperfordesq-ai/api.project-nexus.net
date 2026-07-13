@@ -458,16 +458,21 @@ router.get('/:id(\\d+)/translate', asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const event = eventFrom(await callApi(token, 'GET', `/${id}`));
   const sourceText = trimmed(event.description, 8000);
-  const targetLocale = trimmed(req.query.target_locale || req.query.locale) || '';
+  const translation = req.session && req.session.eventTranslation && req.session.eventTranslation.eventId === id
+    ? req.session.eventTranslation
+    : null;
+  if (translation && req.session) delete req.session.eventTranslation;
+  const targetLocale = trimmed(req.query.target_locale || translation?.targetLocale || req.query.locale) || '';
 
   res.render('events/translate', {
-    title: 'Translate event description',
+    title: res.locals.t('govuk_alpha_events.translate.title'),
     activeNav: 'events',
     event: {
       id,
-      title: trimmed(event.title) || 'Translate'
+      title: trimmed(event.title) || res.locals.t('govuk_alpha_events.translate.caption')
     },
     sourceText,
+    translated: translation?.text || null,
     languages: localeOptions.map(([code, name]) => ({ code, name, selected: code === targetLocale })),
     status: trimmed(req.query.status),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
@@ -634,7 +639,21 @@ router.post('/:id(\\d+)/translate', asyncRoute(async (req, res) => {
   }
 
   try {
-    await callUgcTranslateApi(token, payload);
+    const result = await callUgcTranslateApi(token, payload);
+    const translated = trimmed(result?.data?.translated_text || result?.translated_text, 10000);
+    if (translated === '') {
+      return redirectTo(res, eventPath(id, '/translate?status=translate-unavailable'));
+    }
+    if (translated === sourceText) {
+      return redirectTo(res, eventPath(id, '/translate?status=translate-same'));
+    }
+    if (req.session) {
+      req.session.eventTranslation = {
+        eventId: id,
+        text: translated,
+        targetLocale: payload.target_locale
+      };
+    }
     return redirectTo(res, eventPath(id, '/translate?status=translate-done'));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
