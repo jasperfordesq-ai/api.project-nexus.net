@@ -16321,7 +16321,11 @@ describe('shared accessible frontend shell', () => {
           is_remote: true,
           organization: { name: 'Community Club' },
           deadline: '2026-08-01',
-          is_saved: true
+          is_saved: true,
+          is_featured: true,
+          has_applied: true,
+          views_count: 1,
+          applications_count: 2
         }
       ],
       cursor: 'next-saved',
@@ -16336,6 +16340,7 @@ describe('shared accessible frontend shell', () => {
     expect(api.callJobApi).toHaveBeenCalledWith('test-token', 'GET', '/saved?per_page=12&cursor=abc');
     expect(response.status).toBe(200);
     expect(response.text).toContain('Saved opportunities');
+    expect(response.text).toContain('<span class="govuk-caption-xl">Project NEXUS Accessible</span>');
     expect(response.text).toContain('Opportunities you have bookmarked.');
     expect(response.text).toContain('Browse opportunities');
     expect(response.text).toContain('Saved');
@@ -16345,10 +16350,15 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Posted by Community Club');
     expect(response.text).toContain('Part time');
     expect(response.text).toContain('Remote');
+    expect(response.text).toContain('Featured');
+    expect(response.text).toContain('Applied');
+    expect(response.text).toContain('1 view');
+    expect(response.text).toContain('2 applications');
     expect(response.text).toContain('Remove from saved');
     expect(response.text).toContain('action="/jobs/501/unsave"');
     expect(response.text).toContain('name="from" value="saved"');
     expect(response.text).toContain('Load more');
+    expect(response.text).toContain('govuk-pagination__icon--next');
     expect(response.text).toContain('cursor=next-saved');
     expect(response.text).not.toContain('Laravel Blade route');
   });
@@ -16362,6 +16372,21 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe('/login?status=auth-required');
     expect(api.callJobApi).not.toHaveBeenCalled();
+  });
+
+  it('uses the Blade empty state when saved jobs cannot be loaded', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.callJobApi.mockRejectedValueOnce(new Error('temporary saved jobs failure'));
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/jobs/saved')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('You have not saved any opportunities yet.');
+    expect(response.text).not.toContain('Saved opportunities could not be loaded.');
   });
 
   it('renders the Laravel-backed jobs applications page with status filters and withdrawal actions', async () => {

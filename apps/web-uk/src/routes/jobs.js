@@ -691,7 +691,11 @@ function decorateJob(job) {
     title: trimmed(job.title, 255) || 'Jobs',
     description: trimmed(job.description, 20000),
     typeLabel: JOB_TYPE_LABELS[job.type] || JOB_TYPE_LABELS.volunteer,
+    typeTranslationKey: JOB_TYPES.includes(job.type) ? `jobs.type_${job.type}` : 'jobs.type_volunteer',
     commitmentLabel: JOB_COMMITMENT_LABELS[job.commitment] || '',
+    commitmentTranslationKey: JOB_COMMITMENTS.includes(job.commitment)
+      ? `jobs_t2.commitment_${job.commitment}`
+      : '',
     organizationName,
     posterName,
     locationLabel: checked(job.is_remote) ? 'Remote' : trimmed(job.location, 255),
@@ -1645,13 +1649,11 @@ router.get('/saved', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   const cursor = trimmed(req.query.cursor, 500);
   let result = null;
-  let loadError = false;
 
   try {
     result = await callJob(token, 'GET', savedJobsPath(cursor));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    loadError = true;
   }
 
   const jobs = collectionItems(result).map(decorateJob);
@@ -1666,7 +1668,6 @@ router.get('/saved', asyncRoute(async (req, res) => {
     nextHref: jobsMeta.has_more && jobsMeta.cursor ? savedJobsHref(jobsMeta.cursor) : '',
     status: req.query.status || '',
     successMessage: statusMessage(req, req.query.status),
-    loadError,
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }));
