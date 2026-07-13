@@ -16,6 +16,7 @@ const {
 const { withTokenRefresh } = require('../middleware/auth');
 const { asyncRoute } = require('../lib/routeHelpers');
 const { getRequestProfile } = require('../lib/request-profile');
+const { flagEnabled } = require('../lib/accessible-shell');
 
 const router = express.Router();
 const COMMENTABLE_FEED_TYPES = new Set([
@@ -554,6 +555,7 @@ router.get('/', asyncRoute(withTokenRefresh(async (req, res) => {
     post.isOwn = post.type === 'post' && currentUserId !== null && post.authorId === currentUserId;
   }
   const meta = collectionMeta(feedResult);
+  const tenant = req.accessibleRouting?.tenant || res.locals.tenant || {};
 
   res.render('feed/index', {
     title: 'Feed',
@@ -567,6 +569,7 @@ router.get('/', asyncRoute(withTokenRefresh(async (req, res) => {
     status: trimmed(req.query.status),
     perPage,
     requiresAuth: !token,
+    listingsEnabled: flagEnabled(tenant, 'listings', 'modules', true),
     communityName: res.locals.tenantName || res.locals.serviceName || 'this community',
     nextHref: feedNextHref(meta, perPage, selectedType, selectedMode, selectedSubtype),
     csrfToken: req.csrfToken ? req.csrfToken() : '',

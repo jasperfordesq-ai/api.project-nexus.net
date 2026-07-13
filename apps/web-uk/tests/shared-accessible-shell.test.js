@@ -13022,13 +13022,16 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
-  it('requires authentication before rendering the Laravel feed shell', async () => {
+  it('renders the public Laravel feed shell without calling the protected collection API', async () => {
     const api = require('../src/lib/api');
 
     const response = await request(app).get('/feed');
 
-    expect(response.status).toBe(302);
-    expect(response.headers.location).toBe('/login?status=auth-required');
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Sign in to use this page.');
+    expect(response.text).toContain('Sign in');
+    expect(response.text).toContain('Register');
+    expect(response.text).not.toContain('action="/feed/posts"');
     expect(api.getFeedPosts).not.toHaveBeenCalled();
   });
 
@@ -13328,7 +13331,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('action="/feed/comments/13/update"');
   });
 
-  it('protects feed permalink documents before calling Laravel v2 payload APIs', async () => {
+  it('renders public feed permalink documents with an honest auth-unavailable state', async () => {
     const api = require('../src/lib/api');
     const { ApiError } = api;
     api.getFeedPostV2.mockRejectedValueOnce(new ApiError('Unauthenticated', 401, {}));
@@ -13338,11 +13341,12 @@ describe('shared accessible frontend shell', () => {
     const item = await request(app).get('/feed/item/listing/42');
 
     for (const response of [post, item]) {
-      expect(response.status).toBe(302);
-      expect(response.headers.location).toBe('/login?status=auth-required');
+      expect(response.status).toBe(200);
+      expect(response.text).toContain('href="/login"');
+      expect(response.text).toContain('Not available');
     }
-    expect(api.getFeedPostV2).not.toHaveBeenCalled();
-    expect(api.getFeedItemV2).not.toHaveBeenCalled();
+    expect(api.getFeedPostV2).toHaveBeenCalledWith('', 796);
+    expect(api.getFeedItemV2).toHaveBeenCalledWith('', 'listing', 42);
   });
 
   it('unwraps the Laravel v2 comments envelope on an authenticated feed permalink', async () => {
@@ -13546,6 +13550,9 @@ describe('shared accessible frontend shell', () => {
 
     expect(response.status).toBe(200);
     expect(response.text).toContain('Feed');
+    expect(response.text).toContain('This box shares an update with your community feed.');
+    expect(response.text).toContain('href="/listings/new"');
+    expect(response.text).not.toContain('href="#content"');
     expect(response.text).toContain('action="/feed/posts"');
     expect(response.text).toContain('href="/feed/posts/42"');
     expect(response.text).toContain('action="/feed/items/post/42/like"');
