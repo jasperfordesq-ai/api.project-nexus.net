@@ -57,7 +57,7 @@
       {# Rating summary if available #}
       {% if reviewSummary and reviewSummary.average_rating %}
         <p class="govuk-body-l govuk-!-margin-bottom-6">
-          <span class="app-star-display" aria-label="{{ reviewSummary.average_rating }} out of 5 stars">
+          <span class="app-star-display" role="img" aria-label="{{ reviewSummary.average_rating }} out of 5 stars">
             {% for i in [1, 2, 3, 4, 5] %}
               <svg class="app-star-display__star {% if i <= reviewSummary.average_rating %}app-star-display__star--filled{% endif %}" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
                 <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>

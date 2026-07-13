@@ -12,6 +12,7 @@ const {
   getUserBlockStatus,
   getUsers,
   login,
+  removeMemberConnection,
   unblockMember
 } = require('../../src/lib/api');
 
@@ -76,7 +77,7 @@ async function expectAccessibleReflow(page) {
   expect(results.violations.filter(({ impact }) => impact === 'serious' || impact === 'critical')).toEqual([]);
 }
 
-test('certifies a reversible member block and unblock lifecycle through Web UK', async ({ page }) => {
+test('certifies reversible connection and block lifecycles through Web UK', async ({ page }) => {
   const viewerAuth = await login(smoke.email, smoke.password, smoke.tenant);
   const viewerToken = viewerAuth.access_token;
   const viewer = objectFrom(await getProfile(viewerToken));
@@ -86,6 +87,7 @@ test('certifies a reversible member block and unblock lifecycle through Web UK',
   const targetName = String(target.name || target.display_name || `${target.first_name || ''} ${target.last_name || ''}`).trim();
   const initialBlock = objectFrom(await getUserBlockStatus(viewerToken, targetId));
   const connection = objectFrom(await getMemberConnectionStatus(viewerToken, targetId));
+  let connectionAdded = false;
   let blockAdded = false;
 
   expect(viewerToken).toBeTruthy();
@@ -101,6 +103,25 @@ test('certifies a reversible member block and unblock lifecycle through Web UK',
     await authenticate(page);
     await page.goto(`${mountPath}/members/${targetId}`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
     await expect(page.locator('h1')).toContainText(targetName);
+
+    const connectForm = page.locator(`form[action$="/members/${targetId}/connection"]`, { has: page.locator('input[value="connect"]') });
+    const connectResponse = await submit(page, `/members/${targetId}/connection`, connectForm.locator('button'));
+    expect(connectResponse.status()).toBe(302);
+    connectionAdded = true;
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    await expect(page.getByText('Your connection request has been sent.', { exact: true })).toHaveCount(1);
+    expect(objectFrom(await getMemberConnectionStatus(viewerToken, targetId)).status).toBe('pending_sent');
+    await expectAccessibleReflow(page);
+
+    const cancelForm = page.locator(`form[action$="/members/${targetId}/connection"]`, { has: page.locator('input[value="cancel"]') });
+    const cancelResponse = await submit(page, `/members/${targetId}/connection`, cancelForm.locator('button'));
+    expect(cancelResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    await expect(page.getByText('Your connection request has been cancelled.', { exact: true })).toHaveCount(1);
+    expect(objectFrom(await getMemberConnectionStatus(viewerToken, targetId)).status).toBe('none');
+    connectionAdded = false;
+    await expectAccessibleReflow(page);
+
     const blockDetails = page.locator('details', { hasText: 'Block this member' });
     await blockDetails.locator('summary').click();
     await expect(blockDetails).toContainText('Blocking stops this member from seeing your profile or contacting you.');
@@ -126,5 +147,12 @@ test('certifies a reversible member block and unblock lifecycle through Web UK',
     await expectAccessibleReflow(page);
   } finally {
     if (blockAdded) await unblockMember(viewerToken, targetId);
+    if (connectionAdded) {
+      const current = objectFrom(await getMemberConnectionStatus(viewerToken, targetId));
+      const connectionId = Number(current.id || current.connection_id);
+      if (connectionId > 0) {
+        await removeMemberConnection(viewerToken, connectionId);
+      }
+    }
   }
 });

@@ -9,6 +9,22 @@ function nunjucksFilesUnder(directory) {
   });
 }
 
+describe('read-only star rating accessibility', () => {
+  it('gives labelled star graphics an image role', () => {
+    for (const templatePath of [
+      path.join('members', 'profile.njk'),
+      path.join('listings', 'detail.njk')
+    ]) {
+      const template = fs.readFileSync(
+        path.join(__dirname, '..', 'src', 'views', templatePath),
+        'utf8'
+      );
+      expect(template).not.toMatch(/class="app-star-display" aria-label=/);
+      expect(template).toMatch(/class="app-star-display" role="img" aria-label=/);
+    }
+  });
+});
+
 describe('tenant-aware template helper conversion', () => {
   it('keeps event detail local links and forms behind urlFor()', () => {
     const template = fs.readFileSync(
