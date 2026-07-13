@@ -9,7 +9,7 @@
   <li id="comment-{{ comment.id }}" class="nexus-alpha-module-row">
     <p class="govuk-body govuk-!-margin-bottom-1">{{ comment.content }}</p>
     <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-2">
-      {{ comment.user.name }}{% if comment.createdAt %} - {{ t("activity.posted_on_prefix") }} {{ comment.createdAt | formatDate }}{% endif %}
+      {{ comment.user.name }}{% if comment.createdAt %} - {{ t("feed.posted_on_prefix") }} {{ comment.createdAt | formatDate }}{% endif %}
     </p>
     {% if comment.replies.length %}
       <ul class="govuk-list govuk-!-margin-left-4">

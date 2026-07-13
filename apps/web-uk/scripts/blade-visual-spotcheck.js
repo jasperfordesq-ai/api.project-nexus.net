@@ -16,7 +16,7 @@ function sharedTenantCheck(name, path, markers) {
   const normalizedPath = String(path || '/');
   return {
     name,
-    laravel: { path: `/${DEFAULT_TENANT_SLUG}/alpha${normalizedPath}` },
+    laravel: { path: `/${DEFAULT_TENANT_SLUG}/accessible${normalizedPath}` },
     web: { path: `/${DEFAULT_TENANT_SLUG}/accessible${normalizedPath}` },
     markers,
     webForbiddenHtml: [`/${DEFAULT_TENANT_SLUG}/alpha`]
@@ -26,7 +26,7 @@ function sharedTenantCheck(name, path, markers) {
 const DEFAULT_VISUAL_SPOTCHECKS = [
   {
     name: 'tenant-home-hour-timebank',
-    laravel: { path: '/hour-timebank/alpha' },
+    laravel: { path: '/hour-timebank/accessible' },
     web: { path: '/hour-timebank/accessible' },
     markers: [
       'Hour Timebank',

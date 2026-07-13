@@ -51,8 +51,9 @@ commit as the implementation it describes.
 
 ## Audited Baseline
 
-The audit was based on ASP.NET-repo commit `db492e01` and Laravel-repo commit
-`c2cf4fa`. Refresh both SHAs before relying on the numbers below.
+The audit was refreshed from ASP.NET-repo commit `5870ed54` plus the scoped
+worktree slice recorded below, and Laravel-repo commit `c2cf4fa`. Refresh both
+repositories before relying on these numbers after either source moves.
 
 | Measure | Audited result | Meaning |
 |---|---:|---|
@@ -62,57 +63,52 @@ The audit was based on ASP.NET-repo commit `db492e01` and Laravel-repo commit
 | Missing Laravel routes | 6 | All are Event workflows |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 46/46 suites, 1,567/1,567 tests | Fresh green code gate |
-| Locale catalog shape | 11 locales, 27 namespaces, 8,014 keys | Structural parity only |
+| Jest | 47/47 suites, 1,568/1,568 tests | Fresh green code gate |
+| Locale catalog shape | 11 locales, 35 namespaces, 8,663 keys | Structural parity plus static-key resolution gate |
 | Blade marker check | 19/19 | Text-marker spotcheck, not visual certification |
 | Automated accessibility | Latest recorded 87/87 | Manual AT review remains open |
 
-The committed generated route matrix predates four explicit 404 tombstones and
-still reports 684 Web UK routes and one extra. Regenerate and classify those
-routes before treating the committed artifact as current.
+The generated route matrix was refreshed against the same route inventories
+and reports the counts above. It remains declaration evidence, not runtime or
+workflow certification.
 
-## P0: Localization Is Not Green
+## Localization P0 Closed In Current Slice
 
-The structural locale audits pass, but recently ported Event templates can
-render raw translation keys.
+The previously identified raw-key risk is fixed and guarded. The generator now
+imports every Laravel `event_*.php` catalog alongside `govuk_alpha*.php`, and
+the runtime resolves namespaces from the generated catalog rather than a fixed
+allowlist.
 
-The current generator imports `govuk_alpha*.php` plus only
-`event_agenda.php`, `event_offline_checkin.php`, and `event_safety.php`. Laravel
-also has accessible Event catalogs for accessibility, analytics, calendar,
-lifecycle history, recurrence blueprints, registration, templates, and
-tickets. The runtime resolver also hard-codes the smaller namespace set.
+Event analytics, communications, calendar, recurrence, registration, and
+template references now use the current Laravel Blade keys. The complete-static
+key gate scans Web UK source and fails when a literal `t()` or `tc()` reference
+does not resolve in the English generated catalog.
 
-A read-only complete-literal scan found:
+A fresh proof run records:
 
-- 284 unresolved `t()`/`tc()` call sites;
-- 267 unique unresolved keys;
-- 19 affected templates;
-- visible risk across registration, recurrence blueprints, communications,
-  tickets, lifecycle history, calendar subscriptions, analytics, and templates.
+- 11 locales, 35 namespaces, and 8,663 keys per locale;
+- zero missing or extra keys in every locale;
+- 6,356 complete static references and 4,811 unique referenced keys;
+- zero unresolved complete static references;
+- 315 templates and zero conservative hard-coded-copy matches;
+- an English and Irish Event-template library render with no raw key leakage;
+- focused 21/21 tests and full 47/47-suite, 1,568/1,568-test proof;
+- green brand, lint, CSS, and `git diff --check` gates.
 
-`event_registration.title`, `event_tickets.title`,
-`event_lifecycle_history.title`, and `event_templates.title` currently resolve
-to their raw key text. Analytics and communications also use incorrect
-`govuk_alpha_events...` prefixes where Laravel uses keys in the core
-`govuk_alpha` namespace.
+The live Blade marker comparator also uses the canonical
+`/{tenantSlug}/accessible` Laravel mount and passed 19/19. `/alpha` remains a
+legacy redirect-compatibility route and must not be used as the comparison
+source.
 
 The existing `locales:audit-templates` command looks for conservative
 hard-coded English matches; it does not prove that referenced keys resolve.
+The new `locales:audit-keys` command supplies that separate proof. Dynamic keys
+still require focused route rendering because no static scanner can prove
+runtime values.
 
-### Required first slice
-
-1. Import every Laravel locale namespace referenced by accessible views.
-2. Resolve namespaces from the generated catalog rather than a fixed regex.
-3. Correct Event analytics and communications key prefixes against Blade.
-4. Add a read-only unresolved-key audit for every complete static `t()`/`tc()`
-   reference, with focused handling for dynamic keys.
-5. Prove representative English and non-English Event pages render translated
-   copy, not key names.
-6. Run `locales:sync`, both locale audits, focused tests, the full Jest gate,
-   lint, brand check, and `git diff --check -- apps/web-uk`.
-
-Do not claim localization parity merely because all generated locale files have
-the same key shape.
+Do not claim complete localization parity merely from this gate: backend-authored
+copy, dynamic-key families, English-identical source values, contextual quality,
+and manual language review remain separate evidence boundaries.
 
 ## Six Missing Route Contracts
 
@@ -147,7 +143,7 @@ success, unsafe orchestration, or a generic preparation page.
 
 ## Remaining Certification Work
 
-After localization and the six route contracts:
+After the localization P0, the remaining priority order is:
 
 1. Repair the local Laravel schema drift around
    `visible_events.publication_status`, then rerun the complete exhaustive
@@ -183,7 +179,9 @@ npm --prefix apps/web-uk run lint
 npm --prefix apps/web-uk test -- --runInBand
 npm --prefix apps/web-uk run build:css
 npm --prefix apps/web-uk run route:matrix
+npm --prefix apps/web-uk run locales:sync
 npm --prefix apps/web-uk run locales:audit
+npm --prefix apps/web-uk run locales:audit-keys
 npm --prefix apps/web-uk run locales:audit-templates -- --summary
 npm --prefix apps/web-uk run test:accessibility
 npm --prefix apps/web-uk run visual:blade

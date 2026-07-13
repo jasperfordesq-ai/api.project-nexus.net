@@ -51,9 +51,14 @@ function valueAtPath(source, key) {
 function valueInCatalog(catalog, key) {
   if (!catalog || typeof key !== 'string' || !key) return undefined;
 
-  const explicitNamespace = key.match(/^(govuk_alpha(?:_[a-z]+)?|event_agenda|event_offline_checkin|event_safety)\.(.+)$/);
-  const namespace = explicitNamespace ? explicitNamespace[1] : 'govuk_alpha';
-  const translationKey = explicitNamespace ? explicitNamespace[2] : key;
+  const separator = key.indexOf('.');
+  const candidateNamespace = separator > 0 ? key.slice(0, separator) : '';
+  const hasExplicitNamespace = Object.prototype.hasOwnProperty.call(
+    catalog.namespaces || {},
+    candidateNamespace
+  );
+  const namespace = hasExplicitNamespace ? candidateNamespace : 'govuk_alpha';
+  const translationKey = hasExplicitNamespace ? key.slice(separator + 1) : key;
   return valueAtPath(catalog.namespaces?.[namespace], translationKey);
 }
 

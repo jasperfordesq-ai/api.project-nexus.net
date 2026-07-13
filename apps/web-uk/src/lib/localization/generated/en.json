@@ -2,9 +2,57 @@
     "_meta": {
         "schema": 1,
         "locale": "en",
-        "source": "lang/en/{govuk_alpha*,event_agenda,event_offline_checkin,event_safety}.php"
+        "source": "lang/en/{govuk_alpha*,event_*}.php"
     },
     "namespaces": {
+        "event_accessibility": {
+            "form": {
+                "title": "Venue accessibility",
+                "hint": "Record what is available at the venue. Choose “Not known” when the organiser has not verified a feature; this is different from “No”.",
+                "parking_details": "Parking and arrival details",
+                "parking_details_hint": "Describe accessible bays, drop-off points and the route to the entrance.",
+                "transit_details": "Public transport details",
+                "transit_details_hint": "Describe nearby stops, stations and any barriers on the route.",
+                "assistance_contact": "Accessibility assistance contact",
+                "assistance_contact_hint": "Give a public contact method for access questions. Do not enter private attendee information.",
+                "notes": "Additional access information",
+                "notes_hint": "Include entrance, lift, surface, lighting, sensory or other useful venue information.",
+                "privacy_note": "This information is shown to event members. Private accommodation requests belong in the registration form, not here."
+            },
+            "features": {
+                "step_free_access": "Step-free access",
+                "accessible_toilet": "Accessible toilet",
+                "hearing_loop": "Hearing loop",
+                "quiet_space": "Quiet space",
+                "seating_available": "Seating available",
+                "accessible_parking": "Accessible parking"
+            },
+            "status": {
+                "yes": "Yes",
+                "no": "No",
+                "unknown": "Not known"
+            },
+            "filters": {
+                "step_free_label": "Step-free venue access",
+                "step_free_hint": "Filter by the venue information confirmed by the organiser.",
+                "step_free_options": {
+                    "any": "Any venue",
+                    "yes": "Step-free access confirmed",
+                    "no": "Not step-free",
+                    "unknown": "Step-free access not known"
+                },
+                "step_free_active": "Step-free access: :value"
+            },
+            "detail": {
+                "title": "Venue accessibility",
+                "intro": "Access information supplied by the event organiser. Contact the organiser if you need to confirm an arrangement.",
+                "features_label": "Venue accessibility features",
+                "parking_details": "Parking and arrival",
+                "transit_details": "Public transport",
+                "assistance_contact": "Accessibility assistance",
+                "notes": "Additional access information"
+            }
+        },
         "event_agenda": {
             "withdraw_confirmation": "I understand that my place in :title will be released and may be taken by someone else.",
             "capacity_label": "Session capacity",
@@ -38,6 +86,71 @@
             "full_state": "This session is full.",
             "session_full_error": "This session has no places left.",
             "eligibility_error": "Confirm your event registration before registering for a session."
+        },
+        "event_analytics": {
+            "csv": {
+                "metric": "Metric",
+                "value": "Value",
+                "suppressed": "Suppressed"
+            }
+        },
+        "event_calendar": {
+            "description": "View event details: :url",
+            "description_without_url": "View this event in Project NEXUS.",
+            "tenant_feed_name": ":tenant events",
+            "personal_feed_name": "My registered events",
+            "label_invalid": "The calendar label must be 100 characters or fewer.",
+            "token_limit": "Revoke an existing calendar subscription before creating another.",
+            "token_not_found": "That calendar subscription was not found or is already revoked.",
+            "range_invalid": "Choose a valid calendar date range within the allowed limit.",
+            "feed_not_found": "This calendar subscription is unavailable or has been revoked."
+        },
+        "event_lifecycle_history": {
+            "title": "Lifecycle history",
+            "description": "An immutable record of publication and operational changes for this event.",
+            "link": "Lifecycle history",
+            "back_to_event": "Back to event",
+            "immutable_explanation": "This audit history is append-only. Existing entries cannot be changed or deleted.",
+            "empty_title": "No lifecycle changes yet",
+            "empty_description": "Changes will appear here after the event lifecycle is updated.",
+            "list_label": "Event lifecycle changes",
+            "version": "Version :version",
+            "immutable": "Immutable",
+            "recorded_at": "Recorded at",
+            "timestamp_unknown": "Time not recorded",
+            "publication_label": "Publication",
+            "operational_label": "Operational status",
+            "transition": ":from to :to",
+            "actor_label": "Changed by",
+            "unknown_actor": "Member :id",
+            "reason_label": "Reason",
+            "evidence_title": "Operational evidence",
+            "notifications_suppressed": "Duplicate notifications were suppressed for this series change.",
+            "load_more": "View older history",
+            "pagination_label": "Lifecycle history pages",
+            "states": {
+                "publication": {
+                    "draft": "Draft",
+                    "pending_review": "Pending review",
+                    "published": "Published",
+                    "archived": "Archived"
+                },
+                "operational": {
+                    "scheduled": "Scheduled",
+                    "postponed": "Postponed",
+                    "cancelled": "Cancelled",
+                    "completed": "Completed"
+                }
+            },
+            "cascade": {
+                "reminders_cancelled": "Reminder schedules cancelled: :count",
+                "waitlist_cancelled": "Waitlist entries cancelled: :count",
+                "registrations_cancelled": "Registrations cancelled: :count"
+            },
+            "series": {
+                "template": "Recurring template :id",
+                "occurrence": "Occurrence of recurring template :id"
+            }
         },
         "event_offline_checkin": {
             "privacy": {
@@ -97,6 +210,524 @@
             },
             "device": {
                 "lost": "If a staff device is lost, revoke it immediately in the standard events workspace. Continue here with manual name or signed-code check-in."
+            }
+        },
+        "event_recurrence_blueprints": {
+            "tab": "Future setup",
+            "title": "Future occurrence setup",
+            "description": "Choose which event definitions should be applied when new occurrences are created.",
+            "definition_only_title": "Definitions only",
+            "definition_only_description": "This never copies attendees, registrations, attendance, payments, reminders, analytics or delivery history, and it never changes existing occurrences.",
+            "effective_from_label": "Effective from recurrence identity",
+            "effective_from_help": "This stable identity belongs to the selected occurrence. It is not recalculated from a changed start time.",
+            "sections_title": "Definitions to carry forward",
+            "sections_description": "Every section is explicit. Staff assignments are never selected automatically.",
+            "sections": {
+                "agenda": {
+                    "label": "Agenda",
+                    "description": "Scheduled sessions, speakers and protected resource definitions."
+                },
+                "ticket_types": {
+                    "label": "Ticket types",
+                    "description": "Free or draft ticket-type definitions and their sales windows."
+                },
+                "registration": {
+                    "label": "Registration",
+                    "description": "Registration settings and the currently published form."
+                },
+                "safety": {
+                    "label": "Safety requirements",
+                    "description": "The currently published safety and eligibility requirements."
+                },
+                "staff": {
+                    "label": "Staff assignments",
+                    "description": "High-risk opt-in: carry active staff roles into future new occurrences."
+                }
+            },
+            "section_not_permitted": "Your event role cannot carry this section forward.",
+            "no_sections_title": "Select at least one section",
+            "no_sections_description": "A preview is required before any future setup can be saved.",
+            "preview_button": "Preview future setup",
+            "previewing": "Preparing preview",
+            "preview_title": "Definition preview",
+            "preview_description": "Review the bounded counts and conflicts before opening the confirmation step.",
+            "preview_expires": "Preview expires :date",
+            "review_button": "Review and confirm",
+            "refresh_preview": "Refresh preview",
+            "conflicts_title": "Resolve these conflicts first",
+            "conflicts": {
+                "definition_limit_exceeded": ":section exceeds the safe definition limit (:count found).",
+                "speaker_limit_exceeded": "The agenda exceeds the safe speaker limit (:count found).",
+                "invalid_speaker_reference": "The agenda contains :count invalid speaker reference.",
+                "resource_limit_exceeded": "The agenda exceeds the safe resource limit (:count found).",
+                "unsupported_active_time_credit_ticket": ":count active time-credit ticket type cannot be carried forward.",
+                "published_form_missing": "The published registration form could not be verified.",
+                "question_limit_exceeded": "The published form exceeds the safe question limit (:count found).",
+                "published_requirement_version_missing": "The published safety requirement version could not be verified.",
+                "invalid_staff_reference": ":count staff assignment refers to an unavailable member.",
+                "nonportable_staff_expiry": ":count staff assignment expires before the future occurrence and cannot be carried forward."
+            },
+            "counts": {
+                "none": "No definitions were found in the selected sections.",
+                "sessions": "Sessions",
+                "speakers": "Speakers",
+                "resources": "Resources",
+                "ticket_types": "Ticket types",
+                "registration_settings": "Registration settings",
+                "published_forms": "Published forms",
+                "form_questions": "Form questions",
+                "safety_requirements": "Safety requirements",
+                "staff_assignments": "Staff assignments"
+            },
+            "errors": {
+                "preview_error": {
+                    "title": "Preview could not be prepared",
+                    "description": "Check the selected definitions and try again."
+                },
+                "preview_expired": {
+                    "title": "Preview expired",
+                    "description": "Refresh the preview before confirming. Nothing has been saved."
+                },
+                "preview_stale": {
+                    "title": "Definitions changed after preview",
+                    "description": "Prepare a new preview so the confirmation reflects the latest definitions."
+                },
+                "commit_conflict": {
+                    "title": "Future setup was not saved",
+                    "description": "Another version or a conflicting request was saved first. Refresh the preview and review it again."
+                },
+                "commit_error": {
+                    "title": "Future setup could not be saved",
+                    "description": "Your stable retry key has been kept. Try confirming again, or refresh the preview if it has expired."
+                }
+            },
+            "success_created_title": "Future setup saved",
+            "success_created_description": "Immutable definition version :version will apply only to newly created future occurrences.",
+            "success_replay_title": "Future setup was already saved",
+            "success_replay_description": "Version :version matches this retry. No duplicate version was created.",
+            "history_title": "Immutable version history",
+            "history_description": "Each saved definition version is retained with bounded counts and its effective recurrence identity.",
+            "history_loading": "Loading future setup history",
+            "history_error_title": "History could not be loaded",
+            "history_error_description": "Try again to retrieve the immutable versions.",
+            "history_empty_title": "No future setup versions yet",
+            "history_empty_description": "A version will appear here after a preview is confirmed.",
+            "history_list_label": "Future occurrence setup versions",
+            "history_version": "Version :version",
+            "history_sections": "Included definitions",
+            "immutable": "Immutable",
+            "history_load_more": "Load more versions",
+            "history_loading_more": "Loading more versions",
+            "load_more_error_title": "More versions could not be loaded",
+            "load_more_error_description": "Try loading the next page again.",
+            "retry": "Try again",
+            "time_unknown": "Time not recorded",
+            "confirm_title": "Confirm future occurrence setup",
+            "confirm_scope_title": "New occurrences only",
+            "confirm_scope_description": "This version takes effect from the displayed recurrence identity. Existing occurrences and participant records are not changed.",
+            "staff_risk_title": "Staff propagation is selected",
+            "staff_risk_description": "Active staff roles may grant operational access on every newly created occurrence. Review this opt-in carefully.",
+            "confirm_ack": "I confirm this future-only definition version",
+            "confirm_ack_description": "I reviewed the selected sections, counts, conflicts and effective recurrence identity.",
+            "cancel": "Cancel",
+            "commit_button": "Save immutable version",
+            "committing": "Saving version"
+        },
+        "event_registration": {
+            "title": "Registration, invitations and guests",
+            "description": "Design versioned registration forms, review submissions, invite audiences, manage guests and apply privacy retention controls.",
+            "common": {
+                "cancel": "Cancel",
+                "close": "Close",
+                "loading": "Loading registration workspace",
+                "not_recorded": "Not recorded",
+                "refresh": "Refresh",
+                "retry": "Try again",
+                "save": "Save",
+                "previous": "Previous",
+                "next": "Next"
+            },
+            "load_error": {
+                "title": "Registration workspace could not be loaded",
+                "description": "Check your connection and permissions, then try again."
+            },
+            "privacy": {
+                "title": "Privacy controls are enforced",
+                "description": "Answer access is purpose-recorded and audited. Sensitive answers are excluded unless you explicitly request them and have permission."
+            },
+            "tabs": {
+                "aria": "Registration management sections",
+                "forms": "Forms",
+                "submissions": "Submissions",
+                "invitations": "Invitations",
+                "guests": "Guests",
+                "retention": "Retention"
+            },
+            "settings": {
+                "title": "Registration policy",
+                "description": "Configure approval, registration windows, cancellation timing, member limits, guests and privacy retention before building the form.",
+                "not_created": "Not configured",
+                "revision": "Revision {{revision}}",
+                "approval_mode": "Approval workflow",
+                "approval_modes": {
+                    "auto": "Confirm automatically",
+                    "manual": "Require organiser approval"
+                },
+                "opens_at": "Registration opens",
+                "closes_at": "Registration closes",
+                "window_hint": "Leave both registration dates blank for no time window.",
+                "cancellation_cutoff": "Cancellation cutoff",
+                "per_member_limit": "Registrations per member",
+                "guests_enabled": "Allow guests",
+                "max_guests": "Maximum guests per registration",
+                "guest_retention": "Guest data retention in days",
+                "save": "Save policy",
+                "publish": "Publish policy"
+            },
+            "forms": {
+                "title": "Registration forms",
+                "new": "New form",
+                "empty": "No registration forms have been created.",
+                "not_published": "No form is currently published.",
+                "published_version": "Published version {{version}}",
+                "version": "Version {{version}}",
+                "no_description": "No description",
+                "question_count": "{{count}} question",
+                "question_count_other": "{{count}} questions",
+                "published_at": "Published {{date}}",
+                "edit": "Edit draft",
+                "publish": "Publish",
+                "create_revision": "Create new version",
+                "settings_missing_title": "Registration settings are not ready",
+                "settings_missing_description": "Save the event registration settings before creating a form.",
+                "editor": {
+                    "create_title": "Create registration form",
+                    "edit_title": "Edit registration form draft",
+                    "name": "Form name",
+                    "description": "Description",
+                    "rules_title": "Versioned and privacy-aware",
+                    "rules_description": "Published versions are immutable. Each question records its purpose, classification, retention period and any conditional display rule.",
+                    "question": "Question {{number}}",
+                    "move_up": "Move question up",
+                    "move_down": "Move question down",
+                    "remove": "Remove question",
+                    "type": "Question type",
+                    "classification": "Data classification",
+                    "prompt": "Question prompt",
+                    "help_text": "Help text",
+                    "purpose": "Purpose for collecting this answer",
+                    "retention_days": "Retention period in days",
+                    "required": "Answer required",
+                    "choices": "Answer choices",
+                    "choices_description": "Enter one choice per line. At least two are required.",
+                    "min_length": "Minimum length",
+                    "max_length": "Maximum length",
+                    "displayed_text": "Consent or waiver text shown to attendees",
+                    "displayed_version": "Consent text version",
+                    "conditional": "Show this question conditionally",
+                    "condition_question": "Earlier question",
+                    "condition_operator": "Condition",
+                    "condition_value": "Expected value",
+                    "add_question": "Add question"
+                }
+            },
+            "question_types": {
+                "short_text": "Short text",
+                "long_text": "Long text",
+                "single_choice": "Single choice",
+                "multiple_choice": "Multiple choice",
+                "dietary": "Dietary requirements",
+                "accessibility": "Accessibility requirements",
+                "consent": "Consent",
+                "waiver": "Waiver"
+            },
+            "classifications": {
+                "public": "Public",
+                "internal": "Internal",
+                "confidential": "Confidential",
+                "sensitive": "Sensitive"
+            },
+            "operators": {
+                "equals": "Equals",
+                "not_equals": "Does not equal",
+                "contains": "Contains",
+                "not_contains": "Does not contain"
+            },
+            "submissions": {
+                "title": "Registration submissions",
+                "description": "Review effective and superseded attempts without exposing answers in the roster.",
+                "empty": "No submissions have been received.",
+                "export": "Export CSV",
+                "member_hidden": "Member identity restricted",
+                "effective": "Effective",
+                "superseded": "Superseded",
+                "attempt": "Attempt {{attempt}}",
+                "review": "Review answers",
+                "review_title": "Review submitted answers",
+                "audit_title": "This access will be audited",
+                "audit_description": "Record a specific operational purpose and correlation reference before opening answers.",
+                "purpose": "Reason for accessing these answers",
+                "correlation": "Case or correlation reference",
+                "include_sensitive": "Include sensitive answers",
+                "open_answers": "Open answers",
+                "purged": "Purged under the retention policy",
+                "export_title": "Export registration answers",
+                "export_description": "The export is limited, formula-safe and recorded in the immutable answer-access audit.",
+                "download_csv": "Download CSV",
+                "amend": "Amend answers",
+                "save_draft": "Save draft"
+            },
+            "invitations": {
+                "builder_title": "Invitation campaign",
+                "builder_description": "Preview and freeze the recipient snapshot before scheduling or sending.",
+                "type_label": "Audience source",
+                "locale_label": "Fallback language",
+                "preview": "Preview recipients",
+                "preview_title": "Recipient preview",
+                "snapshot_notice": "This exact valid-recipient snapshot will be used at send time, even if group membership later changes.",
+                "valid_count": "{{count}} valid recipient",
+                "valid_count_other": "{{count}} valid recipients",
+                "previewed": "Rows previewed",
+                "valid": "Valid",
+                "errors": "Errors",
+                "row_error": "Row {{row}}: {{code}}",
+                "expires_at": "Invitation expires",
+                "scheduled_for": "Send at",
+                "send_now": "Send now",
+                "schedule": "Schedule",
+                "history_title": "Campaign history and delivery evidence",
+                "empty": "No invitation campaigns have been created.",
+                "delivery_summary": "{{invitations}} invitations · {{delivered}} delivered · {{failed}} failed",
+                "cancel": "Cancel campaign",
+                "cancel_title": "Cancel invitation campaign",
+                "cancel_reason": "Cancellation reason",
+                "confirm_cancel": "Cancel campaign",
+                "types": {
+                    "member": "Selected members",
+                    "email": "Email addresses",
+                    "group": "Group members",
+                    "audience": "Audience segment",
+                    "csv": "CSV upload"
+                },
+                "sources": {
+                    "member": {
+                        "label": "Member IDs",
+                        "description": "Enter member IDs separated by commas, spaces or new lines."
+                    },
+                    "email": {
+                        "label": "Email addresses",
+                        "description": "Enter one or more addresses separated by commas or new lines."
+                    },
+                    "group": {
+                        "label": "Group ID",
+                        "description": "Enter the group whose current active members should be snapshotted."
+                    },
+                    "audience": {
+                        "label": "Optional member roles",
+                        "description": "Leave blank for all active members, or enter allow-listed roles separated by commas."
+                    },
+                    "csv": {
+                        "label": "CSV data",
+                        "description": "Paste CSV with an email column. Invalid and duplicate rows are reported before send."
+                    }
+                },
+                "error_codes": {
+                    "member_not_found": "member not found",
+                    "duplicate_target": "duplicate recipient",
+                    "email_invalid": "invalid email address",
+                    "csv_header_missing": "CSV header missing",
+                    "csv_email_column_missing": "email column missing"
+                }
+            },
+            "guests": {
+                "cancel_confirm_title": "Cancel this guest?",
+                "cancel_confirm_body": "The place held for :name will be released. This cannot be undone from this screen.",
+                "keep": "Keep guest",
+                "title": "Guest roster and attendance",
+                "description": "Guest identity and contact details are shown only when your event permissions allow them.",
+                "empty": "No guests have been captured.",
+                "name_hidden": "Guest name restricted",
+                "guest_number": "Guest {{number}}",
+                "ticket_linked": "Ticket entitlement linked",
+                "no_ticket": "No ticket entitlement linked",
+                "notifications_allowed": "Guest notifications consented",
+                "notifications_not_allowed": "Guest notifications not consented",
+                "check_in": "Check in",
+                "check_out": "Check out",
+                "no_show": "Mark no-show",
+                "undo": "Undo last change",
+                "cancel": "Cancel guest",
+                "cancel_reason": "Reason for cancelling this guest",
+                "cancel_reason_default": "Cancelled by the registration holder"
+            },
+            "attendance": {
+                "not_checked_in": "Not checked in",
+                "checked_in": "Checked in",
+                "checked_out": "Checked out",
+                "attended": "Attended",
+                "no_show": "No-show"
+            },
+            "people_export": {
+                "member_id": "Member ID",
+                "member_name": "Member name",
+                "engagement": "Engagement",
+                "registration": "Registration",
+                "registration_changed": "Registration changed",
+                "waitlist": "Waitlist",
+                "queue_position": "Queue position",
+                "queue_sequence": "Queue sequence",
+                "attendance": "Attendance",
+                "attendance_changed": "Attendance changed",
+                "checked_in": "Checked in",
+                "checked_out": "Checked out"
+            },
+            "retention": {
+                "confirm_apply": "I understand that applying this run permanently anonymises the eligible identity and answer data.",
+                "warning_title": "Anonymisation cannot be undone",
+                "warning_description": "Always review the dry run. Applying it removes expired answer and guest identity ciphertext while preserving consent and audit evidence.",
+                "title": "Privacy retention run",
+                "description": "Preview records due for anonymisation at a specific UTC date before applying the same frozen run.",
+                "as_of": "Preview as of",
+                "status": "Status",
+                "submissions": "Submissions",
+                "guests": "Guests",
+                "eligible": "Eligible records",
+                "affected": "Records anonymised",
+                "modes": {
+                    "dry_run": "Preview",
+                    "apply": "Applied"
+                },
+                "preview": "Run preview",
+                "apply": "Apply anonymisation"
+            },
+            "statuses": {
+                "draft": "Draft",
+                "published": "Published",
+                "submitted": "Submitted",
+                "withdrawn": "Withdrawn",
+                "anonymised": "Anonymised",
+                "previewed": "Previewed",
+                "scheduled": "Scheduled",
+                "issuing": "Issuing",
+                "issued": "Issued",
+                "cancelled": "Cancelled",
+                "applied": "Applied",
+                "accepted": "Accepted",
+                "revoked": "Revoked",
+                "expired": "Expired",
+                "captured": "Captured"
+            },
+            "locales": {
+                "ar": "Arabic",
+                "de": "German",
+                "en": "English",
+                "es": "Spanish",
+                "fr": "French",
+                "ga": "Irish",
+                "it": "Italian",
+                "ja": "Japanese",
+                "nl": "Dutch",
+                "pl": "Polish",
+                "pt": "Portuguese"
+            },
+            "messages": {
+                "form_saved": "Registration form saved.",
+                "form_save_error": "Registration form could not be saved.",
+                "form_published": "Registration form published.",
+                "form_publish_error": "Registration form could not be published.",
+                "form_forked": "A new editable form version was created.",
+                "form_fork_error": "A new form version could not be created.",
+                "review_error": "Answers could not be opened.",
+                "export_started": "Registration export prepared.",
+                "export_error": "Registration export could not be prepared.",
+                "preview_ready": "Recipient preview is ready.",
+                "preview_error": "Recipients could not be previewed.",
+                "campaign_issued": "Invitation campaign issued.",
+                "issue_error": "Invitation campaign could not be issued.",
+                "campaign_scheduled": "Invitation campaign scheduled.",
+                "schedule_error": "Invitation campaign could not be scheduled.",
+                "campaign_cancelled": "Invitation campaign cancelled.",
+                "cancel_error": "Invitation campaign could not be cancelled.",
+                "attendance_updated": "Guest attendance updated.",
+                "attendance_error": "Guest attendance could not be updated.",
+                "retention_preview_ready": "Retention preview is ready.",
+                "retention_preview_error": "Retention preview could not be created.",
+                "retention_applied": "Retention anonymisation applied.",
+                "retention_apply_error": "Retention anonymisation could not be applied.",
+                "invitation_accepted": "Invitation accepted.",
+                "invitation_accept_error": "Invitation could not be accepted.",
+                "answers_submitted": "Registration answers submitted.",
+                "draft_saved": "Registration draft saved.",
+                "amendment_started": "An editable amendment was created.",
+                "amendment_error": "An amendment could not be created.",
+                "guest_added": "Guest added.",
+                "guest_add_error": "Guest could not be added.",
+                "guest_cancelled": "Guest cancelled.",
+                "guest_cancel_error": "Guest could not be cancelled.",
+                "settings_saved": "Registration policy saved.",
+                "settings_save_error": "Registration policy could not be saved. Check the dates and limits.",
+                "settings_published": "Registration policy published.",
+                "settings_publish_error": "Registration policy could not be published."
+            },
+            "safety_requirements_not_met": "Safety requirements must be completed before this action can continue.",
+            "safety_unavailable": "Safety eligibility could not be checked right now. Please try again.",
+            "idempotency_required": "An idempotency key is required for this request.",
+            "idempotency_invalid": "The idempotency key is invalid.",
+            "idempotency_conflict": "This idempotency key was already used for a different request.",
+            "concrete_occurrence_required": "Select a specific event occurrence before continuing.",
+            "event_unavailable": "This event is not available for registration.",
+            "event_started": "Registration is closed because the event has already started.",
+            "capacity_full": "This event has reached capacity.",
+            "finite_capacity_required": "A finite event capacity is required to use the waitlist.",
+            "capacity_available": "Capacity is available, so registration can be confirmed directly.",
+            "already_confirmed": "This registration is already confirmed.",
+            "offer_acceptance_required": "Accept the active waitlist offer before confirming this registration.",
+            "transition_invalid": "This change is not valid for the current registration state.",
+            "waitlist_offer_inactive": "This waitlist offer is no longer active.",
+            "waitlist_offer_expired": "This waitlist offer has expired.",
+            "waitlist_offer_token_invalid": "The waitlist offer token is invalid.",
+            "timed_offers_disabled": "Timed waitlist offers are not enabled for this event.",
+            "people_query_invalid": "The event people query is invalid.",
+            "validation_failed": "Check the submitted registration details and try again.",
+            "reason_required": "A reason is required.",
+            "request_conflict": "This record changed while your request was being processed. Refresh and try again.",
+            "service_unavailable": "The event registration service is temporarily unavailable. Please try again.",
+            "server_error": "An unexpected error occurred while processing the event registration.",
+            "answers": {
+                "validation": {
+                    "required": "Answer this question.",
+                    "min_length": "Enter at least :limit characters.",
+                    "max_length": "Enter no more than :limit characters.",
+                    "min_selections": "Select at least :count option.|Select at least :count options.",
+                    "max_selections": "Select no more than :count option.|Select no more than :count options."
+                }
+            },
+            "accessible": {
+                "organizer_heading": "Organiser controls",
+                "attendee_heading": "Your registration",
+                "submit_answers": "Save and submit answers",
+                "your_invitations": "Your invitations",
+                "accept_invitation": "Accept invitation",
+                "add_guest": "Add a guest",
+                "guest_name": "Guest name",
+                "guest_email": "Guest email address (optional)",
+                "guest_phone": "Guest phone number (optional)",
+                "privacy_consent_label": "I confirm that I have the guest's permission to provide these details.",
+                "privacy_consent_text": "The guest agreed that their identity and contact details may be stored for event administration and removed after the stated retention period.",
+                "notification_consent_label": "The guest agrees to receive messages about this event.",
+                "notification_consent_text": "The guest agreed to receive necessary event updates at the email address provided.",
+                "ticket_entitlement": "Ticket entitlement ID (optional)",
+                "source_value": "Recipient source",
+                "source_hint": "Use the format described for the selected audience source.",
+                "schedule_or_send": "Schedule or send this frozen preview",
+                "expiry": "Invitation expiry date and time",
+                "review_submission": "Review submission {{id}}",
+                "retention_as_of_hint": "Choose a date after the event has ended.",
+                "form_slots_hint": "Complete the enabled question rows. Blank rows are ignored.",
+                "enabled": "Include this question",
+                "condition_key": "Earlier question key (optional)",
+                "success": "The registration action was completed.",
+                "validation_error": "Check the information you entered and try again."
             }
         },
         "event_safety": {
@@ -213,6 +844,172 @@
                 "confirm_withdraw_guardian": "I understand the current consent request will become invalid.",
                 "confirm_withdraw_review": "I confirm that I want to withdraw the active decision for :name."
             }
+        },
+        "event_templates": {
+            "title": "Event templates",
+            "capture_preview_title": "Review template capture",
+            "validation_error": "Check the template details and try again.",
+            "save_error": "The event template could not be saved.",
+            "load_error": "The event template library could not be loaded.",
+            "materialize_title": "Create an event from this template",
+            "captured": "Event template saved.",
+            "revised": "Event template refreshed from its source.",
+            "back_to_events": "Back to events",
+            "intro": "Reuse approved event configuration through a reviewed, draft-only workflow.",
+            "safety_title": "Templates copy configuration only",
+            "safety_description": "People, registrations, private answers, attendance, tickets, delivery history, federation identifiers and publication state are never copied.",
+            "filter_label": "Filter event templates",
+            "filters": {
+                "active": "Active",
+                "archived": "Archived",
+                "all": "All"
+            },
+            "empty_title": "No templates found",
+            "empty_description": "Save an event as a template to create a reusable configuration library.",
+            "status": {
+                "active": "Active",
+                "archived": "Archived"
+            },
+            "source": "Source event",
+            "version": "Version",
+            "used": "Usage",
+            "use_count": "Uses: :count",
+            "use_template": "Use template",
+            "refresh": "Refresh from source",
+            "load_more": "Load more templates",
+            "back": "Back",
+            "review_revision_title": "Review template revision",
+            "capture_preview_intro": "Review every copied field and the server checks before saving this immutable template version.",
+            "safe_title": "Safe to capture",
+            "safe_description": "The server verified the exact allowlist and excluded private and operational records.",
+            "copied_title": "Configuration copied into the template",
+            "fields": {
+                "title": "Event title",
+                "description": "Description",
+                "category_id": "Category",
+                "group_id": "Linked group",
+                "location": "Location",
+                "venue_accessibility": "Venue accessibility",
+                "latitude": "Latitude",
+                "longitude": "Longitude",
+                "max_attendees": "Maximum attendees",
+                "is_online": "Online event",
+                "allow_remote_attendance": "Allow remote attendance",
+                "timezone": "Time zone",
+                "all_day": "All-day event",
+                "federated_visibility": "Federation visibility"
+            },
+            "never_copied_title": "Never copied",
+            "never_copied_description": "These operational and private records always stay with the source event.",
+            "never_copied": {
+                "people": "People, registrations and waitlists",
+                "invitations": "Invitations and guest records",
+                "forms": "Registration forms and private answers",
+                "attendance": "Attendance and check-in history",
+                "tickets": "Tickets, entitlements and transactions",
+                "notifications": "Reminders, notifications and delivery history",
+                "federation": "Federation identifiers and deliveries",
+                "lifecycle": "Publication, moderation and lifecycle state"
+            },
+            "checklist_title": "Server-verified checklist",
+            "checks": {
+                "event_template_check_source_manage": "You still have permission to manage the source event",
+                "event_template_check_allowlist_exact": "Only the approved configuration allowlist is included",
+                "event_template_check_private_records_skipped": "Private and operational records are excluded",
+                "event_template_check_versioned_snapshot": "The configuration is stored as an immutable versioned snapshot",
+                "event_template_check_version_current": "The selected template version is current",
+                "event_template_check_schedule_valid": "The new schedule is valid and in the future",
+                "event_template_check_federation_none": "Federation is disabled for the new draft",
+                "event_template_check_canonical_writer": "The canonical event creation workflow will be used"
+            },
+            "confirm_revision": "Save new version",
+            "confirm_capture": "Save template",
+            "back_to_library": "Back to event templates",
+            "review_draft_title": "Review new event draft",
+            "materialize_intro": "Choose a new schedule and review the safe configuration before creating the event.",
+            "draft_only_title": "This always creates a draft",
+            "draft_only_description": "Nothing is published, registered, notified or federated until you review and publish the new event separately.",
+            "start_label": "Start",
+            "timezone_hint": "Enter the schedule in :timezone.",
+            "end_label": "End",
+            "safe_overrides_title": "Safe overrides",
+            "safe_overrides_intro": "Adjust reusable configuration for this draft. Operational and private data cannot be added here.",
+            "review_draft": "Review draft",
+            "review_draft_intro": "Confirm the server-verified checklist before creating the fresh draft.",
+            "ready_title": "Ready to create a draft",
+            "ready_description": "The server verified the current version, safe allowlist, schedule, federation setting and canonical writer.",
+            "event_title": "Event title",
+            "publication_state": "Publication state",
+            "draft": "Draft",
+            "create_draft": "Create draft",
+            "change_details": "Change details",
+            "audit_link": "Audit history",
+            "audit_title": "Template audit history",
+            "audit_intro": "Review the complete, immutable record of template capture, revisions, archiving and draft creation.",
+            "audit_immutable": "Every entry is append-only and cannot be changed or deleted.",
+            "audit_empty": "No audit entries have been recorded.",
+            "audit_recorded_at": "Recorded",
+            "audit_actions": {
+                "captured": "Template captured",
+                "revised": "Template revised",
+                "archived": "Template archived",
+                "materialized": "Draft created from template"
+            },
+            "audit_event_reference": "Event :id",
+            "audit_created_event": "Created event",
+            "audit_integrity": "Integrity digest",
+            "audit_archive_reason_recorded": "Archive reason recorded",
+            "audit_yes": "Yes",
+            "audit_no": "No",
+            "audit_override_fields": "Fields changed for this draft",
+            "audit_pagination_label": "Template audit history pagination",
+            "audit_load_more": "Load more history"
+        },
+        "event_tickets": {
+            "title": "Event tickets",
+            "intro": "Review available ticket types, claim free places and manage your own confirmed free tickets.",
+            "load_error": "The event ticket catalogue could not be loaded.",
+            "validation_error": "Check the ticket details and try again.",
+            "allocate_error": "The free ticket could not be allocated. Check your registration, eligibility and the remaining allocation.",
+            "cancel_error": "The free ticket could not be cancelled. Refresh the catalogue and try again.",
+            "allocated": "Your free ticket has been allocated.",
+            "cancelled": "Your free ticket has been cancelled and returned to the allocation.",
+            "back_to_event": "Back to event",
+            "back_to_tickets": "Back to event tickets",
+            "gateway_disabled": "Paid and time-credit checkout is not available. This page never charges money or time credits and does not change your wallet.",
+            "my_tickets": "My tickets",
+            "no_tickets": "You do not have a ticket for this event.",
+            "ticket_fallback": "Event ticket",
+            "units": "Quantity",
+            "status_label": "Status",
+            "status": {
+                "confirmed": "Confirmed",
+                "cancelled": "Cancelled"
+            },
+            "cancel_ticket": "Cancel ticket",
+            "time_credit_cancel_disabled": "Time-credit ticket cancellation is not available in this free-only workflow. No wallet action has been taken.",
+            "catalogue": "Available tickets",
+            "catalogue_empty": "No ticket types are available for this event.",
+            "kind": {
+                "free": "Free",
+                "time_credit": "Time credits"
+            },
+            "remaining": "Remaining allocation",
+            "member_limit": "Limit per member",
+            "time_credit_disabled": "This type costs :credits time credits, but checkout is disabled until the approved wallet gateway is connected. No credits will be debited.",
+            "units_to_claim": "Number of free tickets",
+            "units_hint": "You can claim up to :count in this allocation.",
+            "claim_free": "Claim free ticket",
+            "registration_required": "You need a confirmed event registration before you can claim a free ticket.",
+            "not_eligible": "You do not currently meet this ticket type’s eligibility rules.",
+            "sales_closed": "This ticket type is not currently open for allocation.",
+            "sold_out": "No free tickets remain for you in this allocation.",
+            "cancel_title": "Cancel this free ticket?",
+            "cancel_intro": "Tell the organiser why you are cancelling. The quantity will be returned to the free allocation.",
+            "cancel_free_only": "This action cancels a free entitlement only. It does not issue a refund or change any wallet balance.",
+            "reason_label": "Reason for cancellation",
+            "reason_hint": "Do not include private or sensitive information. Maximum 500 characters.",
+            "confirm_cancel": "Cancel free ticket"
         },
         "govuk_alpha": {
             "opens_new_tab": "(opens in new tab)",

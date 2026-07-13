@@ -2,9 +2,57 @@
     "_meta": {
         "schema": 1,
         "locale": "ja",
-        "source": "lang/ja/{govuk_alpha*,event_agenda,event_offline_checkin,event_safety}.php"
+        "source": "lang/ja/{govuk_alpha*,event_*}.php"
     },
     "namespaces": {
+        "event_accessibility": {
+            "form": {
+                "title": "会場のアクセシビリティ",
+                "hint": "会場で利用できる設備を記録してください。主催者が確認していない場合は「不明」を選んでください。「なし」とは異なります。",
+                "parking_details": "駐車場と到着経路",
+                "parking_details_hint": "優先駐車区画、乗降場所、入口までの経路を説明してください。",
+                "transit_details": "公共交通機関",
+                "transit_details_hint": "最寄りの停留所や駅、経路上の障害を説明してください。",
+                "assistance_contact": "アクセシビリティ支援の連絡先",
+                "assistance_contact_hint": "アクセスに関する質問用の公開連絡先を記載してください。参加者の個人情報は入力しないでください。",
+                "notes": "その他のアクセス情報",
+                "notes_hint": "入口、エレベーター、路面、照明、感覚環境などの役立つ情報を記載してください。",
+                "privacy_note": "この情報はイベントのメンバーに表示されます。個別の配慮依頼はここではなく登録フォームに記入してください。"
+            },
+            "features": {
+                "step_free_access": "段差のないアクセス",
+                "accessible_toilet": "バリアフリートイレ",
+                "hearing_loop": "ヒアリングループ",
+                "quiet_space": "静かなスペース",
+                "seating_available": "座席あり",
+                "accessible_parking": "優先駐車場"
+            },
+            "status": {
+                "yes": "あり",
+                "no": "なし",
+                "unknown": "不明"
+            },
+            "filters": {
+                "step_free_label": "会場の段差のないアクセス",
+                "step_free_hint": "主催者が確認した会場のアクセス情報で絞り込みます。",
+                "step_free_options": {
+                    "any": "すべての会場",
+                    "yes": "段差のないアクセスを確認済み",
+                    "no": "段差のないアクセスなし",
+                    "unknown": "段差のないアクセスは不明"
+                },
+                "step_free_active": "段差のないアクセス：:value"
+            },
+            "detail": {
+                "title": "会場のアクセシビリティ",
+                "intro": "イベント主催者が提供したアクセス情報です。対応を確認する必要がある場合は主催者に連絡してください。",
+                "features_label": "会場のアクセシビリティ設備",
+                "parking_details": "駐車場と到着経路",
+                "transit_details": "公共交通機関",
+                "assistance_contact": "アクセシビリティ支援",
+                "notes": "その他のアクセス情報"
+            }
+        },
         "event_agenda": {
             "withdraw_confirmation": ":title の席が解放され、別の参加者が利用できるようになることを理解しています。",
             "capacity_label": "セッション定員",
@@ -38,6 +86,71 @@
             "full_state": "このセッションは満席です。",
             "session_full_error": "このセッションに空きはありません。",
             "eligibility_error": "セッションに登録する前にイベント登録を確定してください。"
+        },
+        "event_analytics": {
+            "csv": {
+                "metric": "指標",
+                "value": "値",
+                "suppressed": "非表示"
+            }
+        },
+        "event_calendar": {
+            "description": "イベントの詳細を見る: :url",
+            "description_without_url": "Project NEXUS でこのイベントを表示します。",
+            "tenant_feed_name": ":tenant のイベント",
+            "personal_feed_name": "参加登録したイベント",
+            "label_invalid": "カレンダーのラベルは100文字以内で入力してください。",
+            "token_limit": "新しく作成する前に、既存のカレンダー購読を取り消してください。",
+            "token_not_found": "このカレンダー購読は見つからないか、すでに取り消されています。",
+            "range_invalid": "許可された範囲内で有効な日付範囲を選択してください。",
+            "feed_not_found": "このカレンダー購読は利用できないか、取り消されています。"
+        },
+        "event_lifecycle_history": {
+            "title": "ライフサイクル履歴",
+            "description": "このイベントの公開状態と運用状態の変更を記録した変更不可の履歴です。",
+            "link": "ライフサイクル履歴",
+            "back_to_event": "イベントに戻る",
+            "immutable_explanation": "この監査履歴は追記専用です。既存の記録を変更または削除することはできません。",
+            "empty_title": "ライフサイクルの変更はまだありません",
+            "empty_description": "イベントのライフサイクルが更新されると、ここに変更が表示されます。",
+            "list_label": "イベントのライフサイクル変更",
+            "version": "バージョン :version",
+            "immutable": "変更不可",
+            "recorded_at": "記録日時",
+            "timestamp_unknown": "時刻は記録されていません",
+            "publication_label": "公開状態",
+            "operational_label": "運用状態",
+            "transition": ":from から :to",
+            "actor_label": "変更者",
+            "unknown_actor": "メンバー :id",
+            "reason_label": "理由",
+            "evidence_title": "運用上の証跡",
+            "notifications_suppressed": "このシリーズ変更では重複通知が抑制されました。",
+            "load_more": "以前の履歴を表示",
+            "pagination_label": "ライフサイクル履歴のページ",
+            "states": {
+                "publication": {
+                    "draft": "下書き",
+                    "pending_review": "審査待ち",
+                    "published": "公開済み",
+                    "archived": "アーカイブ済み"
+                },
+                "operational": {
+                    "scheduled": "予定済み",
+                    "postponed": "延期",
+                    "cancelled": "中止",
+                    "completed": "完了"
+                }
+            },
+            "cascade": {
+                "reminders_cancelled": "中止されたリマインダー予定: :count",
+                "waitlist_cancelled": "取り消された待機リスト登録: :count",
+                "registrations_cancelled": "取り消された参加登録: :count"
+            },
+            "series": {
+                "template": "定期開催テンプレート :id",
+                "occurrence": "定期開催テンプレート :id の開催回"
+            }
         },
         "event_offline_checkin": {
             "privacy": {
@@ -97,6 +210,524 @@
             },
             "device": {
                 "lost": "スタッフ端末を紛失した場合は、通常のイベント管理画面ですぐに無効化してください。ここでは氏名または署名済みコードで続行できます。"
+            }
+        },
+        "event_recurrence_blueprints": {
+            "tab": "今後の設定",
+            "title": "今後の開催回の設定",
+            "description": "新しい開催回の作成時に適用するイベント定義を選択します。",
+            "definition_only_title": "定義のみ",
+            "definition_only_description": "参加者、登録、出席、支払い、リマインダー、分析、配信履歴はコピーされず、既存の開催回も変更されません。",
+            "effective_from_label": "適用開始の繰り返し ID",
+            "effective_from_help": "この安定した ID は選択した開催回のものです。変更後の開始時刻から再計算されません。",
+            "sections_title": "引き継ぐ定義",
+            "sections_description": "各セクションは明示的に選択します。スタッフ割り当てが自動選択されることはありません。",
+            "sections": {
+                "agenda": {
+                    "label": "プログラム",
+                    "description": "予定済みセッション、登壇者、保護されたリソースの定義。"
+                },
+                "ticket_types": {
+                    "label": "チケット種別",
+                    "description": "無料または下書きのチケット定義と販売期間。"
+                },
+                "registration": {
+                    "label": "登録",
+                    "description": "登録設定と現在公開中のフォーム。"
+                },
+                "safety": {
+                    "label": "安全要件",
+                    "description": "現在公開中の安全および参加資格要件。"
+                },
+                "staff": {
+                    "label": "スタッフ割り当て",
+                    "description": "高リスクの明示選択：有効な役割を今後の新しい開催回に引き継ぎます。"
+                }
+            },
+            "section_not_permitted": "あなたのイベント役割では、このセクションを引き継げません。",
+            "no_sections_title": "1 つ以上のセクションを選択してください",
+            "no_sections_description": "今後の設定を保存する前にプレビューが必要です。",
+            "preview_button": "今後の設定をプレビュー",
+            "previewing": "プレビューを準備中",
+            "preview_title": "定義のプレビュー",
+            "preview_description": "確認に進む前に、上限付きの件数と競合を確認してください。",
+            "preview_expires": "プレビューの有効期限：:date",
+            "review_button": "確認して確定",
+            "refresh_preview": "プレビューを更新",
+            "conflicts_title": "先にこれらの競合を解決してください",
+            "conflicts": {
+                "definition_limit_exceeded": ":section が安全な定義上限を超えています（:count 件）。",
+                "speaker_limit_exceeded": "プログラムが安全な登壇者上限を超えています（:count 件）。",
+                "invalid_speaker_reference": "プログラムに無効な登壇者参照が :count 件あります。",
+                "resource_limit_exceeded": "プログラムが安全なリソース上限を超えています（:count 件）。",
+                "unsupported_active_time_credit_ticket": "有効な時間クレジットのチケット種別 :count 件は引き継げません。",
+                "published_form_missing": "公開済み登録フォームを確認できませんでした。",
+                "question_limit_exceeded": "公開済みフォームが安全な質問上限を超えています（:count 件）。",
+                "published_requirement_version_missing": "公開済み安全要件の版を確認できませんでした。",
+                "invalid_staff_reference": "スタッフ割り当て :count 件が利用できないメンバーを参照しています。",
+                "nonportable_staff_expiry": "スタッフ割り当て :count 件は今後の開催回より前に期限切れとなるため引き継げません。"
+            },
+            "counts": {
+                "none": "選択したセクションに定義はありません。",
+                "sessions": "セッション",
+                "speakers": "登壇者",
+                "resources": "リソース",
+                "ticket_types": "チケット種別",
+                "registration_settings": "登録設定",
+                "published_forms": "公開フォーム",
+                "form_questions": "フォームの質問",
+                "safety_requirements": "安全要件",
+                "staff_assignments": "スタッフ割り当て"
+            },
+            "errors": {
+                "preview_error": {
+                    "title": "プレビューを準備できませんでした",
+                    "description": "選択した定義を確認して、もう一度お試しください。"
+                },
+                "preview_expired": {
+                    "title": "プレビューの有効期限が切れました",
+                    "description": "確定前にプレビューを更新してください。保存はされていません。"
+                },
+                "preview_stale": {
+                    "title": "プレビュー後に定義が変更されました",
+                    "description": "最新の定義で新しいプレビューを作成してください。"
+                },
+                "commit_conflict": {
+                    "title": "今後の設定は保存されませんでした",
+                    "description": "別の版または競合するリクエストが先に保存されました。更新して再確認してください。"
+                },
+                "commit_error": {
+                    "title": "今後の設定を保存できませんでした",
+                    "description": "安定した再試行キーは保持されています。もう一度確定するか、期限切れならプレビューを更新してください。"
+                }
+            },
+            "success_created_title": "今後の設定を保存しました",
+            "success_created_description": "変更不能な定義版 :version は、今後新しく作成される開催回にのみ適用されます。",
+            "success_replay_title": "今後の設定は保存済みです",
+            "success_replay_description": "版 :version はこの再試行と一致します。重複は作成されませんでした。",
+            "history_title": "変更不能な版の履歴",
+            "history_description": "保存した各定義版は、上限付き件数と適用開始の繰り返し ID とともに保持されます。",
+            "history_loading": "履歴を読み込み中",
+            "history_error_title": "履歴を読み込めませんでした",
+            "history_error_description": "変更不能な版を取得するには、もう一度お試しください。",
+            "history_empty_title": "今後の設定版はまだありません",
+            "history_empty_description": "プレビューを確定すると、ここに版が表示されます。",
+            "history_list_label": "今後の開催回設定の版",
+            "history_version": "版 :version",
+            "history_sections": "含まれる定義",
+            "immutable": "変更不能",
+            "history_load_more": "さらに版を読み込む",
+            "history_loading_more": "さらに版を読み込み中",
+            "load_more_error_title": "追加の版を読み込めませんでした",
+            "load_more_error_description": "次のページをもう一度読み込んでください。",
+            "retry": "再試行",
+            "time_unknown": "時刻の記録なし",
+            "confirm_title": "今後の開催回設定を確定",
+            "confirm_scope_title": "新しい開催回のみ",
+            "confirm_scope_description": "この版は表示された ID から有効です。既存の開催回と参加者データは変更されません。",
+            "staff_risk_title": "スタッフの引き継ぎが選択されています",
+            "staff_risk_description": "有効な役割により、新しい開催回ごとに運用アクセスが付与される場合があります。この選択を慎重に確認してください。",
+            "confirm_ack": "今後のみに適用するこの定義版を確定します",
+            "confirm_ack_description": "選択セクション、件数、競合、適用開始の繰り返し ID を確認しました。",
+            "cancel": "キャンセル",
+            "commit_button": "変更不能な版を保存",
+            "committing": "版を保存中"
+        },
+        "event_registration": {
+            "title": "登録、招待、ゲスト",
+            "description": "バージョン管理された登録フォームを設計し、送信内容を確認し、参加者を招待し、ゲストを管理し、プライバシー保持制御を適用します。",
+            "common": {
+                "cancel": "キャンセル",
+                "close": "近い",
+                "loading": "登録ワークスペースをロードしています",
+                "not_recorded": "記録されていない",
+                "refresh": "リフレッシュ",
+                "retry": "もう一度やり直してください",
+                "save": "保存",
+                "previous": "前へ",
+                "next": "次へ"
+            },
+            "load_error": {
+                "title": "登録ワークスペースをロードできませんでした",
+                "description": "接続と権限を確認して、再試行してください。"
+            },
+            "privacy": {
+                "title": "プライバシー管理が適用されます",
+                "description": "回答へのアクセスは目的に応じて記録され、監査されます。機密性の高い回答は、明示的に要求して許可がない限り除外されます。"
+            },
+            "tabs": {
+                "aria": "登録管理部門",
+                "forms": "フォーム",
+                "submissions": "提出物",
+                "invitations": "招待状",
+                "guests": "ゲスト",
+                "retention": "保持"
+            },
+            "settings": {
+                "title": "登録ポリシー",
+                "description": "フォームを作成する前に、承認、登録期間、キャンセルのタイミング、メンバー制限、ゲスト、プライバシー保持を設定します。",
+                "not_created": "未設定",
+                "revision": "リビジョン {{revision}}",
+                "approval_mode": "承認ワークフロー",
+                "approval_modes": {
+                    "auto": "自動的に確認する",
+                    "manual": "主催者の承認が必要"
+                },
+                "opens_at": "登録が始まります",
+                "closes_at": "登録は終了しました",
+                "window_hint": "時間枠を設けない場合は、両方の登録日を空白のままにします。",
+                "cancellation_cutoff": "キャンセル期限",
+                "per_member_limit": "会員ごとの登録数",
+                "guests_enabled": "ゲストを許可する",
+                "max_guests": "登録ごとの最大ゲスト数",
+                "guest_retention": "ゲストデータの保持日数",
+                "save": "ポリシーの保存",
+                "publish": "ポリシーの公開"
+            },
+            "forms": {
+                "title": "登録フォーム",
+                "new": "新しい形",
+                "empty": "登録フォームは作成されていません。",
+                "not_published": "現在公開されているフォームはありません。",
+                "published_version": "公開バージョン {{version}}",
+                "version": "バージョン {{version}}",
+                "no_description": "説明なし",
+                "question_count": "{{count}} 質問",
+                "question_count_other": "{{count}} の質問",
+                "published_at": "{{date}} を公開しました",
+                "edit": "ドラフトの編集",
+                "publish": "公開",
+                "create_revision": "新しいバージョンを作成する",
+                "settings_missing_title": "登録設定が完了していません",
+                "settings_missing_description": "フォームを作成する前に、イベント登録の設定を保存してください。",
+                "editor": {
+                    "create_title": "登録フォームを作成する",
+                    "edit_title": "登録フォームの下書きを編集する",
+                    "name": "フォーム名",
+                    "description": "説明",
+                    "rules_title": "バージョン管理とプライバシー意識",
+                    "rules_description": "公開されたバージョンは不変です。各質問には、その目的、分類、保存期間、および条件付き表示ルールが記録されます。",
+                    "question": "質問{{number}}",
+                    "move_up": "質問を上に移動",
+                    "move_down": "質問を下に移動します",
+                    "remove": "質問を削除する",
+                    "type": "質問の種類",
+                    "classification": "データの分類",
+                    "prompt": "質問プロンプト",
+                    "help_text": "ヘルプテキスト",
+                    "purpose": "この回答を収集する目的",
+                    "retention_days": "保存期間（日）",
+                    "required": "回答必須",
+                    "choices": "回答の選択肢",
+                    "choices_description": "1 行に 1 つの選択肢を入力します。少なくとも 2 つ必要です。",
+                    "min_length": "最小長さ",
+                    "max_length": "最大長さ",
+                    "displayed_text": "出席者に表示される同意または権利放棄のテキスト",
+                    "displayed_version": "同意テキストのバージョン",
+                    "conditional": "この質問を条件付きで表示します",
+                    "condition_question": "前の質問",
+                    "condition_operator": "状態",
+                    "condition_value": "期待値",
+                    "add_question": "質問を追加"
+                }
+            },
+            "question_types": {
+                "short_text": "短いテキスト",
+                "long_text": "長文",
+                "single_choice": "単一の選択",
+                "multiple_choice": "多肢選択",
+                "dietary": "食事要件",
+                "accessibility": "アクセシビリティ要件",
+                "consent": "同意",
+                "waiver": "権利放棄"
+            },
+            "classifications": {
+                "public": "公共",
+                "internal": "内部",
+                "confidential": "機密",
+                "sensitive": "センシティブ"
+            },
+            "operators": {
+                "equals": "等しい",
+                "not_equals": "等しくありません",
+                "contains": "含まれています",
+                "not_contains": "含まれていない"
+            },
+            "submissions": {
+                "title": "登録の提出",
+                "description": "回答を名簿に公開することなく、有効な試行と置き換えられた試行をレビューします。",
+                "empty": "提出は受け付けられていません。",
+                "export": "CSVのエクスポート",
+                "member_hidden": "会員IDは制限されています",
+                "effective": "効果的",
+                "superseded": "置き換えられました",
+                "attempt": "{{attempt}} を試みます",
+                "review": "回答を確認する",
+                "review_title": "提出された回答を確認する",
+                "audit_title": "このアクセスは監査されます",
+                "audit_description": "回答を開く前に、特定の運用目的と相関関係の参照を記録してください。",
+                "purpose": "これらの回答にアクセスする理由",
+                "correlation": "ケースまたは相関リファレンス",
+                "include_sensitive": "機密性の高い回答を含める",
+                "open_answers": "自由回答",
+                "purged": "保持ポリシーに基づいてパージされました",
+                "export_title": "登録回答のエクスポート",
+                "export_description": "エクスポートは制限されており、公式に安全であり、不変の回答アクセス監査に記録されます。",
+                "download_csv": "CSVをダウンロード",
+                "amend": "回答を修正する",
+                "save_draft": "下書きの保存"
+            },
+            "invitations": {
+                "builder_title": "ご招待キャンペーン",
+                "builder_description": "スケジュールまたは送信する前に、受信者のスナップショットをプレビューしてフリーズします。",
+                "type_label": "視聴者ソース",
+                "locale_label": "フォールバック言語",
+                "preview": "受信者のプレビュー",
+                "preview_title": "受信者のプレビュー",
+                "snapshot_notice": "この正確な有効受信者のスナップショットは、後でグループのメンバーシップが変更された場合でも、送信時に使用されます。",
+                "valid_count": "{{count}} 有効な受信者",
+                "valid_count_other": "{{count}} 有効な受信者",
+                "previewed": "プレビューされた行",
+                "valid": "有効",
+                "errors": "エラー",
+                "row_error": "行 {{row}}: {{code}}",
+                "expires_at": "招待の有効期限が切れます",
+                "scheduled_for": "に送信します",
+                "send_now": "今すぐ送信",
+                "schedule": "スケジュール",
+                "history_title": "キャンペーン履歴と配信の証拠",
+                "empty": "招待キャンペーンは作成されていません。",
+                "delivery_summary": "{{invitations}} の招待状 · {{delivered}} が配信されました · {{failed}} が失敗しました",
+                "cancel": "キャンペーンをキャンセルする",
+                "cancel_title": "招待キャンペーンをキャンセルする",
+                "cancel_reason": "キャンセル理由",
+                "confirm_cancel": "キャンペーンをキャンセルする",
+                "types": {
+                    "member": "選抜メンバー",
+                    "email": "メールアドレス",
+                    "group": "グループメンバー",
+                    "audience": "視聴者層",
+                    "csv": "CSVアップロード"
+                },
+                "sources": {
+                    "member": {
+                        "label": "会員ID",
+                        "description": "メンバー ID をカンマ、スペース、または改行で区切って入力します。"
+                    },
+                    "email": {
+                        "label": "メールアドレス",
+                        "description": "1 つ以上のアドレスをカンマまたは改行で区切って入力します。"
+                    },
+                    "group": {
+                        "label": "グループID",
+                        "description": "現在アクティブなメンバーのスナップショットを作成するグループを入力します。"
+                    },
+                    "audience": {
+                        "label": "オプションのメンバーの役割",
+                        "description": "すべてのアクティブなメンバーを空白のままにするか、許可リストに登録されたロールをカンマで区切って入力します。"
+                    },
+                    "csv": {
+                        "label": "CSVデータ",
+                        "description": "電子メール列を含む CSV を貼り付けます。無効な行と重複した行は送信前に報告されます。"
+                    }
+                },
+                "error_codes": {
+                    "member_not_found": "メンバーが見つかりません",
+                    "duplicate_target": "重複した受信者",
+                    "email_invalid": "無効なメールアドレス",
+                    "csv_header_missing": "CSVヘッダーがありません",
+                    "csv_email_column_missing": "メール欄がありません"
+                }
+            },
+            "guests": {
+                "cancel_confirm_title": "このゲストを取り消しますか？",
+                "cancel_confirm_body": ":name のために確保された席が解放されます。この画面からは元に戻せません。",
+                "keep": "ゲストを維持する",
+                "title": "ゲスト名簿と出席者数",
+                "description": "ゲストの ID と連絡先の詳細は、イベントの権限で許可されている場合にのみ表示されます。",
+                "empty": "ゲストは誰も捕まっていません。",
+                "name_hidden": "ゲスト名制限あり",
+                "guest_number": "ゲスト {{number}}",
+                "ticket_linked": "チケット資格がリンクされています",
+                "no_ticket": "チケット資格がリンクされていません",
+                "notifications_allowed": "ゲスト通知に同意しました",
+                "notifications_not_allowed": "ゲスト通知が同意されていません",
+                "check_in": "チェックイン",
+                "check_out": "チェックアウト",
+                "no_show": "ノーショウのマークを付ける",
+                "undo": "最後の変更を元に戻す",
+                "cancel": "ゲストをキャンセルする",
+                "cancel_reason": "このゲストをキャンセルする理由",
+                "cancel_reason_default": "登録者によるキャンセル"
+            },
+            "attendance": {
+                "not_checked_in": "チェックインされていません",
+                "checked_in": "チェックインしました",
+                "checked_out": "チェックアウトしました",
+                "attended": "出席しました",
+                "no_show": "ノーショー"
+            },
+            "people_export": {
+                "member_id": "会員ID",
+                "member_name": "会員名",
+                "engagement": "エンゲージメント",
+                "registration": "登録",
+                "registration_changed": "登録変更日時",
+                "waitlist": "キャンセル待ち",
+                "queue_position": "待機順位",
+                "queue_sequence": "待機順序",
+                "attendance": "出席",
+                "attendance_changed": "出席状況変更日時",
+                "checked_in": "チェックイン日時",
+                "checked_out": "チェックアウト日時"
+            },
+            "retention": {
+                "confirm_apply": "この処理を適用すると、対象の本人情報と回答データが恒久的に匿名化されることを理解しています。",
+                "warning_title": "匿名化は元に戻せません",
+                "warning_description": "必ず予行演習を確認してください。これを適用すると、同意と監査の証拠を保持しながら、期限切れの回答とゲスト ID の暗号文が削除されます。",
+                "title": "プライバシー保持の実行",
+                "description": "同じ凍結実行を適用する前に、特定の UTC 日付で匿名化の期限が切れるレコードをプレビューします。",
+                "as_of": "現在のプレビュー",
+                "status": "状態",
+                "submissions": "提出物",
+                "guests": "ゲスト",
+                "eligible": "対象となるレコード",
+                "affected": "匿名化された記録",
+                "modes": {
+                    "dry_run": "プレビュー",
+                    "apply": "適用済み"
+                },
+                "preview": "プレビューを実行する",
+                "apply": "匿名化を適用する"
+            },
+            "statuses": {
+                "draft": "下書き",
+                "published": "発行済み",
+                "submitted": "提出済み",
+                "withdrawn": "撤回されました",
+                "anonymised": "匿名化された",
+                "previewed": "プレビュー済み",
+                "scheduled": "予定されている",
+                "issuing": "発行",
+                "issued": "発行済み",
+                "cancelled": "キャンセル",
+                "applied": "適用済み",
+                "accepted": "承認されました",
+                "revoked": "取り消されました",
+                "expired": "期限切れ",
+                "captured": "捕らえられた"
+            },
+            "locales": {
+                "ar": "アラビア語",
+                "de": "ドイツ語",
+                "en": "英語",
+                "es": "スペイン語",
+                "fr": "フランス語",
+                "ga": "アイルランド人",
+                "it": "イタリア語",
+                "ja": "日本語",
+                "nl": "オランダ語",
+                "pl": "研磨",
+                "pt": "ポルトガル語"
+            },
+            "messages": {
+                "form_saved": "登録フォームが保存されました。",
+                "form_save_error": "登録フォームを保存できませんでした。",
+                "form_published": "登録フォームを公開しました。",
+                "form_publish_error": "登録フォームを公開できませんでした。",
+                "form_forked": "新しい編集可能なフォームのバージョンが作成されました。",
+                "form_fork_error": "新しいフォームのバージョンを作成できませんでした。",
+                "review_error": "回答を開けませんでした。",
+                "export_started": "登録エクスポートが準備されました。",
+                "export_error": "登録エクスポートを準備できませんでした。",
+                "preview_ready": "受信者のプレビューの準備ができました。",
+                "preview_error": "受信者をプレビューできませんでした。",
+                "campaign_issued": "ご招待キャンペーンを発行しました。",
+                "issue_error": "招待キャンペーンを発行できませんでした。",
+                "campaign_scheduled": "ご招待キャンペーンを予定しております。",
+                "schedule_error": "招待キャンペーンをスケジュールできませんでした。",
+                "campaign_cancelled": "招待キャンペーンは中止となりました。",
+                "cancel_error": "招待キャンペーンをキャンセルできませんでした。",
+                "attendance_updated": "ゲスト出演情報を更新しました。",
+                "attendance_error": "ゲスト出席状況を更新できませんでした。",
+                "retention_preview_ready": "保持プレビューの準備ができました。",
+                "retention_preview_error": "保持プレビューを作成できませんでした。",
+                "retention_applied": "保持匿名化が適用されました。",
+                "retention_apply_error": "保持の匿名化を適用できませんでした。",
+                "invitation_accepted": "招待が受け入れられました。",
+                "invitation_accept_error": "招待を受け入れることができませんでした。",
+                "answers_submitted": "登録回答が送信されました。",
+                "draft_saved": "登録ドラフトが保存されました。",
+                "amendment_started": "編集可能な修正が作成されました。",
+                "amendment_error": "修正案を作成できませんでした。",
+                "guest_added": "ゲスト追加しました。",
+                "guest_add_error": "ゲストを追加できませんでした。",
+                "guest_cancelled": "ゲストがキャンセルされました。",
+                "guest_cancel_error": "ゲストはキャンセルできませんでした。",
+                "settings_saved": "登録ポリシーが保存されました。",
+                "settings_save_error": "登録ポリシーを保存できませんでした。日付と制限を確認してください。",
+                "settings_published": "登録ポリシーが公開されました。",
+                "settings_publish_error": "登録ポリシーを公開できませんでした。"
+            },
+            "safety_requirements_not_met": "続行するには、安全要件を満たす必要があります。",
+            "safety_unavailable": "現在、このイベントの安全要件を確認できません。",
+            "idempotency_required": "冪等性キーが必要です。",
+            "idempotency_invalid": "冪等性キーが無効です。",
+            "idempotency_conflict": "この冪等性キーは別のリクエストですでに使用されています。",
+            "concrete_occurrence_required": "特定のイベント開催回を選択してください。",
+            "event_unavailable": "このイベントは登録を受け付けていません。",
+            "event_started": "このイベントはすでに開始されているため、登録は締め切られました。",
+            "capacity_full": "このイベントは定員に達しています。",
+            "finite_capacity_required": "キャンセル待ちを使用するには、イベントの定員を設定する必要があります。",
+            "capacity_available": "まだ空きがあるため、登録を直接確定できます。",
+            "already_confirmed": "このメンバーのイベント参加はすでに確定しています。",
+            "offer_acceptance_required": "登録を確定するには、先に有効なキャンセル待ちオファーを承諾してください。",
+            "transition_invalid": "現在の状態では、この変更を行えません。",
+            "waitlist_offer_inactive": "このキャンセル待ちオファーは現在有効ではありません。",
+            "waitlist_offer_expired": "このキャンセル待ちオファーは期限切れです。",
+            "waitlist_offer_token_invalid": "キャンセル待ちオファーのトークンが無効です。",
+            "timed_offers_disabled": "このイベントでは、期限付きのキャンセル待ちオファーは無効になっています。",
+            "people_query_invalid": "イベント参加者の検索条件が無効です。",
+            "validation_failed": "送信内容を確認して、もう一度お試しください。",
+            "reason_required": "理由が必要です。",
+            "request_conflict": "このレコードは別の場所で変更されました。更新してからもう一度お試しください。",
+            "service_unavailable": "イベント登録サービスは一時的に利用できません。",
+            "server_error": "イベント登録の処理中に予期しないエラーが発生しました。",
+            "answers": {
+                "validation": {
+                    "required": "この質問に回答してください。",
+                    "min_length": ":limit 文字以上で入力してください。",
+                    "max_length": ":limit 文字以内で入力してください。",
+                    "min_selections": ":count 個以上の選択肢を選んでください。|:count 個以上の選択肢を選んでください。",
+                    "max_selections": "選択肢は :count 個以内にしてください。|選択肢は :count 個以内にしてください。"
+                }
+            },
+            "accessible": {
+                "organizer_heading": "オーガナイザーコントロール",
+                "attendee_heading": "あなたの登録",
+                "submit_answers": "回答を保存して送信する",
+                "your_invitations": "あなたの招待状",
+                "accept_invitation": "招待を承諾する",
+                "add_guest": "ゲストを追加する",
+                "guest_name": "ゲスト名",
+                "guest_email": "ゲストメールアドレス (オプション)",
+                "guest_phone": "ゲストの電話番号 (オプション)",
+                "privacy_consent_label": "これらの詳細を提供することについてゲストの許可を得ていることを確認します。",
+                "privacy_consent_text": "ゲストは、自身の身元と連絡先の詳細がイベント管理のために保存され、指定された保存期間後に削除されることに同意しました。",
+                "notification_consent_label": "ゲストは、このイベントに関するメッセージを受け取ることに同意します。",
+                "notification_consent_text": "ゲストは、提供された電子メール アドレスで必要なイベントの最新情報を受け取ることに同意しました。",
+                "ticket_entitlement": "チケット資格 ID (オプション)",
+                "source_value": "受信者のソース",
+                "source_hint": "選択した視聴者ソースについて説明されている形式を使用します。",
+                "schedule_or_send": "この凍結されたプレビューをスケジュールまたは送信する",
+                "expiry": "招待の有効期限日時",
+                "review_submission": "提出物をレビューします {{id}}",
+                "retention_as_of_hint": "イベント終了後の日付を選択してください。",
+                "form_slots_hint": "有効な質問行に入力します。空白行は無視されます。",
+                "enabled": "この質問を含めてください",
+                "condition_key": "以前の質問キー (オプション)",
+                "success": "登録アクションが完了しました。",
+                "validation_error": "入力した情報を確認して、もう一度お試しください。"
             }
         },
         "event_safety": {
@@ -213,6 +844,172 @@
                 "confirm_withdraw_guardian": "現在の同意依頼が無効になることを理解しています。",
                 "confirm_withdraw_review": ":name に対する有効な決定を取り消すことを確認します。"
             }
+        },
+        "event_templates": {
+            "title": "イベントテンプレート",
+            "capture_preview_title": "テンプレートのキャプチャを確認する",
+            "validation_error": "テンプレートの詳細を確認して、再試行してください。",
+            "save_error": "イベントテンプレートを保存できませんでした。",
+            "load_error": "イベント テンプレート ライブラリをロードできませんでした。",
+            "materialize_title": "このテンプレートからイベントを作成する",
+            "captured": "イベントテンプレートが保存されました。",
+            "revised": "イベント テンプレートがソースから更新されました。",
+            "back_to_events": "イベントに戻る",
+            "intro": "承認されたイベント設定を、レビュー済みの下書きのみのワークフローを通じて再利用します。",
+            "safety_title": "テンプレートは設定のみをコピーします",
+            "safety_description": "人物、登録、非公開の回答、出席、チケット、配信履歴、フェデレーション ID、出版状態は決してコピーされません。",
+            "filter_label": "イベントテンプレートのフィルタリング",
+            "filters": {
+                "active": "アクティブ",
+                "archived": "アーカイブ済み",
+                "all": "すべて"
+            },
+            "empty_title": "テンプレートが見つかりません",
+            "empty_description": "イベントをテンプレートとして保存して、再利用可能な構成ライブラリを作成します。",
+            "status": {
+                "active": "アクティブ",
+                "archived": "アーカイブ済み"
+            },
+            "source": "ソースイベント",
+            "version": "バージョン",
+            "used": "使用法",
+            "use_count": "用途: :count",
+            "use_template": "テンプレートを使用する",
+            "refresh": "ソースから更新",
+            "load_more": "さらにテンプレートをロードする",
+            "back": "戻る",
+            "review_revision_title": "テンプレートのリビジョンを確認する",
+            "capture_preview_intro": "この不変のテンプレート バージョンを保存する前に、コピーされたすべてのフィールドとサーバー チェックを確認してください。",
+            "safe_title": "安全に捕獲できる",
+            "safe_description": "サーバーは正確な許可リストを検証し、プライベートおよび運用記録を除外しました。",
+            "copied_title": "テンプレートにコピーされた設定",
+            "fields": {
+                "title": "イベントタイトル",
+                "description": "説明",
+                "category_id": "カテゴリ",
+                "group_id": "リンクされたグループ",
+                "location": "場所",
+                "venue_accessibility": "会場のアクセシビリティ",
+                "latitude": "緯度",
+                "longitude": "経度",
+                "max_attendees": "最大出席者数",
+                "is_online": "オンラインイベント",
+                "allow_remote_attendance": "リモート出席を許可する",
+                "timezone": "タイムゾーン",
+                "all_day": "終日イベント",
+                "federated_visibility": "フェデレーションの可視性"
+            },
+            "never_copied_title": "決してコピーされません",
+            "never_copied_description": "これらの運用記録とプライベート記録は常にソース イベントとともに残ります。",
+            "never_copied": {
+                "people": "人数、登録、待機リスト",
+                "invitations": "招待状とゲストの記録",
+                "forms": "登録フォームと非公開の回答",
+                "attendance": "出席とチェックインの履歴",
+                "tickets": "チケット、権利、取引",
+                "notifications": "リマインダー、通知、配信履歴",
+                "federation": "フェデレーション識別子と配信",
+                "lifecycle": "パブリケーション、モデレーション、ライフサイクルの状態"
+            },
+            "checklist_title": "サーバー検証済みのチェックリスト",
+            "checks": {
+                "event_template_check_source_manage": "ソース イベントを管理する権限がまだあります",
+                "event_template_check_allowlist_exact": "承認された構成ホワイトリストのみが含まれます",
+                "event_template_check_private_records_skipped": "個人的な記録や業務上の記録は除外されます",
+                "event_template_check_versioned_snapshot": "構成は、不変のバージョン管理されたスナップショットとして保存されます。",
+                "event_template_check_version_current": "選択したテンプレートのバージョンは最新です",
+                "event_template_check_schedule_valid": "新しいスケジュールは有効であり、将来的にも有効です",
+                "event_template_check_federation_none": "新しいドラフトではフェデレーションが無効になっています",
+                "event_template_check_canonical_writer": "正規のイベント作成ワークフローが使用されます"
+            },
+            "confirm_revision": "新しいバージョンを保存する",
+            "confirm_capture": "テンプレートの保存",
+            "back_to_library": "イベントテンプレートに戻る",
+            "review_draft_title": "新しいイベントのドラフトを確認する",
+            "materialize_intro": "イベントを作成する前に、新しいスケジュールを選択し、安全な構成を確認してください。",
+            "draft_only_title": "これにより常に下書きが作成されます",
+            "draft_only_description": "新しいイベントを個別に確認して公開するまでは、何も公開、登録、通知、または連携されません。",
+            "start_label": "スタート",
+            "timezone_hint": ":timezoneにスケジュールを入力します。",
+            "end_label": "終了",
+            "safe_overrides_title": "安全なオーバーライド",
+            "safe_overrides_intro": "このドラフトの再利用可能な構成を調整します。運用データと個人データをここに追加することはできません。",
+            "review_draft": "ドラフトのレビュー",
+            "review_draft_intro": "新しいドラフトを作成する前に、サーバーで検証されたチェックリストを確認してください。",
+            "ready_title": "ドラフトを作成する準備ができました",
+            "ready_description": "サーバーは、現在のバージョン、安全な許可リスト、スケジュール、フェデレーション設定、および正規ライターを検証しました。",
+            "event_title": "イベントタイトル",
+            "publication_state": "出版状態",
+            "draft": "草案",
+            "create_draft": "ドラフトの作成",
+            "change_details": "変更内容",
+            "audit_link": "監査履歴",
+            "audit_title": "テンプレートの監査履歴",
+            "audit_intro": "テンプレートの取得、改訂、アーカイブ、下書き作成に関する完全で変更不可能な記録を確認します。",
+            "audit_immutable": "各エントリは追記専用で、変更または削除できません。",
+            "audit_empty": "監査エントリは記録されていません。",
+            "audit_recorded_at": "記録日時",
+            "audit_actions": {
+                "captured": "テンプレートを取得",
+                "revised": "テンプレートを改訂",
+                "archived": "テンプレートをアーカイブ",
+                "materialized": "テンプレートから下書きを作成"
+            },
+            "audit_event_reference": "イベント :id",
+            "audit_created_event": "作成されたイベント",
+            "audit_integrity": "整合性ダイジェスト",
+            "audit_archive_reason_recorded": "アーカイブ理由を記録済み",
+            "audit_yes": "はい",
+            "audit_no": "いいえ",
+            "audit_override_fields": "この下書きで変更された項目",
+            "audit_pagination_label": "テンプレート監査履歴のページ送り",
+            "audit_load_more": "履歴をさらに読み込む"
+        },
+        "event_tickets": {
+            "title": "イベントチケット",
+            "intro": "利用可能なチケットの種類を確認し、無料の場所を申請し、確認済みの独自の無料チケットを管理します。",
+            "load_error": "イベント チケット カタログをロードできませんでした。",
+            "validation_error": "チケットの詳細を確認して、もう一度お試しください。",
+            "allocate_error": "無料チケットを割り当てることができませんでした。登録、資格、残りの割り当てを確認してください。",
+            "cancel_error": "無料チケットはキャンセルできませんでした。カタログを更新して再試行してください。",
+            "allocated": "無料チケットが割り当てられました。",
+            "cancelled": "無料チケットはキャンセルされ、割り当てに戻されました。",
+            "back_to_event": "イベントに戻る",
+            "back_to_tickets": "イベントチケットに戻る",
+            "gateway_disabled": "有料およびタイムクレジット チェックアウトは利用できません。このページではお金や時間クレジットを請求することはなく、ウォレットを変更することもありません。",
+            "my_tickets": "私のチケット",
+            "no_tickets": "このイベントのチケットをお持ちではありません。",
+            "ticket_fallback": "イベントチケット",
+            "units": "数量",
+            "status_label": "ステータス",
+            "status": {
+                "confirmed": "確認済み",
+                "cancelled": "キャンセルされました"
+            },
+            "cancel_ticket": "チケットをキャンセルする",
+            "time_credit_cancel_disabled": "この無料専用ワークフローでは、タイムクレジット チケットのキャンセルは利用できません。ウォレットアクションは実行されていません。",
+            "catalogue": "利用可能なチケット",
+            "catalogue_empty": "このイベントではチケットの種類はありません。",
+            "kind": {
+                "free": "無料",
+                "time_credit": "タイムクレジット"
+            },
+            "remaining": "残りの割り当て",
+            "member_limit": "メンバーごとの制限",
+            "time_credit_disabled": "このタイプには :credits 時間クレジットがかかりますが、承認されたウォレット ゲートウェイが接続されるまでチェックアウトは無効になります。クレジットは引き落とされません。",
+            "units_to_claim": "無料チケットの枚数",
+            "units_hint": "この割り当てでは、最大 :count を請求できます。",
+            "claim_free": "無料チケットを請求する",
+            "registration_required": "無料チケットを取得するには、確認済みのイベント登録が必要です。",
+            "not_eligible": "現在、このチケット タイプの資格規則を満たしていません。",
+            "sales_closed": "このチケット タイプは現在割り当てが受け付けられていません。",
+            "sold_out": "この割り当てには無料チケットが残っていません。",
+            "cancel_title": "この無料チケットをキャンセルしますか?",
+            "cancel_intro": "主催者にキャンセル理由を伝えてください。数量は無料割り当てに戻されます。",
+            "cancel_free_only": "この操作により、無料の権利のみがキャンセルされます。払い戻しを行ったり、ウォレットの残高を変更したりすることはありません。",
+            "reason_label": "キャンセルの理由",
+            "reason_hint": "個人情報や機密情報は含めないでください。最大 500 文字。",
+            "confirm_cancel": "無料チケットをキャンセルする"
         },
         "govuk_alpha": {
             "opens_new_tab": "(新しいタブで開きます)",

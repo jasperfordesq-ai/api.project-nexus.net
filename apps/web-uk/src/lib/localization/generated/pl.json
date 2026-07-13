@@ -2,9 +2,57 @@
     "_meta": {
         "schema": 1,
         "locale": "pl",
-        "source": "lang/pl/{govuk_alpha*,event_agenda,event_offline_checkin,event_safety}.php"
+        "source": "lang/pl/{govuk_alpha*,event_*}.php"
     },
     "namespaces": {
+        "event_accessibility": {
+            "form": {
+                "title": "Dostępność miejsca",
+                "hint": "Podaj, co jest dostępne w miejscu wydarzenia. Wybierz „Nie wiadomo”, jeśli organizator nie potwierdził danej cechy; to nie oznacza „Nie”.",
+                "parking_details": "Parking i dotarcie na miejsce",
+                "parking_details_hint": "Opisz dostępne miejsca parkingowe, punkty wysiadania i drogę do wejścia.",
+                "transit_details": "Transport publiczny",
+                "transit_details_hint": "Opisz pobliskie przystanki lub stacje oraz przeszkody na trasie.",
+                "assistance_contact": "Kontakt w sprawie dostępności",
+                "assistance_contact_hint": "Podaj publiczny kontakt do pytań o dostępność. Nie wpisuj prywatnych danych uczestników.",
+                "notes": "Dodatkowe informacje o dostępności",
+                "notes_hint": "Dodaj przydatne informacje o wejściu, windzie, nawierzchni, oświetleniu lub warunkach sensorycznych.",
+                "privacy_note": "Te informacje są widoczne dla członków wydarzenia. Prywatne prośby o dostosowania należy podać w formularzu rejestracyjnym."
+            },
+            "features": {
+                "step_free_access": "Dostęp bez stopni",
+                "accessible_toilet": "Dostępna toaleta",
+                "hearing_loop": "Pętla indukcyjna",
+                "quiet_space": "Ciche miejsce",
+                "seating_available": "Dostępne miejsca siedzące",
+                "accessible_parking": "Dostępny parking"
+            },
+            "status": {
+                "yes": "Tak",
+                "no": "Nie",
+                "unknown": "Nie wiadomo"
+            },
+            "filters": {
+                "step_free_label": "Dostęp bez stopni do miejsca",
+                "step_free_hint": "Filtruj według informacji o dostępie potwierdzonych przez organizatora.",
+                "step_free_options": {
+                    "any": "Dowolne miejsce",
+                    "yes": "Potwierdzony dostęp bez stopni",
+                    "no": "Brak dostępu bez stopni",
+                    "unknown": "Nie wiadomo, czy jest dostęp bez stopni"
+                },
+                "step_free_active": "Dostęp bez stopni: :value"
+            },
+            "detail": {
+                "title": "Dostępność miejsca",
+                "intro": "Informacje o dostępności przekazane przez organizatora. Skontaktuj się z nim, jeśli musisz potwierdzić udogodnienie.",
+                "features_label": "Udogodnienia dostępności w miejscu wydarzenia",
+                "parking_details": "Parking i dotarcie na miejsce",
+                "transit_details": "Transport publiczny",
+                "assistance_contact": "Pomoc w zakresie dostępności",
+                "notes": "Dodatkowe informacje o dostępności"
+            }
+        },
         "event_agenda": {
             "withdraw_confirmation": "Rozumiem, że moje miejsce na sesji :title zostanie zwolnione i może je zająć inna osoba.",
             "capacity_label": "Limit miejsc na sesji",
@@ -38,6 +86,71 @@
             "full_state": "Ta sesja jest pełna.",
             "session_full_error": "Na tę sesję nie ma już wolnych miejsc.",
             "eligibility_error": "Potwierdź rejestrację na wydarzenie przed zapisaniem się na sesję."
+        },
+        "event_analytics": {
+            "csv": {
+                "metric": "Wskaźnik",
+                "value": "Wartość",
+                "suppressed": "Ukryte"
+            }
+        },
+        "event_calendar": {
+            "description": "Zobacz szczegóły wydarzenia: :url",
+            "description_without_url": "Zobacz to wydarzenie w Project NEXUS.",
+            "tenant_feed_name": "Wydarzenia społeczności :tenant",
+            "personal_feed_name": "Moje zapisane wydarzenia",
+            "label_invalid": "Etykieta kalendarza może mieć maksymalnie 100 znaków.",
+            "token_limit": "Odwołaj istniejącą subskrypcję kalendarza przed utworzeniem kolejnej.",
+            "token_not_found": "Nie znaleziono tej subskrypcji kalendarza lub została już odwołana.",
+            "range_invalid": "Wybierz prawidłowy zakres dat mieszczący się w dozwolonym limicie.",
+            "feed_not_found": "Ta subskrypcja kalendarza jest niedostępna lub została odwołana."
+        },
+        "event_lifecycle_history": {
+            "title": "Historia cyklu życia",
+            "description": "Niezmienny rejestr zmian publikacji i zmian operacyjnych tego wydarzenia.",
+            "link": "Historia cyklu życia",
+            "back_to_event": "Powrót do wydarzenia",
+            "immutable_explanation": "Ta historia audytu może być tylko uzupełniana. Istniejących wpisów nie można zmieniać ani usuwać.",
+            "empty_title": "Brak zmian cyklu życia",
+            "empty_description": "Zmiany pojawią się tutaj po aktualizacji cyklu życia wydarzenia.",
+            "list_label": "Zmiany cyklu życia wydarzenia",
+            "version": "Wersja :version",
+            "immutable": "Niezmienne",
+            "recorded_at": "Zarejestrowano",
+            "timestamp_unknown": "Nie zarejestrowano czasu",
+            "publication_label": "Publikacja",
+            "operational_label": "Stan operacyjny",
+            "transition": "Z :from na :to",
+            "actor_label": "Zmienione przez",
+            "unknown_actor": "Członek :id",
+            "reason_label": "Powód",
+            "evidence_title": "Dowód operacyjny",
+            "notifications_suppressed": "Duplikaty powiadomień zostały pominięte dla tej zmiany serii.",
+            "load_more": "Zobacz starszą historię",
+            "pagination_label": "Strony historii cyklu życia",
+            "states": {
+                "publication": {
+                    "draft": "Wersja robocza",
+                    "pending_review": "Oczekuje na weryfikację",
+                    "published": "Opublikowane",
+                    "archived": "Zarchiwizowane"
+                },
+                "operational": {
+                    "scheduled": "Zaplanowane",
+                    "postponed": "Przełożone",
+                    "cancelled": "Anulowane",
+                    "completed": "Zakończone"
+                }
+            },
+            "cascade": {
+                "reminders_cancelled": "Anulowane harmonogramy przypomnień: :count",
+                "waitlist_cancelled": "Anulowane wpisy na liście oczekujących: :count",
+                "registrations_cancelled": "Anulowane rejestracje: :count"
+            },
+            "series": {
+                "template": "Szablon cykliczny :id",
+                "occurrence": "Wystąpienie szablonu cyklicznego :id"
+            }
         },
         "event_offline_checkin": {
             "privacy": {
@@ -97,6 +210,524 @@
             },
             "device": {
                 "lost": "W razie zgubienia urządzenia personelu natychmiast cofnij jego dostęp w standardowym obszarze wydarzeń. Tutaj kontynuuj według nazwiska lub podpisanego kodu."
+            }
+        },
+        "event_recurrence_blueprints": {
+            "tab": "Przyszła konfiguracja",
+            "title": "Konfiguracja przyszłych wystąpień",
+            "description": "Wybierz definicje wydarzenia stosowane podczas tworzenia nowych wystąpień.",
+            "definition_only_title": "Tylko definicje",
+            "definition_only_description": "Ta operacja nigdy nie kopiuje uczestników, rejestracji, obecności, płatności, przypomnień, analiz ani historii dostarczania i nie zmienia istniejących wystąpień.",
+            "effective_from_label": "Obowiązuje od identyfikatora cyklu",
+            "effective_from_help": "Ten stabilny identyfikator należy do wybranego wystąpienia i nie jest ponownie obliczany ze zmienionej godziny rozpoczęcia.",
+            "sections_title": "Definicje do przeniesienia",
+            "sections_description": "Każda sekcja jest wybierana jawnie. Przydziały personelu nigdy nie są zaznaczane automatycznie.",
+            "sections": {
+                "agenda": {
+                    "label": "Program",
+                    "description": "Zaplanowane sesje, prelegenci i definicje chronionych zasobów."
+                },
+                "ticket_types": {
+                    "label": "Typy biletów",
+                    "description": "Bezpłatne lub robocze definicje biletów i okna sprzedaży."
+                },
+                "registration": {
+                    "label": "Rejestracja",
+                    "description": "Ustawienia rejestracji i aktualnie opublikowany formularz."
+                },
+                "safety": {
+                    "label": "Wymagania bezpieczeństwa",
+                    "description": "Aktualnie opublikowane wymagania bezpieczeństwa i kwalifikacji."
+                },
+                "staff": {
+                    "label": "Przydziały personelu",
+                    "description": "Opcja wysokiego ryzyka: przenieś aktywne role do nowych przyszłych wystąpień."
+                }
+            },
+            "section_not_permitted": "Twoja rola w wydarzeniu nie pozwala przenieść tej sekcji.",
+            "no_sections_title": "Wybierz co najmniej jedną sekcję",
+            "no_sections_description": "Przed zapisaniem przyszłej konfiguracji wymagana jest wersja próbna.",
+            "preview_button": "Podejrzyj przyszłą konfigurację",
+            "previewing": "Przygotowywanie podglądu",
+            "preview_title": "Podgląd definicji",
+            "preview_description": "Sprawdź ograniczone liczby i konflikty przed potwierdzeniem.",
+            "preview_expires": "Podgląd wygasa :date",
+            "review_button": "Sprawdź i potwierdź",
+            "refresh_preview": "Odśwież podgląd",
+            "conflicts_title": "Najpierw rozwiąż te konflikty",
+            "conflicts": {
+                "definition_limit_exceeded": ":section przekracza bezpieczny limit definicji (znaleziono :count).",
+                "speaker_limit_exceeded": "Program przekracza bezpieczny limit prelegentów (znaleziono :count).",
+                "invalid_speaker_reference": "Program zawiera :count nieprawidłowe odwołanie do prelegenta.",
+                "resource_limit_exceeded": "Program przekracza bezpieczny limit zasobów (znaleziono :count).",
+                "unsupported_active_time_credit_ticket": "Nie można przenieść :count aktywnego typu biletu na kredyty czasowe.",
+                "published_form_missing": "Nie można zweryfikować opublikowanego formularza rejestracji.",
+                "question_limit_exceeded": "Opublikowany formularz przekracza bezpieczny limit pytań (znaleziono :count).",
+                "published_requirement_version_missing": "Nie można zweryfikować opublikowanej wersji wymagań bezpieczeństwa.",
+                "invalid_staff_reference": ":count przydział personelu wskazuje niedostępnego członka.",
+                "nonportable_staff_expiry": ":count przydział personelu wygasa przed przyszłym wystąpieniem i nie może zostać przeniesiony."
+            },
+            "counts": {
+                "none": "W wybranych sekcjach nie znaleziono definicji.",
+                "sessions": "Sesje",
+                "speakers": "Prelegenci",
+                "resources": "Zasoby",
+                "ticket_types": "Typy biletów",
+                "registration_settings": "Ustawienia rejestracji",
+                "published_forms": "Opublikowane formularze",
+                "form_questions": "Pytania formularza",
+                "safety_requirements": "Wymagania bezpieczeństwa",
+                "staff_assignments": "Przydziały personelu"
+            },
+            "errors": {
+                "preview_error": {
+                    "title": "Nie udało się przygotować podglądu",
+                    "description": "Sprawdź wybrane definicje i spróbuj ponownie."
+                },
+                "preview_expired": {
+                    "title": "Podgląd wygasł",
+                    "description": "Odśwież podgląd przed potwierdzeniem. Nic nie zapisano."
+                },
+                "preview_stale": {
+                    "title": "Definicje zmieniły się po podglądzie",
+                    "description": "Przygotuj nowy podgląd z najnowszymi definicjami."
+                },
+                "commit_conflict": {
+                    "title": "Przyszła konfiguracja nie została zapisana",
+                    "description": "Najpierw zapisano inną wersję lub sprzeczne żądanie. Odśwież i sprawdź ponownie."
+                },
+                "commit_error": {
+                    "title": "Nie udało się zapisać przyszłej konfiguracji",
+                    "description": "Stabilny klucz ponowienia został zachowany. Potwierdź ponownie lub odśwież wygasły podgląd."
+                }
+            },
+            "success_created_title": "Przyszła konfiguracja zapisana",
+            "success_created_description": "Niezmienna wersja definicji :version będzie stosowana wyłącznie do nowych przyszłych wystąpień.",
+            "success_replay_title": "Przyszła konfiguracja była już zapisana",
+            "success_replay_description": "Wersja :version odpowiada temu ponowieniu. Nie utworzono duplikatu.",
+            "history_title": "Niezmienna historia wersji",
+            "history_description": "Każda zapisana wersja jest przechowywana z ograniczonymi liczbami i efektywnym identyfikatorem cyklu.",
+            "history_loading": "Ładowanie historii",
+            "history_error_title": "Nie udało się załadować historii",
+            "history_error_description": "Spróbuj ponownie pobrać niezmienne wersje.",
+            "history_empty_title": "Brak wersji przyszłej konfiguracji",
+            "history_empty_description": "Wersja pojawi się tutaj po potwierdzeniu podglądu.",
+            "history_list_label": "Wersje konfiguracji przyszłych wystąpień",
+            "history_version": "Wersja :version",
+            "history_sections": "Uwzględnione definicje",
+            "immutable": "Niezmienna",
+            "history_load_more": "Wczytaj więcej wersji",
+            "history_loading_more": "Wczytywanie kolejnych wersji",
+            "load_more_error_title": "Nie udało się wczytać kolejnych wersji",
+            "load_more_error_description": "Spróbuj ponownie wczytać następną stronę.",
+            "retry": "Spróbuj ponownie",
+            "time_unknown": "Nie zapisano czasu",
+            "confirm_title": "Potwierdź przyszłą konfigurację",
+            "confirm_scope_title": "Tylko nowe wystąpienia",
+            "confirm_scope_description": "Ta wersja obowiązuje od pokazanego identyfikatora. Istniejące wystąpienia i dane uczestników nie są zmieniane.",
+            "staff_risk_title": "Wybrano przenoszenie personelu",
+            "staff_risk_description": "Aktywne role mogą przyznać dostęp operacyjny do każdego nowego wystąpienia. Dokładnie sprawdź tę opcję.",
+            "confirm_ack": "Potwierdzam tę wersję definicji tylko na przyszłość",
+            "confirm_ack_description": "Sprawdzono sekcje, liczby, konflikty i efektywny identyfikator cyklu.",
+            "cancel": "Anuluj",
+            "commit_button": "Zapisz niezmienną wersję",
+            "committing": "Zapisywanie wersji"
+        },
+        "event_registration": {
+            "title": "Rejestracja, zaproszenia i goście",
+            "description": "Projektuj wersjonowane formularze rejestracyjne, przeglądaj zgłoszenia, zapraszaj odbiorców, zarządzaj gośćmi i stosuj mechanizmy kontroli zachowania prywatności.",
+            "common": {
+                "cancel": "Anulować",
+                "close": "Zamknąć",
+                "loading": "Ładowanie obszaru roboczego rejestracji",
+                "not_recorded": "Nie nagrano",
+                "refresh": "Odświeżać",
+                "retry": "Spróbuj ponownie",
+                "save": "Ratować",
+                "previous": "Poprzednia",
+                "next": "Następna"
+            },
+            "load_error": {
+                "title": "Nie można załadować obszaru roboczego rejestracji",
+                "description": "Sprawdź swoje połączenie i uprawnienia, a następnie spróbuj ponownie."
+            },
+            "privacy": {
+                "title": "Wprowadzono kontrolę prywatności",
+                "description": "Dostęp do odpowiedzi jest rejestrowany i kontrolowany w określonym celu. Odpowiedzi wrażliwe są wykluczone, chyba że wyraźnie o nie poprosisz i masz pozwolenie."
+            },
+            "tabs": {
+                "aria": "Sekcje zarządzania rejestracją",
+                "forms": "Formularze",
+                "submissions": "Zgłoszenia",
+                "invitations": "Zaproszenia",
+                "guests": "Goście",
+                "retention": "Zatrzymanie"
+            },
+            "settings": {
+                "title": "Polityka rejestracyjna",
+                "description": "Przed zbudowaniem formularza skonfiguruj zatwierdzanie, okna rejestracji, czas anulowania, limity członków, gości i zachowanie prywatności.",
+                "not_created": "Nie skonfigurowano",
+                "revision": "Wersja {{revision}}",
+                "approval_mode": "Proces zatwierdzania",
+                "approval_modes": {
+                    "auto": "Potwierdź automatycznie",
+                    "manual": "Wymagaj zgody organizatora"
+                },
+                "opens_at": "Rejestracja zostanie otwarta",
+                "closes_at": "Rejestracja zostaje zamknięta",
+                "window_hint": "Obie daty rejestracji pozostaw puste, aby nie było okna czasowego.",
+                "cancellation_cutoff": "Termin anulowania",
+                "per_member_limit": "Rejestracje na członka",
+                "guests_enabled": "Pozwól gościom",
+                "max_guests": "Maksymalna liczba gości na rejestrację",
+                "guest_retention": "Przechowywanie danych gości w ciągu kilku dni",
+                "save": "Zapisz politykę",
+                "publish": "Publikuj politykę"
+            },
+            "forms": {
+                "title": "Formularze rejestracyjne",
+                "new": "Nowa forma",
+                "empty": "Nie utworzono żadnych formularzy rejestracyjnych.",
+                "not_published": "Obecnie nie jest publikowany żaden formularz.",
+                "published_version": "Opublikowana wersja {{version}}",
+                "version": "Wersja {{version}}",
+                "no_description": "Brak opisu",
+                "question_count": "Pytanie {{count}}",
+                "question_count_other": "{{count}} pytania",
+                "published_at": "Opublikowano {{date}}",
+                "edit": "Edytuj wersję roboczą",
+                "publish": "Publikować",
+                "create_revision": "Utwórz nową wersję",
+                "settings_missing_title": "Ustawienia rejestracji nie są gotowe",
+                "settings_missing_description": "Zapisz ustawienia rejestracji na wydarzenie przed utworzeniem formularza.",
+                "editor": {
+                    "create_title": "Utwórz formularz rejestracyjny",
+                    "edit_title": "Edytuj wersję roboczą formularza rejestracyjnego",
+                    "name": "Nazwa formularza",
+                    "description": "Opis",
+                    "rules_title": "Wersjonowane i uwzględniające prywatność",
+                    "rules_description": "Opublikowane wersje są niezmienne. Każde pytanie rejestruje swój cel, klasyfikację, okres przechowywania i wszelkie reguły warunkowego wyświetlania.",
+                    "question": "Pytanie {{number}}",
+                    "move_up": "Przesuń pytanie w górę",
+                    "move_down": "Przesuń pytanie w dół",
+                    "remove": "Usuń pytanie",
+                    "type": "Typ pytania",
+                    "classification": "Klasyfikacja danych",
+                    "prompt": "Podpowiedź z pytaniem",
+                    "help_text": "Tekst pomocy",
+                    "purpose": "Cel zebrania tej odpowiedzi",
+                    "retention_days": "Okres przechowywania w dniach",
+                    "required": "Wymagana odpowiedź",
+                    "choices": "Odpowiedzi na wybory",
+                    "choices_description": "Wprowadź jedną opcję w każdym wierszu. Wymagane są co najmniej dwa.",
+                    "min_length": "Minimalna długość",
+                    "max_length": "Maksymalna długość",
+                    "displayed_text": "Tekst zgody lub zrzeczenia się wyświetlany uczestnikom",
+                    "displayed_version": "Wersja tekstowa zgody",
+                    "conditional": "Pokaż to pytanie warunkowo",
+                    "condition_question": "Wcześniejsze pytanie",
+                    "condition_operator": "Stan",
+                    "condition_value": "Oczekiwana wartość",
+                    "add_question": "Dodaj pytanie"
+                }
+            },
+            "question_types": {
+                "short_text": "Krótki tekst",
+                "long_text": "Długi tekst",
+                "single_choice": "Pojedynczy wybór",
+                "multiple_choice": "Wielokrotny wybór",
+                "dietary": "Wymagania dietetyczne",
+                "accessibility": "Wymagania dostępności",
+                "consent": "Zgoda",
+                "waiver": "Zrzeczenie się"
+            },
+            "classifications": {
+                "public": "Publiczny",
+                "internal": "Wewnętrzny",
+                "confidential": "Poufny",
+                "sensitive": "Wrażliwy"
+            },
+            "operators": {
+                "equals": "Równe",
+                "not_equals": "Nie równa się",
+                "contains": "Zawiera",
+                "not_contains": "Nie zawiera"
+            },
+            "submissions": {
+                "title": "Zgłoszenia rejestracyjne",
+                "description": "Przeglądaj skuteczne i zastąpione próby bez ujawniania odpowiedzi na liście.",
+                "empty": "Nie otrzymano żadnych zgłoszeń.",
+                "export": "Eksportuj plik CSV",
+                "member_hidden": "Tożsamość członka ograniczona",
+                "effective": "Skuteczny",
+                "superseded": "Zastąpione",
+                "attempt": "Próba {{attempt}}",
+                "review": "Przejrzyj odpowiedzi",
+                "review_title": "Przejrzyj przesłane odpowiedzi",
+                "audit_title": "Dostęp ten będzie kontrolowany",
+                "audit_description": "Przed otwarciem odpowiedzi zapisz konkretny cel operacyjny i odniesienie do korelacji.",
+                "purpose": "Powód dostępu do tych odpowiedzi",
+                "correlation": "Odniesienie do przypadku lub korelacji",
+                "include_sensitive": "Dołącz wrażliwe odpowiedzi",
+                "open_answers": "Otwórz odpowiedzi",
+                "purged": "Usunięto zgodnie z zasadami przechowywania",
+                "export_title": "Eksportuj odpowiedzi rejestracyjne",
+                "export_description": "Eksport jest ograniczony, bezpieczny dla formuł i rejestrowany w audycie niezmiennego dostępu do odpowiedzi.",
+                "download_csv": "Pobierz plik CSV",
+                "amend": "Popraw odpowiedzi",
+                "save_draft": "Zapisz wersję roboczą"
+            },
+            "invitations": {
+                "builder_title": "Kampania zaproszeń",
+                "builder_description": "Wyświetl podgląd i zamroź migawkę odbiorcy przed zaplanowaniem lub wysłaniem.",
+                "type_label": "Źródło odbiorców",
+                "locale_label": "Język zastępczy",
+                "preview": "Podgląd odbiorców",
+                "preview_title": "Podgląd odbiorcy",
+                "snapshot_notice": "Dokładna migawka prawidłowego odbiorcy zostanie użyta w momencie wysyłania, nawet jeśli członkostwo w grupie ulegnie późniejszej zmianie.",
+                "valid_count": "{{count}} prawidłowy odbiorca",
+                "valid_count_other": "{{count}} prawdziwi odbiorcy",
+                "previewed": "Podgląd wierszy",
+                "valid": "Ważny",
+                "errors": "Błędy",
+                "row_error": "Wiersz {{row}}: {{code}}",
+                "expires_at": "Zaproszenie wygasa",
+                "scheduled_for": "Wyślij o godz",
+                "send_now": "Wyślij teraz",
+                "schedule": "Harmonogram",
+                "history_title": "Historia kampanii i dowód dostawy",
+                "empty": "Nie utworzono żadnych kampanii zaproszeń.",
+                "delivery_summary": "{{invitations}} zaproszenia · {{delivered}} dostarczone · {{failed}} nie powiodło się",
+                "cancel": "Anuluj kampanię",
+                "cancel_title": "Anuluj kampanię zaproszeń",
+                "cancel_reason": "Powód anulowania",
+                "confirm_cancel": "Anuluj kampanię",
+                "types": {
+                    "member": "Wybrani członkowie",
+                    "email": "Adresy e-mail",
+                    "group": "Członkowie grupy",
+                    "audience": "Segment odbiorców",
+                    "csv": "Przesyłanie pliku CSV"
+                },
+                "sources": {
+                    "member": {
+                        "label": "Identyfikatory członków",
+                        "description": "Wprowadź identyfikatory członków oddzielone przecinkami, spacjami lub nowymi liniami."
+                    },
+                    "email": {
+                        "label": "Adresy e-mail",
+                        "description": "Wprowadź jeden lub więcej adresów oddzielonych przecinkami lub nowymi wierszami."
+                    },
+                    "group": {
+                        "label": "Identyfikator grupy",
+                        "description": "Wprowadź grupę, której bieżących aktywnych członków należy wykonać."
+                    },
+                    "audience": {
+                        "label": "Opcjonalne role członków",
+                        "description": "Pozostaw puste dla wszystkich aktywnych członków lub wprowadź role z listy dozwolonych, oddzielone przecinkami."
+                    },
+                    "csv": {
+                        "label": "Dane CSV",
+                        "description": "Wklej plik CSV z kolumną e-mail. Nieprawidłowe i zduplikowane wiersze są zgłaszane przed wysłaniem."
+                    }
+                },
+                "error_codes": {
+                    "member_not_found": "Nie znaleziono członka",
+                    "duplicate_target": "zduplikowany odbiorca",
+                    "email_invalid": "nieprawidłowy adres e-mail",
+                    "csv_header_missing": "Brak nagłówka CSV",
+                    "csv_email_column_missing": "Brak kolumny e-mail"
+                }
+            },
+            "guests": {
+                "cancel_confirm_title": "Anulować tego gościa?",
+                "cancel_confirm_body": "Miejsce zarezerwowane dla :name zostanie zwolnione. Tej czynności nie można cofnąć na tym ekranie.",
+                "keep": "Zachowaj gościa",
+                "title": "Lista gości i frekwencja",
+                "description": "Tożsamość gościa i dane kontaktowe są wyświetlane tylko wtedy, gdy pozwalają na to uprawnienia wydarzenia.",
+                "empty": "Żaden gość nie został schwytany.",
+                "name_hidden": "Imię gościa zastrzeżone",
+                "guest_number": "Gość {{number}}",
+                "ticket_linked": "Uprawnienia do biletów powiązane",
+                "no_ticket": "Żadne uprawnienia do biletów nie są powiązane",
+                "notifications_allowed": "Powiadomienia gości zostały wyrażone",
+                "notifications_not_allowed": "Brak zgody na powiadomienia gości",
+                "check_in": "Zameldować się",
+                "check_out": "Wymeldować się",
+                "no_show": "Zaznacz, że się nie pojawił",
+                "undo": "Cofnij ostatnią zmianę",
+                "cancel": "Anuluj gościa",
+                "cancel_reason": "Powód anulowania rezerwacji tego gościa",
+                "cancel_reason_default": "Anulowane przez posiadacza rejestracji"
+            },
+            "attendance": {
+                "not_checked_in": "Nie zameldowany",
+                "checked_in": "Zameldowałem się",
+                "checked_out": "Sprawdzone",
+                "attended": "Uczęszczany",
+                "no_show": "Niestawienie się"
+            },
+            "people_export": {
+                "member_id": "ID członka",
+                "member_name": "Imię i nazwisko członka",
+                "engagement": "Zaangażowanie",
+                "registration": "Rejestracja",
+                "registration_changed": "Zmiana rejestracji",
+                "waitlist": "Lista oczekujących",
+                "queue_position": "Pozycja w kolejce",
+                "queue_sequence": "Kolejność w kolejce",
+                "attendance": "Obecność",
+                "attendance_changed": "Zmiana obecności",
+                "checked_in": "Czas zameldowania",
+                "checked_out": "Czas wymeldowania"
+            },
+            "retention": {
+                "confirm_apply": "Rozumiem, że zastosowanie tego przebiegu trwale anonimizuje kwalifikujące się dane tożsamości i odpowiedzi.",
+                "warning_title": "Anonimizacji nie można cofnąć",
+                "warning_description": "Zawsze sprawdzaj przebieg próbny. Zastosowanie go usuwa wygasły tekst zaszyfrowany odpowiedzi i tożsamości gościa, zachowując jednocześnie zgodę i dowody audytu.",
+                "title": "Bieg dotyczący zachowania prywatności",
+                "description": "Przeglądaj zapisy wymagające anonimizacji w określonym dniu UTC przed zastosowaniem tego samego zamrożonego przebiegu.",
+                "as_of": "Podgląd na dzień",
+                "status": "Status",
+                "submissions": "Zgłoszenia",
+                "guests": "Goście",
+                "eligible": "Kwalifikujące się zapisy",
+                "affected": "Zapisy anonimowe",
+                "modes": {
+                    "dry_run": "Zapowiedź",
+                    "apply": "Stosowany"
+                },
+                "preview": "Uruchom podgląd",
+                "apply": "Zastosuj anonimizację"
+            },
+            "statuses": {
+                "draft": "Projekt",
+                "published": "Opublikowany",
+                "submitted": "Złożony",
+                "withdrawn": "Zamknięty w sobie",
+                "anonymised": "Zanonimizowany",
+                "previewed": "Podgląd",
+                "scheduled": "Zaplanowany",
+                "issuing": "Wydawanie",
+                "issued": "Wydany",
+                "cancelled": "Odwołany",
+                "applied": "Stosowany",
+                "accepted": "Przyjęty",
+                "revoked": "Odwołany",
+                "expired": "Wygasły",
+                "captured": "Złapany"
+            },
+            "locales": {
+                "ar": "arabski",
+                "de": "niemiecki",
+                "en": "angielski",
+                "es": "hiszpański",
+                "fr": "francuski",
+                "ga": "irlandzki",
+                "it": "włoski",
+                "ja": "japoński",
+                "nl": "Holenderski",
+                "pl": "Polski",
+                "pt": "portugalski"
+            },
+            "messages": {
+                "form_saved": "Formularz rejestracyjny został zapisany.",
+                "form_save_error": "Nie można zapisać formularza rejestracyjnego.",
+                "form_published": "Opublikowano formularz rejestracyjny.",
+                "form_publish_error": "Nie można opublikować formularza rejestracyjnego.",
+                "form_forked": "Utworzono nową wersję formularza edytowalnego.",
+                "form_fork_error": "Nie można utworzyć nowej wersji formularza.",
+                "review_error": "Nie można otworzyć odpowiedzi.",
+                "export_started": "Przygotowano eksport rejestracji.",
+                "export_error": "Nie można przygotować eksportu rejestracji.",
+                "preview_ready": "Podgląd odbiorcy jest gotowy.",
+                "preview_error": "Nie można wyświetlić podglądu odbiorców.",
+                "campaign_issued": "Wydano kampanię zaproszeń.",
+                "issue_error": "Nie można wystawić kampanii zaproszeń.",
+                "campaign_scheduled": "Zaplanowano kampanię zaproszeń.",
+                "schedule_error": "Nie można zaplanować kampanii zaproszeń.",
+                "campaign_cancelled": "Kampania zaproszeń została anulowana.",
+                "cancel_error": "Nie można anulować kampanii zaproszeń.",
+                "attendance_updated": "Liczba gości zaktualizowana.",
+                "attendance_error": "Nie udało się zaktualizować obecności gości.",
+                "retention_preview_ready": "Podgląd przechowywania jest gotowy.",
+                "retention_preview_error": "Nie można utworzyć podglądu przechowywania.",
+                "retention_applied": "Zastosowano anonimizację przechowywania.",
+                "retention_apply_error": "Nie można zastosować anonimizacji przechowywania.",
+                "invitation_accepted": "Zaproszenie przyjęte.",
+                "invitation_accept_error": "Zaproszenie nie mogło zostać przyjęte.",
+                "answers_submitted": "Odpowiedzi rejestracyjne przesłane.",
+                "draft_saved": "Wersja robocza rejestracji została zapisana.",
+                "amendment_started": "Utworzono poprawkę edytowalną.",
+                "amendment_error": "Nie można było utworzyć poprawki.",
+                "guest_added": "Dodał gość.",
+                "guest_add_error": "Nie można dodać gościa.",
+                "guest_cancelled": "Gość odwołany.",
+                "guest_cancel_error": "Nie można anulować gościa.",
+                "settings_saved": "Zasady rejestracji zostały zapisane.",
+                "settings_save_error": "Nie można zapisać zasad rejestracji. Sprawdź daty i limity.",
+                "settings_published": "Opublikowano zasady rejestracji.",
+                "settings_publish_error": "Nie można opublikować zasad rejestracji."
+            },
+            "safety_requirements_not_met": "Przed wykonaniem tej czynności należy spełnić wymagania bezpieczeństwa.",
+            "safety_unavailable": "Nie można teraz sprawdzić uprawnień związanych z bezpieczeństwem. Spróbuj ponownie.",
+            "idempotency_required": "Dla tego żądania wymagany jest klucz idempotencji.",
+            "idempotency_invalid": "Klucz idempotencji jest nieprawidłowy.",
+            "idempotency_conflict": "Ten klucz idempotencji został już użyty dla innego żądania.",
+            "concrete_occurrence_required": "Przed kontynuowaniem wybierz konkretne wystąpienie wydarzenia.",
+            "event_unavailable": "To wydarzenie nie jest dostępne do rejestracji.",
+            "event_started": "Rejestracja jest zamknięta, ponieważ wydarzenie już się rozpoczęło.",
+            "capacity_full": "Osiągnięto maksymalną liczbę uczestników tego wydarzenia.",
+            "finite_capacity_required": "Aby korzystać z listy oczekujących, wydarzenie musi mieć określony limit miejsc.",
+            "capacity_available": "Są dostępne miejsca, więc rejestrację można potwierdzić bezpośrednio.",
+            "already_confirmed": "Ta rejestracja jest już potwierdzona.",
+            "offer_acceptance_required": "Przed potwierdzeniem tej rejestracji zaakceptuj aktywną ofertę z listy oczekujących.",
+            "transition_invalid": "Ta zmiana nie jest prawidłowa dla bieżącego stanu rejestracji.",
+            "waitlist_offer_inactive": "Ta oferta z listy oczekujących nie jest już aktywna.",
+            "waitlist_offer_expired": "Ta oferta z listy oczekujących wygasła.",
+            "waitlist_offer_token_invalid": "Token oferty z listy oczekujących jest nieprawidłowy.",
+            "timed_offers_disabled": "Oferty z limitem czasu na liście oczekujących nie są włączone dla tego wydarzenia.",
+            "people_query_invalid": "Zapytanie dotyczące uczestników wydarzenia jest nieprawidłowe.",
+            "validation_failed": "Sprawdź przesłane dane rejestracji i spróbuj ponownie.",
+            "reason_required": "Wymagane jest podanie powodu.",
+            "request_conflict": "Ten rekord zmienił się podczas przetwarzania żądania. Odśwież stronę i spróbuj ponownie.",
+            "service_unavailable": "Usługa rejestracji na wydarzenie jest tymczasowo niedostępna. Spróbuj ponownie.",
+            "server_error": "Podczas przetwarzania rejestracji na wydarzenie wystąpił nieoczekiwany błąd.",
+            "answers": {
+                "validation": {
+                    "required": "Odpowiedz na to pytanie.",
+                    "min_length": "Wprowadź co najmniej :limit znaków.",
+                    "max_length": "Wprowadź nie więcej niż :limit znaków.",
+                    "min_selections": "Wybierz co najmniej :count opcję.|Wybierz co najmniej :count opcje.",
+                    "max_selections": "Wybierz nie więcej niż :count opcję.|Wybierz nie więcej niż :count opcje."
+                }
+            },
+            "accessible": {
+                "organizer_heading": "Kontrole organizatora",
+                "attendee_heading": "Twoja rejestracja",
+                "submit_answers": "Zapisz i prześlij odpowiedzi",
+                "your_invitations": "Twoje zaproszenia",
+                "accept_invitation": "Zaakceptuj zaproszenie",
+                "add_guest": "Dodaj gościa",
+                "guest_name": "Imię gościa",
+                "guest_email": "Adres e-mail gościa (opcjonalnie)",
+                "guest_phone": "Numer telefonu gościa (opcjonalnie)",
+                "privacy_consent_label": "Potwierdzam, że posiadam zgodę gościa na podanie tych danych.",
+                "privacy_consent_text": "Gość zgodził się, że jego tożsamość i dane kontaktowe mogą być przechowywane do celów administrowania wydarzeniem i usuwane po upływie określonego okresu przechowywania.",
+                "notification_consent_label": "Gość wyraża zgodę na otrzymywanie wiadomości o tym wydarzeniu.",
+                "notification_consent_text": "Gość wyraził zgodę na otrzymywanie niezbędnych aktualizacji wydarzeń na podany adres e-mail.",
+                "ticket_entitlement": "Identyfikator uprawnień do biletu (opcjonalnie)",
+                "source_value": "Źródło odbiorcy",
+                "source_hint": "Użyj formatu opisanego dla wybranego źródła odbiorców.",
+                "schedule_or_send": "Zaplanuj lub wyślij ten zamrożony podgląd",
+                "expiry": "Data i godzina wygaśnięcia zaproszenia",
+                "review_submission": "Przejrzyj zgłoszenie {{id}}",
+                "retention_as_of_hint": "Wybierz datę po zakończeniu wydarzenia.",
+                "form_slots_hint": "Wypełnij włączone wiersze pytań. Puste wiersze są ignorowane.",
+                "enabled": "Dołącz to pytanie",
+                "condition_key": "Wcześniejszy klucz pytania (opcjonalnie)",
+                "success": "Akcja rejestracyjna została zakończona.",
+                "validation_error": "Sprawdź wprowadzone informacje i spróbuj ponownie."
             }
         },
         "event_safety": {
@@ -213,6 +844,172 @@
                 "confirm_withdraw_guardian": "Rozumiem, że bieżąca prośba o zgodę stanie się nieważna.",
                 "confirm_withdraw_review": "Potwierdzam, że chcę wycofać aktywną decyzję dotyczącą :name."
             }
+        },
+        "event_templates": {
+            "title": "Szablony wydarzeń",
+            "capture_preview_title": "Przejrzyj przechwytywanie szablonu",
+            "validation_error": "Sprawdź szczegóły szablonu i spróbuj ponownie.",
+            "save_error": "Nie można zapisać szablonu wydarzenia.",
+            "load_error": "Nie można załadować biblioteki szablonów zdarzeń.",
+            "materialize_title": "Utwórz wydarzenie na podstawie tego szablonu",
+            "captured": "Szablon wydarzenia został zapisany.",
+            "revised": "Szablon wydarzenia odświeżony ze źródła.",
+            "back_to_events": "Wracając do wydarzeń",
+            "intro": "Wykorzystuj ponownie zatwierdzoną konfigurację wydarzenia w ramach sprawdzonego przepływu pracy w wersji roboczej.",
+            "safety_title": "Szablony kopiują tylko konfigurację",
+            "safety_description": "Osoby, rejestracje, odpowiedzi prywatne, frekwencja, bilety, historia dostaw, identyfikatory federacji i stan publikacji nigdy nie są kopiowane.",
+            "filter_label": "Filtruj szablony wydarzeń",
+            "filters": {
+                "active": "Aktywny",
+                "archived": "Zarchiwizowane",
+                "all": "Wszystko"
+            },
+            "empty_title": "Nie znaleziono szablonów",
+            "empty_description": "Zapisz wydarzenie jako szablon, aby utworzyć bibliotekę konfiguracji wielokrotnego użytku.",
+            "status": {
+                "active": "Aktywny",
+                "archived": "Zarchiwizowane"
+            },
+            "source": "Wydarzenie źródłowe",
+            "version": "Wersja",
+            "used": "Użycie",
+            "use_count": "Zastosowania: :count",
+            "use_template": "Użyj szablonu",
+            "refresh": "Odśwież ze źródła",
+            "load_more": "Załaduj więcej szablonów",
+            "back": "Powrót",
+            "review_revision_title": "Przejrzyj wersję szablonu",
+            "capture_preview_intro": "Przed zapisaniem tej niezmiennej wersji szablonu przejrzyj każde skopiowane pole i kontrole serwera.",
+            "safe_title": "Bezpieczne do uchwycenia",
+            "safe_description": "Serwer zweryfikował dokładną listę dozwolonych i wykluczył rekordy prywatne i operacyjne.",
+            "copied_title": "Konfiguracja skopiowana do szablonu",
+            "fields": {
+                "title": "Tytuł wydarzenia",
+                "description": "Opis",
+                "category_id": "Kategoria",
+                "group_id": "Połączona grupa",
+                "location": "Lokalizacja",
+                "venue_accessibility": "Dostępność miejsca wydarzenia",
+                "latitude": "Szerokość geograficzna",
+                "longitude": "Długość geograficzna",
+                "max_attendees": "Maksymalna liczba uczestników",
+                "is_online": "Wydarzenie w Internecie",
+                "allow_remote_attendance": "Zezwalaj na zdalną obsługę",
+                "timezone": "Strefa czasowa",
+                "all_day": "Impreza całodniowa",
+                "federated_visibility": "Widoczność Federacji"
+            },
+            "never_copied_title": "Nigdy nie kopiowane",
+            "never_copied_description": "Te operacyjne i prywatne zapisy zawsze pozostają przy zdarzeniu źródłowym.",
+            "never_copied": {
+                "people": "Ludzie, rejestracje i listy oczekujących",
+                "invitations": "Zaproszenia i zapisy gości",
+                "forms": "Formularze rejestracyjne i odpowiedzi prywatne",
+                "attendance": "Historia obecności i meldunków",
+                "tickets": "Bilety, uprawnienia i transakcje",
+                "notifications": "Przypomnienia, powiadomienia i historia dostaw",
+                "federation": "Identyfikatory i dostawy federacji",
+                "lifecycle": "Publikacja, moderacja i stan cyklu życia"
+            },
+            "checklist_title": "Lista kontrolna zweryfikowana przez serwer",
+            "checks": {
+                "event_template_check_source_manage": "Nadal masz uprawnienia do zarządzania wydarzeniem źródłowym",
+                "event_template_check_allowlist_exact": "Uwzględniana jest tylko zatwierdzona lista dozwolonych konfiguracji",
+                "event_template_check_private_records_skipped": "Wyłączone są zapisy prywatne i operacyjne",
+                "event_template_check_versioned_snapshot": "Konfiguracja jest przechowywana jako niezmienna migawka z wersjonowaną wersją",
+                "event_template_check_version_current": "Wybrana wersja szablonu jest aktualna",
+                "event_template_check_schedule_valid": "Nowy harmonogram obowiązuje i obowiązuje w przyszłości",
+                "event_template_check_federation_none": "Federacja jest wyłączona dla nowej wersji roboczej",
+                "event_template_check_canonical_writer": "Wykorzystany zostanie proces tworzenia zdarzenia kanonicznego"
+            },
+            "confirm_revision": "Zapisz nową wersję",
+            "confirm_capture": "Zapisz szablon",
+            "back_to_library": "Powrót do szablonów wydarzeń",
+            "review_draft_title": "Przejrzyj nową wersję roboczą wydarzenia",
+            "materialize_intro": "Wybierz nowy harmonogram i przejrzyj bezpieczną konfigurację przed utworzeniem wydarzenia.",
+            "draft_only_title": "To zawsze tworzy przeciąg",
+            "draft_only_description": "Nic nie jest publikowane, rejestrowane, powiadamiane ani łączone, dopóki nie przejrzysz i nie opublikujesz nowego wydarzenia osobno.",
+            "start_label": "Zacznij",
+            "timezone_hint": "Wpisz harmonogram w :timezone.",
+            "end_label": "Koniec",
+            "safe_overrides_title": "Bezpieczne nadpisania",
+            "safe_overrides_intro": "Dostosuj konfigurację do ponownego użycia dla tej wersji roboczej. Nie można tutaj dodawać danych operacyjnych i prywatnych.",
+            "review_draft": "Przejrzyj wersję roboczą",
+            "review_draft_intro": "Przed utworzeniem nowej wersji roboczej potwierdź listę kontrolną zweryfikowaną przez serwer.",
+            "ready_title": "Gotowy do utworzenia wersji roboczej",
+            "ready_description": "Serwer zweryfikował bieżącą wersję, bezpieczną listę dozwolonych, harmonogram, ustawienia federacji i zapis kanoniczny.",
+            "event_title": "Tytuł wydarzenia",
+            "publication_state": "Stan publikacji",
+            "draft": "Wersja robocza",
+            "create_draft": "Utwórz wersję roboczą",
+            "change_details": "Zmień szczegóły",
+            "audit_link": "Historia audytu",
+            "audit_title": "Historia audytu szablonu",
+            "audit_intro": "Przejrzyj pełny, niezmienny zapis przechwycenia, korekt, archiwizacji i tworzenia wersji roboczych.",
+            "audit_immutable": "Każdy wpis jest tylko dopisywany i nie można go zmienić ani usunąć.",
+            "audit_empty": "Nie zarejestrowano żadnych wpisów audytu.",
+            "audit_recorded_at": "Zarejestrowano",
+            "audit_actions": {
+                "captured": "Szablon przechwycony",
+                "revised": "Szablon poprawiony",
+                "archived": "Szablon zarchiwizowany",
+                "materialized": "Wersja robocza utworzona z szablonu"
+            },
+            "audit_event_reference": "Wydarzenie :id",
+            "audit_created_event": "Utworzone wydarzenie",
+            "audit_integrity": "Skrót integralności",
+            "audit_archive_reason_recorded": "Zapisano powód archiwizacji",
+            "audit_yes": "Tak",
+            "audit_no": "Nie",
+            "audit_override_fields": "Pola zmienione dla tej wersji roboczej",
+            "audit_pagination_label": "Stronicowanie historii audytu szablonu",
+            "audit_load_more": "Załaduj więcej historii"
+        },
+        "event_tickets": {
+            "title": "Bilety na wydarzenie",
+            "intro": "Przeglądaj dostępne rodzaje biletów, ubiegaj się o bezpłatne miejsca i zarządzaj własnymi potwierdzonymi bezpłatnymi biletami.",
+            "load_error": "Nie można załadować katalogu biletów na wydarzenie.",
+            "validation_error": "Sprawdź szczegóły biletu i spróbuj ponownie.",
+            "allocate_error": "Nie udało się przydzielić bezpłatnego biletu. Sprawdź swoją rejestrację, uprawnienia i pozostały przydział.",
+            "cancel_error": "Nie można anulować bezpłatnego biletu. Odśwież katalog i spróbuj ponownie.",
+            "allocated": "Twój bezpłatny bilet został przydzielony.",
+            "cancelled": "Twój bezpłatny bilet został anulowany i zwrócony do przydziału.",
+            "back_to_event": "Powrót do wydarzenia",
+            "back_to_tickets": "Wracając do biletów na wydarzenia",
+            "gateway_disabled": "Płatne i czasowe rozliczenie kredytowe nie jest dostępne. Ta strona nigdy nie pobiera opłat ani kredytów czasowych i nie powoduje zmian w Twoim portfelu.",
+            "my_tickets": "Moje bilety",
+            "no_tickets": "Nie masz biletu na to wydarzenie.",
+            "ticket_fallback": "Bilet na wydarzenie",
+            "units": "Ilość",
+            "status_label": "Stan",
+            "status": {
+                "confirmed": "Potwierdzone",
+                "cancelled": "Anulowano"
+            },
+            "cancel_ticket": "Anuluj bilet",
+            "time_credit_cancel_disabled": "Anulowanie biletu z kredytem czasowym nie jest dostępne w tym bezpłatnym przepływie pracy. Nie podjęto żadnych działań w portfelu.",
+            "catalogue": "Dostępne bilety",
+            "catalogue_empty": "Na to wydarzenie nie są dostępne żadne rodzaje biletów.",
+            "kind": {
+                "free": "Bezpłatny",
+                "time_credit": "Kredyty czasowe"
+            },
+            "remaining": "Pozostały przydział",
+            "member_limit": "Limit na członka",
+            "time_credit_disabled": "Ten typ kosztuje :credits kredytów czasowych, ale realizacja transakcji jest wyłączona do czasu podłączenia zatwierdzonej bramy portfela. Żadne kredyty nie zostaną pobrane.",
+            "units_to_claim": "Liczba bezpłatnych biletów",
+            "units_hint": "W tej alokacji możesz ubiegać się o maksymalnie :count.",
+            "claim_free": "Odbierz darmowy bilet",
+            "registration_required": "Zanim będziesz mógł ubiegać się o bezpłatny bilet, potrzebujesz potwierdzonej rejestracji na wydarzenie.",
+            "not_eligible": "Obecnie nie spełniasz zasad kwalifikowalności tego typu biletu.",
+            "sales_closed": "Ten typ biletu nie jest aktualnie dostępny do przydziału.",
+            "sold_out": "W tym przydziale nie pozostały już dla Ciebie żadne bezpłatne bilety.",
+            "cancel_title": "Anulować ten bezpłatny bilet?",
+            "cancel_intro": "Powiedz organizatorowi, dlaczego odwołujesz wydarzenie. Ilość zostanie zwrócona do bezpłatnego przydziału.",
+            "cancel_free_only": "Ta czynność anuluje wyłącznie bezpłatne uprawnienie. Nie powoduje zwrotu pieniędzy ani zmiany salda portfela.",
+            "reason_label": "Powód anulowania",
+            "reason_hint": "Nie podawaj informacji prywatnych ani wrażliwych. Maksymalnie 500 znaków.",
+            "confirm_cancel": "Anuluj bezpłatny bilet"
         },
         "govuk_alpha": {
             "opens_new_tab": "(otwiera się w nowej karcie)",

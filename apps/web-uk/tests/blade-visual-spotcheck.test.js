@@ -53,7 +53,7 @@ describe('Laravel Blade visual spotcheck helper', () => {
       'public-report-problem'
     ]);
     expect(DEFAULT_VISUAL_SPOTCHECKS[0]).toEqual(expect.objectContaining({
-      laravel: { path: '/hour-timebank/alpha' },
+      laravel: { path: '/hour-timebank/accessible' },
       web: { path: '/hour-timebank/accessible' },
       webForbiddenHtml: ['/alpha']
     }));
@@ -70,13 +70,13 @@ describe('Laravel Blade visual spotcheck helper', () => {
       webForbiddenHtml: ['/alpha', '/accessible']
     }));
     expect(DEFAULT_VISUAL_SPOTCHECKS[3]).toEqual(expect.objectContaining({
-      laravel: { path: '/hour-timebank/alpha/login' },
+      laravel: { path: '/hour-timebank/accessible/login' },
       web: { path: '/hour-timebank/accessible/login' },
       markers: ['Sign in', 'Email address', 'Password'],
       webForbiddenHtml: ['/hour-timebank/alpha']
     }));
     expect(DEFAULT_VISUAL_SPOTCHECKS[18]).toEqual(expect.objectContaining({
-      laravel: { path: '/hour-timebank/alpha/report-a-problem' },
+      laravel: { path: '/hour-timebank/accessible/report-a-problem' },
       web: { path: '/hour-timebank/accessible/report-a-problem' },
       markers: ['Contact Us'],
       webForbiddenHtml: ['/hour-timebank/alpha']
@@ -90,7 +90,7 @@ describe('Laravel Blade visual spotcheck helper', () => {
       const parsed = new URL(url);
       const key = `${options.hostHeader || parsed.host}${parsed.pathname}`;
       const fixtures = {
-        'laravel.test/tenant/alpha': '<h1>Accessible</h1><p>Hour Timebank</p><a href="/tenant/alpha/login">Sign in</a>',
+        'laravel.test/tenant/accessible': '<h1>Accessible</h1><p>Hour Timebank</p><a href="/tenant/accessible/login">Sign in</a>',
         'web.test/tenant/accessible': '<h1>Accessible</h1><p>Hour Timebank</p><a href="/tenant/accessible/login">Sign in</a>',
         'project-nexus.ie/api/v2/tenant/bootstrap': JSON.stringify({
           data: { seo: { h1_headline: 'Build Thriving Communities with NEXUS' } }
@@ -117,7 +117,7 @@ describe('Laravel Blade visual spotcheck helper', () => {
       checks: [
         {
           name: 'tenant',
-          laravel: { path: '/tenant/alpha' },
+          laravel: { path: '/tenant/accessible' },
           web: { path: '/tenant/accessible' },
           markers: ['Accessible', 'Hour Timebank'],
           webForbiddenHtml: ['/tenant/alpha']
@@ -142,7 +142,7 @@ describe('Laravel Blade visual spotcheck helper', () => {
     expect(result.ok).toBe(true);
     expect(result.checks.map((check) => check.name)).toEqual(['tenant', 'master', 'cluster']);
     expect(requests).toEqual([
-      { url: 'http://laravel.test/tenant/alpha', host: '' },
+      { url: 'http://laravel.test/tenant/accessible', host: '' },
       { url: 'http://web.test/tenant/accessible', host: '' },
       { url: 'http://laravel.test/api/v2/tenant/bootstrap', host: 'project-nexus.ie' },
       { url: 'http://web.test/', host: 'project-nexus.ie' },

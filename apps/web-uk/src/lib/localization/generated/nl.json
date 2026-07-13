@@ -2,9 +2,57 @@
     "_meta": {
         "schema": 1,
         "locale": "nl",
-        "source": "lang/nl/{govuk_alpha*,event_agenda,event_offline_checkin,event_safety}.php"
+        "source": "lang/nl/{govuk_alpha*,event_*}.php"
     },
     "namespaces": {
+        "event_accessibility": {
+            "form": {
+                "title": "Toegankelijkheid van de locatie",
+                "hint": "Leg vast wat op de locatie beschikbaar is. Kies ‘Niet bekend’ als de organisator een voorziening niet heeft gecontroleerd; dit is iets anders dan ‘Nee’.",
+                "parking_details": "Parkeren en aankomst",
+                "parking_details_hint": "Beschrijf toegankelijke parkeerplaatsen, afzetpunten en de route naar de ingang.",
+                "transit_details": "Openbaar vervoer",
+                "transit_details_hint": "Beschrijf haltes of stations in de buurt en eventuele obstakels op de route.",
+                "assistance_contact": "Contact voor toegankelijkheidshulp",
+                "assistance_contact_hint": "Geef een openbaar contact voor vragen over toegang. Vul geen privégegevens van deelnemers in.",
+                "notes": "Aanvullende toegangsinformatie",
+                "notes_hint": "Vermeld nuttige informatie over ingang, lift, ondergrond, verlichting of prikkelomgeving.",
+                "privacy_note": "Deze informatie wordt aan evenementleden getoond. Privéverzoeken om aanpassingen horen in het registratieformulier."
+            },
+            "features": {
+                "step_free_access": "Drempelvrije toegang",
+                "accessible_toilet": "Toegankelijk toilet",
+                "hearing_loop": "Ringleiding",
+                "quiet_space": "Prikkelarme ruimte",
+                "seating_available": "Zitplaatsen beschikbaar",
+                "accessible_parking": "Toegankelijke parkeerplaats"
+            },
+            "status": {
+                "yes": "Ja",
+                "no": "Nee",
+                "unknown": "Niet bekend"
+            },
+            "filters": {
+                "step_free_label": "Drempelvrije toegang tot de locatie",
+                "step_free_hint": "Filter op de door de organisator bevestigde toegankelijkheidsinformatie.",
+                "step_free_options": {
+                    "any": "Elke locatie",
+                    "yes": "Drempelvrije toegang bevestigd",
+                    "no": "Niet drempelvrij",
+                    "unknown": "Drempelvrije toegang onbekend"
+                },
+                "step_free_active": "Drempelvrije toegang: :value"
+            },
+            "detail": {
+                "title": "Toegankelijkheid van de locatie",
+                "intro": "Toegangsinformatie van de organisator. Neem contact op als je een voorziening wilt bevestigen.",
+                "features_label": "Toegankelijkheidsvoorzieningen van de locatie",
+                "parking_details": "Parkeren en aankomst",
+                "transit_details": "Openbaar vervoer",
+                "assistance_contact": "Toegankelijkheidshulp",
+                "notes": "Aanvullende toegangsinformatie"
+            }
+        },
         "event_agenda": {
             "withdraw_confirmation": "Ik begrijp dat mijn plaats voor :title vrijkomt en door iemand anders kan worden ingenomen.",
             "capacity_label": "Capaciteit van de sessie",
@@ -38,6 +86,71 @@
             "full_state": "Deze sessie is vol.",
             "session_full_error": "Er zijn geen plaatsen meer voor deze sessie.",
             "eligibility_error": "Bevestig je evenementregistratie voordat je je voor een sessie inschrijft."
+        },
+        "event_analytics": {
+            "csv": {
+                "metric": "Kengetal",
+                "value": "Waarde",
+                "suppressed": "Onderdrukt"
+            }
+        },
+        "event_calendar": {
+            "description": "Evenementdetails bekijken: :url",
+            "description_without_url": "Dit evenement bekijken in Project NEXUS.",
+            "tenant_feed_name": "Evenementen van :tenant",
+            "personal_feed_name": "Mijn aangemelde evenementen",
+            "label_invalid": "Het kalenderlabel mag maximaal 100 tekens bevatten.",
+            "token_limit": "Trek een bestaand kalenderabonnement in voordat je een nieuw maakt.",
+            "token_not_found": "Dit kalenderabonnement is niet gevonden of is al ingetrokken.",
+            "range_invalid": "Kies een geldig datumbereik binnen de toegestane limiet.",
+            "feed_not_found": "Dit kalenderabonnement is niet beschikbaar of is ingetrokken."
+        },
+        "event_lifecycle_history": {
+            "title": "Levenscyclusgeschiedenis",
+            "description": "Een onveranderlijk overzicht van publicatie- en operationele wijzigingen voor dit evenement.",
+            "link": "Levenscyclusgeschiedenis",
+            "back_to_event": "Terug naar evenement",
+            "immutable_explanation": "Deze controlegeschiedenis kan alleen worden aangevuld. Bestaande vermeldingen kunnen niet worden gewijzigd of verwijderd.",
+            "empty_title": "Nog geen levenscycluswijzigingen",
+            "empty_description": "Wijzigingen verschijnen hier nadat de levenscyclus van het evenement is bijgewerkt.",
+            "list_label": "Levenscycluswijzigingen van het evenement",
+            "version": "Versie :version",
+            "immutable": "Onveranderlijk",
+            "recorded_at": "Vastgelegd op",
+            "timestamp_unknown": "Tijd niet vastgelegd",
+            "publication_label": "Publicatie",
+            "operational_label": "Operationele status",
+            "transition": "Van :from naar :to",
+            "actor_label": "Gewijzigd door",
+            "unknown_actor": "Lid :id",
+            "reason_label": "Reden",
+            "evidence_title": "Operationeel bewijs",
+            "notifications_suppressed": "Dubbele meldingen zijn onderdrukt voor deze seriewijziging.",
+            "load_more": "Oudere geschiedenis bekijken",
+            "pagination_label": "Pagina’s van de levenscyclusgeschiedenis",
+            "states": {
+                "publication": {
+                    "draft": "Concept",
+                    "pending_review": "Wacht op beoordeling",
+                    "published": "Gepubliceerd",
+                    "archived": "Gearchiveerd"
+                },
+                "operational": {
+                    "scheduled": "Gepland",
+                    "postponed": "Uitgesteld",
+                    "cancelled": "Geannuleerd",
+                    "completed": "Voltooid"
+                }
+            },
+            "cascade": {
+                "reminders_cancelled": "Geannuleerde herinneringsschema’s: :count",
+                "waitlist_cancelled": "Geannuleerde wachtlijstvermeldingen: :count",
+                "registrations_cancelled": "Geannuleerde inschrijvingen: :count"
+            },
+            "series": {
+                "template": "Terugkerend sjabloon :id",
+                "occurrence": "Moment van terugkerend sjabloon :id"
+            }
         },
         "event_offline_checkin": {
             "privacy": {
@@ -97,6 +210,524 @@
             },
             "device": {
                 "lost": "Trek bij verlies van een personeelsapparaat de toegang direct in via de gewone evenementenomgeving. Ga hier verder op naam of met een ondertekende code."
+            }
+        },
+        "event_recurrence_blueprints": {
+            "tab": "Toekomstige instelling",
+            "title": "Instelling voor toekomstige momenten",
+            "description": "Kies welke evenementdefinities worden toegepast wanneer nieuwe momenten worden aangemaakt.",
+            "definition_only_title": "Alleen definities",
+            "definition_only_description": "Dit kopieert nooit deelnemers, registraties, aanwezigheid, betalingen, herinneringen, analyses of bezorggeschiedenis en wijzigt geen bestaande momenten.",
+            "effective_from_label": "Geldig vanaf herhalingsidentiteit",
+            "effective_from_help": "Deze stabiele identiteit hoort bij het geselecteerde moment en wordt niet opnieuw berekend uit een gewijzigde starttijd.",
+            "sections_title": "Definities om door te geven",
+            "sections_description": "Elke sectie wordt expliciet gekozen. Teamtoewijzingen worden nooit automatisch geselecteerd.",
+            "sections": {
+                "agenda": {
+                    "label": "Programma",
+                    "description": "Geplande sessies, sprekers en definities van beschermde bronnen."
+                },
+                "ticket_types": {
+                    "label": "Tickettypen",
+                    "description": "Gratis of conceptticketdefinities en hun verkoopvensters."
+                },
+                "registration": {
+                    "label": "Registratie",
+                    "description": "Registratie-instellingen en het huidige gepubliceerde formulier."
+                },
+                "safety": {
+                    "label": "Veiligheidseisen",
+                    "description": "De huidige gepubliceerde veiligheids- en toelatingseisen."
+                },
+                "staff": {
+                    "label": "Teamtoewijzingen",
+                    "description": "Opt-in met hoog risico: actieve rollen doorgeven aan nieuwe toekomstige momenten."
+                }
+            },
+            "section_not_permitted": "Uw evenementrol mag deze sectie niet doorgeven.",
+            "no_sections_title": "Selecteer ten minste één sectie",
+            "no_sections_description": "Een voorbeeld is vereist voordat de toekomstige instelling kan worden opgeslagen.",
+            "preview_button": "Voorbeeld toekomstige instelling",
+            "previewing": "Voorbeeld voorbereiden",
+            "preview_title": "Voorbeeld van definities",
+            "preview_description": "Controleer de begrensde aantallen en conflicten vóór bevestiging.",
+            "preview_expires": "Voorbeeld verloopt op :date",
+            "review_button": "Controleren en bevestigen",
+            "refresh_preview": "Voorbeeld vernieuwen",
+            "conflicts_title": "Los eerst deze conflicten op",
+            "conflicts": {
+                "definition_limit_exceeded": ":section overschrijdt de veilige definitielimiet (:count gevonden).",
+                "speaker_limit_exceeded": "Het programma overschrijdt de veilige sprekerslimiet (:count gevonden).",
+                "invalid_speaker_reference": "Het programma bevat :count ongeldige sprekerverwijzing.",
+                "resource_limit_exceeded": "Het programma overschrijdt de veilige bronnenlimiet (:count gevonden).",
+                "unsupported_active_time_credit_ticket": ":count actief tijdkrediet-tickettype kan niet worden doorgegeven.",
+                "published_form_missing": "Het gepubliceerde registratieformulier kon niet worden geverifieerd.",
+                "question_limit_exceeded": "Het gepubliceerde formulier overschrijdt de veilige vragenlimiet (:count gevonden).",
+                "published_requirement_version_missing": "De gepubliceerde versie van de veiligheidseisen kon niet worden geverifieerd.",
+                "invalid_staff_reference": ":count teamtoewijzing verwijst naar een niet-beschikbaar lid.",
+                "nonportable_staff_expiry": ":count teamtoewijzing verloopt vóór het toekomstige moment en kan niet worden doorgegeven."
+            },
+            "counts": {
+                "none": "Geen definities gevonden in de geselecteerde secties.",
+                "sessions": "Sessies",
+                "speakers": "Sprekers",
+                "resources": "Bronnen",
+                "ticket_types": "Tickettypen",
+                "registration_settings": "Registratie-instellingen",
+                "published_forms": "Gepubliceerde formulieren",
+                "form_questions": "Formuliervragen",
+                "safety_requirements": "Veiligheidseisen",
+                "staff_assignments": "Teamtoewijzingen"
+            },
+            "errors": {
+                "preview_error": {
+                    "title": "Voorbeeld kon niet worden voorbereid",
+                    "description": "Controleer de geselecteerde definities en probeer opnieuw."
+                },
+                "preview_expired": {
+                    "title": "Voorbeeld verlopen",
+                    "description": "Vernieuw het voorbeeld vóór bevestiging. Er is niets opgeslagen."
+                },
+                "preview_stale": {
+                    "title": "Definities zijn na het voorbeeld gewijzigd",
+                    "description": "Maak een nieuw voorbeeld met de nieuwste definities."
+                },
+                "commit_conflict": {
+                    "title": "Toekomstige instelling is niet opgeslagen",
+                    "description": "Een andere versie of conflicterende aanvraag is eerst opgeslagen. Vernieuw en controleer opnieuw."
+                },
+                "commit_error": {
+                    "title": "Toekomstige instelling kon niet worden opgeslagen",
+                    "description": "Uw stabiele herhaalsleutel blijft behouden. Bevestig opnieuw of vernieuw een verlopen voorbeeld."
+                }
+            },
+            "success_created_title": "Toekomstige instelling opgeslagen",
+            "success_created_description": "Onveranderlijke definitieversie :version geldt alleen voor nieuw aangemaakte toekomstige momenten.",
+            "success_replay_title": "Toekomstige instelling was al opgeslagen",
+            "success_replay_description": "Versie :version komt overeen met deze herhaling. Er is geen duplicaat aangemaakt.",
+            "history_title": "Onveranderlijke versiegeschiedenis",
+            "history_description": "Elke opgeslagen versie blijft bewaard met begrensde aantallen en de effectieve herhalingsidentiteit.",
+            "history_loading": "Geschiedenis laden",
+            "history_error_title": "Geschiedenis kon niet worden geladen",
+            "history_error_description": "Probeer opnieuw om de onveranderlijke versies op te halen.",
+            "history_empty_title": "Nog geen toekomstige versies",
+            "history_empty_description": "Na bevestiging van een voorbeeld verschijnt hier een versie.",
+            "history_list_label": "Versies van toekomstige momentinstellingen",
+            "history_version": "Versie :version",
+            "history_sections": "Opgenomen definities",
+            "immutable": "Onveranderlijk",
+            "history_load_more": "Meer versies laden",
+            "history_loading_more": "Meer versies laden",
+            "load_more_error_title": "Meer versies konden niet worden geladen",
+            "load_more_error_description": "Probeer de volgende pagina opnieuw te laden.",
+            "retry": "Opnieuw proberen",
+            "time_unknown": "Tijd niet vastgelegd",
+            "confirm_title": "Toekomstige instelling bevestigen",
+            "confirm_scope_title": "Alleen nieuwe momenten",
+            "confirm_scope_description": "Deze versie gaat in vanaf de getoonde identiteit. Bestaande momenten en deelnemersgegevens veranderen niet.",
+            "staff_risk_title": "Doorgifte van teamrollen is geselecteerd",
+            "staff_risk_description": "Actieve rollen kunnen operationele toegang geven op elk nieuw moment. Controleer deze opt-in zorgvuldig.",
+            "confirm_ack": "Ik bevestig deze definitieversie alleen voor de toekomst",
+            "confirm_ack_description": "Ik heb secties, aantallen, conflicten en effectieve herhalingsidentiteit gecontroleerd.",
+            "cancel": "Annuleren",
+            "commit_button": "Onveranderlijke versie opslaan",
+            "committing": "Versie opslaan"
+        },
+        "event_registration": {
+            "title": "Registratie, uitnodigingen en gasten",
+            "description": "Ontwerp registratieformulieren in verschillende versies, beoordeel inzendingen, nodig publiek uit, beheer gasten en pas privacyretentiecontroles toe.",
+            "common": {
+                "cancel": "Annuleren",
+                "close": "Dichtbij",
+                "loading": "Registratiewerkruimte laden",
+                "not_recorded": "Niet opgenomen",
+                "refresh": "Vernieuwen",
+                "retry": "Probeer het opnieuw",
+                "save": "Redden",
+                "previous": "Vorige",
+                "next": "Volgende"
+            },
+            "load_error": {
+                "title": "Registratiewerkruimte kan niet worden geladen",
+                "description": "Controleer uw verbinding en machtigingen en probeer het opnieuw."
+            },
+            "privacy": {
+                "title": "Er worden privacycontroles toegepast",
+                "description": "De toegang tot antwoorden wordt speciaal geregistreerd en gecontroleerd. Gevoelige antwoorden zijn uitgesloten, tenzij u er expliciet om vraagt ​​en toestemming heeft."
+            },
+            "tabs": {
+                "aria": "Registratiebeheersecties",
+                "forms": "Formulieren",
+                "submissions": "Inzendingen",
+                "invitations": "Uitnodigingen",
+                "guests": "Gasten",
+                "retention": "Behoud"
+            },
+            "settings": {
+                "title": "Registratiebeleid",
+                "description": "Configureer goedkeuring, registratievensters, annuleringstijd, ledenlimieten, gasten en privacybehoud voordat u het formulier samenstelt.",
+                "not_created": "Niet geconfigureerd",
+                "revision": "Revisie {{revision}}",
+                "approval_mode": "Goedkeuringsworkflow",
+                "approval_modes": {
+                    "auto": "Bevestig automatisch",
+                    "manual": "Goedkeuring van de organisator vereist"
+                },
+                "opens_at": "Registratie geopend",
+                "closes_at": "De inschrijving sluit",
+                "window_hint": "Laat beide registratiedata blanco, want er is geen tijdsvenster.",
+                "cancellation_cutoff": "Annuleringstermijn",
+                "per_member_limit": "Inschrijvingen per lid",
+                "guests_enabled": "Gasten toestaan",
+                "max_guests": "Maximaal aantal gasten per registratie",
+                "guest_retention": "Bewaren van gastgegevens in dagen",
+                "save": "Beleid opslaan",
+                "publish": "Publiceer beleid"
+            },
+            "forms": {
+                "title": "Registratieformulieren",
+                "new": "Nieuw formulier",
+                "empty": "Er zijn geen registratieformulieren gemaakt.",
+                "not_published": "Er is momenteel geen formulier gepubliceerd.",
+                "published_version": "Gepubliceerde versie {{version}}",
+                "version": "Versie {{version}}",
+                "no_description": "Geen beschrijving",
+                "question_count": "{{count}} vraag",
+                "question_count_other": "{{count}} vragen",
+                "published_at": "Gepubliceerd {{date}}",
+                "edit": "Concept bewerken",
+                "publish": "Publiceren",
+                "create_revision": "Nieuwe versie maken",
+                "settings_missing_title": "Registratie-instellingen zijn niet gereed",
+                "settings_missing_description": "Sla de instellingen voor gebeurtenisregistratie op voordat u een formulier maakt.",
+                "editor": {
+                    "create_title": "Registratieformulier maken",
+                    "edit_title": "Ontwerp van het registratieformulier bewerken",
+                    "name": "Formuliernaam",
+                    "description": "Beschrijving",
+                    "rules_title": "Versiebeheerd en privacybewust",
+                    "rules_description": "Gepubliceerde versies zijn onveranderlijk. Bij elke vraag worden het doel, de classificatie, de bewaartermijn en eventuele voorwaardelijke weergaveregels vastgelegd.",
+                    "question": "Vraag {{number}}",
+                    "move_up": "Verplaats de vraag naar boven",
+                    "move_down": "Verplaats de vraag naar beneden",
+                    "remove": "Vraag verwijderen",
+                    "type": "Vraagtype",
+                    "classification": "Gegevensclassificatie",
+                    "prompt": "Vraag prompt",
+                    "help_text": "Help-tekst",
+                    "purpose": "Doel van het verzamelen van dit antwoord",
+                    "retention_days": "Bewaartermijn in dagen",
+                    "required": "Antwoord vereist",
+                    "choices": "Antwoord keuzes",
+                    "choices_description": "Voer één keuze per regel in. Er zijn minimaal twee nodig.",
+                    "min_length": "Minimale lengte",
+                    "max_length": "Maximale lengte",
+                    "displayed_text": "Toestemmings- of ontheffingstekst getoond aan deelnemers",
+                    "displayed_version": "Toestemmingstekstversie",
+                    "conditional": "Toon deze vraag voorwaardelijk",
+                    "condition_question": "Eerdere vraag",
+                    "condition_operator": "Voorwaarde",
+                    "condition_value": "Verwachte waarde",
+                    "add_question": "Vraag toevoegen"
+                }
+            },
+            "question_types": {
+                "short_text": "Korte tekst",
+                "long_text": "Lange tekst",
+                "single_choice": "Enkele keuze",
+                "multiple_choice": "Meerkeuze",
+                "dietary": "Dieetwensen",
+                "accessibility": "Toegankelijkheidsvereisten",
+                "consent": "Toestemming",
+                "waiver": "Vrijstelling"
+            },
+            "classifications": {
+                "public": "Openbaar",
+                "internal": "Intern",
+                "confidential": "Vertrouwelijk",
+                "sensitive": "Gevoelig"
+            },
+            "operators": {
+                "equals": "Gelijk aan",
+                "not_equals": "Is niet gelijk",
+                "contains": "Bevat",
+                "not_contains": "Bevat niet"
+            },
+            "submissions": {
+                "title": "Registratie inzendingen",
+                "description": "Evalueer effectieve en vervangen pogingen zonder de antwoorden in de lijst weer te geven.",
+                "empty": "Er zijn geen inzendingen ontvangen.",
+                "export": "CSV exporteren",
+                "member_hidden": "Identiteit van leden beperkt",
+                "effective": "Effectief",
+                "superseded": "Vervangen",
+                "attempt": "Probeer {{attempt}}",
+                "review": "Bekijk de antwoorden",
+                "review_title": "Beoordeel de ingediende antwoorden",
+                "audit_title": "Deze toegang zal worden gecontroleerd",
+                "audit_description": "Noteer een specifiek operationeel doel en een correlatiereferentie voordat u antwoorden opent.",
+                "purpose": "Reden voor toegang tot deze antwoorden",
+                "correlation": "Case- of correlatiereferentie",
+                "include_sensitive": "Voeg gevoelige antwoorden toe",
+                "open_answers": "Open antwoorden",
+                "purged": "Opgeschoond op grond van het bewaarbeleid",
+                "export_title": "Registratieantwoorden exporteren",
+                "export_description": "De export is beperkt, formuleveilig en vastgelegd in de onveranderlijke antwoordtoegangsaudit.",
+                "download_csv": "CSV downloaden",
+                "amend": "Antwoorden aanpassen",
+                "save_draft": "Concept opslaan"
+            },
+            "invitations": {
+                "builder_title": "Uitnodigingscampagne",
+                "builder_description": "Bekijk een voorbeeld en bevries de momentopname van de ontvanger voordat u deze plant of verzendt.",
+                "type_label": "Bron van publiek",
+                "locale_label": "Terugvaltaal",
+                "preview": "Bekijk een voorbeeld van ontvangers",
+                "preview_title": "Voorbeeld van ontvanger",
+                "snapshot_notice": "Deze exacte momentopname van de geldige ontvanger wordt gebruikt tijdens het verzenden, zelfs als het groepslidmaatschap later verandert.",
+                "valid_count": "{{count}} geldige ontvanger",
+                "valid_count_other": "{{count}} geldige ontvangers",
+                "previewed": "Rijen bekeken",
+                "valid": "Geldig",
+                "errors": "Fouten",
+                "row_error": "Rij {{row}}: {{code}}",
+                "expires_at": "Uitnodiging verloopt",
+                "scheduled_for": "Verzenden op",
+                "send_now": "Verstuur nu",
+                "schedule": "Schema",
+                "history_title": "Campagnegeschiedenis en leveringsbewijs",
+                "empty": "Er zijn geen uitnodigingscampagnes gemaakt.",
+                "delivery_summary": "{{invitations}} uitnodigingen · {{delivered}} afgeleverd · {{failed}} mislukt",
+                "cancel": "Campagne annuleren",
+                "cancel_title": "Annuleer de uitnodigingscampagne",
+                "cancel_reason": "Reden van annulering",
+                "confirm_cancel": "Campagne annuleren",
+                "types": {
+                    "member": "Geselecteerde leden",
+                    "email": "E-mailadressen",
+                    "group": "Groepsleden",
+                    "audience": "Doelgroepsegment",
+                    "csv": "CSV-upload"
+                },
+                "sources": {
+                    "member": {
+                        "label": "Lid-ID's",
+                        "description": "Voer lid-ID's in, gescheiden door komma's, spaties of nieuwe regels."
+                    },
+                    "email": {
+                        "label": "E-mailadressen",
+                        "description": "Voer een of meer adressen in, gescheiden door komma's of nieuwe regels."
+                    },
+                    "group": {
+                        "label": "Groeps-ID",
+                        "description": "Voer de groep in waarvan de huidige actieve leden een momentopname moeten maken."
+                    },
+                    "audience": {
+                        "label": "Optionele ledenrollen",
+                        "description": "Laat dit leeg voor alle actieve leden, of voer rollen op de toelatingslijst in, gescheiden door komma's."
+                    },
+                    "csv": {
+                        "label": "CSV-gegevens",
+                        "description": "Plak CSV met een e-mailkolom. Ongeldige en dubbele rijen worden vóór verzending gerapporteerd."
+                    }
+                },
+                "error_codes": {
+                    "member_not_found": "lid niet gevonden",
+                    "duplicate_target": "dubbele ontvanger",
+                    "email_invalid": "ongeldig e-mailadres",
+                    "csv_header_missing": "CSV-koptekst ontbreekt",
+                    "csv_email_column_missing": "e-mailkolom ontbreekt"
+                }
+            },
+            "guests": {
+                "cancel_confirm_title": "Deze gast annuleren?",
+                "cancel_confirm_body": "De voor :name gereserveerde plaats komt vrij. Dit kan vanuit dit scherm niet ongedaan worden gemaakt.",
+                "keep": "Gast behouden",
+                "title": "Gastenlijst en aanwezigheid",
+                "description": "De identiteit en contactgegevens van gasten worden alleen weergegeven als uw evenementrechten dit toestaan.",
+                "empty": "Er zijn geen gasten gevangengenomen.",
+                "name_hidden": "Naam van gast beperkt",
+                "guest_number": "Gast {{number}}",
+                "ticket_linked": "Ticketrecht gekoppeld",
+                "no_ticket": "Er is geen ticketrecht gekoppeld",
+                "notifications_allowed": "Gastmeldingen hebben ingestemd",
+                "notifications_not_allowed": "Gastmeldingen niet toegestaan",
+                "check_in": "Inchecken",
+                "check_out": "Uitchecken",
+                "no_show": "Markeer no-show",
+                "undo": "Laatste wijziging ongedaan maken",
+                "cancel": "Gast annuleren",
+                "cancel_reason": "Reden voor het annuleren van deze gast",
+                "cancel_reason_default": "Geannuleerd door de registratiehouder"
+            },
+            "attendance": {
+                "not_checked_in": "Niet ingecheckt",
+                "checked_in": "Ingecheckt",
+                "checked_out": "Uitgecheckt",
+                "attended": "Bijgewoond",
+                "no_show": "Geen show"
+            },
+            "people_export": {
+                "member_id": "Lid-ID",
+                "member_name": "Naam van lid",
+                "engagement": "Deelname",
+                "registration": "Registratie",
+                "registration_changed": "Registratie gewijzigd",
+                "waitlist": "Wachtlijst",
+                "queue_position": "Positie in wachtrij",
+                "queue_sequence": "Volgorde in wachtrij",
+                "attendance": "Aanwezigheid",
+                "attendance_changed": "Aanwezigheid gewijzigd",
+                "checked_in": "Ingecheckt",
+                "checked_out": "Uitgecheckt"
+            },
+            "retention": {
+                "confirm_apply": "Ik begrijp dat het toepassen van deze run de in aanmerking komende identiteits- en antwoordgegevens permanent anonimiseert.",
+                "warning_title": "Anonimisering kan niet ongedaan worden gemaakt",
+                "warning_description": "Controleer altijd de droogloop. Als u dit toepast, worden de verlopen antwoord- en gastidentiteitscijfertekst verwijderd, terwijl de toestemming en het auditbewijs behouden blijven.",
+                "title": "Privacybehoud uitgevoerd",
+                "description": "Bekijk een voorbeeld van de records die op een specifieke UTC-datum moeten worden geanonimiseerd voordat dezelfde bevroren run wordt toegepast.",
+                "as_of": "Voorbeeld vanaf",
+                "status": "Status",
+                "submissions": "Inzendingen",
+                "guests": "Gasten",
+                "eligible": "In aanmerking komende records",
+                "affected": "Records geanonimiseerd",
+                "modes": {
+                    "dry_run": "Voorbeeld",
+                    "apply": "Toegepast"
+                },
+                "preview": "Voorbeeld uitvoeren",
+                "apply": "Anonimisering toepassen"
+            },
+            "statuses": {
+                "draft": "Voorlopige versie",
+                "published": "Gepubliceerd",
+                "submitted": "Ingediend",
+                "withdrawn": "Ingetrokken",
+                "anonymised": "Geanonimiseerd",
+                "previewed": "Voorbeeld weergegeven",
+                "scheduled": "Gepland",
+                "issuing": "Uitgifte",
+                "issued": "Uitgegeven",
+                "cancelled": "Geannuleerd",
+                "applied": "Toegepast",
+                "accepted": "Geaccepteerd",
+                "revoked": "Ingetrokken",
+                "expired": "Verlopen",
+                "captured": "Gevangen"
+            },
+            "locales": {
+                "ar": "Arabisch",
+                "de": "Duits",
+                "en": "Engels",
+                "es": "Spaans",
+                "fr": "Frans",
+                "ga": "Iers",
+                "it": "Italiaans",
+                "ja": "Japanse",
+                "nl": "Nederlands",
+                "pl": "Pools",
+                "pt": "Portugees"
+            },
+            "messages": {
+                "form_saved": "Inschrijfformulier opgeslagen.",
+                "form_save_error": "Het registratieformulier kon niet worden opgeslagen.",
+                "form_published": "Inschrijfformulier gepubliceerd.",
+                "form_publish_error": "Het registratieformulier kon niet worden gepubliceerd.",
+                "form_forked": "Er is een nieuwe bewerkbare formulierversie gemaakt.",
+                "form_fork_error": "Er kon geen nieuwe formulierversie worden gemaakt.",
+                "review_error": "Antwoorden konden niet worden geopend.",
+                "export_started": "Registratie export voorbereid.",
+                "export_error": "Registratie-export kon niet worden voorbereid.",
+                "preview_ready": "Voorbeeld van ontvanger is gereed.",
+                "preview_error": "Er kon geen voorbeeld van de ontvangers worden bekeken.",
+                "campaign_issued": "Uitnodigingscampagne uitgegeven.",
+                "issue_error": "Uitnodigingscampagne kan niet worden uitgegeven.",
+                "campaign_scheduled": "Uitnodigingscampagne gepland.",
+                "schedule_error": "Uitnodigingscampagne kan niet worden gepland.",
+                "campaign_cancelled": "Uitnodigingscampagne geannuleerd.",
+                "cancel_error": "De uitnodigingscampagne kan niet worden geannuleerd.",
+                "attendance_updated": "Gastaanwezigheid bijgewerkt.",
+                "attendance_error": "Aanwezigheid van gasten kan niet worden geüpdatet.",
+                "retention_preview_ready": "Bewaarvoorbeeld is gereed.",
+                "retention_preview_error": "Bewaarvoorbeeld kan niet worden gemaakt.",
+                "retention_applied": "Anonimisering van retentie toegepast.",
+                "retention_apply_error": "Anonimisering van de bewaring kon niet worden toegepast.",
+                "invitation_accepted": "Uitnodiging geaccepteerd.",
+                "invitation_accept_error": "De uitnodiging kon niet worden geaccepteerd.",
+                "answers_submitted": "Registratieantwoorden ingediend.",
+                "draft_saved": "Registratieconcept opgeslagen.",
+                "amendment_started": "Er is een bewerkbaar amendement gemaakt.",
+                "amendment_error": "Er kon geen amendement worden aangemaakt.",
+                "guest_added": "Gast toegevoegd.",
+                "guest_add_error": "Gast kan niet worden toegevoegd.",
+                "guest_cancelled": "Gast geannuleerd.",
+                "guest_cancel_error": "Gast kon niet worden geannuleerd.",
+                "settings_saved": "Registratiebeleid opgeslagen.",
+                "settings_save_error": "Registratiebeleid kan niet worden opgeslagen. Controleer de data en limieten.",
+                "settings_published": "Registratiebeleid gepubliceerd.",
+                "settings_publish_error": "Het registratiebeleid kon niet worden gepubliceerd."
+            },
+            "safety_requirements_not_met": "De veiligheidsvereisten moeten zijn voltooid voordat deze actie kan doorgaan.",
+            "safety_unavailable": "De veiligheidscontrole kan momenteel niet worden uitgevoerd. Probeer het opnieuw.",
+            "idempotency_required": "Voor dit verzoek is een idempotentiesleutel vereist.",
+            "idempotency_invalid": "De idempotentiesleutel is ongeldig.",
+            "idempotency_conflict": "Deze idempotentiesleutel is al gebruikt voor een ander verzoek.",
+            "concrete_occurrence_required": "Selecteer een specifiek evenementmoment voordat u doorgaat.",
+            "event_unavailable": "Dit evenement is niet beschikbaar voor registratie.",
+            "event_started": "De registratie is gesloten omdat het evenement al is begonnen.",
+            "capacity_full": "Dit evenement heeft de maximale capaciteit bereikt.",
+            "finite_capacity_required": "Voor de wachtlijst moet een maximaal aantal plaatsen voor het evenement zijn ingesteld.",
+            "capacity_available": "Er zijn plaatsen beschikbaar, dus de registratie kan direct worden bevestigd.",
+            "already_confirmed": "Deze registratie is al bevestigd.",
+            "offer_acceptance_required": "Accepteer het actieve wachtlijstaanbod voordat u deze registratie bevestigt.",
+            "transition_invalid": "Deze wijziging is niet geldig voor de huidige registratiestatus.",
+            "waitlist_offer_inactive": "Dit wachtlijstaanbod is niet meer actief.",
+            "waitlist_offer_expired": "Dit wachtlijstaanbod is verlopen.",
+            "waitlist_offer_token_invalid": "Het token voor het wachtlijstaanbod is ongeldig.",
+            "timed_offers_disabled": "Getimede wachtlijstaanbiedingen zijn niet ingeschakeld voor dit evenement.",
+            "people_query_invalid": "De query voor evenementdeelnemers is ongeldig.",
+            "validation_failed": "Controleer de ingediende registratiegegevens en probeer het opnieuw.",
+            "reason_required": "Een reden is vereist.",
+            "request_conflict": "Dit record is gewijzigd terwijl uw verzoek werd verwerkt. Vernieuw de pagina en probeer het opnieuw.",
+            "service_unavailable": "De registratieservice voor evenementen is tijdelijk niet beschikbaar. Probeer het opnieuw.",
+            "server_error": "Er is een onverwachte fout opgetreden bij het verwerken van de evenementregistratie.",
+            "answers": {
+                "validation": {
+                    "required": "Beantwoord deze vraag.",
+                    "min_length": "Voer minimaal :limit tekens in.",
+                    "max_length": "Voer maximaal :limit tekens in.",
+                    "min_selections": "Selecteer minimaal :count optie.|Selecteer minimaal :count opties.",
+                    "max_selections": "Selecteer maximaal :count optie.|Selecteer maximaal :count opties."
+                }
+            },
+            "accessible": {
+                "organizer_heading": "Organisatorbedieningen",
+                "attendee_heading": "Uw registratie",
+                "submit_answers": "Antwoorden opslaan en verzenden",
+                "your_invitations": "Jouw uitnodigingen",
+                "accept_invitation": "Accepteer de uitnodiging",
+                "add_guest": "Voeg een gast toe",
+                "guest_name": "Naam gast",
+                "guest_email": "E-mailadres van gast (optioneel)",
+                "guest_phone": "Telefoonnummer van gast (optioneel)",
+                "privacy_consent_label": "Ik bevestig dat ik toestemming van de gast heb om deze gegevens te verstrekken.",
+                "privacy_consent_text": "De gast stemde ermee in dat zijn identiteit en contactgegevens kunnen worden opgeslagen voor de evenementenadministratie en na de aangegeven bewaartermijn kunnen worden verwijderd.",
+                "notification_consent_label": "De gast gaat ermee akkoord berichten over dit evenement te ontvangen.",
+                "notification_consent_text": "De gast stemde ermee in de nodige updates over het evenement te ontvangen op het opgegeven e-mailadres.",
+                "ticket_entitlement": "Ticketrecht-ID (optioneel)",
+                "source_value": "Ontvanger bron",
+                "source_hint": "Gebruik het formaat dat wordt beschreven voor de geselecteerde doelgroepbron.",
+                "schedule_or_send": "Plan of verzend deze bevroren preview",
+                "expiry": "Vervaldatum en -tijd van de uitnodiging",
+                "review_submission": "Inzending {{id}} beoordelen",
+                "retention_as_of_hint": "Kies een datum na afloop van het evenement.",
+                "form_slots_hint": "Vul de ingeschakelde vragenrijen in. Lege rijen worden genegeerd.",
+                "enabled": "Voeg deze vraag toe",
+                "condition_key": "Eerdere vraagsleutel (optioneel)",
+                "success": "De registratieactie is voltooid.",
+                "validation_error": "Controleer de door u ingevoerde gegevens en probeer het opnieuw."
             }
         },
         "event_safety": {
@@ -213,6 +844,172 @@
                 "confirm_withdraw_guardian": "Ik begrijp dat het huidige toestemmingsverzoek ongeldig wordt.",
                 "confirm_withdraw_review": "Ik bevestig dat ik het actieve besluit voor :name wil intrekken."
             }
+        },
+        "event_templates": {
+            "title": "Evenementsjablonen",
+            "capture_preview_title": "Bekijk de sjabloonopname",
+            "validation_error": "Controleer de sjabloongegevens en probeer het opnieuw.",
+            "save_error": "De gebeurtenissjabloon kan niet worden opgeslagen.",
+            "load_error": "De gebeurtenissjabloonbibliotheek kan niet worden geladen.",
+            "materialize_title": "Maak een evenement op basis van deze sjabloon",
+            "captured": "Evenementsjabloon opgeslagen.",
+            "revised": "Gebeurtenissjabloon vernieuwd vanaf de bron.",
+            "back_to_events": "Terug naar evenementen",
+            "intro": "Hergebruik goedgekeurde gebeurtenisconfiguratie via een beoordeelde, alleen concept-workflow.",
+            "safety_title": "Sjablonen kopiëren alleen de configuratie",
+            "safety_description": "Mensen, registraties, privéantwoorden, aanwezigheid, tickets, bezorggeschiedenis, federatie-ID's en publicatiestatus worden nooit gekopieerd.",
+            "filter_label": "Gebeurtenissjablonen filteren",
+            "filters": {
+                "active": "Actief",
+                "archived": "Gearchiveerd",
+                "all": "Allemaal"
+            },
+            "empty_title": "Geen sjablonen gevonden",
+            "empty_description": "Sla een gebeurtenis op als sjabloon om een herbruikbare configuratiebibliotheek te maken.",
+            "status": {
+                "active": "Actief",
+                "archived": "Gearchiveerd"
+            },
+            "source": "Brongebeurtenis",
+            "version": "Versie",
+            "used": "Gebruik",
+            "use_count": "Toepassingen: :count",
+            "use_template": "Gebruik sjabloon",
+            "refresh": "Vernieuwen vanaf de bron",
+            "load_more": "Laad meer sjablonen",
+            "back": "Terug",
+            "review_revision_title": "Sjabloonrevisie beoordelen",
+            "capture_preview_intro": "Controleer elk gekopieerd veld en de server controleert voordat u deze onveranderlijke sjabloonversie opslaat.",
+            "safe_title": "Veilig om vast te leggen",
+            "safe_description": "De server heeft de exacte toelatingslijst geverifieerd en privé- en operationele records uitgesloten.",
+            "copied_title": "Configuratie gekopieerd naar de sjabloon",
+            "fields": {
+                "title": "Titel van het evenement",
+                "description": "Beschrijving",
+                "category_id": "Categorie",
+                "group_id": "Gekoppelde groep",
+                "location": "Locatie",
+                "venue_accessibility": "Toegankelijkheid van de locatie",
+                "latitude": "Breedtegraad",
+                "longitude": "Lengtegraad",
+                "max_attendees": "Maximaal aantal deelnemers",
+                "is_online": "Online evenement",
+                "allow_remote_attendance": "Sta aanwezigheid op afstand toe",
+                "timezone": "Tijdzone",
+                "all_day": "Hele dag evenement",
+                "federated_visibility": "Zichtbaarheid van de federatie"
+            },
+            "never_copied_title": "Nooit gekopieerd",
+            "never_copied_description": "Deze operationele en privérecords blijven altijd bij de brongebeurtenis.",
+            "never_copied": {
+                "people": "Mensen, inschrijvingen en wachtlijsten",
+                "invitations": "Uitnodigingen en gastrecords",
+                "forms": "Registratieformulieren en privéantwoorden",
+                "attendance": "Aanwezigheids- en incheckgeschiedenis",
+                "tickets": "Tickets, rechten en transacties",
+                "notifications": "Herinneringen, meldingen en bezorggeschiedenis",
+                "federation": "Federatie-ID's en leveringen",
+                "lifecycle": "Publicatie, moderatie en levenscyclusstatus"
+            },
+            "checklist_title": "Door de server geverifieerde checklist",
+            "checks": {
+                "event_template_check_source_manage": "U heeft nog steeds toestemming om de brongebeurtenis te beheren",
+                "event_template_check_allowlist_exact": "Alleen de goedgekeurde configuratielijst is opgenomen",
+                "event_template_check_private_records_skipped": "Privé- en operationele gegevens zijn uitgesloten",
+                "event_template_check_versioned_snapshot": "De configuratie wordt opgeslagen als een onveranderlijke momentopname met versiebeheer",
+                "event_template_check_version_current": "De geselecteerde sjabloonversie is actueel",
+                "event_template_check_schedule_valid": "Het nieuwe schema is geldig en in de toekomst",
+                "event_template_check_federation_none": "Federatie is uitgeschakeld voor het nieuwe concept",
+                "event_template_check_canonical_writer": "Er zal gebruik worden gemaakt van de canonieke workflow voor het maken van evenementen"
+            },
+            "confirm_revision": "Sla nieuwe versie op",
+            "confirm_capture": "Sjabloon opslaan",
+            "back_to_library": "Terug naar evenementsjablonen",
+            "review_draft_title": "Bekijk het nieuwe evenementconcept",
+            "materialize_intro": "Kies een nieuw schema en bekijk de veilige configuratie voordat u het evenement aanmaakt.",
+            "draft_only_title": "Hierdoor ontstaat er altijd een concept",
+            "draft_only_description": "Er wordt niets gepubliceerd, geregistreerd, aangemeld of gefedereerd totdat u het nieuwe evenement afzonderlijk beoordeelt en publiceert.",
+            "start_label": "Begin",
+            "timezone_hint": "Voer het schema in :timezone in.",
+            "end_label": "Einde",
+            "safe_overrides_title": "Veilige overschrijvingen",
+            "safe_overrides_intro": "Pas de herbruikbare configuratie voor dit concept aan. Operationele en privégegevens kunnen hier niet worden toegevoegd.",
+            "review_draft": "Concept beoordelen",
+            "review_draft_intro": "Bevestig de door de server geverifieerde checklist voordat u het nieuwe concept maakt.",
+            "ready_title": "Klaar om een concept te maken",
+            "ready_description": "De server heeft de huidige versie, de veilige toelatingslijst, het schema, de federatie-instelling en de canonieke schrijver geverifieerd.",
+            "event_title": "Titel van het evenement",
+            "publication_state": "Publicatie staat",
+            "draft": "Diepgang",
+            "create_draft": "Ontwerp maken",
+            "change_details": "Gegevens wijzigen",
+            "audit_link": "Auditgeschiedenis",
+            "audit_title": "Auditgeschiedenis van sjabloon",
+            "audit_intro": "Bekijk het volledige, onveranderlijke overzicht van vastlegging, revisies, archivering en het maken van concepten.",
+            "audit_immutable": "Elke invoer wordt alleen toegevoegd en kan niet worden gewijzigd of verwijderd.",
+            "audit_empty": "Er zijn geen auditgegevens vastgelegd.",
+            "audit_recorded_at": "Vastgelegd",
+            "audit_actions": {
+                "captured": "Sjabloon vastgelegd",
+                "revised": "Sjabloon herzien",
+                "archived": "Sjabloon gearchiveerd",
+                "materialized": "Concept gemaakt op basis van sjabloon"
+            },
+            "audit_event_reference": "Evenement :id",
+            "audit_created_event": "Gemaakt evenement",
+            "audit_integrity": "Integriteitscontrole",
+            "audit_archive_reason_recorded": "Archiveringsreden vastgelegd",
+            "audit_yes": "Ja",
+            "audit_no": "Nee",
+            "audit_override_fields": "Voor dit concept gewijzigde velden",
+            "audit_pagination_label": "Paginering van de auditgeschiedenis van het sjabloon",
+            "audit_load_more": "Meer geschiedenis laden"
+        },
+        "event_tickets": {
+            "title": "Kaartjes voor evenementen",
+            "intro": "Bekijk beschikbare tickettypes, claim vrije plaatsen en beheer uw eigen bevestigde gratis tickets.",
+            "load_error": "De ticketcatalogus voor het evenement kan niet worden geladen.",
+            "validation_error": "Controleer de ticketgegevens en probeer het opnieuw.",
+            "allocate_error": "Het gratis ticket kon niet worden toegewezen. Controleer uw registratie, geschiktheid en de resterende toewijzing.",
+            "cancel_error": "Het gratis ticket kon niet worden geannuleerd. Vernieuw de catalogus en probeer het opnieuw.",
+            "allocated": "Uw gratis ticket is toegewezen.",
+            "cancelled": "Uw gratis ticket is geannuleerd en teruggestuurd naar de toewijzing.",
+            "back_to_event": "Terug naar evenement",
+            "back_to_tickets": "Terug naar evenemententickets",
+            "gateway_disabled": "Betaald afrekenen en afrekenen met tijdskrediet is niet mogelijk. Deze pagina brengt nooit geld of tijdskrediet in rekening en verandert niets aan uw portemonnee.",
+            "my_tickets": "Mijn kaartjes",
+            "no_tickets": "Je hebt geen ticket voor dit evenement.",
+            "ticket_fallback": "Evenement kaartje",
+            "units": "Hoeveelheid",
+            "status_label": "Status",
+            "status": {
+                "confirmed": "Bevestigd",
+                "cancelled": "Geannuleerd"
+            },
+            "cancel_ticket": "Ticket annuleren",
+            "time_credit_cancel_disabled": "Annulering van tijdskrediettickets is niet beschikbaar in deze gratis workflow. Er is geen portemonnee-actie ondernomen.",
+            "catalogue": "Beschikbare kaartjes",
+            "catalogue_empty": "Er zijn geen tickettypes beschikbaar voor dit evenement.",
+            "kind": {
+                "free": "Gratis",
+                "time_credit": "Tijdkredieten"
+            },
+            "remaining": "Resterende toewijzing",
+            "member_limit": "Limiet per lid",
+            "time_credit_disabled": "Dit type kost :credits tijdskredieten, maar het afrekenen is uitgeschakeld totdat de goedgekeurde portemonnee-gateway is verbonden. Er worden geen tegoeden afgeschreven.",
+            "units_to_claim": "Aantal gratis kaartjes",
+            "units_hint": "Bij deze toewijzing kunt u aanspraak maken op maximaal :count.",
+            "claim_free": "Gratis kaartje claimen",
+            "registration_required": "Je hebt een bevestigde evenementregistratie nodig voordat je aanspraak kunt maken op een gratis ticket.",
+            "not_eligible": "U voldoet momenteel niet aan de geschiktheidsregels voor dit tickettype.",
+            "sales_closed": "Dit tickettype staat momenteel niet open voor toewijzing.",
+            "sold_out": "In deze toewijzing blijven er geen gratis tickets voor u over.",
+            "cancel_title": "Dit gratis ticket annuleren?",
+            "cancel_intro": "Vertel de organisator waarom je annuleert. De hoeveelheid wordt teruggestort in de gratis toewijzing.",
+            "cancel_free_only": "Met deze actie wordt alleen een gratis recht geannuleerd. Er wordt geen restitutie verleend en er wordt geen portemonnee-saldo gewijzigd.",
+            "reason_label": "Reden van annulering",
+            "reason_hint": "Neem geen privé- of gevoelige informatie op. Maximaal 500 tekens.",
+            "confirm_cancel": "Gratis ticket annuleren"
         },
         "govuk_alpha": {
             "opens_new_tab": "(opent in een nieuw tabblad)",

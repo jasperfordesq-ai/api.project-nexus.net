@@ -1356,7 +1356,7 @@ async function renderCommunications(req, res, options = {}) {
   res.set('Cache-Control', 'private, no-store');
   res.set('Pragma', 'no-cache');
   return res.render('events/communications', {
-    title: res.locals.t('govuk_alpha_events.communications.title'), activeNav: 'events',
+    title: res.locals.t('govuk_alpha.events.communications.title'), activeNav: 'events',
     event: { id, title: trimmed(event.title) }, broadcasts: collectionFrom(listResult),
     pagination: listData.meta || listData.pagination || { current_page: page, total: collectionFrom(listResult).length, per_page: 20 },
     detail, preview: options.preview || null,
@@ -1509,7 +1509,7 @@ router.get('/:id(\\d+)/analytics', requireAuth, asyncRoute(async (req, res) => {
   res.set('Cache-Control', 'private, no-store');
   res.set('Pragma', 'no-cache');
   return res.render('events/analytics', {
-    title: res.locals.t('govuk_alpha_events.analytics.title'), activeNav: 'events', eventId: id, summary, sections
+    title: res.locals.t('govuk_alpha.events.analytics.title'), activeNav: 'events', eventId: id, summary, sections
   });
 }, { notFoundTitle: 'Event not found' }));
 
@@ -1537,7 +1537,7 @@ router.get('/:id(\\d+)/calendar', requireAuth, asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   const [eventResult, actionsResult] = await Promise.all([callApi(token, 'GET', `/${id}`), callApi(token, 'GET', `/${id}/calendar-actions`)]);
   return res.render('events/calendar', {
-    title: res.locals.t('govuk_alpha_events.calendar_actions_title'), activeNav: 'events',
+    title: res.locals.t('govuk_alpha.events.calendar_actions_title'), activeNav: 'events',
     event: { id, title: trimmed(eventFrom(eventResult).title) }, actions: dataFrom(actionsResult) || {}
   });
 }, { notFoundTitle: 'Event not found' }));
@@ -1562,7 +1562,7 @@ async function calendarTokens(token) {
 router.get('/calendar-subscriptions', requireAuth, asyncRoute(async (req, res) => {
   calendarSensitive(res);
   return res.render('events/calendar-subscriptions', {
-    title: res.locals.t('govuk_alpha_events.calendar_subscriptions_title'), activeNav: 'events',
+    title: res.locals.t('govuk_alpha.events.calendar_subscriptions_title'), activeNav: 'events',
     tokens: await calendarTokens(tokenFrom(req)), createdFeedUrl: '', status: trimmed(req.query.status), label: '', csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }));
@@ -1576,7 +1576,7 @@ router.post('/calendar-subscriptions', requireAuth, asyncRoute(async (req, res) 
     const created = dataFrom(result) || {};
     calendarSensitive(res);
     return res.status(201).render('events/calendar-subscriptions', {
-      title: res.locals.t('govuk_alpha_events.calendar_subscriptions_title'), activeNav: 'events',
+      title: res.locals.t('govuk_alpha.events.calendar_subscriptions_title'), activeNav: 'events',
       tokens: await calendarTokens(tokenFrom(req)), createdFeedUrl: trimmed(created.feed_url, 4096), status: 'created', label: '', csrfToken: req.csrfToken ? req.csrfToken() : ''
     });
   } catch (error) {
@@ -1592,7 +1592,7 @@ router.get('/calendar-subscriptions/:tokenId(\\d+)/revoke', requireAuth, asyncRo
   if (!token) return res.status(404).render('errors/404', { title: 'Calendar subscription not found' });
   calendarSensitive(res);
   return res.render('events/calendar-subscription-revoke', {
-    title: res.locals.t('govuk_alpha_events.calendar_subscription_revoke_title'), activeNav: 'events', token,
+    title: res.locals.t('govuk_alpha.events.calendar_subscription_revoke_title'), activeNav: 'events', token,
     status: trimmed(req.query.status), csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }));
@@ -1954,7 +1954,7 @@ router.post('/:id(\\d+)/recurring-edit', asyncRoute(async (req, res) => {
     try {
       const preview = dataFrom(await callApi(tokenFrom(req), 'POST', `/${id}/recurrence-revisions/preview`, { patch })) || {};
       res.set('Cache-Control', 'private, no-store'); res.set('Pragma', 'no-cache'); res.set('Referrer-Policy', 'no-referrer');
-      return res.render('events/recurring-preview', { title: res.locals.t('govuk_alpha_events.recurring_edit.preview_title'), activeNav: 'events', event: { id, title: patch.title }, patch, preview, patchJson: JSON.stringify(patch), idempotencyKey: randomUUID(), csrfToken: req.csrfToken ? req.csrfToken() : '' });
+      return res.render('events/recurring-preview', { title: res.locals.t('govuk_alpha_events.recurring_edit.confirm_title'), activeNav: 'events', event: { id, title: patch.title }, patch, preview, patchJson: JSON.stringify(patch), idempotencyKey: randomUUID(), csrfToken: req.csrfToken ? req.csrfToken() : '' });
     } catch (error) {
       if (redirectOnAuthError(error, res)) return undefined;
       if (error instanceof ApiError && [400, 403, 404, 409, 413, 422, 429, 503].includes(error.status)) return redirectTo(res, eventPath(id, '/recurring-edit?status=preview-failed'));

@@ -2,9 +2,57 @@
     "_meta": {
         "schema": 1,
         "locale": "ga",
-        "source": "lang/ga/{govuk_alpha*,event_agenda,event_offline_checkin,event_safety}.php"
+        "source": "lang/ga/{govuk_alpha*,event_*}.php"
     },
     "namespaces": {
+        "event_accessibility": {
+            "form": {
+                "title": "Inrochtaineacht an ionaid",
+                "hint": "Taifead a bhfuil ar fáil san ionad. Roghnaigh “Ní fios” mura bhfuil gné deimhnithe ag an eagraí; ní hionann sin agus “Níl”.",
+                "parking_details": "Páirceáil agus teacht isteach",
+                "parking_details_hint": "Déan cur síos ar spásanna inrochtana, pointí tuirlingthe agus an bealach chuig an mbealach isteach.",
+                "transit_details": "Iompar poiblí",
+                "transit_details_hint": "Déan cur síos ar stadanna nó stáisiúin in aice láimhe agus ar aon bhacainní ar an mbealach.",
+                "assistance_contact": "Teagmhálaí cúnaimh inrochtaineachta",
+                "assistance_contact_hint": "Tabhair bealach teagmhála poiblí do cheisteanna rochtana. Ná cuir sonraí príobháideacha freastalaí anseo.",
+                "notes": "Eolas breise rochtana",
+                "notes_hint": "Cuir eolas úsáideach san áireamh faoin mbealach isteach, ardaitheoir, dromchla, soilsiú nó timpeallacht chéadfach.",
+                "privacy_note": "Taispeántar an t-eolas seo do bhaill an imeachta. Baineann iarratais phríobháideacha ar chóiríocht leis an bhfoirm chlárúcháin."
+            },
+            "features": {
+                "step_free_access": "Rochtain gan chéimeanna",
+                "accessible_toilet": "Leithreas inrochtana",
+                "hearing_loop": "Lúb éisteachta",
+                "quiet_space": "Spás ciúin",
+                "seating_available": "Suíocháin ar fáil",
+                "accessible_parking": "Páirceáil inrochtana"
+            },
+            "status": {
+                "yes": "Tá",
+                "no": "Níl",
+                "unknown": "Ní fios"
+            },
+            "filters": {
+                "step_free_label": "Rochtain gan chéimeanna ar an ionad",
+                "step_free_hint": "Scag de réir na faisnéise rochtana ar an ionad atá deimhnithe ag an eagraí.",
+                "step_free_options": {
+                    "any": "Aon ionad",
+                    "yes": "Rochtain gan chéimeanna deimhnithe",
+                    "no": "Níl rochtain gan chéimeanna ann",
+                    "unknown": "Ní fios faoi rochtain gan chéimeanna"
+                },
+                "step_free_active": "Rochtain gan chéimeanna: :value"
+            },
+            "detail": {
+                "title": "Inrochtaineacht an ionaid",
+                "intro": "Eolas rochtana a chuir eagraí an imeachta ar fáil. Déan teagmháil leis an eagraí más gá socrú a dheimhniú.",
+                "features_label": "Gnéithe inrochtaineachta an ionaid",
+                "parking_details": "Páirceáil agus teacht isteach",
+                "transit_details": "Iompar poiblí",
+                "assistance_contact": "Cúnamh inrochtaineachta",
+                "notes": "Eolas breise rochtana"
+            }
+        },
         "event_agenda": {
             "withdraw_confirmation": "Tuigim go scaoilfear m’áit in :title agus go bhféadfadh duine eile í a ghlacadh.",
             "capacity_label": "Toilleadh an tseisiúin",
@@ -38,6 +86,71 @@
             "full_state": "Tá an seisiún seo lán.",
             "session_full_error": "Níl aon áit fágtha sa seisiún seo.",
             "eligibility_error": "Deimhnigh do chlárú imeachta sula gcláraíonn tú do sheisiún."
+        },
+        "event_analytics": {
+            "csv": {
+                "metric": "Méadrach",
+                "value": "Luach",
+                "suppressed": "Faoi cheilt"
+            }
+        },
+        "event_calendar": {
+            "description": "Féach ar shonraí an imeachta: :url",
+            "description_without_url": "Féach ar an imeacht seo in Project NEXUS.",
+            "tenant_feed_name": "Imeachtaí :tenant",
+            "personal_feed_name": "Na himeachtaí ar chláraigh mé dóibh",
+            "label_invalid": "Ní mór don lipéad féilire a bheith 100 carachtar nó níos lú.",
+            "token_limit": "Cúlghair síntiús féilire atá ann cheana sula gcruthaítear ceann eile.",
+            "token_not_found": "Níor aimsíodh an síntiús féilire sin nó cúlghaireadh é cheana.",
+            "range_invalid": "Roghnaigh raon bailí dátaí féilire laistigh den teorainn cheadaithe.",
+            "feed_not_found": "Níl an síntiús féilire seo ar fáil nó cúlghaireadh é."
+        },
+        "event_lifecycle_history": {
+            "title": "Stair na saolré",
+            "description": "Taifead do-athraithe ar athruithe foilsithe agus oibríochtúla don imeacht seo.",
+            "link": "Stair na saolré",
+            "back_to_event": "Ar ais chuig an imeacht",
+            "immutable_explanation": "Is stair iniúchta breisithe amháin í seo. Ní féidir iontrálacha atá ann a athrú ná a scriosadh.",
+            "empty_title": "Níl aon athrú saolré ann fós",
+            "empty_description": "Beidh athruithe le feiceáil anseo nuair a nuashonrófar saolré an imeachta.",
+            "list_label": "Athruithe ar shaolré an imeachta",
+            "version": "Leagan :version",
+            "immutable": "Do-athraithe",
+            "recorded_at": "Taifeadta ag",
+            "timestamp_unknown": "Níor taifeadadh an t-am",
+            "publication_label": "Foilsiú",
+            "operational_label": "Stádas oibríochtúil",
+            "transition": ":from go :to",
+            "actor_label": "Athraithe ag",
+            "unknown_actor": "Ball :id",
+            "reason_label": "Cúis",
+            "evidence_title": "Fianaise oibríochtúil",
+            "notifications_suppressed": "Cuireadh fógraí dúblacha faoi chois don athrú sraithe seo.",
+            "load_more": "Féach ar stair níos sine",
+            "pagination_label": "Leathanaigh stair na saolré",
+            "states": {
+                "publication": {
+                    "draft": "Dréacht",
+                    "pending_review": "Ag feitheamh ar athbhreithniú",
+                    "published": "Foilsithe",
+                    "archived": "Cartlannaithe"
+                },
+                "operational": {
+                    "scheduled": "Sceidealaithe",
+                    "postponed": "Curtha ar athló",
+                    "cancelled": "Cealaithe",
+                    "completed": "Críochnaithe"
+                }
+            },
+            "cascade": {
+                "reminders_cancelled": "Sceidil mheabhrúcháin cealaithe: :count",
+                "waitlist_cancelled": "Iontrálacha liosta feithimh cealaithe: :count",
+                "registrations_cancelled": "Clárúcháin cealaithe: :count"
+            },
+            "series": {
+                "template": "Teimpléad athfhillteach :id",
+                "occurrence": "Tarlú de theimpléad athfhillteach :id"
+            }
         },
         "event_offline_checkin": {
             "privacy": {
@@ -97,6 +210,524 @@
             },
             "device": {
                 "lost": "Má chailltear gléas foirne, cúlghair é láithreach sa ghnáthlimistéar imeachtaí. Lean ar aghaidh anseo de réir ainm nó cód sínithe."
+            }
+        },
+        "event_recurrence_blueprints": {
+            "tab": "Socrú amach anseo",
+            "title": "Socrú tarluithe amach anseo",
+            "description": "Roghnaigh na sainmhínithe imeachta a chuirfear i bhfeidhm nuair a chruthófar tarluithe nua.",
+            "definition_only_title": "Sainmhínithe amháin",
+            "definition_only_description": "Ní chóipeáiltear freastalaithe, clárúcháin, tinreamh, íocaíochtaí, meabhrúcháin, anailísíocht ná stair seachadta riamh, agus ní athraítear tarluithe atá ann cheana.",
+            "effective_from_label": "I bhfeidhm ón aitheantas atarlaithe",
+            "effective_from_help": "Baineann an t-aitheantas cobhsaí seo leis an tarlú roghnaithe. Ní athríomhtar é ó am tosaithe athraithe.",
+            "sections_title": "Sainmhínithe le tabhairt ar aghaidh",
+            "sections_description": "Roghnaítear gach rannán go follasach. Ní roghnaítear sannacháin foirne go huathoibríoch riamh.",
+            "sections": {
+                "agenda": {
+                    "label": "Clár",
+                    "description": "Seisiúin sceidealaithe, cainteoirí agus sainmhínithe acmhainní cosanta."
+                },
+                "ticket_types": {
+                    "label": "Cineálacha ticéad",
+                    "description": "Sainmhínithe ticéad saor in aisce nó dréachta agus a bhfuinneoga díola."
+                },
+                "registration": {
+                    "label": "Clárú",
+                    "description": "Socruithe clárúcháin agus an fhoirm atá foilsithe faoi láthair."
+                },
+                "safety": {
+                    "label": "Riachtanais sábháilteachta",
+                    "description": "Na riachtanais sábháilteachta agus incháilitheachta atá foilsithe faoi láthair."
+                },
+                "staff": {
+                    "label": "Sannacháin foirne",
+                    "description": "Rogha ardriosca: tabhair róil ghníomhacha ar aghaidh chuig tarluithe nua amach anseo."
+                }
+            },
+            "section_not_permitted": "Ní cheadaíonn do ról imeachta duit an rannán seo a thabhairt ar aghaidh.",
+            "no_sections_title": "Roghnaigh rannán amháin ar a laghad",
+            "no_sections_description": "Tá réamhamharc riachtanach sula sábhálfar an socrú amach anseo.",
+            "preview_button": "Réamhamharc ar an socrú",
+            "previewing": "Réamhamharc á ullmhú",
+            "preview_title": "Réamhamharc sainmhínithe",
+            "preview_description": "Seiceáil na comhairimh theoranta agus na coinbhleachtaí roimh dheimhniú.",
+            "preview_expires": "Rachaidh an réamhamharc in éag :date",
+            "review_button": "Seiceáil agus deimhnigh",
+            "refresh_preview": "Athnuaigh an réamhamharc",
+            "conflicts_title": "Réitigh na coinbhleachtaí seo ar dtús",
+            "conflicts": {
+                "definition_limit_exceeded": "Sáraíonn :section teorainn shábháilte na sainmhínithe (fuarthas :count).",
+                "speaker_limit_exceeded": "Sáraíonn an clár teorainn shábháilte na gcainteoirí (fuarthas :count).",
+                "invalid_speaker_reference": "Tá :count tagairt neamhbhailí do chainteoir sa chlár.",
+                "resource_limit_exceeded": "Sáraíonn an clár teorainn shábháilte na n-acmhainní (fuarthas :count).",
+                "unsupported_active_time_credit_ticket": "Ní féidir :count chineál gníomhach ticéid ama a thabhairt ar aghaidh.",
+                "published_form_missing": "Níorbh fhéidir an fhoirm chlárúcháin fhoilsithe a dheimhniú.",
+                "question_limit_exceeded": "Sáraíonn an fhoirm fhoilsithe teorainn shábháilte na gceisteanna (fuarthas :count).",
+                "published_requirement_version_missing": "Níorbh fhéidir leagan foilsithe na riachtanas sábháilteachta a dheimhniú.",
+                "invalid_staff_reference": "Tagraíonn :count sannachán foirne do bhall nach bhfuil ar fáil.",
+                "nonportable_staff_expiry": "Rachaidh :count sannachán foirne in éag roimh an tarlú amach anseo agus ní féidir é a thabhairt ar aghaidh."
+            },
+            "counts": {
+                "none": "Níor aimsíodh aon sainmhíniú sna rannáin roghnaithe.",
+                "sessions": "Seisiúin",
+                "speakers": "Cainteoirí",
+                "resources": "Acmhainní",
+                "ticket_types": "Cineálacha ticéad",
+                "registration_settings": "Socruithe clárúcháin",
+                "published_forms": "Foirmeacha foilsithe",
+                "form_questions": "Ceisteanna foirme",
+                "safety_requirements": "Riachtanais sábháilteachta",
+                "staff_assignments": "Sannacháin foirne"
+            },
+            "errors": {
+                "preview_error": {
+                    "title": "Níorbh fhéidir an réamhamharc a ullmhú",
+                    "description": "Seiceáil na sainmhínithe roghnaithe agus bain triail eile as."
+                },
+                "preview_expired": {
+                    "title": "Réamhamharc imithe in éag",
+                    "description": "Athnuaigh é roimh dheimhniú. Níor sábháladh aon rud."
+                },
+                "preview_stale": {
+                    "title": "D’athraigh na sainmhínithe tar éis an réamhamhairc",
+                    "description": "Ullmhaigh réamhamharc nua leis na sainmhínithe is déanaí."
+                },
+                "commit_conflict": {
+                    "title": "Níor sábháladh an socrú amach anseo",
+                    "description": "Sábháladh leagan eile nó iarratas contrártha ar dtús. Athnuaigh agus seiceáil arís."
+                },
+                "commit_error": {
+                    "title": "Níorbh fhéidir an socrú a shábháil",
+                    "description": "Coinníodh d’eochair athiarrachta chobhsaí. Deimhnigh arís nó athnuaigh réamhamharc atá imithe in éag."
+                }
+            },
+            "success_created_title": "Socrú amach anseo sábháilte",
+            "success_created_description": "Ní chuirfear leagan do-athraithe :version i bhfeidhm ach ar tharluithe nua amach anseo.",
+            "success_replay_title": "Bhí an socrú sábháilte cheana",
+            "success_replay_description": "Meaitseálann leagan :version an athiarracht seo. Níor cruthaíodh dúblach.",
+            "history_title": "Stair do-athraithe leaganacha",
+            "history_description": "Coinnítear gach leagan le comhairimh theoranta agus a aitheantas atarlaithe éifeachtach.",
+            "history_loading": "Stair á lódáil",
+            "history_error_title": "Níorbh fhéidir an stair a lódáil",
+            "history_error_description": "Bain triail eile as chun na leaganacha do-athraithe a fháil.",
+            "history_empty_title": "Níl aon leagan amach anseo fós",
+            "history_empty_description": "Beidh leagan le feiceáil anseo tar éis réamhamharc a dheimhniú.",
+            "history_list_label": "Leaganacha socraithe tarluithe amach anseo",
+            "history_version": "Leagan :version",
+            "history_sections": "Sainmhínithe san áireamh",
+            "immutable": "Do-athraithe",
+            "history_load_more": "Lódáil tuilleadh leaganacha",
+            "history_loading_more": "Tuilleadh leaganacha á lódáil",
+            "load_more_error_title": "Níorbh fhéidir tuilleadh leaganacha a lódáil",
+            "load_more_error_description": "Déan iarracht an chéad leathanach eile a lódáil arís.",
+            "retry": "Bain triail eile as",
+            "time_unknown": "Am gan taifead",
+            "confirm_title": "Deimhnigh an socrú amach anseo",
+            "confirm_scope_title": "Tarluithe nua amháin",
+            "confirm_scope_description": "Téann an leagan seo i bhfeidhm ón aitheantas léirithe. Ní athraítear tarluithe ná sonraí rannpháirtithe atá ann cheana.",
+            "staff_risk_title": "Tá tabhairt foirne ar aghaidh roghnaithe",
+            "staff_risk_description": "Féadfaidh róil ghníomhacha rochtain oibríochtúil a thabhairt ar gach tarlú nua. Seiceáil an rogha seo go cúramach.",
+            "confirm_ack": "Deimhním an leagan sainmhínithe seo don todhchaí amháin",
+            "confirm_ack_description": "Sheiceáil mé na rannáin, comhairimh, coinbhleachtaí agus an t-aitheantas atarlaithe éifeachtach.",
+            "cancel": "Cealaigh",
+            "commit_button": "Sábháil leagan do-athraithe",
+            "committing": "Leagan á shábháil"
+        },
+        "event_registration": {
+            "title": "Clárú, cuirí agus aíonna",
+            "description": "Dear foirmeacha clárúcháin leagan, athbhreithnigh aighneachtaí, tabhair cuireadh do lucht féachana, bainistigh aíonna agus cuir rialuithe coinneála príobháideachais i bhfeidhm.",
+            "common": {
+                "cancel": "Cealaigh",
+                "close": "Dún",
+                "loading": "Ag lódáil spás oibre clárúcháin",
+                "not_recorded": "Gan taifeadadh",
+                "refresh": "Athnuaigh",
+                "retry": "Bain triail eile as",
+                "save": "Sábháil",
+                "previous": "Roimhe seo",
+                "next": "Ar aghaidh"
+            },
+            "load_error": {
+                "title": "Níorbh fhéidir spás oibre clárúcháin a lódáil",
+                "description": "Seiceáil do cheangal agus ceadanna, ansin bain triail eile as."
+            },
+            "privacy": {
+                "title": "Cuirtear rialuithe príobháideachais i bhfeidhm",
+                "description": "Déantar rochtain ar fhreagraí a thaifeadadh agus a iniúchadh chun críche. Ní áirítear freagraí íogaire mura n-iarrann tú go sainráite orthu agus go bhfuil cead agat."
+            },
+            "tabs": {
+                "aria": "Rannóga bainistíochta clárúcháin",
+                "forms": "Foirmeacha",
+                "submissions": "Aighneachtaí",
+                "invitations": "cuirí",
+                "guests": "Aíonna",
+                "retention": "Coinneáil"
+            },
+            "settings": {
+                "title": "Beartas clárúcháin",
+                "description": "Cumraigh ceadú, fuinneoga clárúcháin, uainiú cealaithe, teorainneacha na mball, aíonna agus coinneáil príobháideachta roimh thógáil na foirme.",
+                "not_created": "Gan cumraithe",
+                "revision": "Athbhreithniú {{revision}}",
+                "approval_mode": "Sreabhadh oibre ceadaithe",
+                "approval_modes": {
+                    "auto": "Deimhnigh go huathoibríoch",
+                    "manual": "Teastaíonn cead ón eagraí"
+                },
+                "opens_at": "Osclaíonn clárú",
+                "closes_at": "Dúnann an clárú",
+                "window_hint": "Fág an dá dháta clárúcháin bán gan aon fhuinneog ama.",
+                "cancellation_cutoff": "Gearradh cealaithe",
+                "per_member_limit": "Clárúcháin in aghaidh an chomhalta",
+                "guests_enabled": "Ceadaigh aíonna",
+                "max_guests": "Uasmhéid aíonna in aghaidh an chlárúcháin",
+                "guest_retention": "Coimeád sonraí aoi i laethanta",
+                "save": "Sábháil polasaí",
+                "publish": "Polasaí a fhoilsiú"
+            },
+            "forms": {
+                "title": "Foirmeacha clárúcháin",
+                "new": "Foirm nua",
+                "empty": "Níl aon fhoirm chlárúcháin cruthaithe.",
+                "not_published": "Níl aon fhoirm foilsithe faoi láthair.",
+                "published_version": "Leagan foilsithe {{version}}",
+                "version": "Leagan {{version}}",
+                "no_description": "Gan tuairisc",
+                "question_count": "{{count}} cheist",
+                "question_count_other": "{{count}} ceisteanna",
+                "published_at": "Foilsithe {{date}}",
+                "edit": "Cuir dréacht in eagar",
+                "publish": "Foilsigh",
+                "create_revision": "Cruthaigh leagan nua",
+                "settings_missing_title": "Níl socruithe clárúcháin réidh",
+                "settings_missing_description": "Sábháil socruithe clárúcháin an imeachta sula gcruthaítear foirm.",
+                "editor": {
+                    "create_title": "Cruthaigh foirm chlárúcháin",
+                    "edit_title": "Cuir dréacht den fhoirm chlárúcháin in eagar",
+                    "name": "Ainm foirme",
+                    "description": "Cur síos",
+                    "rules_title": "Leaganacha agus feasach ar phríobháideachas",
+                    "rules_description": "Tá leaganacha foilsithe do-ath-inmheánach. Taifeadann gach ceist a cuspóir, a rangú, a tréimhse coinneála agus aon riail maidir le taispeáint choinníollach.",
+                    "question": "Ceist {{number}}",
+                    "move_up": "Bog an cheist suas",
+                    "move_down": "Bog an cheist síos",
+                    "remove": "Bain ceist",
+                    "type": "Cineál ceiste",
+                    "classification": "Aicmiú sonraí",
+                    "prompt": "Ceist leid",
+                    "help_text": "Téacs cabhrach",
+                    "purpose": "Aidhm leis an bhfreagra seo a bhailiú",
+                    "retention_days": "Tréimhse choinneála i laethanta",
+                    "required": "Freagra ag teastáil",
+                    "choices": "Freagra roghanna",
+                    "choices_description": "Cuir isteach rogha amháin in aghaidh an líne. Tá dhá cheann ar a laghad ag teastáil.",
+                    "min_length": "Íosfhad",
+                    "max_length": "Fad uasta",
+                    "displayed_text": "Taispeántar toiliú nó téacs tarscaoilte don lucht freastail",
+                    "displayed_version": "Leagan téacs toilithe",
+                    "conditional": "Taispeáin an cheist seo go coinníollach",
+                    "condition_question": "Ceist níos luaithe",
+                    "condition_operator": "Coinníoll",
+                    "condition_value": "Luach ionchais",
+                    "add_question": "Cuir ceist leis"
+                }
+            },
+            "question_types": {
+                "short_text": "Téacs gearr",
+                "long_text": "Téacs fada",
+                "single_choice": "Rogha aonair",
+                "multiple_choice": "Il-rogha",
+                "dietary": "Riachtanais chothaithe",
+                "accessibility": "Ceanglais inrochtaineachta",
+                "consent": "Toiliú",
+                "waiver": "Tarscaoileadh"
+            },
+            "classifications": {
+                "public": "Poiblí",
+                "internal": "Inmheánach",
+                "confidential": "Faoi rún",
+                "sensitive": "Íogair"
+            },
+            "operators": {
+                "equals": "Comhionann",
+                "not_equals": "Ní ionann",
+                "contains": "Tá",
+                "not_contains": "Ní chuimsíonn"
+            },
+            "submissions": {
+                "title": "Aighneachtaí clárúcháin",
+                "description": "Déan athbhreithniú ar iarrachtaí éifeachtacha a cuireadh ina n-ionad gan freagraí a nochtadh san uainchlár.",
+                "empty": "Ní bhfuarthas aon aighneachtaí.",
+                "export": "Easpórtáil CSV",
+                "member_hidden": "Srian le céannacht na mball",
+                "effective": "Éifeachtach",
+                "superseded": "curtha ina ionad",
+                "attempt": "Déan iarracht {{attempt}}",
+                "review": "Athbhreithnigh freagraí",
+                "review_title": "Déan athbhreithniú ar na freagraí a cuireadh isteach",
+                "audit_title": "Déanfar iniúchadh ar an rochtain seo",
+                "audit_description": "Taifead sainchuspóir oibriúcháin agus tagairt chomhghaolaithe sula osclaíonn tú freagraí.",
+                "purpose": "An chúis le teacht ar na freagraí seo",
+                "correlation": "Tagairt cáis nó comhghaoil",
+                "include_sensitive": "Cuir freagraí íogaire san áireamh",
+                "open_answers": "Freagraí oscailte",
+                "purged": "Glanadh faoin bpolasaí coinneála",
+                "export_title": "Freagraí clárúcháin a onnmhairiú",
+                "export_description": "Tá an t-onnmhairiú teoranta, sábháilte ó thaobh foirmle agus taifeadtar é san iniúchadh ar rochtain ar fhreagraí do-aistrithe.",
+                "download_csv": "Íoslódáil bileog eolais CSV",
+                "amend": "Leasaigh freagraí",
+                "save_draft": "Sábháil dréacht"
+            },
+            "invitations": {
+                "builder_title": "Feachtas cuireadh",
+                "builder_description": "Réamhamhairc agus reo an pictiúr faighteora roimh sceidealú nó a sheoladh.",
+                "type_label": "Foinse lucht féachana",
+                "locale_label": "Teanga fallback",
+                "preview": "Faighteoirí réamhamhairc",
+                "preview_title": "Réamhamharc faighteoir",
+                "snapshot_notice": "Úsáidfear an pictiúr cruinn faighteoir bailí seo ag am seolta, fiú má thagann athrú ar bhallraíocht an ghrúpa níos déanaí.",
+                "valid_count": "{{count}} faighteoir bailí",
+                "valid_count_other": "{{count}} faighteoirí bailí",
+                "previewed": "Réamhamhairc ar na sraitheanna",
+                "valid": "Bailí",
+                "errors": "Earráidí",
+                "row_error": "Ró {{row}}: {{code}}",
+                "expires_at": "Téann an cuireadh in éag",
+                "scheduled_for": "Seol ag",
+                "send_now": "Seol anois",
+                "schedule": "Sceideal",
+                "history_title": "Stair feachtais agus fianaise seachadta",
+                "empty": "Níor cruthaíodh aon fheachtais cuireadh.",
+                "delivery_summary": "{{invitations}} cuirí · {{delivered}} seachadta · {{failed}} theip",
+                "cancel": "Cealaigh feachtas",
+                "cancel_title": "Cuir feachtas cuirí ar ceal",
+                "cancel_reason": "Cúis cealaithe",
+                "confirm_cancel": "Cealaigh feachtas",
+                "types": {
+                    "member": "Baill roghnaithe",
+                    "email": "Seoltaí ríomhphoist",
+                    "group": "Baill an ghrúpa",
+                    "audience": "Deighleog lucht féachana",
+                    "csv": "Uaslódáil CSV"
+                },
+                "sources": {
+                    "member": {
+                        "label": "Aitheantas na mBall",
+                        "description": "Cuir isteach ID ball scartha le camóga, spásanna nó línte nua."
+                    },
+                    "email": {
+                        "label": "Seoltaí ríomhphoist",
+                        "description": "Cuir isteach seoladh amháin nó níos mó atá scartha le camóga nó línte nua."
+                    },
+                    "group": {
+                        "label": "Aitheantas grúpa",
+                        "description": "Cuir isteach an grúpa ar cheart a mbaill ghníomhacha reatha a ghrianghrafadh."
+                    },
+                    "audience": {
+                        "label": "Róil bhall roghnacha",
+                        "description": "Fág bán do gach ball gníomhach, nó cuir isteach róil cheadaithe liostaithe scartha le camóga."
+                    },
+                    "csv": {
+                        "label": "Sonraí CSV",
+                        "description": "Greamaigh CSV le colún ríomhphoist. Tuairiscítear sraitheanna neamhbhailí agus dúblacha roimh sheoladh."
+                    }
+                },
+                "error_codes": {
+                    "member_not_found": "ball gan aimsiú",
+                    "duplicate_target": "faighteoir dúblach",
+                    "email_invalid": "seoladh ríomhphoist neamhbhailí",
+                    "csv_header_missing": "Ceanntásc CSV in easnamh",
+                    "csv_email_column_missing": "colún ríomhphoist in easnamh"
+                }
+            },
+            "guests": {
+                "cancel_confirm_title": "Cealaigh an t-aoi seo?",
+                "cancel_confirm_body": "Scaoilfear an áit atá coinnithe do :name. Ní féidir é seo a chealú ón scáileán seo.",
+                "keep": "Coinnigh an t-aoi",
+                "title": "Uainchlár aoi agus freastal",
+                "description": "Ní thaispeántar aitheantas aoi agus sonraí teagmhála ach amháin nuair a cheadaíonn do chead imeachta iad.",
+                "empty": "Níor gabhadh aon aíonna.",
+                "name_hidden": "Ainm aoi srianta",
+                "guest_number": "Aoi {{number}}",
+                "ticket_linked": "Nasc teidlíocht ticéad",
+                "no_ticket": "Níl aon teidlíocht ticéad nasctha",
+                "notifications_allowed": "Ceadaíodh fógraí aoi",
+                "notifications_not_allowed": "Níor thoiligh fógraí aoi",
+                "check_in": "Seiceáil isteach",
+                "check_out": "Seiceáil amach",
+                "no_show": "Marcáil gan seó",
+                "undo": "Cealaigh an t-athrú deiridh",
+                "cancel": "Cealaigh aoi",
+                "cancel_reason": "Cúis leis an aoi seo a chealú",
+                "cancel_reason_default": "Ar ceal ag an sealbhóir clárúcháin"
+            },
+            "attendance": {
+                "not_checked_in": "Gan seiceáil isteach",
+                "checked_in": "Seiceáilte isteach",
+                "checked_out": "Seiceáilte amach",
+                "attended": "D'fhreastal",
+                "no_show": "Gan seó"
+            },
+            "people_export": {
+                "member_id": "Aitheantas an bhaill",
+                "member_name": "Ainm an bhaill",
+                "engagement": "Rannpháirtíocht",
+                "registration": "Clárú",
+                "registration_changed": "Athrú clárúcháin",
+                "waitlist": "Liosta feithimh",
+                "queue_position": "Áit sa scuaine",
+                "queue_sequence": "Seicheamh sa scuaine",
+                "attendance": "Tinreamh",
+                "attendance_changed": "Athrú tinrimh",
+                "checked_in": "Seiceáilte isteach",
+                "checked_out": "Seiceáilte amach"
+            },
+            "retention": {
+                "confirm_apply": "Tuigim go ndéanann cur i bhfeidhm an rite seo na sonraí aitheantais agus freagra incháilithe anaithnid go buan.",
+                "warning_title": "Ní féidir anaithnidiú a chealú",
+                "warning_description": "Déan athbhreithniú i gcónaí ar an rith tirim. Má chuirtear i bhfeidhm é, baintear an freagra atá imithe in éag agus ciphertext céannachta aoi agus caomhnaítear toiliú agus fianaise iniúchta.",
+                "title": "Rith coinneála príobháideachta",
+                "description": "Taifid réamhamhairc atá le déanamh gan ainm ar dháta sonrach UTC roimh an rith reoite céanna a chur i bhfeidhm.",
+                "as_of": "Réamhamharc mar de",
+                "status": "Stádas",
+                "submissions": "Aighneachtaí",
+                "guests": "Aíonna",
+                "eligible": "Taifid incháilithe",
+                "affected": "Taifid gan ainm",
+                "modes": {
+                    "dry_run": "Réamhamharc",
+                    "apply": "Fheidhmeach"
+                },
+                "preview": "Rith réamhamharc",
+                "apply": "Cuir anaithnideacht i bhfeidhm"
+            },
+            "statuses": {
+                "draft": "Dréacht",
+                "published": "Foilsithe",
+                "submitted": "Arna chur isteach",
+                "withdrawn": "Tarraingthe siar",
+                "anonymised": "Gan ainm",
+                "previewed": "Réamhamhairc",
+                "scheduled": "Sceidealta",
+                "issuing": "Eisiúint",
+                "issued": "Eisithe",
+                "cancelled": "Ar ceal",
+                "applied": "Fheidhmeach",
+                "accepted": "Glactar leis",
+                "revoked": "Cúlghairthe",
+                "expired": "imithe in éag",
+                "captured": "Gabhadh"
+            },
+            "locales": {
+                "ar": "Araibis",
+                "de": "Gearmáinis",
+                "en": "Béarla",
+                "es": "Spáinnis",
+                "fr": "Fraincis",
+                "ga": "Gaeilge",
+                "it": "Iodálach",
+                "ja": "Seapánach",
+                "nl": "Ollainnis",
+                "pl": "Polainnis",
+                "pt": "Portaingéilis"
+            },
+            "messages": {
+                "form_saved": "Shábháil an fhoirm chlárúcháin.",
+                "form_save_error": "Níorbh fhéidir an fhoirm chlárúcháin a shábháil.",
+                "form_published": "Foirm chlárúcháin foilsithe.",
+                "form_publish_error": "Níorbh fhéidir an fhoirm chlárúcháin a fhoilsiú.",
+                "form_forked": "Cruthaíodh leagan foirme inathraithe nua.",
+                "form_fork_error": "Níorbh fhéidir leagan foirme nua a chruthú.",
+                "review_error": "Níorbh fhéidir freagraí a oscailt.",
+                "export_started": "Easpórtáil clárúcháin ullmhaithe.",
+                "export_error": "Níorbh fhéidir onnmhairiú clárúcháin a ullmhú.",
+                "preview_ready": "Tá réamhamharc an fhaighteora réidh.",
+                "preview_error": "Níorbh fhéidir na faighteoirí a réamhamharc.",
+                "campaign_issued": "Feachtas cuireadh eisithe.",
+                "issue_error": "Níorbh fhéidir feachtas cuireadh a eisiúint.",
+                "campaign_scheduled": "Feachtas cuireadh sceidealta.",
+                "schedule_error": "Níorbh fhéidir feachtas cuireadh a sceidealú.",
+                "campaign_cancelled": "Cuireadh an feachtas ar ceal.",
+                "cancel_error": "Níorbh fhéidir feachtas an chuiridh a chur ar ceal.",
+                "attendance_updated": "Nuashonraíodh tinreamh aoi.",
+                "attendance_error": "Níorbh fhéidir freastal aoi a nuashonrú.",
+                "retention_preview_ready": "Tá réamhamharc coinneála réidh.",
+                "retention_preview_error": "Níorbh fhéidir réamhamharc coinneála a chruthú.",
+                "retention_applied": "Ainmniú coinneála curtha i bhfeidhm.",
+                "retention_apply_error": "Níorbh fhéidir anaithnidiú coinneála a chur i bhfeidhm.",
+                "invitation_accepted": "Glacadh le cuireadh.",
+                "invitation_accept_error": "Níorbh fhéidir glacadh le cuireadh.",
+                "answers_submitted": "Freagraí clárúcháin curtha isteach.",
+                "draft_saved": "Dréacht clárúcháin sábháilte.",
+                "amendment_started": "Cruthaíodh leasú inathraithe.",
+                "amendment_error": "Níorbh fhéidir leasú a chruthú.",
+                "guest_added": "Chuir aoi leis.",
+                "guest_add_error": "Níorbh fhéidir aoi a chur leis.",
+                "guest_cancelled": "Aoi ar ceal.",
+                "guest_cancel_error": "Níorbh fhéidir an t-aoi a chur ar ceal.",
+                "settings_saved": "Beartas clárúcháin sábháilte.",
+                "settings_save_error": "Níorbh fhéidir an polasaí clárúcháin a shábháil. Seiceáil na dátaí agus na teorainneacha.",
+                "settings_published": "Polasaí clárúcháin foilsithe.",
+                "settings_publish_error": "Níorbh fhéidir polasaí clárúcháin a fhoilsiú."
+            },
+            "safety_requirements_not_met": "Ní mór na ceanglais sábháilteachta a chomhlíonadh sula leanann tú ar aghaidh.",
+            "safety_unavailable": "Ní féidir ceanglais sábháilteachta an imeachta a fhíorú faoi láthair.",
+            "idempotency_required": "Tá eochair idempotency ag teastáil.",
+            "idempotency_invalid": "Tá an eochair idempotency neamhbhailí.",
+            "idempotency_conflict": "Úsáideadh an eochair idempotency seo cheana le haghaidh iarratas eile.",
+            "concrete_occurrence_required": "Roghnaigh tarlú sonrach den imeacht.",
+            "event_unavailable": "Níl an t-imeacht seo ar fáil le clárú.",
+            "event_started": "Tá an t-imeacht seo tosaithe agus tá an clárú dúnta.",
+            "capacity_full": "Tá an t-imeacht seo ag a lánacmhainn.",
+            "finite_capacity_required": "Ní mór acmhainn theoranta a shocrú don imeacht chun liosta feithimh a úsáid.",
+            "capacity_available": "Tá áit ar fáil fós; deimhnigh an clárú go díreach.",
+            "already_confirmed": "Tá clárú an bhaill seo deimhnithe cheana.",
+            "offer_acceptance_required": "Glac leis an tairiscint ghníomhach ón liosta feithimh ar dtús chun an clárú a dheimhniú.",
+            "transition_invalid": "Ní féidir an t-athrú seo a dhéanamh ón staid reatha.",
+            "waitlist_offer_inactive": "Níl an tairiscint seo ón liosta feithimh gníomhach a thuilleadh.",
+            "waitlist_offer_expired": "Tá an tairiscint seo ón liosta feithimh imithe in éag.",
+            "waitlist_offer_token_invalid": "Tá ceadchomhartha na tairisceana ón liosta feithimh neamhbhailí.",
+            "timed_offers_disabled": "Níl tairiscintí uainithe ón liosta feithimh cumasaithe don imeacht seo.",
+            "people_query_invalid": "Tá paraiméadair chuardaigh na ndaoine neamhbhailí.",
+            "validation_failed": "Seiceáil na sonraí a cuireadh isteach agus bain triail eile as.",
+            "reason_required": "Tá cúis ag teastáil.",
+            "request_conflict": "Athraíodh an taifead seo idir an dá linn. Athnuaigh an leathanach agus bain triail eile as.",
+            "service_unavailable": "Níl an tseirbhís clárúcháin imeachtaí ar fáil go sealadach.",
+            "server_error": "Tharla earráid gan choinne agus an clárúchán imeachta á phróiseáil.",
+            "answers": {
+                "validation": {
+                    "required": "Freagair an cheist seo.",
+                    "min_length": "Cuir isteach :limit carachtar ar a laghad.",
+                    "max_length": "Ná cuir isteach níos mó ná :limit carachtar.",
+                    "min_selections": "Roghnaigh :count rogha ar a laghad.|Roghnaigh :count rogha ar a laghad.",
+                    "max_selections": "Ná roghnaigh níos mó ná :count rogha.|Ná roghnaigh níos mó ná :count rogha."
+                }
+            },
+            "accessible": {
+                "organizer_heading": "Rialuithe eagraí",
+                "attendee_heading": "Do chlárú",
+                "submit_answers": "Sábháil agus cuir isteach freagraí",
+                "your_invitations": "Do chuirí",
+                "accept_invitation": "Glac le cuireadh",
+                "add_guest": "Cuir aoi leis",
+                "guest_name": "Ainm aoi",
+                "guest_email": "Seoladh ríomhphoist aoi (roghnach)",
+                "guest_phone": "Uimhir theileafóin aoi (roghnach)",
+                "privacy_consent_label": "Deimhním go bhfuil cead an aoi agam na sonraí seo a sholáthar.",
+                "privacy_consent_text": "D'aontaigh an t-aoi go bhféadfaí a gcuid aitheantais agus sonraí teagmhála a stóráil le haghaidh riaradh an imeachta agus a bhaint tar éis na tréimhse coinneála sonraithe.",
+                "notification_consent_label": "Aontaíonn an t-aoi teachtaireachtaí a fháil faoin imeacht seo.",
+                "notification_consent_text": "D'aontaigh an t-aoi nuashonruithe imeachta riachtanacha a fháil ag an seoladh ríomhphoist a cuireadh ar fáil.",
+                "ticket_entitlement": "Aitheantas teidlíochta ticéad (roghnach)",
+                "source_value": "Foinse faighteora",
+                "source_hint": "Úsáid an fhormáid a bhfuil cur síos déanta uirthi don fhoinse lucht féachana roghnaithe.",
+                "schedule_or_send": "Sceidealaigh nó seol an réamhamharc reoite seo",
+                "expiry": "Dáta agus am éaga an chuiridh",
+                "review_submission": "Athbhreithnigh aighneacht {{id}}",
+                "retention_as_of_hint": "Roghnaigh dáta tar éis don imeacht críochnú.",
+                "form_slots_hint": "Comhlánaigh na sraitheanna ceisteanna cumasaithe. Ní thugtar aird ar shraitheanna bána.",
+                "enabled": "Cuir an cheist seo san áireamh",
+                "condition_key": "Eochair cheist níos luaithe (roghnach)",
+                "success": "Críochnaíodh an gníomh clárúcháin.",
+                "validation_error": "Seiceáil an fhaisnéis a d'iontráil tú agus bain triail eile as."
             }
         },
         "event_safety": {
@@ -213,6 +844,172 @@
                 "confirm_withdraw_guardian": "Tuigim go mbeidh an t-iarratas toilithe reatha neamhbhailí.",
                 "confirm_withdraw_review": "Deimhním gur mian liom an cinneadh gníomhach do :name a tharraingt siar."
             }
+        },
+        "event_templates": {
+            "title": "Teimpléid imeachtaí",
+            "capture_preview_title": "Léirmheas ar ghabháil teimpléad",
+            "validation_error": "Seiceáil sonraí an teimpléid agus bain triail eile as.",
+            "save_error": "Níorbh fhéidir teimpléad an imeachta a shábháil.",
+            "load_error": "Níorbh fhéidir leabharlann teimpléad na hócáide a luchtú.",
+            "materialize_title": "Cruthaigh imeacht ón teimpléad seo",
+            "captured": "Sábháladh teimpléad imeachta.",
+            "revised": "Athnuadh an teimpléad imeachta óna fhoinse.",
+            "back_to_events": "Ar ais chuig imeachtaí",
+            "intro": "Athúsáid cumraíocht imeachtaí ceadaithe trí shreabhadh oibre athbhreithnithe, dréacht-amháin.",
+            "safety_title": "Cumraíocht cóipe teimpléid amháin",
+            "safety_description": "Ní dhéantar daoine, clárúcháin, freagraí príobháideacha, tinreamh, ticéid, stair seachadta, aitheantóirí cónaidhme agus staid foilseacháin a chóipeáil riamh.",
+            "filter_label": "Scag teimpléid imeachtaí",
+            "filters": {
+                "active": "Gníomhach",
+                "archived": "Cartlannaithe",
+                "all": "Gach"
+            },
+            "empty_title": "Níor aimsíodh teimpléid",
+            "empty_description": "Sábháil imeacht mar theimpléad chun leabharlann cumraíochta ath-inúsáidte a chruthú.",
+            "status": {
+                "active": "Gníomhach",
+                "archived": "Cartlannaithe"
+            },
+            "source": "Imeacht foinse",
+            "version": "Leagan",
+            "used": "Úsáid",
+            "use_count": "Úsáidí: :count",
+            "use_template": "Úsáid teimpléad",
+            "refresh": "Athnuaigh ón bhfoinse",
+            "load_more": "Íoslódáil níos mó teimpléid",
+            "back": "Ar ais",
+            "review_revision_title": "Athbhreithnigh athbhreithniú teimpléad",
+            "capture_preview_intro": "Athbhreithnigh gach réimse cóipeáilte agus seiceálann an freastalaí sula sábhálfaidh tú an leagan teimpléad do-luaineach seo.",
+            "safe_title": "Sábháilte a ghabháil",
+            "safe_description": "D'fhíoraigh an freastalaí an liosta ceadaithe beacht agus d'eisiaigh sé taifid phríobháideacha agus oibriúcháin.",
+            "copied_title": "Cóipeáladh an chumraíocht isteach sa teimpléad",
+            "fields": {
+                "title": "Teideal an imeachta",
+                "description": "Cur síos",
+                "category_id": "Catagóir",
+                "group_id": "Grúpa nasctha",
+                "location": "Suíomh",
+                "venue_accessibility": "Inrochtaineacht an ionaid",
+                "latitude": "Domhanleithead",
+                "longitude": "Domhanfhad",
+                "max_attendees": "Lucht freastail uasta",
+                "is_online": "Imeacht ar líne",
+                "allow_remote_attendance": "Ceadaigh cianfhreastal",
+                "timezone": "Crios ama",
+                "all_day": "Imeacht uile-lae",
+                "federated_visibility": "Infheictheacht Cónaidhm"
+            },
+            "never_copied_title": "Ná cóipeáil riamh",
+            "never_copied_description": "Fanann na taifid oibríochtúla agus príobháideacha seo i gcónaí leis an imeacht foinseach.",
+            "never_copied": {
+                "people": "Daoine, clárúcháin agus liostaí feithimh",
+                "invitations": "Cuirí agus taifid aoi",
+                "forms": "Foirmeacha clárúcháin agus freagraí príobháideacha",
+                "attendance": "Stair tinrimh agus seiceála isteach",
+                "tickets": "Ticéid, teidlíochtaí agus idirbhearta",
+                "notifications": "Meabhrúcháin, fógraí agus stair seachadta",
+                "federation": "Aitheantóirí agus seachadtaí Cónaidhme",
+                "lifecycle": "Foilsiú, modhnóireacht agus staid saolré"
+            },
+            "checklist_title": "Seicliosta deimhnithe ag an bhfreastalaí",
+            "checks": {
+                "event_template_check_source_manage": "Tá cead agat fós an t-imeacht foinse a bhainistiú",
+                "event_template_check_allowlist_exact": "Níl san áireamh ach an liosta ceadaithe cumraíochta",
+                "event_template_check_private_records_skipped": "Eisiatar taifid phríobháideacha agus oibriúcháin",
+                "event_template_check_versioned_snapshot": "Stóráiltear an chumraíocht mar ghrianghraf leagan do- immutable",
+                "event_template_check_version_current": "Tá leagan an teimpléid roghnaithe reatha",
+                "event_template_check_schedule_valid": "Tá an sceideal nua bailí agus sa todhchaí",
+                "event_template_check_federation_none": "Tá Cónaidhm díchumasaithe don dréacht nua",
+                "event_template_check_canonical_writer": "Bainfear úsáid as an sreabhadh oibre cruthú imeachtaí canónacha"
+            },
+            "confirm_revision": "Sábháil leagan nua",
+            "confirm_capture": "Sábháil teimpléad",
+            "back_to_library": "Ar ais chuig teimpléid imeachtaí",
+            "review_draft_title": "Déan athbhreithniú ar dhréacht imeachta nua",
+            "materialize_intro": "Roghnaigh sceideal nua agus athbhreithnigh an chumraíocht shábháilte roimh chruthú an imeachta.",
+            "draft_only_title": "Cruthaíonn sé seo dréacht i gcónaí",
+            "draft_only_description": "Ní fhoilsítear, ní chláraítear, ní fhógraítear ná ní dhéantar aon ní a chónascadh go dtí go ndéanann tú athbhreithniú agus foilsiú ar an imeacht nua ar leithligh.",
+            "start_label": "Tosaigh",
+            "timezone_hint": "Cuir isteach an sceideal i :timezone.",
+            "end_label": "Deireadh",
+            "safe_overrides_title": "Sáraíonn sábháilte",
+            "safe_overrides_intro": "Coigeartaigh cumraíocht ath-inúsáidte don dréacht seo. Ní féidir sonraí oibriúcháin agus príobháideacha a chur leis anseo.",
+            "review_draft": "Dréacht athbhreithnithe",
+            "review_draft_intro": "Deimhnigh an seicliosta deimhnithe ag an bhfreastalaí sula gcruthaítear an dréacht úr.",
+            "ready_title": "Réidh le dréacht a chruthú",
+            "ready_description": "D'fhíoraigh an freastalaí an leagan reatha, an liosta ceadaithe sábháilte, an sceideal, an socrú cónaidhm agus an scríbhneoir canónach.",
+            "event_title": "Teideal an imeachta",
+            "publication_state": "Staid foilsiú",
+            "draft": "Dréacht",
+            "create_draft": "Cruthaigh dréacht",
+            "change_details": "Athrú sonraí",
+            "audit_link": "Stair iniúchta",
+            "audit_title": "Stair iniúchta an teimpléid",
+            "audit_intro": "Athbhreithnigh an taifead iomlán, do-athraithe ar ghabháil, athbhreithnithe, cartlannú agus cruthú dréachta an teimpléid.",
+            "audit_immutable": "Tá gach iontráil aguisín-amháin agus ní féidir í a athrú ná a scriosadh.",
+            "audit_empty": "Níor taifeadadh aon iontrálacha iniúchta.",
+            "audit_recorded_at": "Taifeadta",
+            "audit_actions": {
+                "captured": "Teimpléad gafa",
+                "revised": "Teimpléad athbhreithnithe",
+                "archived": "Teimpléad cartlannaithe",
+                "materialized": "Dréacht cruthaithe ón teimpléad"
+            },
+            "audit_event_reference": "Imeacht :id",
+            "audit_created_event": "Imeacht cruthaithe",
+            "audit_integrity": "Achoimre sláine",
+            "audit_archive_reason_recorded": "Taifeadadh cúis chartlannaithe",
+            "audit_yes": "Tá",
+            "audit_no": "Níl",
+            "audit_override_fields": "Réimsí athraithe don dréacht seo",
+            "audit_pagination_label": "Leathanachú stair iniúchta an teimpléid",
+            "audit_load_more": "Lódáil tuilleadh staire"
+        },
+        "event_tickets": {
+            "title": "Ticéid imeachta",
+            "intro": "Déan athbhreithniú ar na cineálacha ticéid atá ar fáil, éileamh áiteanna saor in aisce agus bainistigh do thicéid in aisce deimhnithe féin.",
+            "load_error": "Níorbh fhéidir catalóg na dticéad imeachta a lódáil.",
+            "validation_error": "Seiceáil sonraí an ticéid agus bain triail eile as.",
+            "allocate_error": "Níorbh fhéidir an ticéad saor in aisce a leithdháileadh. Seiceáil do chlárú, incháilitheacht agus an leithdháileadh atá fágtha.",
+            "cancel_error": "Níorbh fhéidir an ticéad saor in aisce a chur ar ceal. Athnuaigh an chatalóg agus bain triail eile as.",
+            "allocated": "Tá do thicéad saor in aisce tugtha.",
+            "cancelled": "Cuireadh do thicéad saor in aisce ar ceal agus cuireadh ar ais chuig an leithdháileadh é.",
+            "back_to_event": "Ar ais go dtí an ócáid",
+            "back_to_tickets": "Ar ais chuig ticéid imeachtaí",
+            "gateway_disabled": "Níl seiceáil amach íoctha agus creidmheasa ama ar fáil. Ní ghearrann an leathanach seo airgead ná creidmheasanna ama riamh agus ní athraíonn sé do sparán.",
+            "my_tickets": "Mo ticéid",
+            "no_tickets": "Níl ticéad agat don imeacht seo.",
+            "ticket_fallback": "Ticéad imeachta",
+            "units": "Cainníocht",
+            "status_label": "Stádas",
+            "status": {
+                "confirmed": "Deimhnithe",
+                "cancelled": "Ar ceal"
+            },
+            "cancel_ticket": "Cealaigh ticéad",
+            "time_credit_cancel_disabled": "Níl cealú ticéad creidmheas ama ar fáil sa sreabhadh oibre saor in aisce seo. Níl aon ghníomh sparán déanta.",
+            "catalogue": "Ticéid ar fáil",
+            "catalogue_empty": "Níl aon chineál ticéad ar fáil don imeacht seo.",
+            "kind": {
+                "free": "Saor",
+                "time_credit": "Creidmheasanna ama"
+            },
+            "remaining": "An leithdháileadh atá fágtha",
+            "member_limit": "Teorainn in aghaidh an chomhalta",
+            "time_credit_disabled": "Cosnaíonn an cineál seo creidmheasanna ama :credits, ach díchumasaítear an tseiceáil amach go dtí go bhfuil an geata ceadaithe sparán ceangailte. Ní chuirfear aon chreidmheas do dhochar.",
+            "units_to_claim": "Líon na ticéid saor in aisce,",
+            "units_hint": "Féadfaidh tú suas le :count a éileamh sa leithdháileadh seo.",
+            "claim_free": "Éileamh ticéad saor in aisce",
+            "registration_required": "Teastaíonn clárú imeachta deimhnithe uait sular féidir leat ticéad saor in aisce a éileamh.",
+            "not_eligible": "Ní chomhlíonann tú rialacha incháilitheachta an chineáil ticéid seo faoi láthair.",
+            "sales_closed": "Níl an cineál ticéad seo ar oscailt le leithdháileadh faoi láthair.",
+            "sold_out": "Níl aon ticéid saor in aisce fágtha agat sa leithdháileadh seo.",
+            "cancel_title": "Cealaigh an ticéad saor in aisce seo?",
+            "cancel_intro": "Inis don eagraí cén fáth a bhfuil tú ag cur ar ceal. Cuirfear an méid ar ais chuig an leithdháileadh saor in aisce.",
+            "cancel_free_only": "Ní chealaíonn an gníomh seo ach teidlíocht in aisce. Ní eisíonn sé aisíocaíocht ná ní athraíonn sé aon iarmhéid sparán.",
+            "reason_label": "An chúis le cealú",
+            "reason_hint": "Ná cuir faisnéis phríobháideach nó íogair san áireamh. 500 carachtar ar a mhéad.",
+            "confirm_cancel": "Cealaigh ticéad saor in aisce"
         },
         "govuk_alpha": {
             "opens_new_tab": "(osclaítear i gcluaisín nua)",

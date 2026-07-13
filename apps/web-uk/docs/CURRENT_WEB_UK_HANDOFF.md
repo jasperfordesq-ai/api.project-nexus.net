@@ -1842,8 +1842,12 @@ Latest full default Laravel runtime-smoke recertification on 2026-07-09:
 Latest focused visual/manual Blade spot-check on 2026-07-09 for the tenant
 home shell and footer meta:
 
+> Canonical-route correction (2026-07-13): Laravel comparisons use
+> `/{tenantSlug}/accessible`. `/alpha` is legacy redirect compatibility only;
+> it is not a valid visual/source comparison URL.
+
 - Browser-style DOM comparison checked Laravel
-  `http://127.0.0.1:8088/hour-timebank/alpha` against a tenant-correct Web UK
+  `http://127.0.0.1:8088/hour-timebank/accessible` against a tenant-correct Web UK
   process at `http://127.0.0.1:6511/hour-timebank/accessible`, started with
   `TENANT_ID=2`, `ACCESSIBLE_BACKEND_TARGET=laravel`, and
   `LARAVEL_BASE_URL=http://127.0.0.1:8088`.
@@ -1865,7 +1869,7 @@ home shell and footer meta:
 Latest repeatable Blade visual spot-check command on 2026-07-10:
 
 - `npm run visual:blade` is a scoped visual checkpoint. It compares Laravel
-  `http://127.0.0.1:8088/hour-timebank/alpha` with Web UK
+  `http://127.0.0.1:8088/hour-timebank/accessible` with Web UK
   `/hour-timebank/accessible` for the tenant home markers `Hour Timebank`,
   `Accessible`, `Connecting Communities`, and `What you can do`.
 - The same command checks Web UK custom-domain roots with real Host headers for
@@ -1878,7 +1882,7 @@ Latest repeatable Blade visual spot-check command on 2026-07-10:
   `/password/reset?token=reset-token`, `/contact`, `/cookies`, `/about`,
   `/guide`, `/features`, `/faq`, `/help`, `/trust-and-safety`,
   `/accessibility`, `/legal`, `/legal/privacy`, and `/report-a-problem`. Each
-  page is compared as Laravel `/{tenantSlug}/alpha/...` versus Web UK
+  page is compared as Laravel `/{tenantSlug}/accessible/...` versus Web UK
   `/{tenantSlug}/accessible/...` and asserts no `/{tenantSlug}/alpha` leakage
   in Web UK HTML.
 - Focused Jest first failed while the script still treated Laravel host-root

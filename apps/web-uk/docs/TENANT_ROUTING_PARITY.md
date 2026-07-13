@@ -1,6 +1,6 @@
 # Web UK Tenant Routing Parity
 
-Last reviewed: 2026-07-10
+Last reviewed: 2026-07-13
 
 This note records the Laravel tenant-routing contract that `apps/web-uk` must
 clone before it can be called tenant-domain parity complete.
@@ -19,12 +19,13 @@ Read these Laravel files before changing Web UK tenant routing:
 
 Laravel registers the same accessible route set twice:
 
-1. Shared platform hosts use `/{tenantSlug}/alpha/...`; the path identifies the
-   tenant.
+1. Shared platform hosts use the canonical `/{tenantSlug}/accessible/...`;
+   the path identifies the tenant. `/{tenantSlug}/alpha/...` is legacy redirect
+   compatibility only (301 for GET/HEAD and method-preserving 308 otherwise).
 2. Dedicated accessible custom domains use slugless paths; the host identifies
    the tenant through `tenants.accessible_domain`, Laravel injects the route
-   tenant slug for controller compatibility, and response rewriting strips
-   `/{tenantSlug}/alpha` from generated HTML links and redirects.
+   tenant slug for controller compatibility, and the public route stays at the
+   bare host root.
 
 Laravel root behavior is also tenant-aware:
 
@@ -44,9 +45,9 @@ Laravel root behavior is also tenant-aware:
 
 ## Web UK Canonical Public Slug
 
-The user does not want new public Web UK routes to expose `alpha`. Web UK should
-therefore use `/accessible` as the cleaner shared-host mount while preserving
-Laravel route parity internally.
+Laravel and Web UK both use `/accessible` as the canonical shared-host mount.
+Neither comparator evidence nor new public links may treat `/alpha` as the
+source route; it is retained only to verify permanent legacy redirects.
 
 Current implemented slice:
 
@@ -384,8 +385,8 @@ follow-up focused smoke on 2026-07-09 against temporary Web UK
 `/accessible` link leakage.
 
 The visual-domain guard adds `npm run visual:blade` as a repeatable
-tenant/home spot-check. The command compares Laravel Blade
-`/hour-timebank/alpha` with Web UK `/hour-timebank/accessible` for the tenant
+tenant/home spot-check. The command compares canonical Laravel Blade
+`/hour-timebank/accessible` with Web UK `/hour-timebank/accessible` for the tenant
 home markers, then checks Web UK `project-nexus.ie` and `timebank.global`
 custom-domain roots with real Host headers. The master and cluster expected
 headings are sourced from Laravel `/api/v2/tenant/bootstrap` using matching
@@ -402,7 +403,7 @@ The same guard now also covers shared-mount public/auth/support/legal pages:
 `/password/reset?token=reset-token`, `/contact`, `/cookies`, `/about`,
 `/guide`, `/features`, `/faq`, `/help`, `/trust-and-safety`,
 `/accessibility`, `/legal`, `/legal/privacy`, and `/report-a-problem`. Each
-check compares Laravel `/{tenantSlug}/alpha/...` with Web UK
+check compares canonical Laravel `/{tenantSlug}/accessible/...` with Web UK
 `/{tenantSlug}/accessible/...` using Laravel-rendered page markers and asserts
 that Web UK HTML does not contain `/{tenantSlug}/alpha`. A live run on
 2026-07-10 against temporary Web UK `http://127.0.0.1:6662`, Laravel

@@ -23520,14 +23520,23 @@ describe('shared accessible frontend shell', () => {
 
   it('renders Laravel event template library and immutable history', async () => {
     const api = require('../src/lib/api');
+    const translateEnglish = createTranslator('en');
+    const translateIrish = createTranslator('ga');
     api.callEventTemplateApi
       .mockResolvedValueOnce({ data: [{ id: 7, status: 'active', current_version: 2, source_event: { id: 42, title: 'Community garden day' }, capabilities: { materialize: true, revise: true, view_audit: true } }], meta: { next_cursor: 8 } })
       .mockResolvedValueOnce({ data: { id: 7, source_event: { title: 'Community garden day' } } })
       .mockResolvedValueOnce({ data: [{ id: 9, action: 'captured', template_version: 2, immutable: true, created_at: '2026-07-13T12:00:00Z' }], meta: {} });
     const library = await request(app).get('/events/templates?filter=active').set('Cookie', signedCookieHeader());
     expect(library.status).toBe(200); expect(library.text).toContain('/event-templates/7/materialize'); expect(library.text).toContain('/events/42/template-preview?template_id=7');
+    expect(library.text).toContain(translateEnglish('event_templates.title'));
+    expect(library.text).not.toContain('event_templates.title');
     const history = await request(app).get('/event-templates/7/history').set('Cookie', signedCookieHeader());
     expect(history.status).toBe(200); expect(history.text).toContain('Community garden day'); expect(history.text).toContain('2026-07-13T12:00:00Z');
+    api.callEventTemplateApi.mockResolvedValueOnce({ data: [], meta: {} });
+    const gaLibrary = await request(app).get('/events/templates?filter=active&locale=ga').set('Cookie', signedCookieHeader());
+    expect(gaLibrary.status).toBe(200);
+    expect(gaLibrary.text).toContain(translateIrish('event_templates.title'));
+    expect(gaLibrary.text).not.toContain('event_templates.title');
   });
 
   it('previews, captures and revises Laravel event templates', async () => {

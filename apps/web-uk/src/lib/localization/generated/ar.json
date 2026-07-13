@@ -2,9 +2,57 @@
     "_meta": {
         "schema": 1,
         "locale": "ar",
-        "source": "lang/ar/{govuk_alpha*,event_agenda,event_offline_checkin,event_safety}.php"
+        "source": "lang/ar/{govuk_alpha*,event_*}.php"
     },
     "namespaces": {
+        "event_accessibility": {
+            "form": {
+                "title": "إمكانية الوصول إلى مكان الفعالية",
+                "hint": "سجّل ما هو متاح في المكان. اختر «غير معروف» إذا لم يتحقق المنظم من الميزة؛ فهذا يختلف عن «لا».",
+                "parking_details": "مواقف السيارات والوصول",
+                "parking_details_hint": "صِف المواقف المهيأة ونقاط النزول والطريق إلى المدخل.",
+                "transit_details": "وسائل النقل العام",
+                "transit_details_hint": "صِف المحطات القريبة وأي عوائق في الطريق.",
+                "assistance_contact": "جهة الاتصال للمساعدة في إمكانية الوصول",
+                "assistance_contact_hint": "أدخل وسيلة اتصال عامة لأسئلة الوصول. لا تُدخل معلومات خاصة بالحضور.",
+                "notes": "معلومات إضافية عن الوصول",
+                "notes_hint": "أضف معلومات مفيدة عن المدخل أو المصعد أو الأرضية أو الإضاءة أو البيئة الحسية.",
+                "privacy_note": "تظهر هذه المعلومات لأعضاء الفعالية. يجب وضع طلبات الترتيبات الخاصة في نموذج التسجيل، وليس هنا."
+            },
+            "features": {
+                "step_free_access": "وصول بلا درجات",
+                "accessible_toilet": "دورة مياه مهيأة",
+                "hearing_loop": "حلقة سمعية",
+                "quiet_space": "مساحة هادئة",
+                "seating_available": "مقاعد متاحة",
+                "accessible_parking": "مواقف سيارات مهيأة"
+            },
+            "status": {
+                "yes": "نعم",
+                "no": "لا",
+                "unknown": "غير معروف"
+            },
+            "filters": {
+                "step_free_label": "إمكانية الوصول إلى المكان دون درجات",
+                "step_free_hint": "صفِّ النتائج حسب معلومات الوصول إلى المكان التي أكدها المنظم.",
+                "step_free_options": {
+                    "any": "أي مكان",
+                    "yes": "تم تأكيد الوصول دون درجات",
+                    "no": "لا يتوفر وصول دون درجات",
+                    "unknown": "الوصول دون درجات غير معروف"
+                },
+                "step_free_active": "الوصول دون درجات: :value"
+            },
+            "detail": {
+                "title": "إمكانية الوصول إلى مكان الفعالية",
+                "intro": "معلومات الوصول التي قدمها منظم الفعالية. تواصل مع المنظم إذا احتجت إلى تأكيد ترتيب ما.",
+                "features_label": "ميزات إمكانية الوصول في المكان",
+                "parking_details": "مواقف السيارات والوصول",
+                "transit_details": "وسائل النقل العام",
+                "assistance_contact": "المساعدة في إمكانية الوصول",
+                "notes": "معلومات إضافية عن الوصول"
+            }
+        },
         "event_agenda": {
             "withdraw_confirmation": "أفهم أنه سيتم تحرير مكاني في :title وقد يشغله شخص آخر.",
             "capacity_label": "سعة الجلسة",
@@ -38,6 +86,71 @@
             "full_state": "هذه الجلسة ممتلئة.",
             "session_full_error": "لا توجد أماكن متبقية في هذه الجلسة.",
             "eligibility_error": "أكد تسجيلك في الفعالية قبل التسجيل في جلسة."
+        },
+        "event_analytics": {
+            "csv": {
+                "metric": "المؤشر",
+                "value": "القيمة",
+                "suppressed": "محجوب"
+            }
+        },
+        "event_calendar": {
+            "description": "عرض تفاصيل الفعالية: :url",
+            "description_without_url": "عرض هذه الفعالية في Project NEXUS.",
+            "tenant_feed_name": "فعاليات :tenant",
+            "personal_feed_name": "الفعاليات التي سجلت فيها",
+            "label_invalid": "يجب ألا يتجاوز اسم التقويم 100 حرف.",
+            "token_limit": "ألغِ اشتراكًا حاليًا في التقويم قبل إنشاء اشتراك آخر.",
+            "token_not_found": "لم يتم العثور على اشتراك التقويم هذا أو تم إلغاؤه بالفعل.",
+            "range_invalid": "اختر نطاق تواريخ صالحًا ضمن الحد المسموح.",
+            "feed_not_found": "اشتراك التقويم هذا غير متاح أو تم إلغاؤه."
+        },
+        "event_lifecycle_history": {
+            "title": "سجل دورة الحياة",
+            "description": "سجل غير قابل للتغيير لتغييرات النشر والتشغيل الخاصة بهذه الفعالية.",
+            "link": "سجل دورة الحياة",
+            "back_to_event": "العودة إلى الفعالية",
+            "immutable_explanation": "سجل التدقيق هذا مخصص للإضافة فقط. لا يمكن تغيير الإدخالات الحالية أو حذفها.",
+            "empty_title": "لا توجد تغييرات في دورة الحياة بعد",
+            "empty_description": "ستظهر التغييرات هنا بعد تحديث دورة حياة الفعالية.",
+            "list_label": "تغييرات دورة حياة الفعالية",
+            "version": "الإصدار :version",
+            "immutable": "غير قابل للتغيير",
+            "recorded_at": "وقت التسجيل",
+            "timestamp_unknown": "لم يتم تسجيل الوقت",
+            "publication_label": "النشر",
+            "operational_label": "الحالة التشغيلية",
+            "transition": "من :from إلى :to",
+            "actor_label": "تم التغيير بواسطة",
+            "unknown_actor": "العضو :id",
+            "reason_label": "السبب",
+            "evidence_title": "الدليل التشغيلي",
+            "notifications_suppressed": "تم منع الإشعارات المكررة لهذا التغيير في السلسلة.",
+            "load_more": "عرض السجل الأقدم",
+            "pagination_label": "صفحات سجل دورة الحياة",
+            "states": {
+                "publication": {
+                    "draft": "مسودة",
+                    "pending_review": "بانتظار المراجعة",
+                    "published": "منشور",
+                    "archived": "مؤرشف"
+                },
+                "operational": {
+                    "scheduled": "مجدول",
+                    "postponed": "مؤجل",
+                    "cancelled": "ملغى",
+                    "completed": "مكتمل"
+                }
+            },
+            "cascade": {
+                "reminders_cancelled": "جداول التذكير الملغاة: :count",
+                "waitlist_cancelled": "إدخالات قائمة الانتظار الملغاة: :count",
+                "registrations_cancelled": "التسجيلات الملغاة: :count"
+            },
+            "series": {
+                "template": "قالب متكرر :id",
+                "occurrence": "موعد من القالب المتكرر :id"
+            }
         },
         "event_offline_checkin": {
             "privacy": {
@@ -97,6 +210,524 @@
             },
             "device": {
                 "lost": "إذا فُقد جهاز للموظفين، فألغِ صلاحيته فورًا في مساحة الفعاليات العادية. تابع هنا باستخدام الاسم أو الرمز الموقّع."
+            }
+        },
+        "event_recurrence_blueprints": {
+            "tab": "الإعداد المستقبلي",
+            "title": "إعداد التكرارات المستقبلية",
+            "description": "اختر تعريفات الفعالية التي تُطبّق عند إنشاء تكرارات جديدة.",
+            "definition_only_title": "التعريفات فقط",
+            "definition_only_description": "لا ينسخ هذا الإجراء الحضور أو التسجيلات أو سجل الحضور أو المدفوعات أو التذكيرات أو التحليلات أو سجل التسليم، ولا يغيّر التكرارات الحالية.",
+            "effective_from_label": "ساري من هوية التكرار",
+            "effective_from_help": "تنتمي هذه الهوية الثابتة إلى التكرار المحدد، ولا يُعاد حسابها من وقت بدء تم تغييره.",
+            "sections_title": "التعريفات المراد ترحيلها",
+            "sections_description": "يُختار كل قسم صراحةً. لا تُحدد تعيينات الطاقم تلقائياً أبداً.",
+            "sections": {
+                "agenda": {
+                    "label": "جدول الأعمال",
+                    "description": "الجلسات المجدولة والمتحدثون وتعريفات الموارد المحمية."
+                },
+                "ticket_types": {
+                    "label": "أنواع التذاكر",
+                    "description": "تعريفات التذاكر المجانية أو المسودة وفترات بيعها."
+                },
+                "registration": {
+                    "label": "التسجيل",
+                    "description": "إعدادات التسجيل والنموذج المنشور حالياً."
+                },
+                "safety": {
+                    "label": "متطلبات السلامة",
+                    "description": "متطلبات السلامة والأهلية المنشورة حالياً."
+                },
+                "staff": {
+                    "label": "تعيينات الطاقم",
+                    "description": "خيار عالي المخاطر: ترحيل الأدوار النشطة إلى التكرارات الجديدة المستقبلية."
+                }
+            },
+            "section_not_permitted": "لا يسمح دورك في الفعالية بترحيل هذا القسم.",
+            "no_sections_title": "حدد قسماً واحداً على الأقل",
+            "no_sections_description": "يجب إجراء معاينة قبل حفظ الإعداد المستقبلي.",
+            "preview_button": "معاينة الإعداد المستقبلي",
+            "previewing": "جارٍ إعداد المعاينة",
+            "preview_title": "معاينة التعريفات",
+            "preview_description": "راجع الأعداد المحدودة والتعارضات قبل الانتقال إلى التأكيد.",
+            "preview_expires": "تنتهي المعاينة في :date",
+            "review_button": "مراجعة وتأكيد",
+            "refresh_preview": "تحديث المعاينة",
+            "conflicts_title": "حل هذه التعارضات أولاً",
+            "conflicts": {
+                "definition_limit_exceeded": "يتجاوز :section الحد الآمن للتعريفات (تم العثور على :count).",
+                "speaker_limit_exceeded": "يتجاوز جدول الأعمال الحد الآمن للمتحدثين (تم العثور على :count).",
+                "invalid_speaker_reference": "يحتوي جدول الأعمال على :count مرجع غير صالح لمتحدث.",
+                "resource_limit_exceeded": "يتجاوز جدول الأعمال الحد الآمن للموارد (تم العثور على :count).",
+                "unsupported_active_time_credit_ticket": "لا يمكن ترحيل :count نوع تذكرة نشط يعتمد رصيد الوقت.",
+                "published_form_missing": "تعذر التحقق من نموذج التسجيل المنشور.",
+                "question_limit_exceeded": "يتجاوز النموذج المنشور الحد الآمن للأسئلة (تم العثور على :count).",
+                "published_requirement_version_missing": "تعذر التحقق من إصدار متطلبات السلامة المنشور.",
+                "invalid_staff_reference": "يشير :count تعيين للطاقم إلى عضو غير متاح.",
+                "nonportable_staff_expiry": "ينتهي :count تعيين للطاقم قبل التكرار المستقبلي ولا يمكن ترحيله."
+            },
+            "counts": {
+                "none": "لم يتم العثور على تعريفات في الأقسام المحددة.",
+                "sessions": "الجلسات",
+                "speakers": "المتحدثون",
+                "resources": "الموارد",
+                "ticket_types": "أنواع التذاكر",
+                "registration_settings": "إعدادات التسجيل",
+                "published_forms": "النماذج المنشورة",
+                "form_questions": "أسئلة النموذج",
+                "safety_requirements": "متطلبات السلامة",
+                "staff_assignments": "تعيينات الطاقم"
+            },
+            "errors": {
+                "preview_error": {
+                    "title": "تعذر إعداد المعاينة",
+                    "description": "تحقق من التعريفات المحددة وحاول مرة أخرى."
+                },
+                "preview_expired": {
+                    "title": "انتهت صلاحية المعاينة",
+                    "description": "حدّث المعاينة قبل التأكيد. لم يتم حفظ أي شيء."
+                },
+                "preview_stale": {
+                    "title": "تغيّرت التعريفات بعد المعاينة",
+                    "description": "أنشئ معاينة جديدة لتعكس أحدث التعريفات."
+                },
+                "commit_conflict": {
+                    "title": "لم يُحفظ الإعداد المستقبلي",
+                    "description": "تم حفظ إصدار آخر أو طلب متعارض أولاً. حدّث المعاينة وراجعها مجدداً."
+                },
+                "commit_error": {
+                    "title": "تعذر حفظ الإعداد المستقبلي",
+                    "description": "تم الاحتفاظ بمفتاح إعادة المحاولة الثابت. أكد مجدداً أو حدّث المعاينة إذا انتهت."
+                }
+            },
+            "success_created_title": "تم حفظ الإعداد المستقبلي",
+            "success_created_description": "سيُطبّق إصدار التعريف غير القابل للتغيير :version فقط على التكرارات الجديدة المستقبلية.",
+            "success_replay_title": "كان الإعداد المستقبلي محفوظاً بالفعل",
+            "success_replay_description": "يتطابق الإصدار :version مع إعادة المحاولة هذه. لم يتم إنشاء نسخة مكررة.",
+            "history_title": "سجل الإصدارات غير القابل للتغيير",
+            "history_description": "يُحتفظ بكل إصدار محفوظ مع أعداد محدودة وهوية التكرار التي يبدأ منها.",
+            "history_loading": "جارٍ تحميل السجل",
+            "history_error_title": "تعذر تحميل السجل",
+            "history_error_description": "حاول مرة أخرى لاسترداد الإصدارات غير القابلة للتغيير.",
+            "history_empty_title": "لا توجد إصدارات مستقبلية بعد",
+            "history_empty_description": "سيظهر إصدار هنا بعد تأكيد المعاينة.",
+            "history_list_label": "إصدارات إعداد التكرارات المستقبلية",
+            "history_version": "الإصدار :version",
+            "history_sections": "التعريفات المضمنة",
+            "immutable": "غير قابل للتغيير",
+            "history_load_more": "تحميل إصدارات إضافية",
+            "history_loading_more": "جارٍ تحميل إصدارات إضافية",
+            "load_more_error_title": "تعذر تحميل إصدارات إضافية",
+            "load_more_error_description": "حاول تحميل الصفحة التالية مرة أخرى.",
+            "retry": "حاول مرة أخرى",
+            "time_unknown": "الوقت غير مسجل",
+            "confirm_title": "تأكيد إعداد التكرارات المستقبلية",
+            "confirm_scope_title": "التكرارات الجديدة فقط",
+            "confirm_scope_description": "يسري هذا الإصدار من الهوية المعروضة. لا تتغير التكرارات الحالية ولا بيانات المشاركين.",
+            "staff_risk_title": "تم تحديد ترحيل الطاقم",
+            "staff_risk_description": "قد تمنح الأدوار النشطة وصولاً تشغيلياً في كل تكرار جديد. راجع هذا الخيار بعناية.",
+            "confirm_ack": "أؤكد إصدار التعريف هذا للمستقبل فقط",
+            "confirm_ack_description": "راجعت الأقسام والأعداد والتعارضات وهوية التكرار الفعالة.",
+            "cancel": "إلغاء",
+            "commit_button": "حفظ الإصدار غير القابل للتغيير",
+            "committing": "جارٍ حفظ الإصدار"
+        },
+        "event_registration": {
+            "title": "التسجيل والدعوات والضيوف",
+            "description": "قم بتصميم نماذج التسجيل ذات الإصدارات ومراجعة التقديمات ودعوة الجماهير وإدارة الضيوف وتطبيق ضوابط الاحتفاظ بالخصوصية.",
+            "common": {
+                "cancel": "يلغي",
+                "close": "يغلق",
+                "loading": "جارٍ تحميل مساحة عمل التسجيل",
+                "not_recorded": "لم يتم تسجيلها",
+                "refresh": "ينعش",
+                "retry": "حاول ثانية",
+                "save": "يحفظ",
+                "previous": "السابق",
+                "next": "التالي"
+            },
+            "load_error": {
+                "title": "تعذر تحميل مساحة عمل التسجيل",
+                "description": "تحقق من اتصالك وأذوناتك، ثم حاول مرة أخرى."
+            },
+            "privacy": {
+                "title": "يتم فرض ضوابط الخصوصية",
+                "description": "يتم تسجيل الوصول إلى الإجابة وتدقيقها لهذا الغرض. يتم استبعاد الإجابات الحساسة إلا إذا طلبتها صراحةً وحصلت على إذن."
+            },
+            "tabs": {
+                "aria": "أقسام إدارة التسجيل",
+                "forms": "النماذج",
+                "submissions": "التقديمات",
+                "invitations": "الدعوات",
+                "guests": "الضيوف",
+                "retention": "حفظ"
+            },
+            "settings": {
+                "title": "سياسة التسجيل",
+                "description": "قم بتكوين الموافقة ونوافذ التسجيل وتوقيت الإلغاء وحدود الأعضاء والضيوف والاحتفاظ بالخصوصية قبل إنشاء النموذج.",
+                "not_created": "لم يتم تكوينه",
+                "revision": "المراجعة {{revision}}",
+                "approval_mode": "سير عمل الموافقة",
+                "approval_modes": {
+                    "auto": "قم بالتأكيد تلقائيًا",
+                    "manual": "تتطلب موافقة المنظم"
+                },
+                "opens_at": "يفتح التسجيل",
+                "closes_at": "إغلاق التسجيل",
+                "window_hint": "اترك كلا تاريخي التسجيل فارغين بدون نافذة زمنية.",
+                "cancellation_cutoff": "قطع الإلغاء",
+                "per_member_limit": "التسجيلات لكل عضو",
+                "guests_enabled": "السماح للضيوف",
+                "max_guests": "الحد الأقصى لعدد الضيوف لكل تسجيل",
+                "guest_retention": "الاحتفاظ ببيانات الضيوف خلال أيام",
+                "save": "حفظ السياسة",
+                "publish": "نشر السياسة"
+            },
+            "forms": {
+                "title": "نماذج التسجيل",
+                "new": "شكل جديد",
+                "empty": "لم يتم إنشاء نماذج التسجيل.",
+                "not_published": "لا يتم نشر أي نموذج حاليا.",
+                "published_version": "النسخة المنشورة {{version}}",
+                "version": "الإصدار {{version}}",
+                "no_description": "لا يوجد وصف",
+                "question_count": "سؤال {{count}}",
+                "question_count_other": "أسئلة {{count}}",
+                "published_at": "تم النشر {{date}}",
+                "edit": "تحرير المسودة",
+                "publish": "نشر",
+                "create_revision": "إنشاء نسخة جديدة",
+                "settings_missing_title": "إعدادات التسجيل ليست جاهزة",
+                "settings_missing_description": "احفظ إعدادات تسجيل الحدث قبل إنشاء النموذج.",
+                "editor": {
+                    "create_title": "إنشاء استمارة التسجيل",
+                    "edit_title": "تحرير مسودة نموذج التسجيل",
+                    "name": "اسم النموذج",
+                    "description": "وصف",
+                    "rules_title": "تم إصداره ويراعي الخصوصية",
+                    "rules_description": "الإصدارات المنشورة غير قابلة للتغيير. يسجل كل سؤال الغرض منه وتصنيفه وفترة الاحتفاظ به وأي قاعدة عرض مشروطة.",
+                    "question": "سؤال {{number}}",
+                    "move_up": "انقل السؤال للأعلى",
+                    "move_down": "انقل السؤال إلى الأسفل",
+                    "remove": "إزالة السؤال",
+                    "type": "نوع السؤال",
+                    "classification": "تصنيف البيانات",
+                    "prompt": "موجه السؤال",
+                    "help_text": "نص المساعدة",
+                    "purpose": "الغرض من جمع هذه الإجابة",
+                    "retention_days": "فترة الاحتفاظ بالأيام",
+                    "required": "الإجابة مطلوبة",
+                    "choices": "الإجابة على الاختيارات",
+                    "choices_description": "أدخل خيارًا واحدًا في كل سطر. مطلوب اثنين على الأقل.",
+                    "min_length": "الحد الأدنى للطول",
+                    "max_length": "الحد الأقصى للطول",
+                    "displayed_text": "نص الموافقة أو التنازل المعروض للحاضرين",
+                    "displayed_version": "نسخة نص الموافقة",
+                    "conditional": "أظهر هذا السؤال بشروط",
+                    "condition_question": "سؤال سابق",
+                    "condition_operator": "حالة",
+                    "condition_value": "القيمة المتوقعة",
+                    "add_question": "أضف سؤالا"
+                }
+            },
+            "question_types": {
+                "short_text": "نص قصير",
+                "long_text": "نص طويل",
+                "single_choice": "اختيار واحد",
+                "multiple_choice": "الاختيار من متعدد",
+                "dietary": "المتطلبات الغذائية",
+                "accessibility": "متطلبات إمكانية الوصول",
+                "consent": "موافقة",
+                "waiver": "التنازل"
+            },
+            "classifications": {
+                "public": "عام",
+                "internal": "داخلي",
+                "confidential": "مؤتمن",
+                "sensitive": "حساس"
+            },
+            "operators": {
+                "equals": "يساوي",
+                "not_equals": "لا يساوي",
+                "contains": "يتضمن",
+                "not_contains": "لا يحتوي"
+            },
+            "submissions": {
+                "title": "تقديمات التسجيل",
+                "description": "قم بمراجعة المحاولات الفعالة والمحلية دون الكشف عن الإجابات في القائمة.",
+                "empty": "لم يتم تلقي أي طلبات.",
+                "export": "تصدير CSV",
+                "member_hidden": "هوية العضو مقيدة",
+                "effective": "فعال",
+                "superseded": "تم استبداله",
+                "attempt": "محاولة {{attempt}}",
+                "review": "قم بمراجعة الإجابات",
+                "review_title": "مراجعة الإجابات المقدمة",
+                "audit_title": "سيتم تدقيق هذا الوصول",
+                "audit_description": "قم بتسجيل غرض تشغيلي محدد ومرجع الارتباط قبل فتح الإجابات.",
+                "purpose": "سبب الوصول إلى هذه الإجابات",
+                "correlation": "مرجع الحالة أو الارتباط",
+                "include_sensitive": "قم بتضمين الإجابات الحساسة",
+                "open_answers": "إجابات مفتوحة",
+                "purged": "تم التطهير بموجب سياسة الاحتفاظ",
+                "export_title": "تصدير إجابات التسجيل",
+                "export_description": "التصدير محدود وآمن للصيغة ومسجل في تدقيق الوصول إلى الإجابات غير القابل للتغيير.",
+                "download_csv": "قم بتنزيل ملف CSV",
+                "amend": "تعديل الإجابات",
+                "save_draft": "حفظ المسودة"
+            },
+            "invitations": {
+                "builder_title": "حملة الدعوة",
+                "builder_description": "قم بمعاينة لقطة المستلم وتجميدها قبل جدولتها أو إرسالها.",
+                "type_label": "مصدر الجمهور",
+                "locale_label": "لغة احتياطية",
+                "preview": "معاينة المستلمين",
+                "preview_title": "معاينة المستلم",
+                "snapshot_notice": "سيتم استخدام هذه اللقطة الدقيقة للمستلم الصالح في وقت الإرسال، حتى إذا تغيرت عضوية المجموعة لاحقًا.",
+                "valid_count": "{{count}} مستلم صالح",
+                "valid_count_other": "{{count}} مستلمون صالحون",
+                "previewed": "تمت معاينة الصفوف",
+                "valid": "صالح",
+                "errors": "أخطاء",
+                "row_error": "الصف {{row}}: {{code}}",
+                "expires_at": "تنتهي صلاحية الدعوة",
+                "scheduled_for": "أرسل في",
+                "send_now": "أرسل الآن",
+                "schedule": "جدول",
+                "history_title": "تاريخ الحملة وأدلة التسليم",
+                "empty": "لم يتم إنشاء أي حملات دعوة.",
+                "delivery_summary": "دعوات {{invitations}} · تم تسليم {{delivered}} · فشل {{failed}}",
+                "cancel": "إلغاء الحملة",
+                "cancel_title": "إلغاء حملة الدعوة",
+                "cancel_reason": "سبب الإلغاء",
+                "confirm_cancel": "إلغاء الحملة",
+                "types": {
+                    "member": "الأعضاء المختارون",
+                    "email": "عناوين البريد الإلكتروني",
+                    "group": "أعضاء المجموعة",
+                    "audience": "شريحة الجمهور",
+                    "csv": "تحميل ملف CSV"
+                },
+                "sources": {
+                    "member": {
+                        "label": "معرفات الأعضاء",
+                        "description": "أدخل معرفات الأعضاء مفصولة بفواصل أو مسافات أو أسطر جديدة."
+                    },
+                    "email": {
+                        "label": "عناوين البريد الإلكتروني",
+                        "description": "أدخل عنوانًا واحدًا أو أكثر مفصولة بفواصل أو أسطر جديدة."
+                    },
+                    "group": {
+                        "label": "معرف المجموعة",
+                        "description": "أدخل المجموعة التي يجب التقاط صور لأعضائها النشطين الحاليين."
+                    },
+                    "audience": {
+                        "label": "أدوار الأعضاء الاختيارية",
+                        "description": "اتركه فارغًا لجميع الأعضاء النشطين، أو أدخل الأدوار المسموح بها مفصولة بفواصل."
+                    },
+                    "csv": {
+                        "label": "بيانات CSV",
+                        "description": "الصق ملف CSV مع عمود البريد الإلكتروني. يتم الإبلاغ عن الصفوف غير الصالحة والمكررة قبل إرسالها."
+                    }
+                },
+                "error_codes": {
+                    "member_not_found": "لم يتم العثور على العضو",
+                    "duplicate_target": "مستلم مكرر",
+                    "email_invalid": "عنوان بريد إلكتروني غير صالح",
+                    "csv_header_missing": "رأس CSV مفقود",
+                    "csv_email_column_missing": "عمود البريد الإلكتروني مفقود"
+                }
+            },
+            "guests": {
+                "cancel_confirm_title": "إلغاء هذا الضيف؟",
+                "cancel_confirm_body": "سيتم تحرير المكان المحجوز لـ :name. لا يمكن التراجع عن ذلك من هذه الشاشة.",
+                "keep": "الاحتفاظ بالضيف",
+                "title": "قائمة الضيوف والحضور",
+                "description": "يتم عرض هوية الضيف وتفاصيل الاتصال فقط عندما تسمح أذونات الحدث الخاصة بك بذلك.",
+                "empty": "لم يتم القبض على أي ضيوف.",
+                "name_hidden": "اسم الضيف مقيد",
+                "guest_number": "الضيف {{number}}",
+                "ticket_linked": "استحقاق التذكرة مرتبط",
+                "no_ticket": "لا يوجد استحقاق تذكرة مرتبط",
+                "notifications_allowed": "تمت الموافقة على إشعارات الضيوف",
+                "notifications_not_allowed": "لم تتم الموافقة على إشعارات الضيوف",
+                "check_in": "تحقق في",
+                "check_out": "الدفع",
+                "no_show": "وضع علامة عدم الحضور",
+                "undo": "التراجع عن التغيير الأخير",
+                "cancel": "إلغاء الضيف",
+                "cancel_reason": "سبب إلغاء هذا الضيف",
+                "cancel_reason_default": "تم الإلغاء من قبل صاحب التسجيل"
+            },
+            "attendance": {
+                "not_checked_in": "لم يتم تسجيل الوصول",
+                "checked_in": "تم تسجيل الوصول",
+                "checked_out": "تم السحب",
+                "attended": "حضر",
+                "no_show": "عدم الحضور"
+            },
+            "people_export": {
+                "member_id": "معرّف العضو",
+                "member_name": "اسم العضو",
+                "engagement": "المشاركة",
+                "registration": "التسجيل",
+                "registration_changed": "آخر تغيير في التسجيل",
+                "waitlist": "قائمة الانتظار",
+                "queue_position": "الموضع في قائمة الانتظار",
+                "queue_sequence": "التسلسل في قائمة الانتظار",
+                "attendance": "الحضور",
+                "attendance_changed": "آخر تغيير في الحضور",
+                "checked_in": "وقت تسجيل الوصول",
+                "checked_out": "وقت تسجيل المغادرة"
+            },
+            "retention": {
+                "confirm_apply": "أفهم أن تطبيق هذه العملية سيُخفي نهائيًا بيانات الهوية والإجابات المؤهلة.",
+                "warning_title": "لا يمكن التراجع عن إخفاء الهوية",
+                "warning_description": "قم دائمًا بمراجعة التشغيل الجاف. يؤدي تطبيقه إلى إزالة الإجابة منتهية الصلاحية والنص المشفر لهوية الضيف مع الحفاظ على الموافقة وأدلة التدقيق.",
+                "title": "تشغيل الاحتفاظ بالخصوصية",
+                "description": "قم بمعاينة السجلات المستحقة لإخفاء الهوية في تاريخ UTC محدد قبل تطبيق نفس التشغيل المجمد.",
+                "as_of": "معاينة اعتبارا من",
+                "status": "حالة",
+                "submissions": "التقديمات",
+                "guests": "الضيوف",
+                "eligible": "السجلات المؤهلة",
+                "affected": "السجلات مجهولة المصدر",
+                "modes": {
+                    "dry_run": "معاينة",
+                    "apply": "مُطبَّق"
+                },
+                "preview": "تشغيل المعاينة",
+                "apply": "تطبيق إخفاء الهوية"
+            },
+            "statuses": {
+                "draft": "مسودة",
+                "published": "تم النشر",
+                "submitted": "مُقَدَّم",
+                "withdrawn": "انسحبت",
+                "anonymised": "مجهول المصدر",
+                "previewed": "تمت معاينته",
+                "scheduled": "المقرر",
+                "issuing": "إصدار",
+                "issued": "صادر",
+                "cancelled": "تم الإلغاء",
+                "applied": "مُطبَّق",
+                "accepted": "مقبول",
+                "revoked": "تم إبطاله",
+                "expired": "منتهي الصلاحية",
+                "captured": "تم التقاطها"
+            },
+            "locales": {
+                "ar": "عربي",
+                "de": "الألمانية",
+                "en": "إنجليزي",
+                "es": "الأسبانية",
+                "fr": "فرنسي",
+                "ga": "الأيرلندية",
+                "it": "ايطالي",
+                "ja": "اليابانية",
+                "nl": "هولندي",
+                "pl": "بولندي",
+                "pt": "البرتغالية"
+            },
+            "messages": {
+                "form_saved": "تم حفظ نموذج التسجيل.",
+                "form_save_error": "لا يمكن حفظ نموذج التسجيل.",
+                "form_published": "تم نشر استمارة التسجيل.",
+                "form_publish_error": "لا يمكن نشر استمارة التسجيل.",
+                "form_forked": "تم إنشاء نسخة نموذج جديدة قابلة للتحرير.",
+                "form_fork_error": "تعذر إنشاء إصدار نموذج جديد.",
+                "review_error": "لا يمكن فتح الإجابات.",
+                "export_started": "تم إعداد تصدير التسجيل.",
+                "export_error": "لا يمكن إعداد تصدير التسجيل.",
+                "preview_ready": "معاينة المستلم جاهزة.",
+                "preview_error": "لا يمكن معاينة المستلمين.",
+                "campaign_issued": "تم إصدار حملة الدعوة.",
+                "issue_error": "لا يمكن إصدار حملة الدعوة.",
+                "campaign_scheduled": "تمت جدولة حملة الدعوة.",
+                "schedule_error": "لا يمكن جدولة حملة الدعوة.",
+                "campaign_cancelled": "تم إلغاء حملة الدعوة.",
+                "cancel_error": "لا يمكن إلغاء حملة الدعوة.",
+                "attendance_updated": "تم تحديث حضور الضيوف.",
+                "attendance_error": "لا يمكن تحديث حضور الضيوف.",
+                "retention_preview_ready": "معاينة الاحتفاظ جاهزة.",
+                "retention_preview_error": "لا يمكن إنشاء معاينة الاحتفاظ.",
+                "retention_applied": "تم تطبيق إخفاء هوية الاحتفاظ.",
+                "retention_apply_error": "لا يمكن تطبيق إخفاء الهوية للاحتفاظ.",
+                "invitation_accepted": "تم قبول الدعوة.",
+                "invitation_accept_error": "لا يمكن قبول الدعوة.",
+                "answers_submitted": "تم إرسال إجابات التسجيل.",
+                "draft_saved": "تم حفظ مسودة التسجيل.",
+                "amendment_started": "تم إنشاء تعديل قابل للتحرير.",
+                "amendment_error": "لا يمكن إنشاء تعديل.",
+                "guest_added": "وأضاف الضيف.",
+                "guest_add_error": "لا يمكن إضافة الضيف.",
+                "guest_cancelled": "تم إلغاء الضيف.",
+                "guest_cancel_error": "لا يمكن إلغاء الضيف.",
+                "settings_saved": "تم حفظ سياسة التسجيل.",
+                "settings_save_error": "لا يمكن حفظ سياسة التسجيل. التحقق من التواريخ والحدود.",
+                "settings_published": "تم نشر سياسة التسجيل.",
+                "settings_publish_error": "لا يمكن نشر سياسة التسجيل."
+            },
+            "safety_requirements_not_met": "يجب استيفاء متطلبات السلامة قبل المتابعة.",
+            "safety_unavailable": "يتعذر التحقق من متطلبات السلامة الخاصة بهذا الحدث حاليًا.",
+            "idempotency_required": "مفتاح عدم التكرار مطلوب.",
+            "idempotency_invalid": "مفتاح عدم التكرار غير صالح.",
+            "idempotency_conflict": "سبق استخدام مفتاح عدم التكرار هذا لطلب مختلف.",
+            "concrete_occurrence_required": "يجب اختيار موعد محدد لهذا الحدث.",
+            "event_unavailable": "هذا الحدث غير متاح للتسجيل.",
+            "event_started": "بدأ هذا الحدث وأُغلق التسجيل.",
+            "capacity_full": "بلغ هذا الحدث سعته القصوى.",
+            "finite_capacity_required": "يجب تحديد سعة قصوى للحدث لاستخدام قائمة الانتظار.",
+            "capacity_available": "لا تزال هناك أماكن متاحة؛ يمكن تأكيد التسجيل مباشرةً.",
+            "already_confirmed": "تم تأكيد تسجيل هذا العضو في الحدث بالفعل.",
+            "offer_acceptance_required": "يجب أولًا قبول عرض قائمة الانتظار النشط لتأكيد التسجيل.",
+            "transition_invalid": "لا يمكن إجراء هذا التغيير من الحالة الحالية.",
+            "waitlist_offer_inactive": "عرض قائمة الانتظار هذا لم يعد نشطًا.",
+            "waitlist_offer_expired": "انتهت صلاحية عرض قائمة الانتظار هذا.",
+            "waitlist_offer_token_invalid": "رمز عرض قائمة الانتظار غير صالح.",
+            "timed_offers_disabled": "عروض قائمة الانتظار محددة المدة غير مفعّلة لهذا الحدث.",
+            "people_query_invalid": "معايير البحث عن المشاركين في الحدث غير صالحة.",
+            "validation_failed": "تحقق من البيانات المرسلة وحاول مرة أخرى.",
+            "reason_required": "السبب مطلوب.",
+            "request_conflict": "تغيّر هذا السجل في مكان آخر. حدّث الصفحة وحاول مرة أخرى.",
+            "service_unavailable": "خدمة تسجيل الأحداث غير متاحة مؤقتًا.",
+            "server_error": "حدث خطأ غير متوقع أثناء معالجة التسجيل في الحدث.",
+            "answers": {
+                "validation": {
+                    "required": "أجب عن هذا السؤال.",
+                    "min_length": "أدخل :limit أحرف على الأقل.",
+                    "max_length": "أدخل ما لا يزيد على :limit أحرف.",
+                    "min_selections": "حدد :count خيارًا على الأقل.|حدد :count خيارات على الأقل.",
+                    "max_selections": "حدد ما لا يزيد على :count خيار.|حدد ما لا يزيد على :count خيارات."
+                }
+            },
+            "accessible": {
+                "organizer_heading": "ضوابط المنظم",
+                "attendee_heading": "التسجيل الخاص بك",
+                "submit_answers": "حفظ وتقديم الإجابات",
+                "your_invitations": "دعواتك",
+                "accept_invitation": "قبول الدعوة",
+                "add_guest": "إضافة ضيف",
+                "guest_name": "اسم الضيف",
+                "guest_email": "عنوان البريد الإلكتروني للضيف (اختياري)",
+                "guest_phone": "رقم هاتف الضيف (اختياري)",
+                "privacy_consent_label": "أؤكد أنني حصلت على إذن الضيف لتقديم هذه التفاصيل.",
+                "privacy_consent_text": "وافق الضيف على إمكانية تخزين هويته وتفاصيل الاتصال الخاصة به لإدارة الحدث وإزالتها بعد فترة الاحتفاظ المذكورة.",
+                "notification_consent_label": "يوافق الضيف على تلقي رسائل حول هذا الحدث.",
+                "notification_consent_text": "وافق الضيف على تلقي تحديثات الحدث الضرورية على عنوان البريد الإلكتروني المقدم.",
+                "ticket_entitlement": "معرف استحقاق التذكرة (اختياري)",
+                "source_value": "المصدر المتلقي",
+                "source_hint": "استخدم التنسيق الموضح لمصدر الجمهور المحدد.",
+                "schedule_or_send": "جدولة أو إرسال هذه المعاينة المجمدة",
+                "expiry": "تاريخ ووقت انتهاء صلاحية الدعوة",
+                "review_submission": "مراجعة الإرسال {{id}}",
+                "retention_as_of_hint": "اختر تاريخًا بعد انتهاء الحدث.",
+                "form_slots_hint": "أكمل صفوف الأسئلة الممكّنة. يتم تجاهل الصفوف الفارغة.",
+                "enabled": "قم بتضمين هذا السؤال",
+                "condition_key": "مفتاح السؤال السابق (اختياري)",
+                "success": "تم الانتهاء من إجراء التسجيل.",
+                "validation_error": "تحقق من المعلومات التي أدخلتها وحاول مرة أخرى."
             }
         },
         "event_safety": {
@@ -213,6 +844,172 @@
                 "confirm_withdraw_guardian": "أفهم أن طلب الموافقة الحالي سيصبح غير صالح.",
                 "confirm_withdraw_review": "أؤكد أنني أريد سحب القرار النشط الخاص بـ :name."
             }
+        },
+        "event_templates": {
+            "title": "قوالب الأحداث",
+            "capture_preview_title": "مراجعة التقاط القالب",
+            "validation_error": "تحقق من تفاصيل القالب وحاول مرة أخرى.",
+            "save_error": "لا يمكن حفظ قالب الحدث.",
+            "load_error": "تعذر تحميل مكتبة قوالب الأحداث.",
+            "materialize_title": "قم بإنشاء حدث من هذا القالب",
+            "captured": "تم حفظ قالب الحدث.",
+            "revised": "تم تحديث قالب الحدث من مصدره.",
+            "back_to_events": "العودة إلى الأحداث",
+            "intro": "إعادة استخدام تكوين الحدث المعتمد من خلال سير عمل تمت مراجعته للمسودة فقط.",
+            "safety_title": "قوالب نسخ التكوين فقط",
+            "safety_description": "لا يتم أبدًا نسخ الأشخاص والتسجيلات والإجابات الخاصة والحضور والتذاكر وسجل التسليم ومعرفات الاتحاد وحالة النشر.",
+            "filter_label": "تصفية قوالب الأحداث",
+            "filters": {
+                "active": "نشط",
+                "archived": "مؤرشف",
+                "all": "الكل"
+            },
+            "empty_title": "لم يتم العثور على قوالب",
+            "empty_description": "احفظ حدثًا كقالب لإنشاء مكتبة تكوين قابلة لإعادة الاستخدام.",
+            "status": {
+                "active": "نشط",
+                "archived": "مؤرشف"
+            },
+            "source": "حدث المصدر",
+            "version": "الإصدار",
+            "used": "الاستخدام",
+            "use_count": "الاستخدامات: :count",
+            "use_template": "استخدم القالب",
+            "refresh": "تحديث من المصدر",
+            "load_more": "تحميل المزيد من القوالب",
+            "back": "العودة",
+            "review_revision_title": "مراجعة مراجعة القالب",
+            "capture_preview_intro": "قم بمراجعة كل حقل منسوخ وسيقوم الخادم بالتحقق قبل حفظ إصدار القالب غير القابل للتغيير.",
+            "safe_title": "آمن للالتقاط",
+            "safe_description": "تحقق الخادم من القائمة المسموح بها تمامًا واستبعد السجلات الخاصة والتشغيلية.",
+            "copied_title": "تم نسخ التكوين في القالب",
+            "fields": {
+                "title": "عنوان الحدث",
+                "description": "الوصف",
+                "category_id": "الفئة",
+                "group_id": "مجموعة مرتبطة",
+                "location": "الموقع",
+                "venue_accessibility": "إمكانية الوصول إلى المكان",
+                "latitude": "خط العرض",
+                "longitude": "خط الطول",
+                "max_attendees": "الحد الأقصى للحضور",
+                "is_online": "الحدث على الانترنت",
+                "allow_remote_attendance": "السماح بالحضور عن بعد",
+                "timezone": "المنطقة الزمنية",
+                "all_day": "حدث طوال اليوم",
+                "federated_visibility": "رؤية الاتحاد"
+            },
+            "never_copied_title": "لم يتم نسخها أبدًا",
+            "never_copied_description": "تظل هذه السجلات التشغيلية والخاصة دائمًا مع الحدث المصدر.",
+            "never_copied": {
+                "people": "الأشخاص والتسجيلات وقوائم الانتظار",
+                "invitations": "الدعوات وسجلات الضيوف",
+                "forms": "نماذج التسجيل والإجابات الخاصة",
+                "attendance": "سجل الحضور والتسجيل",
+                "tickets": "التذاكر والاستحقاقات والمعاملات",
+                "notifications": "التذكيرات والإخطارات وتاريخ التسليم",
+                "federation": "معرفات الاتحاد والتسليم",
+                "lifecycle": "النشر والاعتدال وحالة دورة الحياة"
+            },
+            "checklist_title": "قائمة التحقق من الخادم",
+            "checks": {
+                "event_template_check_source_manage": "لا يزال لديك إذن لإدارة الحدث المصدر",
+                "event_template_check_allowlist_exact": "يتم تضمين القائمة المسموح بها للتهيئة المعتمدة فقط",
+                "event_template_check_private_records_skipped": "يتم استبعاد السجلات الخاصة والتشغيلية",
+                "event_template_check_versioned_snapshot": "يتم تخزين التكوين كنسخة غير قابلة للتغيير",
+                "event_template_check_version_current": "إصدار القالب المحدد حديث",
+                "event_template_check_schedule_valid": "الجدول الجديد صالح وفي المستقبل",
+                "event_template_check_federation_none": "تم تعطيل الاتحاد للمشروع الجديد",
+                "event_template_check_canonical_writer": "سيتم استخدام سير عمل إنشاء الحدث الأساسي"
+            },
+            "confirm_revision": "حفظ النسخة الجديدة",
+            "confirm_capture": "حفظ القالب",
+            "back_to_library": "العودة إلى قوالب الأحداث",
+            "review_draft_title": "مراجعة مسودة الحدث الجديد",
+            "materialize_intro": "اختر جدولًا جديدًا وراجع التكوين الآمن قبل إنشاء الحدث.",
+            "draft_only_title": "يؤدي هذا دائمًا إلى إنشاء مسودة",
+            "draft_only_description": "لا يتم نشر أي شيء أو تسجيله أو إخطاره أو توحيده حتى تقوم بمراجعة الحدث الجديد ونشره بشكل منفصل.",
+            "start_label": "ابدأ",
+            "timezone_hint": "أدخل الجدول في :timezone.",
+            "end_label": "نهاية",
+            "safe_overrides_title": "تجاوزات آمنة",
+            "safe_overrides_intro": "اضبط التكوين القابل لإعادة الاستخدام لهذه المسودة. لا يمكن إضافة البيانات التشغيلية والخاصة هنا.",
+            "review_draft": "مراجعة المسودة",
+            "review_draft_intro": "قم بتأكيد قائمة التحقق التي تم التحقق منها بواسطة الخادم قبل إنشاء المسودة الجديدة.",
+            "ready_title": "على استعداد لإنشاء مسودة",
+            "ready_description": "تحقق الخادم من الإصدار الحالي والقائمة المسموح بها الآمنة والجدول الزمني وإعدادات الاتحاد والكاتب الأساسي.",
+            "event_title": "عنوان الحدث",
+            "publication_state": "حالة النشر",
+            "draft": "مسودة",
+            "create_draft": "إنشاء مسودة",
+            "change_details": "تغيير التفاصيل",
+            "audit_link": "سجل التدقيق",
+            "audit_title": "سجل تدقيق القالب",
+            "audit_intro": "راجع السجل الكامل وغير القابل للتغيير لالتقاط القالب ومراجعته وأرشفته وإنشاء المسودات منه.",
+            "audit_immutable": "كل إدخال قابل للإضافة فقط ولا يمكن تغييره أو حذفه.",
+            "audit_empty": "لم يتم تسجيل أي إدخالات تدقيق.",
+            "audit_recorded_at": "وقت التسجيل",
+            "audit_actions": {
+                "captured": "تم التقاط القالب",
+                "revised": "تمت مراجعة القالب",
+                "archived": "تمت أرشفة القالب",
+                "materialized": "تم إنشاء مسودة من القالب"
+            },
+            "audit_event_reference": "الحدث :id",
+            "audit_created_event": "الحدث الذي تم إنشاؤه",
+            "audit_integrity": "ملخص التكامل",
+            "audit_archive_reason_recorded": "تم تسجيل سبب الأرشفة",
+            "audit_yes": "نعم",
+            "audit_no": "لا",
+            "audit_override_fields": "الحقول التي تغيرت لهذه المسودة",
+            "audit_pagination_label": "ترقيم صفحات سجل تدقيق القالب",
+            "audit_load_more": "تحميل المزيد من السجل"
+        },
+        "event_tickets": {
+            "title": "تذاكر الحدث",
+            "intro": "قم بمراجعة أنواع التذاكر المتاحة، والمطالبة بالأماكن المجانية وإدارة التذاكر المجانية المؤكدة الخاصة بك.",
+            "load_error": "تعذر تحميل كتالوج تذكرة الحدث.",
+            "validation_error": "تحقق من تفاصيل التذكرة وحاول مرة أخرى.",
+            "allocate_error": "لا يمكن تخصيص التذكرة المجانية. تحقق من تسجيلك وأهليتك والمخصصات المتبقية.",
+            "cancel_error": "لا يمكن إلغاء التذكرة المجانية. قم بتحديث الكتالوج وحاول مرة أخرى.",
+            "allocated": "لقد تم تخصيص تذكرتك المجانية.",
+            "cancelled": "لقد تم إلغاء تذكرتك المجانية وإعادتها إلى التخصيص.",
+            "back_to_event": "العودة إلى الحدث",
+            "back_to_tickets": "العودة إلى تذاكر الحدث",
+            "gateway_disabled": "لا يتوفر الخروج المدفوع والائتمان الزمني. لا تتقاضى هذه الصفحة أبدًا أموالًا أو أرصدة زمنية ولا تغير محفظتك.",
+            "my_tickets": "التذاكر الخاصة بي",
+            "no_tickets": "ليس لديك تذكرة لهذا الحدث.",
+            "ticket_fallback": "تذكرة الحدث",
+            "units": "الكمية",
+            "status_label": "الحالة",
+            "status": {
+                "confirmed": "تم التأكيد",
+                "cancelled": "تم الإلغاء"
+            },
+            "cancel_ticket": "إلغاء التذكرة",
+            "time_credit_cancel_disabled": "لا يتوفر إلغاء تذكرة رصيد الوقت في سير العمل المجاني فقط هذا. لم يتم اتخاذ أي إجراء بشأن المحفظة.",
+            "catalogue": "التذاكر المتاحة",
+            "catalogue_empty": "لا توجد أنواع التذاكر المتاحة لهذا الحدث.",
+            "kind": {
+                "free": "مجاني",
+                "time_credit": "الاعتمادات الزمنية"
+            },
+            "remaining": "التخصيص المتبقي",
+            "member_limit": "الحد لكل عضو",
+            "time_credit_disabled": "يكلف هذا النوع :credits نقطة زمنية، ولكن يتم تعطيل الخروج حتى يتم توصيل بوابة المحفظة المعتمدة. لن يتم خصم أي اعتمادات.",
+            "units_to_claim": "عدد التذاكر المجانية",
+            "units_hint": "يمكنك المطالبة بما يصل إلى :count في هذا التخصيص.",
+            "claim_free": "المطالبة بتذكرة مجانية",
+            "registration_required": "أنت بحاجة إلى تسجيل حدث مؤكد قبل أن تتمكن من المطالبة بتذكرة مجانية.",
+            "not_eligible": "أنت لا تستوفي حاليًا قواعد الأهلية لهذا النوع من التذكرة.",
+            "sales_closed": "هذا النوع من التذاكر غير مفتوح حاليًا للتخصيص.",
+            "sold_out": "لن تبقى لك تذاكر مجانية في هذا التخصيص.",
+            "cancel_title": "إلغاء هذه التذكرة المجانية؟",
+            "cancel_intro": "أخبر المنظم عن سبب الإلغاء. سيتم إرجاع الكمية إلى التخصيص المجاني.",
+            "cancel_free_only": "يلغي هذا الإجراء استحقاقًا مجانيًا فقط. لا يقوم بإصدار استرداد أو تغيير أي رصيد في المحفظة.",
+            "reason_label": "سبب الإلغاء",
+            "reason_hint": "لا تقم بتضمين معلومات خاصة أو حساسة. الحد الأقصى 500 حرف.",
+            "confirm_cancel": "إلغاء التذكرة المجانية"
         },
         "govuk_alpha": {
             "opens_new_tab": "(يُفتح في علامة تبويب جديدة)",

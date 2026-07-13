@@ -62,7 +62,7 @@ const localeResults = SUPPORTED_LOCALES.map((locale) => {
 });
 
 const result = {
-  source: 'Laravel lang/{locale}/govuk_alpha*.php via generated catalogs',
+  source: 'Laravel lang/{locale}/{govuk_alpha*,event_*}.php via generated catalogs',
   supportedLocales: SUPPORTED_LOCALES.length,
   authoritativeNamespaces: namespaceNames.length,
   authoritativeEnglishStringKeys: englishKeys.length,
@@ -74,4 +74,3 @@ process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
 if (localeResults.some(({ missingKeys, extraKeys }) => missingKeys > 0 || extraKeys > 0)) {
   process.exitCode = 1;
 }
-
