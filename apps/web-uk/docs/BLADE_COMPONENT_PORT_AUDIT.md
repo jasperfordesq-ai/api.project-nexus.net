@@ -14,6 +14,17 @@ text evidence. Focused permission/render/payload/fail-closed proof and the full
 manual assistive-technology review, and unchanged ASP.NET runtime proof remain
 open.
 
+## 2026-07-13 Event Agenda Checkpoint
+
+Web UK now replaces the generated Agenda preparation page with Laravel's real
+private agenda projection and all six session mutations: create, update, cancel,
+reorder, register, and confirmed withdrawal. Version and agenda-version checks,
+`Idempotency-Key`, capacity, visibility, speakers, HTTPS resources, cancelled
+history, and server-declared manager/attendee actions follow the canonical API.
+Focused render/payload/fail-closed proof passes. Disposable live session effects,
+timezone variants, manual assistive-technology review, and unchanged ASP.NET
+runtime proof remain open.
+
 ## Purpose
 
 This audit lists reusable Laravel Blade accessible frontend patterns that should

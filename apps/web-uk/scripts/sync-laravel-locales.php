@@ -37,6 +37,7 @@ foreach (SUPPORTED_LOCALES as $locale) {
     $files = array_merge(
         glob($localeDirectory . '/govuk_alpha*.php') ?: [],
         glob($localeDirectory . '/event_offline_checkin.php') ?: [],
+        glob($localeDirectory . '/event_agenda.php') ?: [],
         glob($localeDirectory . '/event_safety.php') ?: [],
     );
     if ($files === false || $files === []) {
@@ -62,7 +63,7 @@ foreach (SUPPORTED_LOCALES as $locale) {
         '_meta' => [
             'schema' => 1,
             'locale' => $locale,
-            'source' => "lang/{$locale}/{govuk_alpha*,event_offline_checkin,event_safety}.php",
+            'source' => "lang/{$locale}/{govuk_alpha*,event_agenda,event_offline_checkin,event_safety}.php",
         ],
         'namespaces' => $namespaces,
     ];

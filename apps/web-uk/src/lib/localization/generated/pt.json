@@ -2,9 +2,43 @@
     "_meta": {
         "schema": 1,
         "locale": "pt",
-        "source": "lang/pt/{govuk_alpha*,event_offline_checkin,event_safety}.php"
+        "source": "lang/pt/{govuk_alpha*,event_agenda,event_offline_checkin,event_safety}.php"
     },
     "namespaces": {
+        "event_agenda": {
+            "withdraw_confirmation": "Compreendo que o meu lugar em :title será libertado e poderá ser ocupado por outra pessoa.",
+            "capacity_label": "Capacidade da sessão",
+            "capacity_hint": "Deixe em branco para não limitar lugares. Os lugares da sessão não alteram a inscrição no evento nem os bilhetes.",
+            "capacity_unlimited": ":registered inscritos · sem limite",
+            "capacity_limited": ":registered de :limit inscritos",
+            "resources_title": "Recursos da sessão",
+            "resources_hint": "Adicione ligações HTTPS pela ordem de apresentação. Transmissões e gravações devem ficar limitadas a pessoas inscritas ou à equipa.",
+            "resource_number": "Recurso :number",
+            "resource_type": "Tipo de recurso",
+            "resource_visibility": "Quem pode aceder",
+            "resource_title": "Título do recurso",
+            "resource_url": "URL HTTPS seguro",
+            "resource_url_hint": "Use um endereço completo iniciado por https://.",
+            "resource_types": {
+                "link": "Ligação",
+                "document": "Documento",
+                "slides": "Diapositivos",
+                "download": "Transferência",
+                "stream": "Transmissão em direto",
+                "recording": "Gravação"
+            },
+            "opens_new_window": "Abre numa nova janela",
+            "resource_unavailable": "Ligação indisponível",
+            "registered_success": "A inscrição na sessão foi concluída.",
+            "withdrawn_success": "A inscrição na sessão foi cancelada.",
+            "register_action": "Inscrever na sessão",
+            "withdraw_action": "Cancelar inscrição",
+            "registered_state": "Inscrição confirmada nesta sessão",
+            "ineligible_state": "A inscrição no evento já não permite o acesso a esta sessão.",
+            "full_state": "Esta sessão está lotada.",
+            "session_full_error": "Já não há lugares nesta sessão.",
+            "eligibility_error": "Confirme a inscrição no evento antes de se inscrever numa sessão."
+        },
         "event_offline_checkin": {
             "privacy": {
                 "title": "Check-in privado e resiliente",

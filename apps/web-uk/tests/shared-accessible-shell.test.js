@@ -22000,6 +22000,68 @@ describe('shared accessible frontend shell', () => {
     expect(api.callEventApi).not.toHaveBeenCalled();
   });
 
+  it('renders the Laravel Event Agenda with manager and attendee actions', async () => {
+    const api = require('../src/lib/api');
+    api.callEventApi
+      .mockResolvedValueOnce({ data: { id: 42, title: 'Community garden day' } })
+      .mockResolvedValueOnce({ data: {
+        agenda_version: 4,
+        timezone: 'Europe/Dublin',
+        permissions: { manage: true },
+        sessions: [{
+          id: 71, version: 3, title: 'Opening workshop', description: 'Welcome and practical briefing.',
+          type: 'workshop', visibility: 'registered', status: 'scheduled',
+          start_at: '2026-08-10T09:00:00Z', end_at: '2026-08-10T10:00:00Z',
+          capacity: { limit: 20, registered: 7, remaining: 13, is_full: false },
+          registration: { state: 'not_registered', version: 0, can_register: true, can_withdraw: false },
+          speakers: [{ display_name: 'Sam Lee', role: 'Facilitator' }], resources: []
+        }]
+      } });
+    const response = await request(app).get('/events/42/agenda').set('Cookie', signedCookieHeader());
+    expect(response.status).toBe(200);
+    expect(response.headers['cache-control']).toBe('private, no-store');
+    expect(response.text).toContain('Opening workshop');
+    expect(response.text).toContain('Welcome and practical briefing.');
+    expect(response.text).toContain('name="action" value="create"');
+    expect(response.text).toContain('name="action" value="update"');
+    expect(response.text).toContain('name="action" value="cancel"');
+    expect(response.text).toContain('name="action" value="register"');
+    expect(api.callEventApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/42/agenda?include_cancelled=true');
+  });
+
+  it('creates Laravel Agenda sessions with the exact API method and idempotency header', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const shell = await agent.get('/contact').set('Cookie', signedCookieHeader());
+    const csrf = shell.text.match(/name="_csrf" value="([^"]+)"/)[1];
+    api.callEventApi.mockResolvedValueOnce({ data: { session: { id: 71 } } });
+    const response = await agent.post('/events/42/agenda').set('Cookie', signedCookieHeader()).type('form').send({
+      _csrf: csrf, action: 'create', idempotency_key: 'agenda-create-key', title: 'Opening workshop',
+      description: 'Welcome', session_type: 'workshop', visibility: 'registered',
+      start_at: '2026-08-10T09:00', end_at: '2026-08-10T10:00', timezone: 'Europe/Dublin', capacity: '20',
+      'speaker_name[]': 'Sam Lee', 'speaker_role[]': 'Facilitator',
+      'resource_type[]': 'slides', 'resource_title[]': 'Slides', 'resource_url[]': 'https://example.org/slides', 'resource_visibility[]': 'registered'
+    });
+    expect(response.headers.location).toBe('/events/42/agenda?status=agenda-created');
+    expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/agenda/sessions', expect.objectContaining({
+      title: 'Opening workshop', capacity: 20,
+      speakers: [{ display_name: 'Sam Lee', role: 'Facilitator' }],
+      resources: [{ type: 'slides', title: 'Slides', url: 'https://example.org/slides', visibility: 'registered' }]
+    }), { headers: { 'Idempotency-Key': 'agenda-create-key' } });
+  });
+
+  it('fails Agenda withdrawal closed without explicit confirmation', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const shell = await agent.get('/contact').set('Cookie', signedCookieHeader());
+    const csrf = shell.text.match(/name="_csrf" value="([^"]+)"/)[1];
+    const response = await agent.post('/events/42/agenda').set('Cookie', signedCookieHeader()).type('form').send({
+      _csrf: csrf, action: 'withdraw', session_id: '71', expected_version: '2', idempotency_key: 'agenda-withdraw-key'
+    });
+    expect(response.headers.location).toBe('/events/42/agenda?status=agenda-failed');
+    expect(api.callEventApi).not.toHaveBeenCalled();
+  });
+
   it('renders and issues Laravel signed Event check-in credentials without caching the secret', async () => {
     const api = require('../src/lib/api');
     api.callEventApi

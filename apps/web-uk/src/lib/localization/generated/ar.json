@@ -2,9 +2,43 @@
     "_meta": {
         "schema": 1,
         "locale": "ar",
-        "source": "lang/ar/{govuk_alpha*,event_offline_checkin,event_safety}.php"
+        "source": "lang/ar/{govuk_alpha*,event_agenda,event_offline_checkin,event_safety}.php"
     },
     "namespaces": {
+        "event_agenda": {
+            "withdraw_confirmation": "أفهم أنه سيتم تحرير مكاني في :title وقد يشغله شخص آخر.",
+            "capacity_label": "سعة الجلسة",
+            "capacity_hint": "اترك الحقل فارغًا لعدم تحديد عدد الأماكن. أماكن الجلسة لا تغيّر تسجيل الفعالية أو التذاكر.",
+            "capacity_unlimited": ":registered مسجلون · بلا حد",
+            "capacity_limited": ":registered من أصل :limit مسجلون",
+            "resources_title": "موارد الجلسة",
+            "resources_hint": "أضف روابط HTTPS بترتيب العرض. يجب قصر البث والتسجيلات على المسجلين أو فريق العمل.",
+            "resource_number": "المورد :number",
+            "resource_type": "نوع المورد",
+            "resource_visibility": "من يمكنه الوصول",
+            "resource_title": "عنوان المورد",
+            "resource_url": "رابط HTTPS آمن",
+            "resource_url_hint": "استخدم عنوانًا كاملًا يبدأ بـ https://.",
+            "resource_types": {
+                "link": "رابط",
+                "document": "مستند",
+                "slides": "شرائح",
+                "download": "تنزيل",
+                "stream": "بث مباشر",
+                "recording": "تسجيل"
+            },
+            "opens_new_window": "يفتح في نافذة جديدة",
+            "resource_unavailable": "الرابط غير متاح",
+            "registered_success": "تم تسجيلك في الجلسة.",
+            "withdrawn_success": "تم انسحابك من الجلسة.",
+            "register_action": "التسجيل في الجلسة",
+            "withdraw_action": "الانسحاب من الجلسة",
+            "registered_state": "مسجل في هذه الجلسة",
+            "ineligible_state": "لم يعد تسجيلك في الفعالية مؤهلًا لهذه الجلسة.",
+            "full_state": "هذه الجلسة ممتلئة.",
+            "session_full_error": "لا توجد أماكن متبقية في هذه الجلسة.",
+            "eligibility_error": "أكد تسجيلك في الفعالية قبل التسجيل في جلسة."
+        },
         "event_offline_checkin": {
             "privacy": {
                 "title": "تسجيل حضور خاص وموثوق",

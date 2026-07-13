@@ -733,7 +733,9 @@ function generateAccessibleRouteMatrix(options = {}) {
   const outDir = options.outDir || path.join(targetRoot, 'apps', 'web-uk', 'docs', 'generated');
   const laravelRoutes = parseLaravelRoutes(sourceRoot);
   const methodDetails = parseControllerMethods(sourceRoot);
-  const webUkRoutes = parseWebUkRoutes(targetRoot);
+  const webUkRoutes = parseWebUkRoutes(targetRoot).filter((route) => (
+    path.basename(route.webUkFile || '') !== 'laravel-prep-pages.js'
+  ));
   const matrix = buildMatrix(laravelRoutes, webUkRoutes, methodDetails);
   const summary = summarize(matrix, laravelRoutes, webUkRoutes, sourceRoot, targetRoot);
 

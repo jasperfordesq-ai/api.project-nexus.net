@@ -407,6 +407,43 @@ function offlineCredentialFrom(result) {
   };
 }
 
+function arrayValues(value) {
+  return Array.isArray(value) ? value : (value === undefined ? [] : [value]);
+}
+
+function agendaSessionPayload(body) {
+  const speakerNames = arrayValues(body.speaker_name);
+  const speakerRoles = arrayValues(body.speaker_role);
+  const speakers = speakerNames.map((name, index) => ({
+    display_name: trimmed(name, 160),
+    role: trimmed(speakerRoles[index], 120) || null
+  })).filter((speaker) => speaker.display_name);
+  const resourceTypes = arrayValues(body.resource_type);
+  const resourceTitles = arrayValues(body.resource_title);
+  const resourceUrls = arrayValues(body.resource_url);
+  const resourceVisibilities = arrayValues(body.resource_visibility);
+  const resources = resourceTitles.map((title, index) => ({
+    type: selectedValue(resourceTypes[index], ['link', 'document', 'slides', 'download', 'stream', 'recording'], 'link'),
+    title: trimmed(title, 191),
+    url: trimmed(resourceUrls[index], 2048),
+    visibility: selectedValue(resourceVisibilities[index], ['public', 'registered', 'staff'], 'public')
+  })).filter((resource) => resource.title || resource.url);
+  return {
+    title: trimmed(body.title, 255),
+    description: trimmed(body.description, 4000) || null,
+    session_type: selectedValue(body.session_type, ['session', 'keynote', 'workshop', 'panel', 'break', 'networking', 'other'], 'session'),
+    visibility: selectedValue(body.visibility, ['public', 'registered', 'staff'], 'public'),
+    start_at: trimmed(body.start_at),
+    end_at: trimmed(body.end_at),
+    timezone: trimmed(body.timezone, 64) || 'UTC',
+    track_name: trimmed(body.track_name, 160) || null,
+    room_name: trimmed(body.room_name, 160) || null,
+    capacity: body.capacity === '' ? null : positiveInteger(body.capacity),
+    speakers,
+    resources
+  };
+}
+
 async function renderOfflineCredential(req, res, id, options = {}) {
   const token = tokenFrom(req);
   const [eventResult, credentialResult] = await Promise.all([
@@ -986,6 +1023,97 @@ router.post('/:id(\\d+)/safety', requireAuth, asyncRoute(async (req, res) => {
     if (redirectOnAuthError(error, res)) return undefined;
     if (error instanceof ApiError && [400, 403, 404, 409, 422, 429].includes(error.status)) {
       return redirectTo(res, eventPath(id, '/safety?status=safety-failed'));
+    }
+    throw error;
+  }
+}));
+
+router.get('/:id(\\d+)/agenda', requireAuth, asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const token = tokenFrom(req);
+  const [eventResult, agendaResult] = await Promise.all([
+    callApi(token, 'GET', `/${id}`),
+    callApi(token, 'GET', `/${id}/agenda?include_cancelled=true`)
+  ]);
+  const event = eventFrom(eventResult);
+  const agenda = dataFrom(agendaResult) || {};
+  const sessions = (Array.isArray(agenda.sessions) ? agenda.sessions : []).map((session) => ({
+    ...session,
+    start_at_local: trimmed(session.start_at).slice(0, 16),
+    end_at_local: trimmed(session.end_at).slice(0, 16)
+  }));
+  agenda.sessions = sessions;
+  res.set('Cache-Control', 'private, no-store');
+  res.set('Pragma', 'no-cache');
+  return res.render('events/agenda', {
+    title: res.locals.t('govuk_alpha.events.agenda.title'),
+    activeNav: 'events',
+    event: { id, title: trimmed(event.title) },
+    agenda,
+    scheduledSessions: sessions.filter((session) => session.status === 'scheduled'),
+    cancelledSessions: sessions.filter((session) => session.status === 'cancelled'),
+    status: trimmed(req.query.status),
+    idempotencyKey: randomUUID(),
+    csrfToken: req.csrfToken ? req.csrfToken() : ''
+  });
+}, { notFoundTitle: 'Event not found' }));
+
+router.post('/:id(\\d+)/agenda', requireAuth, asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const action = selectedValue(req.body.action, ['create', 'update', 'cancel', 'move_up', 'move_down', 'register', 'withdraw']);
+  const idempotencyKey = trimmed(req.body.idempotency_key, 191);
+  const sessionId = positiveInteger(req.body.session_id);
+  if (!action || idempotencyKey.length < 8 || (action !== 'create' && sessionId === null)
+    || (action === 'withdraw' && !checked(req.body.confirm_destructive))) {
+    return redirectTo(res, eventPath(id, '/agenda?status=agenda-failed'));
+  }
+  let method = 'POST';
+  let path = `/${id}/agenda/sessions`;
+  let payload = {};
+  if (action === 'create' || action === 'update') {
+    payload = agendaSessionPayload(req.body);
+    if (!payload.title || !payload.start_at || !payload.end_at || (req.body.capacity !== '' && payload.capacity === null)) {
+      return redirectTo(res, eventPath(id, '/agenda?status=agenda-failed'));
+    }
+    if (action === 'update') {
+      method = 'PUT';
+      path = `/${id}/agenda/sessions/${sessionId}`;
+      payload.expected_version = positiveInteger(req.body.expected_version);
+      if (payload.expected_version === null) return redirectTo(res, eventPath(id, '/agenda?status=agenda-failed'));
+    }
+  } else if (action === 'cancel') {
+    path = `/${id}/agenda/sessions/${sessionId}/cancel`;
+    payload = { expected_version: positiveInteger(req.body.expected_version), reason: trimmed(req.body.reason, 500) };
+    if (payload.expected_version === null || !payload.reason) return redirectTo(res, eventPath(id, '/agenda?status=agenda-failed'));
+  } else if (action === 'register' || action === 'withdraw') {
+    path = `/${id}/agenda/sessions/${sessionId}/registration${action === 'withdraw' ? '/withdraw' : ''}`;
+    payload = { expected_version: Math.max(0, Number.parseInt(req.body.expected_version, 10) || 0) };
+  } else {
+    method = 'PUT';
+    path = `/${id}/agenda/order`;
+    const ordered = arrayValues(req.body.ordered_session_ids).map(positiveInteger).filter(Boolean);
+    const currentIndex = ordered.indexOf(sessionId);
+    const swapIndex = action === 'move_up' ? currentIndex - 1 : currentIndex + 1;
+    if (currentIndex < 0 || swapIndex < 0 || swapIndex >= ordered.length) {
+      return redirectTo(res, eventPath(id, '/agenda?status=agenda-failed'));
+    }
+    [ordered[currentIndex], ordered[swapIndex]] = [ordered[swapIndex], ordered[currentIndex]];
+    payload = {
+      expected_agenda_version: Math.max(0, Number.parseInt(req.body.expected_agenda_version, 10) || 0),
+      ordered_session_ids: ordered
+    };
+  }
+  try {
+    await callEventMutation(tokenFrom(req), method, path, payload, idempotencyKey);
+    const status = {
+      create: 'agenda-created', update: 'agenda-updated', cancel: 'agenda-cancelled',
+      move_up: 'agenda-reordered', move_down: 'agenda-reordered', register: 'agenda-session-registered', withdraw: 'agenda-session-withdrawn'
+    }[action];
+    return redirectTo(res, eventPath(id, `/agenda?status=${status}`));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    if (error instanceof ApiError && [400, 403, 404, 409, 422, 429].includes(error.status)) {
+      return redirectTo(res, eventPath(id, '/agenda?status=agenda-failed'));
     }
     throw error;
   }

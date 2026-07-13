@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-13T02:03:27.164Z
+Generated: 2026-07-13T02:13:28.400Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 687 |
-| web-uk routes | 648 |
-| Matched routes | 645 |
-| Missing routes | 42 |
+| web-uk routes | 626 |
+| Matched routes | 623 |
+| Missing routes | 64 |
 | Extra web-uk routes | 1 |
 | Ignored web-uk infrastructure routes | 3 |
 
@@ -31,8 +31,8 @@ Generated: 2026-07-13T02:03:27.164Z
 | coupons | 2 | 0 | 0 | 0 |
 | courses | 26 | 0 | 0 | 0 |
 | dashboard | 1 | 0 | 0 | 0 |
-| event-templates | 2 | 2 | 0 | 0 |
-| events | 54 | 40 | 0 | 0 |
+| event-templates | 0 | 4 | 0 | 0 |
+| events | 34 | 60 | 0 | 0 |
 | exchanges | 4 | 0 | 0 | 0 |
 | explore | 1 | 0 | 0 | 0 |
 | faq | 1 | 0 | 0 | 0 |
@@ -89,9 +89,31 @@ Generated: 2026-07-13T02:03:27.164Z
 
 | Method | Path | Family | Handler | Blade view | Auth | Gates |
 | --- | --- | --- | --- | --- | --- | --- |
+| GET | `/event-templates/{param}/history` | event-templates | eventsTemplateHistory | event-template-history | public-or-unknown |  |
+| GET | `/event-templates/{param}/materialize` | event-templates | eventsTemplateMaterializeForm |  | public-or-unknown |  |
 | POST | `/event-templates/{param}/materialize` | event-templates | eventsTemplateMaterialize |  | public-or-unknown |  |
 | POST | `/event-templates/{param}/materialize/preview` | event-templates | eventsTemplateMaterializePreview |  | public-or-unknown |  |
-| POST | `/events/{param}/agenda` | events | eventsUpdateAgenda |  | public-or-unknown |  |
+| GET | `/events/{param}/analytics` | events | eventsAnalytics | event-analytics | public-or-unknown |  |
+| GET | `/events/{param}/analytics/export.csv` | events | eventsAnalyticsExport |  | public-or-unknown |  |
+| GET | `/events/{param}/calendar` | events | eventsCalendarActions | events-calendar | public-or-unknown |  |
+| GET | `/events/{param}/calendar.ics` | events | eventsCalendarDownload |  | public-or-unknown |  |
+| GET | `/events/{param}/communications` | events | eventsCommunications |  | public-or-unknown |  |
+| GET | `/events/{param}/lifecycle-history` | events | eventsLifecycleHistory | event-lifecycle-history | auth-optional | feature:events |
+| GET | `/events/{param}/recurrence-definition-blueprints` | events | eventsRecurrenceDefinitionBlueprints | event-recurrence-blueprints | public-or-unknown |  |
+| GET | `/events/{param}/registration` | events | eventsRegistrationProduct |  | public-or-unknown |  |
+| GET | `/events/{param}/registration/forms/{param}` | events | eventsRegistrationFormEditor | event-registration-form-editor | public-or-unknown |  |
+| GET | `/events/{param}/registration/forms/new` | events | eventsRegistrationFormEditor | event-registration-form-editor | public-or-unknown |  |
+| GET | `/events/{param}/reminders` | events | eventsReminders | event-reminders | public-or-unknown |  |
+| GET | `/events/{param}/template-preview` | events | eventsTemplateCapturePreview | event-template-capture-preview | public-or-unknown |  |
+| GET | `/events/{param}/tickets` | events | eventsTickets | event-tickets | public-or-unknown |  |
+| GET | `/events/{param}/tickets/entitlements/{param}/cancel` | events | eventsTicketCancelForm | event-ticket-cancel | public-or-unknown |  |
+| GET | `/events/calendar-subscriptions` | events | eventsCalendarSubscriptions |  | public-or-unknown |  |
+| GET | `/events/calendar-subscriptions/{param}/revoke` | events | eventsConfirmCalendarSubscriptionRevoke |  | public-or-unknown |  |
+| GET | `/events/calendar.ics` | events | eventsCalendarFeed |  | public-or-unknown |  |
+| GET | `/events/moderation` | events | eventsModerationQueue | event-moderation-queue | public-or-unknown |  |
+| GET | `/events/moderation/{param}/approve` | events | eventsModerationApproveConfirmation |  | public-or-unknown |  |
+| GET | `/events/moderation/{param}/reject` | events | eventsModerationRejectConfirmation |  | public-or-unknown |  |
+| GET | `/events/templates` | events | eventsTemplates | event-templates | public-or-unknown |  |
 | POST | `/events/{param}/check-in/code` | events | eventsOfflineCheckinCode |  | public-or-unknown |  |
 | POST | `/events/{param}/communications` | events | eventsCommunicationsCreate |  | public-or-unknown |  |
 | POST | `/events/{param}/communications/{param}/cancel` | events | eventsCommunicationsCancel |  | public-or-unknown |  |
