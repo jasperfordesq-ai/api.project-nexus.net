@@ -24102,6 +24102,50 @@ describe('shared accessible frontend shell', () => {
       file: expect.objectContaining({ filename: 'updated-cover.webp', contentType: 'image/webp' })
     }));
 
+    const missingEditName = await agent
+      .post('/groups/88/edit')
+      .set('Cookie', signedCookieHeader())
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        name: '',
+        description: 'Preserve edited description.',
+        location: 'Cork',
+        visibility: 'private',
+        tags: 'repair, sharing'
+      });
+
+    expect(missingEditName.status).toBe(200);
+    expect(missingEditName.text).toContain('href="#name"');
+    expect(missingEditName.text).toContain('id="name-error"');
+    expect(missingEditName.text).toContain('aria-describedby="name-hint name-error"');
+    expect(missingEditName.text).toContain('Preserve edited description.');
+    expect(api.updateGroup).toHaveBeenCalledTimes(1);
+
+    const missingName = await agent
+      .post('/groups/new')
+      .set('Cookie', signedCookieHeader())
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        name: '',
+        description: 'Keep this description.',
+        location: 'Dublin',
+        visibility: 'private',
+        tags: 'repair, tools'
+      });
+
+    expect(missingName.status).toBe(200);
+    expect(missingName.text).toContain('href="#name"');
+    expect(missingName.text).toContain('id="name-error"');
+    expect(missingName.text).toContain('govuk-input govuk-input--error');
+    expect(missingName.text).toContain('aria-describedby="name-hint name-error"');
+    expect(missingName.text).toContain('Keep this description.');
+    expect(missingName.text).toContain('value="Dublin"');
+    expect(missingName.text).toContain('value="private" checked');
+    expect(missingName.text).toContain('value="repair, tools"');
+    expect(api.createGroup).toHaveBeenCalledTimes(1);
+
     api.createGroup.mockRejectedValueOnce(new api.ApiError('Validation failed', 422, {
       errors: [{ code: 'VALIDATION_ERROR', field: 'visibility', message: 'Select a valid visibility.' }]
     }));

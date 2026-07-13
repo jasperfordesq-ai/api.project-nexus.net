@@ -260,6 +260,12 @@ function groupFormErrors(error, fallback) {
   }));
 }
 
+function groupFieldErrors(errors) {
+  return Object.fromEntries((Array.isArray(errors) ? errors : [])
+    .filter((error) => /^#[a-z][a-z0-9_]*$/i.test(trimmed(error?.href)))
+    .map((error) => [trimmed(error.href).slice(1), trimmed(error.text)]));
+}
+
 function groupTags(value) {
   const raw = Array.isArray(value) ? value : String(value || '').split(',');
   return raw.map((tag) => trimmed(tag)).filter(Boolean);
@@ -913,6 +919,7 @@ router.post('/new', requireAuth, audit.groupCreate(), asyncRoute(async (req, res
     return res.render('groups/new', {
       title: 'Create a group',
       errors,
+      fieldErrors: groupFieldErrors(errors),
       values: { name, description, location, visibility, tags },
       csrfToken: req.csrfToken ? req.csrfToken() : ''
     });
@@ -958,9 +965,11 @@ router.post('/new', requireAuth, audit.groupCreate(), asyncRoute(async (req, res
       return renderForbidden(res);
     }
     if (error instanceof ApiError && error.status !== 401) {
+      const formErrors = groupFormErrors(error, 'Unable to create group');
       return res.render('groups/new', {
         title: 'Create a group',
-        errors: groupFormErrors(error, 'Unable to create group'),
+        errors: formErrors,
+        fieldErrors: groupFieldErrors(formErrors),
         values: { name, description, location, visibility, tags },
         csrfToken: req.csrfToken ? req.csrfToken() : ''
       });
@@ -1354,6 +1363,7 @@ router.post('/:id(\\d+)/edit', requireAuth, audit.groupUpdate(), asyncRoute(asyn
       title: 'Edit group',
       group: { id, name, description, location, visibility, tagsText: trimmed(tags) },
       errors,
+      fieldErrors: groupFieldErrors(errors),
       csrfToken: req.csrfToken ? req.csrfToken() : ''
     });
   }
@@ -1391,10 +1401,12 @@ router.post('/:id(\\d+)/edit', requireAuth, audit.groupUpdate(), asyncRoute(asyn
       return renderTooManyRequests(res);
     }
     if (error instanceof ApiError && [400, 409, 422].includes(error.status)) {
+      const formErrors = groupFormErrors(error, 'Unable to update group');
       return res.render('groups/edit', {
         title: 'Edit group',
         group: { id, name, description, location, visibility, tagsText: trimmed(tags) },
-        errors: groupFormErrors(error, 'Unable to update group'),
+        errors: formErrors,
+        fieldErrors: groupFieldErrors(formErrors),
         csrfToken: req.csrfToken ? req.csrfToken() : ''
       });
     }

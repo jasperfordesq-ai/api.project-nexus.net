@@ -37,6 +37,10 @@
           id: "name",
           name: "name",
           value: group.name,
+          errorMessage: {
+            text: fieldErrors.name,
+            visuallyHiddenText: t("states.error_prefix")
+          } if fieldErrors and fieldErrors.name else null,
           attributes: {
             "data-validate": "required maxLength:255",
             "data-label": t("groups.create.name_label")
