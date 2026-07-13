@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-13T02:36:32.391Z
+Generated: 2026-07-13T02:41:54.058Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 687 |
-| web-uk routes | 639 |
-| Matched routes | 636 |
-| Missing routes | 51 |
+| web-uk routes | 641 |
+| Matched routes | 638 |
+| Missing routes | 49 |
 | Extra web-uk routes | 1 |
 | Ignored web-uk infrastructure routes | 3 |
 
@@ -32,7 +32,7 @@ Generated: 2026-07-13T02:36:32.391Z
 | courses | 26 | 0 | 0 | 0 |
 | dashboard | 1 | 0 | 0 | 0 |
 | event-templates | 0 | 4 | 0 | 0 |
-| events | 47 | 47 | 0 | 0 |
+| events | 49 | 45 | 0 | 0 |
 | exchanges | 4 | 0 | 0 | 0 |
 | explore | 1 | 0 | 0 | 0 |
 | faq | 1 | 0 | 0 | 0 |
@@ -93,8 +93,6 @@ Generated: 2026-07-13T02:36:32.391Z
 | GET | `/event-templates/{param}/materialize` | event-templates | eventsTemplateMaterializeForm |  | public-or-unknown |  |
 | POST | `/event-templates/{param}/materialize` | event-templates | eventsTemplateMaterialize |  | public-or-unknown |  |
 | POST | `/event-templates/{param}/materialize/preview` | event-templates | eventsTemplateMaterializePreview |  | public-or-unknown |  |
-| GET | `/events/{param}/analytics` | events | eventsAnalytics | event-analytics | public-or-unknown |  |
-| GET | `/events/{param}/analytics/export.csv` | events | eventsAnalyticsExport |  | public-or-unknown |  |
 | GET | `/events/{param}/calendar` | events | eventsCalendarActions | events-calendar | public-or-unknown |  |
 | GET | `/events/{param}/calendar.ics` | events | eventsCalendarDownload |  | public-or-unknown |  |
 | GET | `/events/{param}/lifecycle-history` | events | eventsLifecycleHistory | event-lifecycle-history | auth-optional | feature:events |

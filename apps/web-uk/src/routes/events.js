@@ -19,6 +19,7 @@ const {
   votePoll,
   getPolls,
   callEventApi,
+  downloadEventApi,
   getEventCategories,
   uploadEventImage,
   callUgcTranslateApi,
@@ -1368,6 +1369,40 @@ router.post('/:id(\\d+)/tickets/entitlements/:entitlementId(\\d+)/cancel', requi
     if (error instanceof ApiError && [400, 403, 404, 409, 422, 429, 503].includes(error.status)) return redirectTo(res, eventPath(id, `/tickets/entitlements/${entitlementId}/cancel?status=failed`));
     throw error;
   }
+}));
+
+router.get('/:id(\\d+)/analytics', requireAuth, asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const result = await callApi(tokenFrom(req), 'GET', `/${id}/analytics`);
+  const summary = dataFrom(result) || {};
+  const value = (input) => input && typeof input === 'object'
+    ? (input.suppressed ? 'suppressed' : (input.basis_points === null || input.basis_points === undefined ? (input.value ?? 0) : `${(Number(input.basis_points) / 100).toFixed(1)}%`))
+    : (input ?? 0);
+  const sections = {
+    registration: [['confirmed', value(summary.registration?.confirmed)], ['pending', value(summary.registration?.pending)], ['cancelled', value(summary.registration?.cancelled)], ['capacity_remaining', summary.registration?.remaining ?? 'not_limited']],
+    acquisition: [['invitations_issued', value(summary.invitation?.issued)], ['invitations_accepted', value(summary.invitation?.accepted)], ['invitation_conversion', value(summary.invitation?.conversion)], ['waitlist_joined', value(summary.waitlist?.joined)], ['waitlist_accepted', value(summary.waitlist?.accepted)], ['waitlist_conversion', value(summary.waitlist?.conversion)]],
+    attendance: [['checked_in', value(summary.attendance?.checked_in)], ['attended', value(summary.attendance?.attended)], ['no_show', value(summary.attendance?.no_show)], ['attendance_rate', value(summary.attendance?.attendance_rate)]],
+    communications: [['delivered', value(summary.communications?.delivered)], ['suppressed_deliveries', value(summary.communications?.suppressed)], ['failed_deliveries', value(summary.communications?.failed)], ['dead_lettered', value(summary.communications?.dead_lettered)], ['delivery_rate', value(summary.communications?.delivery_rate)]],
+    funnel: [['event_views', value(summary.optional_funnel?.event_views)], ['registration_starts', value(summary.optional_funnel?.registration_starts)], ['start_conversion', value(summary.optional_funnel?.start_to_registration_conversion)], ['guardian_consents', value(summary.safeguarding?.guardian_consents)]],
+    finance: summary.tickets?.redacted ? [['finance', 'finance_redacted']] : [['ticket_units', value(summary.tickets?.confirmed_units)], ['ticket_credit_value', value(summary.tickets?.confirmed_credit_value)], ['completed_credit_claims', value(summary.credits?.completed_claims)], ['failed_credit_claims', value(summary.credits?.failed_claims)]]
+  };
+  res.set('Cache-Control', 'private, no-store');
+  res.set('Pragma', 'no-cache');
+  return res.render('events/analytics', {
+    title: res.locals.t('govuk_alpha_events.analytics.title'), activeNav: 'events', eventId: id, summary, sections
+  });
+}, { notFoundTitle: 'Event not found' }));
+
+router.get('/:id(\\d+)/analytics/export.csv', requireAuth, asyncRoute(async (req, res) => {
+  const id = Number(req.params.id);
+  const download = await downloadEventApi(tokenFrom(req), `/${id}/analytics/export.csv`);
+  res.status(download.status || 200);
+  res.set('Content-Type', download.headers['content-type'] || 'text/csv; charset=UTF-8');
+  res.set('Content-Disposition', download.headers['content-disposition'] || `attachment; filename="event-${id}-analytics.csv"`);
+  res.set('Cache-Control', 'private, no-store');
+  res.set('Pragma', 'no-cache');
+  res.set('X-Content-Type-Options', 'nosniff');
+  return res.send(download.body);
 }));
 
 router.post('/:id(\\d+)/check-in/credential/rotate', requireAuth, asyncRoute(async (req, res) => {

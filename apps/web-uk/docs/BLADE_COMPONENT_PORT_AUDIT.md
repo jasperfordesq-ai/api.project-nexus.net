@@ -56,6 +56,15 @@ Laravel. Focused rendering and exact allocation/cancellation payload proof passe
 Disposable live entitlement effects, reconciliation, manual assistive-technology
 review, and unchanged ASP.NET runtime proof remain open.
 
+## 2026-07-13 Event Analytics Checkpoint
+
+Organisers now have Laravel's private, identity-free analytics projection with
+privacy-threshold suppression, finance redaction, conversion rates, and the
+canonical localized CSV download streamed with no-store and nosniff headers.
+Focused privacy rendering and byte-preserving download proof passes. Live ledger
+fixtures, locale-specific CSV inspection, manual assistive-technology review,
+and unchanged ASP.NET runtime proof remain open.
+
 ## Purpose
 
 This audit lists reusable Laravel Blade accessible frontend patterns that should

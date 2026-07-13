@@ -281,6 +281,7 @@ jest.mock('../src/lib/api', () => ({
   callIdeationApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callGroupExchangeApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callEventApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
+  downloadEventApi: jest.fn().mockResolvedValue({ status: 200, body: Buffer.from('metric,value'), headers: { 'content-type': 'text/csv; charset=UTF-8', 'content-disposition': 'attachment; filename="event-42-analytics.csv"' } }),
   getEvents: jest.fn().mockResolvedValue({ data: [], pagination: { page: 1, totalPages: 1 } }),
   getEvent: jest.fn().mockResolvedValue({ data: { id: 42, title: 'Community garden day', start_time: '2026-08-01T10:00:00' } }),
   getEventRsvps: jest.fn().mockResolvedValue({ data: [] }),
@@ -594,6 +595,7 @@ describe('shared accessible frontend shell', () => {
     api.getOnboardingSafeguardingOptions.mockReset().mockResolvedValue({ data: [] });
     api.callGroupExchangeApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callEventApi.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.downloadEventApi.mockReset().mockResolvedValue({ status: 200, body: Buffer.from('metric,value'), headers: { 'content-type': 'text/csv; charset=UTF-8', 'content-disposition': 'attachment; filename="event-42-analytics.csv"' } });
     api.getEventCategories.mockReset().mockResolvedValue({ data: [] });
     api.uploadEventImage.mockReset().mockResolvedValue({ data: { cover_image: '/uploads/events/garden.webp' } });
     api.getEvents.mockReset().mockResolvedValue({ data: [], pagination: { page: 1, totalPages: 1 } });
@@ -22229,6 +22231,38 @@ describe('shared accessible frontend shell', () => {
     });
     expect(response.headers.location).toBe('/events/42/tickets?status=cancelled');
     expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/ticket-entitlements/91/cancel', { expected_version: 2, reason: 'No longer able to attend' }, { headers: { 'Idempotency-Key': 'ticket-cancel-123' } });
+  });
+
+  it('renders Laravel privacy-safe Event Analytics with suppressed and redacted values', async () => {
+    const api = require('../src/lib/api');
+    api.callEventApi.mockResolvedValueOnce({ data: {
+      event_title: 'Community garden day', generated_at: '2026-07-13T10:00:00Z', privacy_threshold: 5,
+      registration: { confirmed: 12, pending: 2, cancelled: 1, remaining: 8 },
+      invitation: { issued: 4, accepted: 2, conversion: { basis_points: 5000 } },
+      waitlist: { joined: 3, accepted: 1, conversion: { suppressed: true } },
+      attendance: { checked_in: 9, attended: 8, no_show: 1, attendance_rate: { basis_points: 6667 } },
+      communications: { delivered: 20, suppressed: 2, failed: 1, dead_lettered: 0, delivery_rate: { basis_points: 8696 } },
+      optional_funnel: { event_views: { suppressed: true }, registration_starts: { value: 10 }, start_to_registration_conversion: { basis_points: 7000 } },
+      safeguarding: { guardian_consents: { value: 2 } }, tickets: { redacted: true }, credits: {}
+    } });
+    const response = await request(app).get('/events/42/analytics').set('Cookie', signedCookieHeader());
+    expect(response.status).toBe(200);
+    expect(response.headers['cache-control']).toBe('private, no-store');
+    expect(response.text).toContain('Community garden day');
+    expect(response.text).toContain('50.0%');
+    expect(response.text).toContain('/events/42/analytics/export.csv');
+    expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'GET', '/42/analytics');
+  });
+
+  it('streams the canonical Laravel Event Analytics CSV without caching or MIME sniffing', async () => {
+    const api = require('../src/lib/api');
+    api.downloadEventApi.mockResolvedValueOnce({ status: 200, body: Buffer.from('\uFEFFMetric,Value\nConfirmed,12'), headers: { 'content-type': 'text/csv; charset=UTF-8', 'content-disposition': 'attachment; filename="event-42-analytics.csv"' } });
+    const response = await request(app).get('/events/42/analytics/export.csv').set('Cookie', signedCookieHeader());
+    expect(response.status).toBe(200);
+    expect(response.headers['content-type']).toContain('text/csv');
+    expect(response.headers['cache-control']).toBe('private, no-store');
+    expect(response.headers['x-content-type-options']).toBe('nosniff');
+    expect(api.downloadEventApi).toHaveBeenLastCalledWith('test-token', '/42/analytics/export.csv');
   });
 
   it('renders and issues Laravel signed Event check-in credentials without caching the secret', async () => {

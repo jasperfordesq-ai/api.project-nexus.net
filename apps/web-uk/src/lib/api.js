@@ -930,6 +930,14 @@ async function getEventCategories(token) {
   });
 }
 
+async function downloadEventApi(token, path = '') {
+  const normalizedPath = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+  return downloadRequest(`/api/v2/events${normalizedPath}`, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
 async function downloadVolunteerCredential(token, id) {
   return downloadRequest(`/api/v2/volunteering/credentials/${encodeURIComponent(id)}/download`, {
     headers: { Authorization: `Bearer ${token}` }
@@ -3306,6 +3314,7 @@ module.exports = {
   callIdeationApi,
   callGroupExchangeApi,
   callEventApi,
+  downloadEventApi,
   getEventCategories,
   getVolunteeringCategories,
   uploadEventImage,

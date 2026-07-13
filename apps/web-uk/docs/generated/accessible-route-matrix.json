@@ -1,12 +1,12 @@
 {
   "summary": {
-    "generatedAt": "2026-07-13T02:36:32.391Z",
+    "generatedAt": "2026-07-13T02:41:54.058Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\platforms\\htdocs\\asp.net-backend",
     "laravelRoutes": 687,
-    "webUkRoutes": 639,
-    "matchedRoutes": 636,
-    "missingRoutes": 51,
+    "webUkRoutes": 641,
+    "matchedRoutes": 638,
+    "missingRoutes": 49,
     "extraWebUkRoutes": 1,
     "ignoredInfrastructureRoutes": 3,
     "familyCounts": {
@@ -131,8 +131,8 @@
         "ignoredInfrastructure": 0
       },
       "events": {
-        "matched": 47,
-        "missing": 47,
+        "matched": 49,
+        "missing": 45,
         "extraWebUk": 0,
         "ignoredInfrastructure": 0
       },
@@ -2037,6 +2037,50 @@
       "apiNeeds": "",
       "webUkPath": "/events/{param}/agenda",
       "webUkView": "events/agenda",
+      "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\routes\\events.js"
+    },
+    {
+      "method": "GET",
+      "path": "/events/{param}/analytics",
+      "family": "events",
+      "status": "matched",
+      "laravelRouteName": "events.analytics.show",
+      "laravelHandler": "eventsAnalytics",
+      "laravelView": "event-analytics",
+      "laravelParamConstraints": [
+        "number"
+      ],
+      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\event-analytics.php",
+      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventAnalyticsParity.php",
+      "laravelMiddleware": "",
+      "auth": "public-or-unknown",
+      "tenantScoped": "unknown",
+      "gates": "",
+      "apiNeeds": "",
+      "webUkPath": "/events/{param}/analytics",
+      "webUkView": "events/analytics",
+      "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\routes\\events.js"
+    },
+    {
+      "method": "GET",
+      "path": "/events/{param}/analytics/export.csv",
+      "family": "events",
+      "status": "matched",
+      "laravelRouteName": "events.analytics.export",
+      "laravelHandler": "eventsAnalyticsExport",
+      "laravelView": "",
+      "laravelParamConstraints": [
+        "number"
+      ],
+      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\event-analytics.php",
+      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventAnalyticsParity.php",
+      "laravelMiddleware": "'throttle:20,1'",
+      "auth": "public-or-unknown",
+      "tenantScoped": "unknown",
+      "gates": "",
+      "apiNeeds": "",
+      "webUkPath": "/events/{param}/analytics/export.csv",
+      "webUkView": "",
       "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\routes\\events.js"
     },
     {
@@ -14107,50 +14151,6 @@
       "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\event-templates.php",
       "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventTemplatesParity.php",
       "laravelMiddleware": "'throttle:60,1'",
-      "auth": "public-or-unknown",
-      "tenantScoped": "unknown",
-      "gates": "",
-      "apiNeeds": "",
-      "webUkPath": "",
-      "webUkView": "",
-      "webUkFile": ""
-    },
-    {
-      "method": "GET",
-      "path": "/events/{param}/analytics",
-      "family": "events",
-      "status": "missing",
-      "laravelRouteName": "events.analytics.show",
-      "laravelHandler": "eventsAnalytics",
-      "laravelView": "event-analytics",
-      "laravelParamConstraints": [
-        "number"
-      ],
-      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\event-analytics.php",
-      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventAnalyticsParity.php",
-      "laravelMiddleware": "",
-      "auth": "public-or-unknown",
-      "tenantScoped": "unknown",
-      "gates": "",
-      "apiNeeds": "",
-      "webUkPath": "",
-      "webUkView": "",
-      "webUkFile": ""
-    },
-    {
-      "method": "GET",
-      "path": "/events/{param}/analytics/export.csv",
-      "family": "events",
-      "status": "missing",
-      "laravelRouteName": "events.analytics.export",
-      "laravelHandler": "eventsAnalyticsExport",
-      "laravelView": "",
-      "laravelParamConstraints": [
-        "number"
-      ],
-      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\event-analytics.php",
-      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\EventAnalyticsParity.php",
-      "laravelMiddleware": "'throttle:20,1'",
       "auth": "public-or-unknown",
       "tenantScoped": "unknown",
       "gates": "",
