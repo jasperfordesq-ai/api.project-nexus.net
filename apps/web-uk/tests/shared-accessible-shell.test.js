@@ -16181,7 +16181,10 @@ describe('shared accessible frontend shell', () => {
           salary_currency: 'EUR',
           views_count: 8,
           applications_count: 3,
-          status: 'open'
+          status: 'open',
+          is_featured: true,
+          has_applied: true,
+          is_saved: true
         }
       ],
       meta: { total: 1, has_more: true, offset: 12, per_page: 12 }
@@ -16221,8 +16224,14 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Volunteer');
     expect(response.text).toContain('Part time');
     expect(response.text).toContain('Remote');
+    expect(response.text).toContain('Featured');
+    expect(response.text).toContain('Applied');
+    expect(response.text).toContain('Saved');
+    expect(response.text).toContain('8 views');
+    expect(response.text).toContain('3 applications');
     expect(response.text).toContain('Closing date');
     expect(response.text).toContain('Load more');
+    expect(response.text).toContain('govuk-pagination__icon--next');
     expect(response.text).not.toContain('Job pages will follow the Laravel accessible frontend contract');
     expect(response.text).not.toContain('Laravel Blade route');
   });
@@ -16236,6 +16245,21 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe('/login?status=auth-required');
     expect(api.getJobs).not.toHaveBeenCalled();
+  });
+
+  it('uses the Blade empty state when jobs cannot be loaded', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.getJobs.mockRejectedValueOnce(new Error('temporary jobs failure'));
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/jobs')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('There are no open opportunities right now.');
+    expect(response.text).not.toContain('Opportunities could not be loaded.');
   });
 
   it('renders the Laravel-backed job detail page with save and apply actions', async () => {

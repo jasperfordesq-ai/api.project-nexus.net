@@ -6,8 +6,8 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <span class="govuk-caption-xl">Project NEXUS Accessible</span>
-  <h1 class="govuk-heading-xl">Jobs</h1>
+  <span class="govuk-caption-xl">{{ t("jobs.caption", { community: tenantName or serviceName }) }}</span>
+  <h1 class="govuk-heading-xl">{{ t("jobs.title") }}</h1>
   <p class="govuk-body-l">{{ t("jobs.description") }}</p>
 
   {% set jobsActiveTab = "browse" %}
@@ -19,25 +19,19 @@
     {% include "partials/notification-banner.njk" %}
   {% endif %}
 
-  {% if loadError %}
-    <div class="govuk-inset-text">
-      <p class="govuk-body">Opportunities could not be loaded. Try again.</p>
-    </div>
-  {% endif %}
-
   <form method="get" action="{{ urlFor('/jobs') }}" class="govuk-!-margin-bottom-6">
     <div class="govuk-form-group">
       <label class="govuk-label" for="q">{{ t("jobs.search_label") }}</label>
-      <div id="q-hint" class="govuk-hint">Search by title.</div>
+      <div id="q-hint" class="govuk-hint">{{ t("jobs.search_hint") }}</div>
       <input class="govuk-input govuk-!-width-two-thirds" id="q" name="q" type="search" value="{{ filters.q }}" aria-describedby="q-hint">
     </div>
 
     <div class="govuk-grid-row">
       <div class="govuk-grid-column-one-third">
         <div class="govuk-form-group">
-          <label class="govuk-label" for="type">Type</label>
+          <label class="govuk-label" for="type">{{ t("jobs_t2.type_label") }}</label>
           <select class="govuk-select" id="type" name="type">
-            <option value=""{% if filters.type == "" %} selected{% endif %}>All types</option>
+            <option value=""{% if filters.type == "" %} selected{% endif %}>{{ t("jobs_t2.type_all") }}</option>
             <option value="paid"{% if filters.type == "paid" %} selected{% endif %}>{{ t("jobs.type_paid") }}</option>
             <option value="volunteer"{% if filters.type == "volunteer" %} selected{% endif %}>{{ t("jobs.type_volunteer") }}</option>
             <option value="timebank"{% if filters.type == "timebank" %} selected{% endif %}>{{ t("jobs.type_timebank") }}</option>
@@ -58,9 +52,9 @@
       </div>
       <div class="govuk-grid-column-one-third">
         <div class="govuk-form-group">
-          <label class="govuk-label" for="sort">Sort by</label>
+          <label class="govuk-label" for="sort">{{ t("jobs_t2.sort_label") }}</label>
           <select class="govuk-select" id="sort" name="sort">
-            <option value="newest"{% if filters.sort == "newest" %} selected{% endif %}>Newest</option>
+            <option value="newest"{% if filters.sort == "newest" %} selected{% endif %}>{{ t("jobs_t2.sort_newest") }}</option>
             <option value="deadline"{% if filters.sort == "deadline" %} selected{% endif %}>{{ t("jobs_t2.sort_deadline") }}</option>
             <option value="salary_desc"{% if filters.sort == "salary_desc" %} selected{% endif %}>{{ t("jobs_t2.sort_salary_desc") }}</option>
           </select>
@@ -76,8 +70,8 @@
     </div>
 
     <div class="nexus-alpha-actions">
-      <button type="submit" class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button">Apply filters</button>
-      <a class="govuk-link" href="{{ urlFor('/jobs') }}">Clear filters</a>
+      <button type="submit" class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button">{{ t("jobs_t2.apply_filters") }}</button>
+      <a class="govuk-link" href="{{ urlFor('/jobs') }}">{{ t("jobs_t2.clear_filters") }}</a>
     </div>
   </form>
 
@@ -86,7 +80,7 @@
       <p class="govuk-body">{{ t("jobs.empty") }}</p>
     </div>
   {% else %}
-    <p class="govuk-body govuk-!-font-weight-bold">{{ resultsLabel }}</p>
+    <p class="govuk-body govuk-!-font-weight-bold">{{ tc("jobs_t2.results_count", jobsMeta.total, { count: jobsMeta.total }) }}</p>
 
     <div class="nexus-alpha-card-list">
       {% for job in jobs %}
@@ -95,39 +89,40 @@
             <h3 class="govuk-heading-s govuk-!-margin-bottom-1">
               <a class="govuk-link" href="{{ urlFor('/jobs/' ~ job.id) }}">{{ job.title }}</a>
             </h3>
-            <strong class="govuk-tag govuk-tag--blue">{{ job.typeLabel }}</strong>
+            <strong class="govuk-tag govuk-tag--blue">{{ t(job.typeTranslationKey) }}</strong>
           </div>
 
           {% if job.posterName %}
-            <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">Posted by {{ job.posterName }}</p>
+            <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">{{ t("jobs_t2.posted_by", { name: job.posterName }) }}</p>
           {% endif %}
 
           <ul class="govuk-list nexus-alpha-tag-list govuk-!-margin-bottom-1">
             {% if job.commitmentLabel %}
-              <li><strong class="govuk-tag govuk-tag--grey">{{ job.commitmentLabel }}</strong></li>
+              <li><strong class="govuk-tag govuk-tag--grey">{{ t(job.commitmentTranslationKey) }}</strong></li>
             {% endif %}
             {% if job.isRemote %}
-              <li><strong class="govuk-tag govuk-tag--turquoise">Remote</strong></li>
+              <li><strong class="govuk-tag govuk-tag--turquoise">{{ t("jobs_t2.remote_tag") }}</strong></li>
             {% endif %}
             {% if job.isFeatured %}
-              <li><strong class="govuk-tag govuk-tag--yellow">Featured</strong></li>
+              <li><strong class="govuk-tag govuk-tag--yellow">{{ t("jobs_t2.featured_tag") }}</strong></li>
             {% endif %}
             {% if job.hasApplied %}
-              <li><strong class="govuk-tag govuk-tag--green">Applied</strong></li>
+              <li><strong class="govuk-tag govuk-tag--green">{{ t("jobs_t2.applied_tag") }}</strong></li>
             {% endif %}
             {% if job.isSaved %}
-              <li><strong class="govuk-tag govuk-tag--purple">Saved</strong></li>
+              <li><strong class="govuk-tag govuk-tag--purple">{{ t("jobs_t2.saved_tag") }}</strong></li>
             {% endif %}
           </ul>
 
           <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">
             {% if job.locationLabel %}{{ job.locationLabel }}{% endif %}
             {% if job.salaryLabel %} &middot; {{ job.salaryLabel }}{% endif %}
-            {% if job.deadlineLabel %} &middot; Closing date: {{ job.deadlineLabel }}{% endif %}
+            {% if job.deadlineLabel %} &middot; {{ t("jobs.deadline", { date: job.deadlineLabel }) }}{% endif %}
           </p>
 
           <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-0">
-            {{ job.viewsLabel }} &middot; {{ job.applicationsLabel }}
+            {{ tc("jobs_t2.views_count", job.viewsCount, { count: job.viewsCount }) }}
+            &middot; {{ tc("jobs_t2.applications_count", job.applicationsCount, { count: job.applicationsCount }) }}
           </p>
         </article>
       {% endfor %}
@@ -137,6 +132,9 @@
       <nav class="govuk-pagination govuk-pagination--block govuk-!-margin-top-6" aria-label="{{ t('members.pagination_label') }}">
         <div class="govuk-pagination__next">
           <a class="govuk-link govuk-pagination__link" rel="next" href="{{ urlFor(nextHref) }}">
+            <svg class="govuk-pagination__icon govuk-pagination__icon--next" xmlns="http://www.w3.org/2000/svg" height="13" width="15" aria-hidden="true" focusable="false" viewBox="0 0 15 13">
+              <path d="m8.107-0.0078125-1.4136 1.414 4.2926 4.293h-12.986v2h12.896l-4.1855 3.9766 1.377 1.4492 6.7441-6.4062-6.7246-6.7266z"></path>
+            </svg>
             <span class="govuk-pagination__link-title">{{ t("actions.load_more") }}</span>
             <span class="govuk-visually-hidden">:</span>
             <span class="govuk-pagination__link-label">{{ t("members.more_results_label") }}</span>

@@ -635,6 +635,7 @@ rewriting.
 
 ### Jobs member-page evidence
 
+- `views/jobs.blade.php` and `partials/job-card.blade.php` now map to the browse route/template with Blade's tenant caption, catalog-backed filters/results/cards, single empty fallback on non-auth load failure, and next-page icon/semantics. Focused default-English populated, signed-out, and failure rendering is green.
 - `views/jobs-saved.blade.php`, `partials/job-card.blade.php`, and `AlphaController::savedJobs()` now map to `src/routes/jobs.js` and `src/views/jobs/saved.njk` with Blade's tenant caption, catalog-backed card labels and plural counts, single empty fallback on non-auth load failure, unsave control, and next-page icon/semantics. Focused default-English rendering is green; broader gaps remain tracked in the Jobs workflows row.
 - `views/jobs-applications.blade.php` now maps to the Web UK applications route/template with Blade's tenant caption, exact filter set, catalog-backed status/card/action copy, single empty fallback on non-auth load failure, and next-page icon/semantics. Focused default-English populated, signed-out, and failure rendering is green.
 - `views/jobs-postings.blade.php` now maps to My postings with Blade's tenant caption, catalog-backed status/count/action copy, single empty fallback on non-auth load failure, next-page icon/semantics, and a warning/details confirmation before the destructive delete form. Focused default-English populated, signed-out, and failure rendering is green.

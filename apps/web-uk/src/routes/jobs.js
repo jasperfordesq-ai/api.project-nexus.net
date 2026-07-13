@@ -673,12 +673,6 @@ function countLabel(count, singular, plural, zero) {
   return `${count} ${plural}`;
 }
 
-function resultsLabel(total) {
-  if (total === 0) return 'No opportunities found';
-  if (total === 1) return '1 opportunity';
-  return `${total} opportunities`;
-}
-
 function decorateJob(job) {
   const organizationName = personName(job.organization || job.organisation);
   const posterName = organizationName || personName(job.creator || job.user);
@@ -1621,13 +1615,11 @@ router.get('/', asyncRoute(async (req, res) => {
   const filters = jobFilters(req.query);
   const params = jobsApiParams(filters);
   let result = null;
-  let loadError = false;
 
   try {
     result = await getJobs(token, params);
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    loadError = true;
   }
 
   const jobs = collectionItems(result).map(decorateJob);
@@ -1641,11 +1633,9 @@ router.get('/', asyncRoute(async (req, res) => {
     jobs,
     filters,
     jobsMeta,
-    resultsLabel: resultsLabel(jobsMeta.total),
     nextHref: jobsMeta.has_more ? jobsHref(filters, nextOffset) : '',
     status: req.query.status || '',
-    successMessage: statusMessage(req, req.query.status),
-    loadError
+    successMessage: statusMessage(req, req.query.status)
   });
 }));
 
