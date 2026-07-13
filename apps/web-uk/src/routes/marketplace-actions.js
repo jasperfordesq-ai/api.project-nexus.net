@@ -4,6 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 const express = require('express');
+const { timingSafeEqual } = require('node:crypto');
 const fs = require('fs/promises');
 const { ApiError, callMarketplaceApi, uploadMarketplaceListingImages } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
@@ -146,6 +147,16 @@ function mineRedirect(status) {
 
 function offersRedirect(tab, status) {
   return `/marketplace/offers?tab=${encodeURIComponent(tab)}&status=${encodeURIComponent(status)}`;
+}
+
+function acceptedOfferSessionKey(id) {
+  return `marketplaceAcceptedOffer:${id}`;
+}
+
+function matchingKey(actual, expected) {
+  const left = Buffer.from(actual);
+  const right = Buffer.from(expected);
+  return left.length === right.length && timingSafeEqual(left, right);
 }
 
 function ordersRedirect(req, status) {
@@ -393,6 +404,29 @@ router.post('/:id(\\d+)/buy', asyncRoute(async (req, res) => {
     '/marketplace/orders?status=ordered',
     `/marketplace/${id}/buy?status=order-failed`
   );
+}));
+
+router.post('/offers/:id(\\d+)/buy', asyncRoute(async (req, res) => {
+  const token = tokenFrom(req);
+  if (!token) return redirectTo(res, loginRedirect());
+  const id = Number(req.params.id);
+  const idempotencyKey = trimmed(req.body.idempotency_key, 100);
+  const expectedKey = trimmed(req.session && req.session[acceptedOfferSessionKey(id)], 100);
+  if (idempotencyKey.length < 16 || !expectedKey || !matchingKey(idempotencyKey, expectedKey)) {
+    return redirectTo(res, `/marketplace/offers/${id}/buy?status=order-failed`);
+  }
+  const listingId = positiveInteger(req.body.listing_id);
+  if (!listingId) return redirectTo(res, `/marketplace/offers/${id}/buy?status=order-failed`);
+  const payload = { listing_id: listingId, offer_id: id, quantity: 1, idempotency_key: idempotencyKey, payment_method: 'cash' };
+  const notes = trimmed(req.body.delivery_notes, 500);
+  if (notes) payload.delivery_notes = notes;
+  const choice = trimmed(req.body.delivery_choice, 100);
+  if (choice === 'pickup') payload.shipping_method = 'pickup';
+  const shippingMatch = choice.match(/^shipping:(\d+)$/);
+  if (shippingMatch) payload.shipping_option_id = Number(shippingMatch[1]);
+  const pickupSlotId = positiveInteger(req.body.pickup_slot_id);
+  if (pickupSlotId) payload.pickup_slot_id = pickupSlotId;
+  return runAction(req, res, 'POST', '/orders', payload, '/marketplace/orders?status=ordered', `/marketplace/offers/${id}/buy?status=order-failed`);
 }));
 
 router.post('/:id(\\d+)/offer', asyncRoute(async (req, res) => {

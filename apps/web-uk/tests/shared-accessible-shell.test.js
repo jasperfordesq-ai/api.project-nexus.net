@@ -28766,6 +28766,54 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('Laravel Blade route');
   });
 
+  it('renders and submits the accepted-offer purchase checkout', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    api.callMarketplaceApi
+      .mockResolvedValueOnce({ data: [{ id: 12, status: 'accepted', amount: 13.25, currency: 'GBP', listing_id: 42 }] })
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValueOnce({ data: { id: 42, title: 'Community bike', delivery_method: 'pickup', user: { id: 77, name: 'Aisha Khan' } } })
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValueOnce({ data: [{ id: 8, slot_start: '2026-07-14 10:00', slot_end: '2026-07-14 11:00' }] });
+
+    const checkout = await agent
+      .get('/marketplace/offers/12/buy')
+      .set('Cookie', signedCookieHeader());
+
+    expect(checkout.status).toBe(200);
+    expect(api.callMarketplaceApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/my-offers/sent?per_page=50');
+    expect(api.callMarketplaceApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/orders/purchases?limit=50');
+    expect(api.callMarketplaceApi).toHaveBeenNthCalledWith(3, 'test-token', 'GET', '/listings/42?offer_id=12');
+    expect(api.callMarketplaceApi).toHaveBeenNthCalledWith(5, 'test-token', 'GET', '/listings/42/pickup-slots?offer_id=12');
+    expect(checkout.text).toContain(createTranslator('en')('govuk_alpha_commerce.buy.accepted_offer_title'));
+    expect(checkout.text).toContain('GBP 13.25');
+    expect(checkout.text).toContain('action="/marketplace/offers/12/buy"');
+    expect(checkout.text).toContain('name="listing_id" value="42"');
+    expect(checkout.text).toContain('name="pickup_slot_id"');
+    const csrf = checkout.text.match(/name="_csrf" value="([^"]+)"/)[1];
+    const key = checkout.text.match(/name="idempotency_key" value="([^"]+)"/)[1];
+
+    api.callMarketplaceApi.mockClear().mockResolvedValueOnce({ data: { id: 91 } });
+    const submitted = await agent
+      .post('/marketplace/offers/12/buy')
+      .set('Cookie', signedCookieHeader())
+      .type('form')
+      .send({ _csrf: csrf, idempotency_key: key, listing_id: '42', delivery_choice: 'pickup', pickup_slot_id: '8', delivery_notes: 'Ring bell' });
+
+    expect(submitted.status).toBe(302);
+    expect(submitted.headers.location).toBe('/marketplace/orders?status=ordered');
+    expect(api.callMarketplaceApi).toHaveBeenCalledWith('test-token', 'POST', '/orders', {
+      listing_id: 42,
+      offer_id: 12,
+      quantity: 1,
+      idempotency_key: key,
+      payment_method: 'cash',
+      delivery_notes: 'Ring bell',
+      shipping_method: 'pickup',
+      pickup_slot_id: 8
+    });
+  });
+
   it('renders the Laravel-backed marketplace buyer and seller order dashboards', async () => {
     const api = require('../src/lib/api');
     api.callMarketplaceApi

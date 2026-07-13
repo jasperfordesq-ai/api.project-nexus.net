@@ -4,6 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 const express = require('express');
+const { randomUUID } = require('node:crypto');
 const { ApiError, callMarketplaceApi } = require('../lib/api');
 const { flagEnabled } = require('../lib/accessible-shell');
 const { createTranslator } = require('../lib/localization');
@@ -585,8 +586,45 @@ function decorateOffer(offer, tab) {
     counterparty,
     counterpartyLabel: tab === 'sent' ? 'To' : 'From',
     message: limitText(row.message || '', 200),
-    canAct: status === 'pending' || status === 'countered'
+    canAct: status === 'pending' || status === 'countered',
+    canPurchase: tab === 'sent' && status === 'accepted'
   };
+}
+
+function acceptedOfferSessionKey(id) {
+  return `marketplaceAcceptedOffer:${id}`;
+}
+
+async function acceptedOfferCheckout(token, id) {
+  const [offersResult, ordersResult] = await Promise.all([
+    callMarketplace(token, 'GET', offersPath('sent')),
+    callMarketplace(token, 'GET', ordersPath('buyer', 'all')).catch(() => ({ data: [] }))
+  ]);
+  const offer = rowsFrom(offersResult).find((row) => positiveInteger(row && row.id) === id);
+  if (!offer || trimmed(offer.status) !== 'accepted') throw new ApiError('Accepted offer not found', 404);
+  if (rowsFrom(ordersResult).some((row) => positiveInteger(row && row.marketplace_offer_id) === id)) {
+    return { existingOrder: true };
+  }
+
+  const listingId = positiveInteger(offer.marketplace_listing_id || offer.listing_id || offer.listing?.id);
+  if (!listingId) throw new ApiError('Accepted offer listing not found', 404);
+  const listingResult = await callMarketplace(token, 'GET', `/listings/${listingId}?offer_id=${id}`);
+  const listingRow = objectFrom(listingResult);
+  if (!listingRow) throw new ApiError('Accepted offer listing not found', 404);
+  const item = decorateListing({
+    ...listingRow,
+    price_type: 'fixed',
+    price: offer.amount,
+    price_currency: offer.currency,
+    time_credit_price: 0
+  });
+  const [shippingResult, slotsResult] = await Promise.all([
+    item.sellerId
+      ? callMarketplace(token, 'GET', `/sellers/${item.sellerId}/shipping-options`).catch(() => ({ data: [] }))
+      : Promise.resolve({ data: [] }),
+    callMarketplace(token, 'GET', `/listings/${listingId}/pickup-slots?offer_id=${id}`).catch(() => ({ data: [] }))
+  ]);
+  return { offer, item, shippingOptions: rowsFrom(shippingResult), pickupSlots: rowsFrom(slotsResult) };
 }
 
 function decorateOrder(order, role) {
@@ -1191,6 +1229,33 @@ router.get('/offers', asyncRoute(async (req, res) => {
     });
   } catch (error) {
     return renderMarketplaceError(error, res, 'My offers');
+  }
+}));
+
+router.get('/offers/:id(\\d+)/buy', asyncRoute(async (req, res) => {
+  const token = requireToken(req, res);
+  if (!token) return undefined;
+  const id = Number(req.params.id);
+  try {
+    const checkout = await acceptedOfferCheckout(token, id);
+    if (checkout.existingOrder) return redirectTo(res, '/marketplace/orders?status=ordered');
+    const idempotencyKey = `accessible-marketplace-offer-${randomUUID()}`;
+    req.session[acceptedOfferSessionKey(id)] = idempotencyKey;
+    return res.render('marketplace/buy', {
+      title: res.locals.t('govuk_alpha_commerce.buy.accepted_offer_title'),
+      activeNav: 'explore',
+      item: checkout.item,
+      acceptedOfferCheckout: true,
+      shippingOptions: checkout.shippingOptions,
+      pickupSlots: checkout.pickupSlots,
+      idempotencyKey,
+      formAction: `/marketplace/offers/${id}/buy`,
+      backUrl: '/marketplace/offers?tab=sent',
+      backLabel: res.locals.t('govuk_alpha_commerce.common.back_to_offers'),
+      cancelUrl: '/marketplace/offers?tab=sent'
+    });
+  } catch (error) {
+    return renderMarketplaceError(error, res, res.locals.t('govuk_alpha_commerce.buy.accepted_offer_title'));
   }
 }));
 

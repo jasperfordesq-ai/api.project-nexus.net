@@ -1,11 +1,11 @@
 {
   "summary": {
-    "generatedAt": "2026-07-13T11:08:26.475Z",
+    "generatedAt": "2026-07-13T18:58:56.466Z",
     "sourceRoot": "C:\\platforms\\htdocs\\staging",
     "targetRoot": "C:\\platforms\\htdocs\\asp.net-backend",
-    "laravelRoutes": 687,
-    "webUkRoutes": 688,
-    "matchedRoutes": 681,
+    "laravelRoutes": 689,
+    "webUkRoutes": 690,
+    "matchedRoutes": 683,
     "missingRoutes": 6,
     "extraWebUkRoutes": 5,
     "ignoredInfrastructureRoutes": 3,
@@ -269,7 +269,7 @@
         "ignoredInfrastructure": 0
       },
       "marketplace": {
-        "matched": 48,
+        "matched": 50,
         "missing": 0,
         "extraWebUk": 0,
         "ignoredInfrastructure": 0
@@ -9343,7 +9343,7 @@
       "auth": "public-or-unknown",
       "tenantScoped": "yes",
       "gates": "",
-      "apiNeeds": "",
+      "apiNeeds": "service:TokenService",
       "webUkPath": "/logout",
       "webUkView": "",
       "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\server.js"
@@ -9640,6 +9640,28 @@
       "apiNeeds": "",
       "webUkPath": "/marketplace/offers",
       "webUkView": "marketplace/offers",
+      "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\routes\\marketplace.js"
+    },
+    {
+      "method": "GET",
+      "path": "/marketplace/offers/{param}/buy",
+      "family": "marketplace",
+      "status": "matched",
+      "laravelRouteName": "marketplace.offers.buy",
+      "laravelHandler": "commerceAcceptedOfferBuyForm",
+      "laravelView": "commerce-buy",
+      "laravelParamConstraints": [
+        "number"
+      ],
+      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\commerce.php",
+      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\CommerceParity.php",
+      "laravelMiddleware": "",
+      "auth": "auth-optional",
+      "tenantScoped": "yes",
+      "gates": "feature:marketplace",
+      "apiNeeds": "",
+      "webUkPath": "/marketplace/offers/{param}/buy",
+      "webUkView": "marketplace/buy",
       "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\routes\\marketplace.js"
     },
     {
@@ -10105,6 +10127,28 @@
       "gates": "",
       "apiNeeds": "",
       "webUkPath": "/marketplace/offers/{param}/accept",
+      "webUkView": "",
+      "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\routes\\marketplace-actions.js"
+    },
+    {
+      "method": "POST",
+      "path": "/marketplace/offers/{param}/buy",
+      "family": "marketplace",
+      "status": "matched",
+      "laravelRouteName": "marketplace.offers.buy.store",
+      "laravelHandler": "commerceStoreAcceptedOfferBuy",
+      "laravelView": "",
+      "laravelParamConstraints": [
+        "number"
+      ],
+      "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha-parity\\commerce.php",
+      "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\Concerns\\CommerceParity.php",
+      "laravelMiddleware": "'throttle:10,1'",
+      "auth": "auth-optional",
+      "tenantScoped": "yes",
+      "gates": "feature:marketplace",
+      "apiNeeds": "",
+      "webUkPath": "/marketplace/offers/{param}/buy",
       "webUkView": "",
       "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\routes\\marketplace-actions.js"
     },
@@ -11736,7 +11780,7 @@
       "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha.php",
       "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\AlphaController.php",
       "laravelMiddleware": "",
-      "auth": "auth-required",
+      "auth": "auth-optional",
       "tenantScoped": "yes",
       "gates": "feature:podcasts",
       "apiNeeds": "",
@@ -11759,7 +11803,7 @@
       "laravelRouteFile": "C:\\platforms\\htdocs\\staging\\routes\\govuk-alpha.php",
       "laravelControllerFile": "C:\\platforms\\htdocs\\staging\\app\\Http\\Controllers\\GovukAlpha\\AlphaController.php",
       "laravelMiddleware": "RequireAccessibleAuthentication::class",
-      "auth": "auth-required",
+      "auth": "auth-optional",
       "tenantScoped": "yes",
       "gates": "feature:podcasts",
       "apiNeeds": "",
@@ -12536,7 +12580,7 @@
       "auth": "auth-optional",
       "tenantScoped": "yes",
       "gates": "",
-      "apiNeeds": "service:Enterprise\\GdprService",
+      "apiNeeds": "service:Enterprise\\GdprService; service:TokenService",
       "webUkPath": "/profile/delete-account",
       "webUkView": "",
       "webUkFile": "C:\\platforms\\htdocs\\asp.net-backend\\apps\\web-uk\\src\\routes\\profile.js"

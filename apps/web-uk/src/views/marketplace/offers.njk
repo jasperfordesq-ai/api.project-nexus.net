@@ -68,6 +68,7 @@
               {% endif %}
             </div>
           {% endif %}
+          {% if offer.canPurchase %}<p class="govuk-body govuk-!-margin-bottom-0"><a class="govuk-button govuk-!-margin-bottom-0" href="{{ urlFor('/marketplace/offers/' + (offer.id | string) + '/buy') }}">{{ t("govuk_alpha_commerce.offers.complete_purchase") }}</a></p>{% endif %}
         </article>
       {% endfor %}
     </div>
