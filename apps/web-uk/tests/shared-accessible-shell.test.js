@@ -16265,6 +16265,15 @@ describe('shared accessible frontend shell', () => {
   it('renders the Laravel-backed job detail page with save and apply actions', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');
+    api.getUserV2.mockResolvedValueOnce({ data: { id: 77 } });
+    api.callJobApi.mockResolvedValueOnce({
+      data: {
+        percentage: 50,
+        required_skills: ['Scheduling', 'Community outreach'],
+        matched: ['Scheduling'],
+        missing: ['Community outreach']
+      }
+    });
     api.getJob.mockResolvedValueOnce({
       data: {
         id: 501,
@@ -16296,6 +16305,7 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
 
     expect(api.getJob).toHaveBeenCalledWith('test-token', '501');
+    expect(api.callJobApi).toHaveBeenCalledWith('test-token', 'GET', '/501/match');
     expect(response.status).toBe(200);
     expect(response.text).toContain('href="/jobs"');
     expect(response.text).toContain('Opportunity saved.');
@@ -16312,6 +16322,10 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Coordinate volunteer shifts.');
     expect(response.text).toContain('Scheduling');
     expect(response.text).toContain('Community outreach');
+    expect(response.text).toContain('Your skills match');
+    expect(response.text).toContain('50% match');
+    expect(response.text).toContain('Skills you have');
+    expect(response.text).toContain('Skills to develop');
     expect(response.text).toContain('Apply for this opportunity');
     expect(response.text).toContain('name="cover_letter"');
     expect(response.text).toContain('Why are you a good fit? (optional)');
@@ -16319,6 +16333,33 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Upload your CV');
     expect(response.text).not.toContain('Laravel Blade route');
     expect(response.text).not.toContain('does not certify ASP.NET route or workflow');
+  });
+
+  it('shows owner management controls instead of save and apply controls on job detail', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.getUserV2.mockResolvedValueOnce({ data: { id: 99 } });
+    api.getJob.mockResolvedValueOnce({
+      data: {
+        id: 501,
+        title: 'Owned opportunity',
+        type: 'volunteer',
+        user_id: 99,
+        status: 'open'
+      }
+    });
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/jobs/501')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('This is your opportunity. Manage applications from your postings.');
+    expect(response.text).toContain('href="/jobs/501/applications"');
+    expect(response.text).toContain('href="/jobs/501/edit"');
+    expect(response.text).not.toContain('Save opportunity');
+    expect(response.text).not.toContain('Apply for this opportunity');
   });
 
   it('redirects signed-out visitors away from job detail pages before calling Laravel', async () => {

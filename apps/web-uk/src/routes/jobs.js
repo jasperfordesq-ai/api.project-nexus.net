@@ -2359,6 +2359,8 @@ router.get('/:id(\\d+)/qualified', asyncRoute(async (req, res) => {
 router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   let result;
+  let profileResult = null;
+  let matchResult = null;
 
   try {
     result = await getJob(token, req.params.id);
@@ -2376,12 +2378,31 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
     return res.status(404).render('errors/404', { title: 'Page not found' });
   }
 
-  const decorated = decorateJob(job);
+  try {
+    profileResult = await getUserV2(token);
+  } catch {
+    // The detail remains usable if the secondary owner lookup is unavailable.
+  }
+
+  if (skillsFrom(job).length > 0) {
+    try {
+      matchResult = await callJob(token, 'GET', `/${job.id}/match`);
+    } catch {
+      // Skills matching is optional and may be disabled for the tenant.
+    }
+  }
+
+  const decorated = {
+    ...decorateJob(job),
+    isOwner: checked(job.is_owner || job.isOwner)
+      || (jobOwnerId(job) > 0 && jobOwnerId(job) === profileUserId(profileResult))
+  };
   const applicationValues = recalledJobApplication(req, decorated.id);
   return res.render('jobs/detail', {
     title: decorated.title,
     activeNav: 'explore',
     job: decorated,
+    jobMatch: dataFrom(matchResult),
     applicationValues,
     status: req.query.status || '',
     successMessage: statusMessage(req, req.query.status),
