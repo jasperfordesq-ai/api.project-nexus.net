@@ -481,7 +481,7 @@ describe('tenant-aware template helper conversion', () => {
     expect(source).toMatch(/urlFor\(["']\/volunteering/);
 
     const groupFiles = templates[1];
-    expect(groupFiles).toContain('class="nexus-alpha-table-scroll" role="region" aria-label="Group files table" tabindex="0"');
+    expect(groupFiles).toContain('class="nexus-alpha-table-scroll" role="region" aria-label="{{ t(\'govuk_alpha_groups.files.title\') }}" tabindex="0"');
     const styles = fs.readFileSync(
       path.join(__dirname, '..', 'src', 'assets', 'scss', 'main.scss'),
       'utf8'

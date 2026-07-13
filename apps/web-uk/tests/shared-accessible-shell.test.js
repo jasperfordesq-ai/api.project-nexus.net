@@ -20833,7 +20833,7 @@ describe('shared accessible frontend shell', () => {
 
   it('renders the Laravel group files page for signed-in group members', async () => {
     const api = require('../src/lib/api');
-    api.getGroup.mockReset().mockResolvedValueOnce({
+    api.getGroup.mockReset().mockResolvedValue({
       data: {
         id: 42,
         name: 'Garden Helpers',
@@ -20842,7 +20842,7 @@ describe('shared accessible frontend shell', () => {
         }
       }
     });
-    api.callGroupApi.mockReset().mockResolvedValueOnce({
+    api.callGroupApi.mockReset().mockResolvedValue({
       data: {
         items: [
           {
@@ -20860,6 +20860,9 @@ describe('shared accessible frontend shell', () => {
     const unsigned = await request(app).get('/groups/42/files');
     const signed = await request(app)
       .get('/groups/42/files?status=file-uploaded')
+      .set('Cookie', signedCookieHeader());
+    const fieldError = await request(app)
+      .get('/groups/42/files?status=file-too-large')
       .set('Cookie', signedCookieHeader());
 
     expect(unsigned.status).toBe(302);
@@ -20889,9 +20892,14 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('method="post" action="/groups/42/files"');
     expect(signed.text).toContain('enctype="multipart/form-data"');
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
-    expect(api.getGroup).toHaveBeenCalledTimes(1);
+    expect(fieldError.status).toBe(200);
+    expect(fieldError.text).toContain('The file exceeds the 25 MB limit. Choose a smaller file.');
+    expect(fieldError.text).not.toContain('href="#file-input"');
+    expect(fieldError.text).toContain('govuk-file-upload govuk-file-upload--error');
+    expect(fieldError.text).toContain('aria-describedby="file-input-hint file-input-error"');
+    expect(api.getGroup).toHaveBeenCalledTimes(2);
     expect(api.getGroup).toHaveBeenCalledWith('test-token', '42');
-    expect(api.callGroupApi).toHaveBeenCalledTimes(1);
+    expect(api.callGroupApi).toHaveBeenCalledTimes(2);
     expect(api.callGroupApi).toHaveBeenCalledWith('test-token', 'GET', '/42/files?per_page=50');
   });
 

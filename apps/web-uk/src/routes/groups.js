@@ -71,19 +71,14 @@ const GROUP_DISCUSSION_ERROR_MESSAGES = {
   'discussion-failed': 'Your discussion could not be posted. Please try again.',
   'reply-failed': 'Your reply could not be posted. Please try again.'
 };
-const GROUP_FILE_SUCCESS_MESSAGES = {
-  'file-uploaded': 'The file has been uploaded.',
-  'file-deleted': 'The file has been deleted.'
-};
-const GROUP_FILE_ERROR_MESSAGES = {
-  'file-upload-failed': 'The file could not be uploaded. Please try again.',
-  'file-too-large': 'The file exceeds the 25 MB limit. Choose a smaller file.',
-  'file-type-invalid': 'That file type is not allowed. Check the accepted formats and try again.',
-  'file-missing': 'Choose a file to upload.',
-  'file-delete-failed': 'The file could not be deleted. Please try again.',
-  'file-forbidden': 'You do not have permission to perform this action.',
-  'file-not-found': 'That file could not be found.'
-};
+const GROUP_FILE_SUCCESS_STATES = new Set(['file-uploaded', 'file-deleted']);
+const GROUP_FILE_ERROR_STATES = new Set([
+  'file-upload-failed', 'file-too-large', 'file-type-invalid', 'file-missing',
+  'file-delete-failed', 'file-forbidden', 'file-not-found'
+]);
+const GROUP_FILE_FIELD_ERROR_STATES = new Set([
+  'file-upload-failed', 'file-too-large', 'file-type-invalid', 'file-missing'
+]);
 const GROUP_FILE_MAX_SIZE = 25 * 1024 * 1024;
 const GROUP_FILE_ALLOWED_MIME_TYPES = new Set([
   'image/jpeg', 'image/png', 'image/gif', 'image/webp',
@@ -775,27 +770,25 @@ function discussionStatus(status, t = (key) => key, { createPage = false } = {})
   return { statusBanner: null };
 }
 
-function fileStatus(status) {
+function fileStatus(status, t = (key) => key) {
   const value = trimmed(status);
-  if (Object.prototype.hasOwnProperty.call(GROUP_FILE_SUCCESS_MESSAGES, value)) {
+  if (GROUP_FILE_SUCCESS_STATES.has(value)) {
     return {
       statusBanner: {
         type: 'success',
-        title: 'Success',
-        message: GROUP_FILE_SUCCESS_MESSAGES[value]
+        title: t('govuk_alpha_groups.common.success_title'),
+        message: t(`govuk_alpha_groups.states.${value}`)
       }
     };
   }
 
-  if (Object.prototype.hasOwnProperty.call(GROUP_FILE_ERROR_MESSAGES, value)) {
+  if (GROUP_FILE_ERROR_STATES.has(value)) {
     return {
       statusBanner: {
         type: 'error',
-        title: 'There is a problem',
-        message: GROUP_FILE_ERROR_MESSAGES[value],
-        href: ['file-missing', 'file-too-large', 'file-type-invalid', 'file-upload-failed'].includes(value)
-          ? '#file-input'
-          : null
+        title: t('govuk_alpha_groups.common.error_title'),
+        message: t(`govuk_alpha_groups.states.${value}`),
+        fieldError: GROUP_FILE_FIELD_ERROR_STATES.has(value)
       }
     };
   }
@@ -1382,13 +1375,13 @@ router.get('/:id(\\d+)/files', requireAuth, asyncRoute(async (req, res) => {
     }));
 
   return res.render('groups/files', {
-    title: 'Group files',
+    title: res.locals.t('govuk_alpha_groups.files.title'),
     activeNav: 'explore',
     group,
     files,
     isAdmin,
     currentUserId,
-    ...fileStatus(req.query.status)
+    ...fileStatus(req.query.status, res.locals.t)
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Group not found' }));
 
