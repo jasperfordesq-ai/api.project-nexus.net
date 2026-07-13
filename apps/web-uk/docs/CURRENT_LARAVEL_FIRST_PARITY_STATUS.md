@@ -17,7 +17,11 @@ accessible frontend while retaining the Express/Nunjucks/GOV.UK Frontend stack.
   `C:\platforms\htdocs\staging\accessible-frontend`
 - Target frontend: `C:\platforms\htdocs\asp.net-backend\apps\web-uk`
 - Canonical public mount: `/{tenantSlug}/accessible`
+- Canonical Hour Timebank evidence URL: `/hour-timebank/accessible` (and nested
+  paths beneath it)
 - Legacy `/{tenantSlug}/alpha`: redirect compatibility only
+- Never use `/hour-timebank/alpha` as a comparison, browser-test, or evidence
+  URL; it exists only to verify the legacy redirect.
 - Primary backend now: Laravel
 - Future backend: ASP.NET, not ready and not certified
 
