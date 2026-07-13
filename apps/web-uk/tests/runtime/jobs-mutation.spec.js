@@ -25,10 +25,10 @@ function objectFrom(result) {
   return data?.job && typeof data.job === 'object' ? data.job : data;
 }
 
-async function authenticate(page) {
+async function authenticate(page, email = smoke.email, password = smoke.password) {
   await page.goto(`${mountPath}/login`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
-  await page.locator('input[name="email"]').fill(smoke.email);
-  await page.locator('input[name="password"]').fill(smoke.password);
+  await page.locator('input[name="email"]').fill(email);
+  await page.locator('input[name="password"]').fill(password);
   const responsePromise = page.waitForResponse(response => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith('/login'), { timeout: 300_000 });
   await page.locator('form:has(input[name="password"]) button[type="submit"]').click();
   expect((await responsePromise).status()).toBe(302);
@@ -58,6 +58,11 @@ async function findByTitle(token, title) {
 async function findAlert(token, keywords) {
   const result = await callJobApi(token, 'GET', '/alerts');
   return rowsFrom(result).find(alert => alert?.keywords === keywords) || null;
+}
+
+async function findApplication(token, jobId) {
+  const result = await callJobApi(token, 'GET', '/my-applications?per_page=100');
+  return rowsFrom(result).find(application => Number(application?.job_id ?? application?.vacancy_id) === Number(jobId)) || null;
 }
 
 async function expectAccessibleReflow(page) {
@@ -98,6 +103,73 @@ test('replays safe CV validation errors without creating a Laravel application',
 
   const applications = rowsFrom(await callJobApi(token, 'GET', '/my-applications?limit=200'));
   expect(applications.some(application => Number(application?.job_id ?? application?.vacancy_id) === Number(job.id))).toBe(false);
+});
+
+test('certifies a disposable successful application and withdrawal through Web UK', async ({ page }) => {
+  const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+  const title = `Community support opportunity ${runId}`;
+  const coverLetter = 'I can help with this disposable accessibility testing opportunity.';
+  const ownerAuth = await login(smoke.email, smoke.password, smoke.tenant);
+  const secondEmail = process.env.SMOKE_SECOND_EMAIL || process.env.E2E_SECOND_USER_EMAIL || 'e2e.user.b@project-nexus.local';
+  const secondPassword = process.env.SMOKE_SECOND_PASSWORD || process.env.E2E_SECOND_USER_PASSWORD || smoke.password;
+  const applicantAuth = await login(secondEmail, secondPassword, smoke.tenant);
+  let jobId = null;
+  let deleted = false;
+
+  console.log(`Disposable job application fixture: ${title}`);
+
+  try {
+    const created = objectFrom(await callJobApi(ownerAuth.access_token, 'POST', '', {
+      title,
+      description: 'A safe disposable vacancy for the Web UK application lifecycle gate.',
+      type: 'timebank',
+      commitment: 'flexible',
+      category: 'Community support',
+      location: 'Hour Timebank',
+      is_remote: true,
+      skills_required: 'accessibility, testing',
+      time_credits: 2,
+      status: 'open'
+    }));
+    jobId = Number(created.id);
+    expect(jobId).toBeGreaterThan(0);
+
+    await page.context().clearCookies();
+    await page.setViewportSize({ width: 320, height: 640 });
+    await authenticate(page, secondEmail, secondPassword);
+    await page.goto(`${mountPath}/jobs/${jobId}`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
+    await expect(page.locator('h1')).toContainText(title);
+    await page.locator('#cover_letter').fill(coverLetter);
+    const applyResponse = await submit(page, `/jobs/${jobId}/apply`, page.locator(`form[action$="/jobs/${jobId}/apply"] button[type="submit"]`));
+    expect(applyResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    await expect(page.getByText('Your application has been submitted.', { exact: true })).toHaveCount(1);
+    await expectAccessibleReflow(page);
+
+    let application = await findApplication(applicantAuth.access_token, jobId);
+    expect(application).toBeTruthy();
+    expect(application.status).toBe('pending');
+    expect(application.message ?? application.cover_letter).toBe(coverLetter);
+
+    await page.goto(`${mountPath}/jobs/applications`, { waitUntil: 'domcontentloaded', timeout: 300_000 });
+    const applicationCard = page.locator('article', { hasText: title });
+    await expect(applicationCard).toHaveCount(1);
+    await expect(applicationCard).toContainText('Pending');
+    const withdrawResponse = await submit(page, `/jobs/applications/${application.id}/withdraw`, applicationCard.locator('form[action$="/withdraw"] button[type="submit"]'));
+    expect(withdrawResponse.status()).toBe(302);
+    await page.waitForLoadState('domcontentloaded', { timeout: 300_000 });
+    await expect(page.getByText('Your application has been withdrawn.', { exact: true })).toHaveCount(1);
+
+    application = await findApplication(applicantAuth.access_token, jobId);
+    expect(application).toBeTruthy();
+    expect(application.status).toBe('withdrawn');
+
+    await callJobApi(ownerAuth.access_token, 'DELETE', `/${jobId}`);
+    deleted = true;
+    expect(await findApplication(applicantAuth.access_token, jobId)).toBeNull();
+  } finally {
+    if (!deleted && jobId) await callJobApi(ownerAuth.access_token, 'DELETE', `/${jobId}`).catch(() => undefined);
+  }
 });
 
 test('certifies a disposable job owner lifecycle through Web UK', async ({ page }) => {
