@@ -98,18 +98,13 @@ const GROUP_MANAGE_ERROR_STATES = new Set([
   'member-failed', 'request-failed', 'request-safeguarding-restricted',
   'request-safeguarding-unavailable'
 ]);
-const GROUP_PAGE_SUCCESS_MESSAGES = {
-  'group-created': 'Your group has been created.',
-  'group-updated': 'The group settings have been saved.',
-  'group-deleted': 'The group has been deleted.',
-  'group-joined': 'You have joined the group.',
-  'group-left': 'You have left the group.'
-};
-const GROUP_PAGE_ERROR_MESSAGES = {
-  'group-failed': 'We could not update your membership. Please try again.',
-  'group-update-failed': 'The group settings could not be saved. Please try again.',
-  'group-delete-failed': 'The group could not be deleted. Please try again.'
-};
+const GROUP_PAGE_SUCCESS_STATES = new Set([
+  'group-created', 'group-updated', 'group-deleted', 'group-joined', 'group-left'
+]);
+const GROUP_PAGE_ERROR_STATES = new Set([
+  'group-failed', 'group-safeguarding-restricted', 'group-safeguarding-unavailable',
+  'group-update-failed', 'group-delete-failed'
+]);
 
 function trimmed(value, limit = null) {
   const text = String(value || '').trim();
@@ -622,11 +617,26 @@ function groupRequestFailureStatus(error) {
   return 'request-failed';
 }
 
-function groupPageStatus(status) {
+function groupMembershipFailureStatus(error) {
+  const code = apiErrorCode(error);
+  if (code === 'SAFEGUARDING_POLICY_UNAVAILABLE') return 'group-safeguarding-unavailable';
+  if (code.startsWith('SAFEGUARDING_') || code === 'VETTING_REQUIRED') {
+    return 'group-safeguarding-restricted';
+  }
+  return 'group-failed';
+}
+
+function groupPageStatus(status, t = (key) => key) {
   const value = trimmed(status);
+  const safeguardingKey = {
+    'group-safeguarding-restricted': 'safeguarding.errors.interaction_not_allowed',
+    'group-safeguarding-unavailable': 'safeguarding.errors.policy_unavailable'
+  }[value];
   return {
-    successMessage: GROUP_PAGE_SUCCESS_MESSAGES[value] || null,
-    errorMessage: GROUP_PAGE_ERROR_MESSAGES[value] || null
+    successMessage: GROUP_PAGE_SUCCESS_STATES.has(value) ? t(`groups.states.${value}`) : null,
+    errorMessage: GROUP_PAGE_ERROR_STATES.has(value)
+      ? t(safeguardingKey || `groups.states.${value}`)
+      : null
   };
 }
 
@@ -919,7 +929,7 @@ router.get('/', requireAuth, asyncRoute(async (req, res) => {
   const groups = collectionFrom(groupsResult)
     .map((group) => normalizeGroup(group, positiveInteger(group?.id)));
   const meta = groupsResult?.meta || {};
-  const statusMessages = groupPageStatus(req.query.status);
+  const statusMessages = groupPageStatus(req.query.status, res.locals.t);
   const nextQuery = new URLSearchParams();
   if (searchQuery) nextQuery.set('q', searchQuery);
   if (groupsFilter !== 'all') nextQuery.set('filter', groupsFilter);
@@ -1093,7 +1103,7 @@ router.get('/:id(\\d+)', requireAuth, asyncRoute(async (req, res) => {
   const membershipStatus = trimmed(myMembership?.status || myMembership?.state);
   const isAdmin = isGroupAdmin(group);
   const isPending = membershipStatus === 'pending';
-  const statusMessages = groupPageStatus(req.query.status);
+  const statusMessages = groupPageStatus(req.query.status, res.locals.t);
 
   res.render('groups/detail', {
     title: group.name,
@@ -1557,22 +1567,14 @@ router.post('/:id(\\d+)/join', requireAuth, audit.groupJoin(), asyncRoute(async 
 
   try {
     await joinGroup(req.token, id);
-
-    if (req.flash) {
-      req.flash('success', 'You have joined the group');
-    }
   } catch (error) {
-    // Handle non-401 API errors with flash message
     if (error instanceof ApiError && error.status !== 401) {
-      if (req.flash) {
-        req.flash('error', error.message || 'Unable to join group');
-      }
-      return res.redirect(urlFor(res, `/groups/${id}`));
+      return res.redirect(groupRedirect(res, id, groupMembershipFailureStatus(error)));
     }
-    throw error; // Re-throw for asyncRoute to handle 401/503
+    throw error;
   }
 
-  res.redirect(urlFor(res, `/groups/${id}`));
+  res.redirect(groupRedirect(res, id, 'group-joined'));
 }));
 
 // Leave group
@@ -1581,22 +1583,14 @@ router.post('/:id(\\d+)/leave', requireAuth, audit.groupLeave(), asyncRoute(asyn
 
   try {
     await leaveGroup(req.token, id);
-
-    if (req.flash) {
-      req.flash('success', 'You have left the group');
-    }
   } catch (error) {
-    // Handle non-401 API errors with flash message
     if (error instanceof ApiError && error.status !== 401) {
-      if (req.flash) {
-        req.flash('error', error.message || 'Unable to leave group');
-      }
-      return res.redirect(urlFor(res, `/groups/${id}`));
+      return res.redirect(groupRedirect(res, id, 'group-failed'));
     }
-    throw error; // Re-throw for asyncRoute to handle 401/503
+    throw error;
   }
 
-  res.redirect(urlFor(res, `/groups/${id}`));
+  res.redirect(groupRedirect(res, id, 'group-left'));
 }));
 
 router.post('/:id(\\d+)/invite/link', requireAuth, asyncRoute(async (req, res) => {

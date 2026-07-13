@@ -82,6 +82,8 @@ jest.mock('../src/lib/api', () => ({
   createGroup: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   updateGroup: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   deleteGroup: jest.fn().mockResolvedValue({}),
+  joinGroup: jest.fn().mockResolvedValue({ data: { id: 42 } }),
+  leaveGroup: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   updateProfile: jest.fn().mockResolvedValue({}),
   uploadProfileAvatar: jest.fn().mockResolvedValue({ data: { avatar_url: '/avatars/member.jpg' } }),
   getOnboardingStatus: jest.fn().mockResolvedValue({ data: { onboarding_completed: false } }),
@@ -428,6 +430,8 @@ describe('shared accessible frontend shell', () => {
     api.createGroup.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.updateGroup.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.deleteGroup.mockReset().mockResolvedValue({});
+    api.joinGroup.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.leaveGroup.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.updateProfile.mockReset().mockResolvedValue({});
     api.uploadProfileAvatar.mockReset().mockResolvedValue({ data: { avatar_url: '/avatars/member.jpg' } });
     api.getConversations.mockReset().mockResolvedValue({ data: [] });
@@ -19921,6 +19925,79 @@ describe('shared accessible frontend shell', () => {
     expect(api.callGroupApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/requests/77', {
       action: 'accept'
     });
+  });
+
+  it('preserves Laravel group membership outcomes inside the shared tenant mount', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const csrfToken = await csrfTokenFor(agent, '/acme/accessible/contact');
+
+    const postMembershipAction = (action) => agent
+      .post(`/acme/accessible/groups/42/${action}`)
+      .set('Cookie', signedCookieHeader())
+      .type('form')
+      .send({ _csrf: csrfToken });
+
+    const joined = await postMembershipAction('join');
+    expect(joined.status).toBe(302);
+    expect(joined.headers.location).toBe('/acme/accessible/groups/42?status=group-joined');
+    expect(api.joinGroup).toHaveBeenLastCalledWith('test-token', '42');
+
+    const left = await postMembershipAction('leave');
+    expect(left.status).toBe(302);
+    expect(left.headers.location).toBe('/acme/accessible/groups/42?status=group-left');
+    expect(api.leaveGroup).toHaveBeenLastCalledWith('test-token', '42');
+
+    api.joinGroup.mockRejectedValueOnce(new api.ApiError('Safeguarding policy unavailable', 409, {
+      errors: [{ code: 'SAFEGUARDING_POLICY_UNAVAILABLE' }]
+    }));
+    const unavailable = await postMembershipAction('join');
+    expect(unavailable.status).toBe(302);
+    expect(unavailable.headers.location).toBe('/acme/accessible/groups/42?status=group-safeguarding-unavailable');
+
+    api.joinGroup.mockRejectedValueOnce(new api.ApiError('Vetting required', 403, {
+      errors: [{ code: 'VETTING_REQUIRED' }]
+    }));
+    const restricted = await postMembershipAction('join');
+    expect(restricted.status).toBe(302);
+    expect(restricted.headers.location).toBe('/acme/accessible/groups/42?status=group-safeguarding-restricted');
+
+    api.joinGroup.mockRejectedValueOnce(new api.ApiError('Unable to join group', 500));
+    const failed = await postMembershipAction('join');
+    expect(failed.status).toBe(302);
+    expect(failed.headers.location).toBe('/acme/accessible/groups/42?status=group-failed');
+  });
+
+  it('renders Laravel group safeguarding failures as exact error summaries', async () => {
+    const api = require('../src/lib/api');
+    const t = createTranslator('en');
+    api.getGroup.mockResolvedValue({
+      data: {
+        id: 42,
+        name: 'Garden Helpers',
+        visibility: 'public',
+        viewer_membership: null
+      }
+    });
+    api.getGroupMembers.mockResolvedValue({ data: [] });
+    api.getEvents.mockResolvedValue({ data: [] });
+    api.callGroupApi.mockResolvedValue({ data: [] });
+
+    const unavailable = await request(app)
+      .get('/groups/42?status=group-safeguarding-unavailable')
+      .set('Cookie', signedCookieHeader());
+    const restricted = await request(app)
+      .get('/groups/42?status=group-safeguarding-restricted')
+      .set('Cookie', signedCookieHeader());
+
+    expect(unavailable.status).toBe(200);
+    expect(unavailable.text).toContain('govuk-error-summary');
+    expect(unavailable.text).toContain(t('safeguarding.errors.policy_unavailable'));
+    expect(unavailable.text).not.toContain('govuk-notification-banner');
+    expect(restricted.status).toBe(200);
+    expect(restricted.text).toContain('govuk-error-summary');
+    expect(restricted.text).toContain(t('safeguarding.errors.interaction_not_allowed'));
+    expect(restricted.text).not.toContain('govuk-notification-banner');
   });
 
   it('renders the Laravel group invite page for signed-in group admins', async () => {
