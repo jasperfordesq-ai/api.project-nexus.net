@@ -20466,6 +20466,8 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('A short summary of what you want to talk about.');
     expect(signed.text).toContain('id="content" name="content"');
     expect(signed.text).toContain('Write your opening message for the discussion.');
+    expect(signed.text).not.toContain('href="#content"');
+    expect(signed.text).not.toContain('govuk-textarea--error');
     expect(signed.text).toContain('method="post" action="/groups/42/discussions/new"');
     expect(signed.text).toContain('Post discussion');
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
@@ -20541,6 +20543,7 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('Please swap weeks here if you need help.');
     expect(signed.text).toContain('1 replies');
     expect(signed.text).toContain('Reply by Sam Lee');
+    expect(signed.text).toContain('14 September 2026, 10:30');
     expect(signed.text).toContain('I can cover the first week.');
     expect(signed.text).toContain('Your reply');
     expect(signed.text).toContain('Add to the conversation.');
@@ -20552,6 +20555,28 @@ describe('shared accessible frontend shell', () => {
     expect(api.getGroup).toHaveBeenCalledWith('test-token', '42');
     expect(api.callGroupApi).toHaveBeenCalledTimes(1);
     expect(api.callGroupApi).toHaveBeenCalledWith('test-token', 'GET', '/42/discussions/33');
+
+    api.getGroup.mockResolvedValueOnce({
+      data: {
+        id: 42,
+        name: 'Garden Helpers',
+        my_membership: { role: 'member', status: 'active' }
+      }
+    });
+    api.callGroupApi.mockResolvedValueOnce({
+      data: {
+        discussion: { id: 33, title: 'Compost rota', content: 'Opening message.' },
+        items: []
+      }
+    });
+    const failed = await request(app)
+      .get('/groups/42/discussions/33?status=reply-failed')
+      .set('Cookie', signedCookieHeader());
+
+    expect(failed.status).toBe(200);
+    expect(failed.text).toContain('Your reply could not be posted. Please try again.');
+    expect(failed.text).not.toContain('href="#content"');
+    expect(failed.text).not.toContain('govuk-textarea--error');
   });
 
   it('renders the Laravel group manage page for signed-in group admins', async () => {

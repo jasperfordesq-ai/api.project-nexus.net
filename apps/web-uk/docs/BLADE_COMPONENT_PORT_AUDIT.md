@@ -496,6 +496,13 @@ exact `govuk_alpha_groups.announcements` and status catalogs. Error summaries
 match Blade's non-linked list while required-field metadata still drives inline
 field styling. Focused admin/member/status render proof passes.
 
+2026-07-13 group-discussion family follow-up: index, create, and detail fixed
+copy and outcomes now use Laravel's exact discussion catalogs and contextual
+failure heading. Reply counts use Blade's catalog output, reply metadata includes the
+source `j F Y, H:i` timestamp, and backend failure statuses no longer invent
+field links or inline validation styling. Focused index/create/detail/status
+proof passes.
+
 | Blade pattern | Laravel source | ASP.NET target | Status |
 | --- | --- | --- | --- |
 | Custom dark header | `accessible-frontend/views/layout.blade.php` | `src/views/layouts/base.njk`, `src/lib/accessible-shell.js` | Partial. Text brand, language selector, My account link, and tenant-only service navigation are present. The no-JS language selector mirrors Blade's `request()->except(['locale'])` behavior for scalar query params, preserving filters/status/return values while excluding `locale`. My account now exposes `aria-current` across Blade's complete account-family active-nav set, and active Sign in/Register items use the source strong fallback. Tenant bootstrap `logo_dark_url`/`logo_url` and validated wide/landscape/square shape metadata now render Laravel's aspect-ratio-aware image brand, while untrusted external origins are rejected and CSP permits only the configured backend origin. Focused source/render tests passed, and a real default-English `timebanking-org` browser check loaded the `392x105` logo at `179x48`, with exact tenant alt text and no horizontal overflow. Web UK's mandatory non-government header disclosure remains an intentional branding-policy divergence from Blade. Validated per-tenant header colours remain blocked because Laravel's public bootstrap response does not expose `header_bg_color` or `header_accent_color`; full manual visual/assistive-technology proof also remains open. |

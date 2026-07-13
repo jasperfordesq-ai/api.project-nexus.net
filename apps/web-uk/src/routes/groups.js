@@ -746,14 +746,14 @@ function announcementStatus(status, t = (key) => key) {
   return { statusBanner: null };
 }
 
-function discussionStatus(status) {
+function discussionStatus(status, t = (key) => key, { createPage = false } = {}) {
   const value = trimmed(status);
   if (Object.prototype.hasOwnProperty.call(GROUP_DISCUSSION_SUCCESS_MESSAGES, value)) {
     return {
       statusBanner: {
         type: 'success',
-        title: 'Success',
-        message: GROUP_DISCUSSION_SUCCESS_MESSAGES[value]
+        title: t('states.success_title'),
+        message: t(`groups.states.${value}`)
       }
     };
   }
@@ -762,9 +762,12 @@ function discussionStatus(status) {
     return {
       statusBanner: {
         type: 'error',
-        title: value === 'discussion-failed' ? 'There is a problem posting your discussion' : 'There is a problem',
-        message: GROUP_DISCUSSION_ERROR_MESSAGES[value],
-        href: '#content'
+        title: createPage && value === 'discussion-failed'
+          ? t('polish_groups.discussion_failed_heading')
+          : t('states.error_title'),
+        message: createPage && value === 'discussion-failed'
+          ? t('groups.discussions.create_failed')
+          : t(`groups.states.${value}`)
       }
     };
   }
@@ -1277,7 +1280,7 @@ router.get('/:id(\\d+)/discussions', requireAuth, asyncRoute(async (req, res) =>
     group,
     isMember,
     discussions,
-    ...discussionStatus(req.query.status)
+    ...discussionStatus(req.query.status, res.locals.t)
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Group not found' }));
 
@@ -1292,7 +1295,7 @@ router.get('/:id(\\d+)/discussions/new', requireAuth, asyncRoute(async (req, res
     title: 'Start a discussion',
     activeNav: 'explore',
     group,
-    ...discussionStatus(req.query.status)
+    ...discussionStatus(req.query.status, res.locals.t, { createPage: true })
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Group not found' }));
 
@@ -1306,7 +1309,10 @@ router.get('/:id(\\d+)/discussions/:discussionId(\\d+)', requireAuth, asyncRoute
   const data = dataFrom(discussionResult) || {};
   const discussion = normalizeDiscussion(data.discussion || data.thread || data);
   const messages = (Array.isArray(data.messages) ? data.messages : collectionFrom({ data }))
-    .map(normalizeDiscussion)
+    .map((message) => ({
+      ...normalizeDiscussion(message),
+      createdAtLabel: bladeDateTime24Label(message?.created_at || message?.createdAt || message?.posted_at || message?.postedAt)
+    }))
     .filter((message) => message.id !== null);
 
   return res.render('groups/discussion-detail', {
@@ -1315,7 +1321,7 @@ router.get('/:id(\\d+)/discussions/:discussionId(\\d+)', requireAuth, asyncRoute
     group,
     discussion,
     messages,
-    ...discussionStatus(req.query.status)
+    ...discussionStatus(req.query.status, res.locals.t)
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Discussion not found' }));
 

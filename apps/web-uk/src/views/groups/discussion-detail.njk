@@ -4,7 +4,6 @@
 {# See NOTICE file for attribution and acknowledgements. #}
 
 {% extends "layouts/base.njk" %}
-{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
 {% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
 
 {% block mainContent %}
@@ -20,27 +19,24 @@
       text: statusBanner.message
     }) }}
   {% elif statusBanner and statusBanner.type == "error" %}
-    {{ govukErrorSummary({
-      titleText: statusBanner.title,
-      errorList: [
-        {
-          text: statusBanner.message,
-          href: "#content"
-        }
-      ]
-    }) }}
+    <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+      <div role="alert">
+        <h2 class="govuk-error-summary__title">{{ statusBanner.title }}</h2>
+        <div class="govuk-error-summary__body"><p class="govuk-body">{{ statusBanner.message }}</p></div>
+      </div>
+    </div>
   {% endif %}
 
   <article class="nexus-alpha-card govuk-!-margin-bottom-4">
     {% if discussion.authorName %}
       <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">
-        Started by {{ discussion.authorName }}{% if discussion.createdAtLabel %} · {{ discussion.createdAtLabel }}{% endif %}
+        {{ t("groups.discussions.started_by", { name: discussion.authorName }) }}{% if discussion.createdAtLabel %} · {{ discussion.createdAtLabel }}{% endif %}
       </p>
     {% endif %}
     <div class="govuk-body">{{ discussion.content | nl2br | safe }}</div>
   </article>
 
-  <h2 class="govuk-heading-l" id="discussion-replies">{{ messages.length }} replies</h2>
+  <h2 class="govuk-heading-l" id="discussion-replies">{{ t("groups.discussions.replies_count", { count: messages.length }) }}</h2>
 
   {% if not messages.length %}
     <div class="govuk-inset-text"><p class="govuk-body">{{ t("groups.discussions.no_replies") }}</p></div>
@@ -49,7 +45,7 @@
       <article class="nexus-alpha-card govuk-!-margin-bottom-3">
         {% if message.authorName %}
           <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">
-            Reply by {{ message.authorName }}{% if message.createdAtLabel %} · {{ message.createdAtLabel }}{% endif %}
+            {{ t("polish_groups.reply_posted_by", { name: message.authorName }) }}{% if message.createdAtLabel %} · {{ message.createdAtLabel }}{% endif %}
           </p>
         {% endif %}
         <div class="govuk-body govuk-!-margin-bottom-0">{{ message.content | nl2br | safe }}</div>
@@ -59,13 +55,10 @@
 
   <form method="post" action="{{ urlFor('/groups/' + (group.id | string) + '/discussions/' + (discussion.id | string) + '/reply') }}" novalidate>
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-    <div class="govuk-form-group{% if statusBanner and statusBanner.type == 'error' %} govuk-form-group--error{% endif %}">
-      <label class="govuk-label govuk-label--m" for="content">Your reply</label>
+    <div class="govuk-form-group">
+      <label class="govuk-label govuk-label--m" for="content">{{ t("groups.discussions.reply_label") }}</label>
       <div id="content-hint" class="govuk-hint">{{ t("groups.discussions.reply_hint") }}</div>
-      {% if statusBanner and statusBanner.type == "error" %}
-        <p class="govuk-error-message" id="content-error"><span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span> {{ statusBanner.message }}</p>
-      {% endif %}
-      <textarea class="govuk-textarea{% if statusBanner and statusBanner.type == 'error' %} govuk-textarea--error{% endif %}" id="content" name="content" rows="4" aria-describedby="content-hint{% if statusBanner and statusBanner.type == 'error' %} content-error{% endif %}"></textarea>
+      <textarea class="govuk-textarea" id="content" name="content" rows="4" aria-describedby="content-hint"></textarea>
     </div>
     <button class="govuk-button" data-module="govuk-button">{{ t("groups.discussions.reply_submit") }}</button>
   </form>

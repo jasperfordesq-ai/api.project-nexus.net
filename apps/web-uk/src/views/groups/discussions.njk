@@ -4,14 +4,13 @@
 {# See NOTICE file for attribution and acknowledgements. #}
 
 {% extends "layouts/base.njk" %}
-{% from "govuk/components/error-summary/macro.njk" import govukErrorSummary %}
 {% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
 
 {% block mainContent %}
   <a class="govuk-back-link" href="{{ urlFor('/groups/' + (group.id | string)) }}">{{ t("groups.back_to_group") }}</a>
 
   <span class="govuk-caption-l">{{ group.name }}</span>
-  <h1 class="govuk-heading-xl">Discussions</h1>
+  <h1 class="govuk-heading-xl">{{ t("groups.discussions.title") }}</h1>
 
   {% if statusBanner and statusBanner.type == "success" %}
     {{ govukNotificationBanner({
@@ -20,19 +19,16 @@
       text: statusBanner.message
     }) }}
   {% elif statusBanner and statusBanner.type == "error" %}
-    {{ govukErrorSummary({
-      titleText: statusBanner.title,
-      errorList: [
-        {
-          text: statusBanner.message,
-          href: statusBanner.href or "#content"
-        }
-      ]
-    }) }}
+    <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+      <div role="alert">
+        <h2 class="govuk-error-summary__title">{{ statusBanner.title }}</h2>
+        <div class="govuk-error-summary__body"><p class="govuk-body">{{ statusBanner.message }}</p></div>
+      </div>
+    </div>
   {% endif %}
 
   {% if not isMember %}
-    <div class="govuk-inset-text"><p class="govuk-body">Your membership is pending approval.</p></div>
+    <div class="govuk-inset-text"><p class="govuk-body">{{ t("groups.pending_member") }}</p></div>
   {% else %}
     <p class="govuk-body">
       <a class="govuk-button" role="button" draggable="false" data-module="govuk-button" href="{{ urlFor('/groups/' + (group.id | string) + '/discussions/new') }}">{{ t("groups.discussions.new_link") }}</a>
@@ -49,11 +45,11 @@
                 <a class="govuk-link" href="{{ urlFor('/groups/' + (group.id | string) + '/discussions/' + (discussion.id | string)) }}">{{ discussion.title }}</a>
               </h2>
               {% if discussion.isPinned %}
-                <strong class="govuk-tag govuk-tag--yellow">Pinned</strong>
+                <strong class="govuk-tag govuk-tag--yellow">{{ t("groups.discussions.pinned") }}</strong>
               {% endif %}
             </div>
             <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-0">
-              {% if discussion.authorName %}Started by {{ discussion.authorName }} · {% endif %}{{ discussion.replyCount }} replies
+              {% if discussion.authorName %}{{ t("groups.discussions.started_by", { name: discussion.authorName }) }} · {% endif %}{{ t("groups.discussions.replies_count", { count: discussion.replyCount }) }}
             </p>
           </article>
         {% endfor %}
