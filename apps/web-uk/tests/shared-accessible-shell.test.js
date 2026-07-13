@@ -13536,6 +13536,12 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('alt="A cargo bicycle parked outside a library"');
     expect(response.text).toContain('action="/acme/accessible/feed/items/listing/42/like"');
     expect(response.text).toContain('href="/acme/accessible/feed/item/listing/42"');
+    expect(response.text).toContain('action="/acme/accessible/feed/posts/42/hide"');
+    expect(response.text).toContain('action="/acme/accessible/feed/users/77/mute"');
+    expect(response.text).toContain('action="/acme/accessible/feed/posts/42/report"');
+    expect(response.text).toContain('name="type" value="listing"');
+    expect(response.text).toContain('id="report-reason-listing-42" name="reason" type="text" maxlength="500"');
+    expect(response.text).toContain('Mute this member<span class="govuk-visually-hidden"> Ada Lovelace</span>');
     expect(response.text).toContain('href="/acme/accessible/feed?type=listings&amp;cursor=next%2Fcursor&amp;per_page=10&amp;mode=recent&amp;subtype=offer"');
   });
 
@@ -13595,6 +13601,9 @@ describe('shared accessible frontend shell', () => {
     expect(index.text).toContain('action="/feed/posts/42/update"');
     expect(index.text).toContain('action="/feed/posts/42/delete"');
     expect(index.text).not.toContain('action="/feed/posts/42/share"');
+    expect(index.text).not.toContain('action="/feed/posts/42/hide"');
+    expect(index.text).not.toContain('action="/feed/posts/42/report"');
+    expect(index.text).not.toContain('action="/feed/users/101/mute"');
 
     api.getFeedPostV2.mockResolvedValueOnce({
       data: {
