@@ -3,6 +3,7 @@
 {% from "govuk/components/button/macro.njk" import govukButton %}
 {% from "govuk/components/select/macro.njk" import govukSelect %}
 {% from "govuk/components/pagination/macro.njk" import govukPagination %}
+{% from "feed/_comments.njk" import commentList %}
 {% from "govuk/components/tag/macro.njk" import govukTag %}
 
 {% block mainContent %}
@@ -365,6 +366,33 @@
                     </div>
                   </details>
                 </div>
+              {% endif %}
+
+              {% if post.isCommentable %}
+                <details class="govuk-details govuk-!-margin-bottom-0" data-module="govuk-details"{% if status == "comment-created" %} open{% endif %}>
+                  <summary class="govuk-details__summary"><span class="govuk-details__summary-text">{{ t("feed.comments_summary") }}</span></summary>
+                  <div class="govuk-details__text">
+                    {% if post.comments.length > 0 %}
+                      {{ commentList(post.comments, 0, post, requiresAuth, currentUserId, csrfToken, urlFor, t) }}
+                    {% else %}
+                      <p class="govuk-body">{{ t("feed.no_comments") }}</p>
+                    {% endif %}
+                    <form method="post" action="{{ urlFor('/feed/items/' + post.type + '/' + (post.id | string) + '/comments') }}">
+                      <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                      <input type="hidden" name="type" value="{{ selectedType }}">
+                      <input type="hidden" name="mode" value="{{ selectedMode }}">
+                      <input type="hidden" name="per_page" value="{{ perPage }}">
+                      {% if selectedSubtype %}<input type="hidden" name="subtype" value="{{ selectedSubtype }}">{% endif %}
+                      {% if cursor %}<input type="hidden" name="cursor" value="{{ cursor }}">{% endif %}
+                      <div class="govuk-form-group">
+                        <label class="govuk-label" for="comment-{{ post.type }}-{{ post.id }}">{{ t("feed.comment_label") }}</label>
+                        <div id="comment-{{ post.type }}-{{ post.id }}-hint" class="govuk-hint">{{ t("feed.comment_hint") }}</div>
+                        <textarea class="govuk-textarea" id="comment-{{ post.type }}-{{ post.id }}" name="content" rows="3" aria-describedby="comment-{{ post.type }}-{{ post.id }}-hint"></textarea>
+                      </div>
+                      <button class="govuk-button" data-module="govuk-button">{{ t("actions.comment") }}</button>
+                    </form>
+                  </div>
+                </details>
               {% endif %}
             </article>
           {% endfor %}

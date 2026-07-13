@@ -13631,6 +13631,49 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('action="/acme/accessible/feed/polls/43/vote"');
   });
 
+  it('renders Blade embedded comments and comment forms for commentable feed items', async () => {
+    const api = require('../src/lib/api');
+    api.getFeedPosts.mockResolvedValueOnce({
+      data: [{
+        id: 42,
+        type: 'listing',
+        title: 'Tool library',
+        author: { id: 77, name: 'Ada Member' }
+      }],
+      meta: { has_more: false }
+    });
+    api.getComments.mockResolvedValueOnce({
+      data: {
+        comments: [{
+          id: 12,
+          content: 'I can help catalogue the tools.',
+          created_at: '2026-07-13T10:00:00Z',
+          author: { id: 101, name: 'Current member' },
+          reactions: { like: 2 },
+          user_reactions: ['like'],
+          replies: [{ id: 13, content: 'Thank you!', author: { id: 77, name: 'Ada Member' } }]
+        }]
+      }
+    });
+
+    const response = await request(app)
+      .get('/acme/accessible/feed?type=listings&mode=recent&per_page=10&status=comment-created')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.getComments).toHaveBeenCalledWith('test-token', { target_type: 'listing', target_id: 42 });
+    expect(response.text).toContain('<span class="govuk-details__summary-text">Comments</span>');
+    expect(response.text).toContain('data-module="govuk-details" open>');
+    expect(response.text).toContain('I can help catalogue the tools.');
+    expect(response.text).toContain('Thank you!');
+    expect(response.text).toContain('action="/acme/accessible/feed/comments/12/update"');
+    expect(response.text).toContain('action="/acme/accessible/feed/comments/12/delete"');
+    expect(response.text).toContain('action="/acme/accessible/feed/items/listing/42/comments"');
+    expect(response.text).toContain('id="comment-listing-42" name="content" rows="3"');
+    expect(response.text).toContain('name="type" value="listings"');
+    expect(response.text).toContain('name="mode" value="recent"');
+  });
+
   it('renders Blade-aligned owner, reaction, engagement, and comment controls for a signed feed post', async () => {
     const api = require('../src/lib/api');
     api.getProfile.mockResolvedValue({ id: 101, name: 'Current member' });

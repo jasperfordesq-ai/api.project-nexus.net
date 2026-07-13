@@ -18,6 +18,10 @@ const { asyncRoute } = require('../lib/routeHelpers');
 const { getRequestProfile } = require('../lib/request-profile');
 
 const router = express.Router();
+const COMMENTABLE_FEED_TYPES = new Set([
+  'post', 'listing', 'event', 'goal', 'poll', 'review', 'volunteer',
+  'challenge', 'resource', 'job', 'blog', 'discussion'
+]);
 
 function tokenFrom(req) {
   return req.token || (req.signedCookies && req.signedCookies.token ? req.signedCookies.token : '');
@@ -532,6 +536,12 @@ router.get('/', asyncRoute(withTokenRefresh(async (req, res) => {
     : { data: [], meta: { per_page: perPage, has_more: false } };
 
   const posts = feedCollectionRows(feedResult).map(normalizeFeedPost).filter((post) => post.id > 0);
+  await Promise.all(posts.map(async (post) => {
+    post.isCommentable = COMMENTABLE_FEED_TYPES.has(post.type);
+    post.comments = post.isCommentable
+      ? feedCommentRows(await getComments(token, { target_type: post.type, target_id: post.id }).catch(() => ({ data: { comments: [] } })))
+      : [];
+  }));
   const currentUserId = token
     ? profileId(await getRequestProfile(req, token).catch(() => null))
     : null;
@@ -549,6 +559,7 @@ router.get('/', asyncRoute(withTokenRefresh(async (req, res) => {
     selectedMode,
     selectedSubtype,
     cursor,
+    status: trimmed(req.query.status),
     perPage,
     requiresAuth: !token,
     communityName: res.locals.tenantName || res.locals.serviceName || 'this community',
