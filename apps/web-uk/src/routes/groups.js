@@ -1137,10 +1137,7 @@ router.get('/:id(\\d+)/edit', requireAuth, asyncRoute(async (req, res) => {
 
   // Check permission
   if (!isGroupAdmin(group, profile)) {
-    if (req.flash) {
-      req.flash('error', 'You do not have permission to edit this group');
-    }
-    return res.redirect(urlFor(res, `/groups/${id}`));
+    return renderForbidden(res);
   }
 
   res.render('groups/edit', {

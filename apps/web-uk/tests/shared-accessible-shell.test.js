@@ -25080,6 +25080,29 @@ describe('shared accessible frontend shell', () => {
     expect(api.deleteGroup).toHaveBeenCalledWith('test-token', 88);
   });
 
+  it('returns Laravel-compatible 403 when a signed group member opens the edit page', async () => {
+    const api = require('../src/lib/api');
+    api.getProfile.mockResolvedValueOnce({ id: 101 });
+    api.getGroup.mockReset().mockResolvedValueOnce({
+      data: {
+        id: 88,
+        owner_id: 202,
+        name: 'Repair circle',
+        visibility: 'private',
+        viewer_membership: { role: 'member', status: 'active' }
+      }
+    });
+
+    const response = await request(app)
+      .get('/groups/88/edit')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(403);
+    expect(response.text).toContain(englishForbiddenTitle);
+    expect(response.text).not.toContain('Save changes');
+    expect(response.headers.location).toBeUndefined();
+  });
+
   it('recognises the Laravel group creator as owner when viewer membership is admin', async () => {
     const api = require('../src/lib/api');
     const agent = request.agent(app);
