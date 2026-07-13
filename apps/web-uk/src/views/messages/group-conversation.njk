@@ -104,6 +104,8 @@
               {% endif %}
               {% if message.is_deleted %}
                 <p class="govuk-body govuk-hint">{{ t("govuk_alpha_messages.conversation.deleted_placeholder") }}</p>
+              {% elif searchQuery %}
+                <div class="govuk-body">{% for segment in message.searchSegments %}{% if segment.match %}<mark class="nexus-alpha-search-match">{{ segment.text | nl2br | safe }}</mark>{% else %}{{ segment.text | nl2br | safe }}{% endif %}{% endfor %}</div>
               {% else %}
                 <div class="govuk-body">{{ (message.body or message.content) | nl2br | safe }}</div>
               {% endif %}

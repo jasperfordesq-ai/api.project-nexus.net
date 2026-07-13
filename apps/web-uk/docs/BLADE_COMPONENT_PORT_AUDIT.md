@@ -420,8 +420,9 @@ and uncertified. Remaining live upload/destructive rows require disposable fixtu
 2026-07-13 group-message chronology follow-up: Laravel's group-message API
 returns the `direction=older` page newest-first, while Blade reverses it before
 rendering. Web UK now performs the same reversal before applying its no-JavaScript
-search filter, and preserves multiline message bodies with escaped line breaks.
-Focused chronological/filter/render proof passes `1/1`.
+search filter, visibly marks every case-insensitive match without trusting the
+query as markup, and preserves multiline bodies with escaped line breaks.
+Focused chronological/filter/escaping/render proof passes `1/1`.
 
 | Blade pattern | Laravel source | ASP.NET target | Status |
 | --- | --- | --- | --- |

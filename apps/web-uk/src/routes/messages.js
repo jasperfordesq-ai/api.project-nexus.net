@@ -53,6 +53,27 @@ function checked(value) {
   return value === true || ['1', 'true', 'on', 'yes'].includes(String(value || '').toLowerCase());
 }
 
+function messageSearchSegments(value, query) {
+  const text = String(value || '');
+  const needle = trimmed(query);
+  if (!needle) return [{ text, match: false }];
+
+  const matcher = new RegExp(needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'giu');
+  const segments = [];
+  let offset = 0;
+  let match = matcher.exec(text);
+
+  while (match) {
+    if (match.index > offset) segments.push({ text: text.slice(offset, match.index), match: false });
+    segments.push({ text: match[0], match: true });
+    offset = match.index + match[0].length;
+    match = matcher.exec(text);
+  }
+
+  if (offset < text.length) segments.push({ text: text.slice(offset), match: false });
+  return segments.length > 0 ? segments : [{ text, match: false }];
+}
+
 function positiveInteger(value) {
   const number = Number(value);
   return Number.isInteger(number) && number > 0 ? number : null;
@@ -820,6 +841,12 @@ router.get('/groups/:conversationId(\\d+)', requireAuth, asyncRoute(async (req, 
   const visibleMessages = searchQuery
     ? messages.filter(message => String(message.body || message.content || '').toLowerCase().includes(searchQuery.toLowerCase()))
     : messages;
+  const renderedMessages = visibleMessages.map(message => ({
+    ...message,
+    searchSegments: searchQuery
+      ? messageSearchSegments(message.body || message.content, searchQuery)
+      : []
+  }));
 
   const access = messageAccess(req, restriction);
   res.render('messages/group-conversation', {
@@ -829,7 +856,7 @@ router.get('/groups/:conversationId(\\d+)', requireAuth, asyncRoute(async (req, 
       id: conversationId,
       displayName: groupName(conversation, res.locals.t)
     },
-    messages: visibleMessages,
+    messages: renderedMessages,
     participants,
     currentUserId,
     viewerRole,

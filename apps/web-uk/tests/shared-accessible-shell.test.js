@@ -26396,7 +26396,7 @@ describe('shared accessible frontend shell', () => {
             {
               id: 12,
               sender_id: 55,
-              body: 'Hello team,\nthe rota is ready.',
+              body: 'Hello team,\nthe rota is ready. <script>alert("unsafe")</script>',
               created_at: '2026-07-06T12:15:00Z',
               sender: { id: 55, name: 'Casey Quinn' }
             }
@@ -26433,10 +26433,12 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('You');
     expect(response.text).toContain('Administrator');
     expect(response.text).toContain('Casey Quinn');
-    expect(response.text).toContain('Hello team,<br>the rota is ready.');
-    expect(response.text).toContain('Hello again — I have published the final rota.');
-    expect(response.text.indexOf('Hello team,<br>the rota is ready.'))
-      .toBeLessThan(response.text.indexOf('Hello again — I have published the final rota.'));
+    expect(response.text).toContain('<mark class="nexus-alpha-search-match">Hello</mark> team,<br>the rota is ready.');
+    expect(response.text).toContain('<mark class="nexus-alpha-search-match">Hello</mark> again — I have published the final rota.');
+    expect(response.text).toContain('&lt;script&gt;alert(&quot;unsafe&quot;)&lt;/script&gt;');
+    expect(response.text).not.toContain('<script>alert("unsafe")</script>');
+    expect(response.text.indexOf('team,<br>the rota is ready.'))
+      .toBeLessThan(response.text.indexOf('again — I have published the final rota.'));
     expect(response.text).not.toContain('This should be hidden by the query.');
     expect(response.text).toContain('action="/messages/groups/33"');
     expect(response.text).toContain('action="/messages/groups/33/members"');
