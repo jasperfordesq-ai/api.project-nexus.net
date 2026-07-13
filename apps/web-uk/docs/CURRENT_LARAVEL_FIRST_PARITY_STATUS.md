@@ -51,8 +51,8 @@ commit as the implementation it describes.
 
 ## Audited Baseline
 
-The audit was refreshed from ASP.NET-repo commit `bd892782` plus the scoped
-canonical Event waitlist mutation slice recorded below, and Laravel-repo commit `c2cf4fa`. Refresh both
+The audit was refreshed from ASP.NET-repo commit `e03fa427` plus the scoped
+Clubs component-evidence reconciliation recorded below, and Laravel-repo commit `c2cf4fa`. Refresh both
 repositories before relying on these numbers after either source moves.
 
 | Measure | Audited result | Meaning |
