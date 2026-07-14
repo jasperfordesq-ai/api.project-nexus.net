@@ -154,6 +154,14 @@ function groupRedirect(conversationId, status, fragment = '') {
   return statusRedirect(`/messages/groups/${conversationId}`, status, fragment);
 }
 
+function groupCreateRedirect(name, memberIds, status) {
+  const search = new URLSearchParams();
+  if (name) search.set('name', name);
+  memberIds.forEach(id => search.append('members[]', String(id)));
+  search.set('status', status);
+  return `/messages/groups/new?${search.toString()}`;
+}
+
 async function messageRestriction(req) {
   try {
     return dataFrom(await callMessage(req.token, 'GET', '/restriction-status')) || {};
@@ -522,6 +530,11 @@ function groupSafeguardingFailureStatus(error) {
   }[apiErrorCode(error)] || null;
 }
 
+function groupCreateFailureStatus(error) {
+  if (apiErrorCode(error) === 'MESSAGING_DISABLED') return 'group-disabled';
+  return groupSafeguardingFailureStatus(error) || 'group-create-failed';
+}
+
 function translateFailureStatus(error) {
   const code = apiErrorCode(error);
   if (code.includes('FEATURE_DISABLED')) return 'translate-unavailable';
@@ -674,9 +687,11 @@ router.post('/groups', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) return redirectTo(res, loginRedirect());
 
+  const name = trimmed(req.body.name);
+  const memberIds = memberIdsFrom(req.body.member_ids || req.body.members);
   const payload = {
-    name: trimmed(req.body.name),
-    member_ids: memberIdsFrom(req.body.member_ids || req.body.members)
+    name,
+    member_ids: memberIds
   };
 
   try {
@@ -688,9 +703,10 @@ router.post('/groups', asyncRoute(async (req, res) => {
     }
   } catch (error) {
     if (redirectOnAuthError(error, req, res)) return undefined;
+    return redirectTo(res, groupCreateRedirect(name, memberIds, groupCreateFailureStatus(error)));
   }
 
-  return redirectTo(res, statusRedirect('/messages/groups/new', 'group-create-failed'));
+  return redirectTo(res, groupCreateRedirect(name, memberIds, 'group-create-failed'));
 }));
 
 router.post('/groups/:conversationId(\\d+)', asyncRoute(async (req, res) => {

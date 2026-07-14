@@ -26815,6 +26815,52 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toMatch(/<span>Morgan Lee<\/span>\s*<form[^>]+>\s*<input type="hidden" name="name" value="Local helpers">\s*<input type="hidden" name="members\[\]" value="44">/);
   });
 
+  it('preserves group creation input and Laravel safeguarding failures', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+    expect(csrfMatch).not.toBeNull();
+
+    api.callConversationApi.mockRejectedValueOnce(new api.ApiError('Vetting required', 403, {
+      errors: [{ code: 'VETTING_REQUIRED', message: 'Vetting required' }]
+    }));
+
+    const response = await agent
+      .post('/acme/accessible/messages/groups')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        name: ' Local helpers ',
+        member_ids: ['44', '55']
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/acme/accessible/messages/groups/new?name=Local+helpers&members%5B%5D=44&members%5B%5D=55&status=group-vetting-required');
+    expect(api.callConversationApi).toHaveBeenCalledWith('test-token', 'POST', '/groups', {
+      name: 'Local helpers',
+      member_ids: [44, 55]
+    });
+
+    api.getUser.mockImplementation(async (_token, id) => ({
+      data: { id, name: id === 44 ? 'Casey Quinn' : 'Morgan Lee' }
+    }));
+    const replay = await agent
+      .get(response.headers.location)
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(replay.status).toBe(200);
+    expect(replay.text).toContain('Local helpers');
+    expect(replay.text).toContain('Remove Casey Quinn from the group');
+    expect(replay.text).toContain('Remove Morgan Lee from the group');
+    expect(replay.text).toContain('Safeguarding check needed');
+  });
+
   it('suppresses group-message mutations when Laravel restricts messaging', async () => {
     const api = require('../src/lib/api');
     api.callConversationApi.mockResolvedValueOnce({ data: [] });
