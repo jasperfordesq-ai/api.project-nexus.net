@@ -132,6 +132,91 @@ public sealed class MarketplacePaymentServiceTests
     }
 
     [Fact]
+    public async Task Refund_PartialThenFull_UsesStableProviderEconomicsAndDurableLedger()
+    {
+        await using var db = CreateDb();
+        var gateway = new FakeGateway { Configured = true };
+        var service = CreateService(db, gateway);
+        var order = SeedPayableOrder(db);
+        var listing = await db.MarketplaceListings.SingleAsync();
+        var originalQuantity = listing.Quantity;
+
+        (await service.CreateIntentAsync(42, 11, order.Id, CancellationToken.None)).Succeeded.Should().BeTrue();
+        gateway.Retrieved = gateway.Created! with
+        {
+            Status = "succeeded",
+            AmountReceivedMinor = 2599,
+            LatestChargeId = "ch_refund_1"
+        };
+        (await service.ConfirmAsync(42, 11, gateway.Created.Id, CancellationToken.None)).Succeeded.Should().BeTrue();
+
+        (await service.ProcessRefundAsync(42, order.Id, 5m, "partial settlement", CancellationToken.None))
+            .Succeeded.Should().BeTrue();
+        var payment = await db.MarketplacePayments.SingleAsync();
+        payment.Status.Should().Be("partially_refunded");
+        payment.RefundAmount.Should().Be(5m);
+        payment.PlatformFee.Should().Be(1.05m);
+        payment.SellerPayout.Should().Be(19.94m);
+        order.Status.Should().Be("paid");
+        listing.Quantity.Should().Be(originalQuantity);
+        gateway.RefundAmountMinor.Should().Be(500);
+        gateway.RefundReverseTransfer.Should().BeTrue();
+        gateway.RefundApplicationFee.Should().BeTrue();
+
+        (await service.ProcessRefundAsync(42, order.Id, null, "full settlement", CancellationToken.None))
+            .Succeeded.Should().BeTrue();
+        payment.Status.Should().Be("refunded");
+        payment.RefundAmount.Should().Be(25.99m);
+        payment.PlatformFee.Should().Be(0);
+        payment.SellerPayout.Should().Be(0);
+        order.Status.Should().Be("refunded");
+        listing.Quantity.Should().Be(originalQuantity + 1);
+        gateway.RefundCalls.Should().Be(2);
+        (await db.MarketplacePaymentRefunds.CountAsync()).Should().Be(2);
+        (await db.MarketplacePaymentRefunds.SumAsync(x => x.Amount)).Should().Be(25.99m);
+    }
+
+    [Fact]
+    public async Task Refund_AfterEscrowPayout_ReversesOnlyTheSellerTransferShare()
+    {
+        await using var db = CreateDb();
+        var gateway = new FakeGateway { Configured = true };
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Marketplace:PlatformFeePercent"] = "5",
+            ["Marketplace:EscrowEnabled"] = "true"
+        }).Build();
+        var service = new MarketplacePaymentService(
+            db, gateway, configuration, NullLogger<MarketplacePaymentService>.Instance);
+        var order = SeedPayableOrder(db);
+
+        (await service.CreateIntentAsync(42, 11, order.Id, CancellationToken.None)).Succeeded.Should().BeTrue();
+        gateway.Retrieved = gateway.Created! with
+        {
+            Status = "succeeded",
+            AmountReceivedMinor = 2599,
+            LatestChargeId = "ch_refund_escrow"
+        };
+        (await service.ConfirmAsync(42, 11, gateway.Created.Id, CancellationToken.None)).Succeeded.Should().BeTrue();
+        var escrow = await db.MarketplaceEscrows.SingleAsync();
+        escrow.ReleaseAfter = DateTime.UtcNow.AddMinutes(-1);
+        order.Status = "delivered";
+        order.AutoCompleteAt = DateTime.UtcNow.AddMinutes(-1);
+        await db.SaveChangesAsync();
+        (await service.ReleaseEscrowAsync(42, escrow.Id, "auto_timeout", CancellationToken.None)).Succeeded.Should().BeTrue();
+
+        (await service.ProcessRefundAsync(42, order.Id, null, "buyer refunded", CancellationToken.None))
+            .Succeeded.Should().BeTrue();
+
+        gateway.RefundReverseTransfer.Should().BeFalse();
+        gateway.RefundApplicationFee.Should().BeFalse();
+        gateway.TransferReversalCalls.Should().Be(1);
+        gateway.TransferReversalAmountMinor.Should().Be(2469);
+        (await db.MarketplacePayments.SingleAsync()).PayoutStatus.Should().Be("failed");
+        (await db.MarketplaceEscrows.SingleAsync()).Status.Should().Be("refunded");
+    }
+
+    [Fact]
     public async Task StripeGateway_SeparateChargeOmitsDestinationAndApplicationFee()
     {
         var handler = new RecordingHandler();
@@ -770,6 +855,13 @@ public sealed class MarketplacePaymentServiceTests
         public string? FundsFlow { get; private set; }
         public int TransferCalls { get; private set; }
         public MarketplaceStripeTransfer? Transfer { get; set; }
+        public int RefundCalls { get; private set; }
+        public int TransferReversalCalls { get; private set; }
+        public MarketplaceStripeRefund? Refund { get; set; }
+        public long RefundAmountMinor { get; private set; }
+        public bool RefundReverseTransfer { get; private set; }
+        public bool RefundApplicationFee { get; private set; }
+        public long TransferReversalAmountMinor { get; private set; }
 
         public Task<MarketplaceStripeIntent> CreateIntentAsync(long amountMinor, string currency, string connectedAccountId,
             long platformFeeMinor, string fundsFlow, IReadOnlyDictionary<string, string> metadata, string idempotencyKey, CancellationToken ct)
@@ -805,6 +897,26 @@ public sealed class MarketplacePaymentServiceTests
             TransferCalls++;
             return Task.FromResult(Transfer ?? new MarketplaceStripeTransfer(
                 "tr_marketplace_1", amountMinor, currency, connectedAccountId, sourceTransactionId));
+        }
+
+        public Task<MarketplaceStripeRefund> CreateRefundAsync(
+            string paymentIntentId, long amountMinor, bool reverseTransfer, bool refundApplicationFee,
+            IReadOnlyDictionary<string, string> metadata, string idempotencyKey, CancellationToken ct)
+        {
+            RefundCalls++;
+            RefundAmountMinor = amountMinor;
+            RefundReverseTransfer = reverseTransfer;
+            RefundApplicationFee = refundApplicationFee;
+            return Task.FromResult(Refund ?? new MarketplaceStripeRefund(
+                $"re_marketplace_{RefundCalls}", amountMinor, "EUR", "succeeded"));
+        }
+
+        public Task ReverseTransferAsync(
+            string transferId, long amountMinor, string idempotencyKey, CancellationToken ct)
+        {
+            TransferReversalCalls++;
+            TransferReversalAmountMinor = amountMinor;
+            return Task.CompletedTask;
         }
 
         public Task<MarketplaceStripeAccount> CreateExpressAccountAsync(

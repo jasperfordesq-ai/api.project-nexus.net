@@ -6,6 +6,8 @@
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
@@ -80,6 +82,12 @@ public sealed record MarketplaceStripeTransfer(
     string DestinationAccountId,
     string? SourceTransactionId);
 
+public sealed record MarketplaceStripeRefund(
+    string Id,
+    long AmountMinor,
+    string Currency,
+    string Status);
+
 public interface IMarketplaceStripeGateway
 {
     bool IsConfigured { get; }
@@ -103,6 +111,15 @@ public interface IMarketplaceStripeGateway
         IReadOnlyDictionary<string, string> metadata,
         string idempotencyKey,
         CancellationToken ct);
+    Task<MarketplaceStripeRefund> CreateRefundAsync(
+        string paymentIntentId,
+        long amountMinor,
+        bool reverseTransfer,
+        bool refundApplicationFee,
+        IReadOnlyDictionary<string, string> metadata,
+        string idempotencyKey,
+        CancellationToken ct);
+    Task ReverseTransferAsync(string transferId, long amountMinor, string idempotencyKey, CancellationToken ct);
     Task<MarketplaceStripeAccount> CreateExpressAccountAsync(
         string email,
         int tenantId,
@@ -191,6 +208,50 @@ public sealed class MarketplaceStripeGateway(
             string.IsNullOrWhiteSpace(destination))
             throw new InvalidOperationException("Stripe returned an incomplete Transfer.");
         return new(id, Integer(root, "amount"), returnedCurrency.ToUpperInvariant(), destination, sourceTransaction);
+    }
+
+    public async Task<MarketplaceStripeRefund> CreateRefundAsync(
+        string paymentIntentId,
+        long amountMinor,
+        bool reverseTransfer,
+        bool refundApplicationFee,
+        IReadOnlyDictionary<string, string> metadata,
+        string idempotencyKey,
+        CancellationToken ct)
+    {
+        var values = new List<KeyValuePair<string, string>>
+        {
+            new("payment_intent", paymentIntentId),
+            new("amount", amountMinor.ToString(CultureInfo.InvariantCulture)),
+            new("reason", "requested_by_customer")
+        };
+        if (reverseTransfer) values.Add(new("reverse_transfer", "true"));
+        if (refundApplicationFee) values.Add(new("refund_application_fee", "true"));
+        values.AddRange(metadata.Select(pair => new KeyValuePair<string, string>($"metadata[{pair.Key}]", pair.Value)));
+        using var document = await SendDocumentAsync(HttpMethod.Post, "/v1/refunds", values, idempotencyKey, ct);
+        var root = document.RootElement;
+        var id = Text(root, "id");
+        var currency = Text(root, "currency");
+        var status = Text(root, "status");
+        if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(currency) || string.IsNullOrWhiteSpace(status))
+            throw new InvalidOperationException("Stripe returned an incomplete Refund.");
+        return new(id, Integer(root, "amount"), currency.ToUpperInvariant(), status);
+    }
+
+    public async Task ReverseTransferAsync(
+        string transferId,
+        long amountMinor,
+        string idempotencyKey,
+        CancellationToken ct)
+    {
+        using var document = await SendDocumentAsync(
+            HttpMethod.Post,
+            $"/v1/transfers/{Uri.EscapeDataString(transferId)}/reversals",
+            [new("amount", amountMinor.ToString(CultureInfo.InvariantCulture))],
+            idempotencyKey,
+            ct);
+        if (string.IsNullOrWhiteSpace(Text(document.RootElement, "id")))
+            throw new InvalidOperationException("Stripe returned an incomplete Transfer Reversal.");
     }
 
     public async Task<MarketplaceStripeAccount> CreateExpressAccountAsync(
@@ -1149,6 +1210,155 @@ public sealed class MarketplacePaymentService(
                " " + normalized;
     }
 
+    public async Task<MarketplacePaymentResult> ProcessRefundAsync(
+        int tenantId,
+        int orderId,
+        decimal? requestedAmount,
+        string? reason,
+        CancellationToken ct)
+    {
+        reason = string.IsNullOrWhiteSpace(reason) ? "requested_by_customer" : reason.Trim();
+        if (reason.Length > 500) return Error("VALIDATION_ERROR", "Refund reason is too long.", 422, "reason");
+        if (!stripe.IsConfigured) return Error("FEATURE_DISABLED", "Stripe marketplace payments are disabled.", 403);
+
+        await using var transaction = db.Database.IsRelational() && db.Database.CurrentTransaction is null
+            ? await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct)
+            : null;
+        if (transaction is not null)
+            await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock({tenantId}, {orderId})", ct);
+
+        var order = await db.MarketplaceOrders.IgnoreQueryFilters()
+            .SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Id == orderId, ct);
+        if (order is null) return Error("NOT_FOUND", "Marketplace order not found.", 404);
+        var payment = await db.MarketplacePayments.IgnoreQueryFilters()
+            .SingleOrDefaultAsync(x => x.TenantId == tenantId && x.MarketplaceOrderId == orderId &&
+                                       (x.Status == "succeeded" || x.Status == "partially_refunded" || x.Status == "refunded"), ct);
+        if (payment is null) return Error("RESOLUTION_FAILED", "Successful marketplace payment not found.", 409);
+
+        var currency = NormalizeCurrency(payment.Currency);
+        if (currency is null) return Error("RESOLUTION_FAILED", "Marketplace payment currency is invalid.", 409);
+        var alreadyRefunded = RoundMajor(payment.RefundAmount ?? 0, currency);
+        var remaining = RoundMajor(payment.Amount - alreadyRefunded, currency);
+        if (payment.Status == "refunded")
+        {
+            if (requestedAmount is null || Math.Abs(requestedAmount.Value - payment.Amount) <= 0.005m)
+                return new(Projection(payment, detailed: true));
+            return Error("VALIDATION_ERROR", "Refund amount is invalid.", 422, "refund_amount");
+        }
+        var refundAmount = RoundMajor(requestedAmount ?? remaining, currency);
+        if (refundAmount <= 0 || refundAmount > remaining)
+            return Error("VALIDATION_ERROR", "Refund amount is invalid.", 422, "refund_amount");
+        if (payment.PayoutStatus == "scheduled")
+            return Error("RESOLUTION_FAILED", "Marketplace payout is still processing.", 409);
+        if (string.IsNullOrWhiteSpace(payment.StripePaymentIntentId))
+            return Error("RESOLUTION_FAILED", "Marketplace payment intent is unavailable.", 409);
+
+        var feeReversal = remaining > 0
+            ? RoundMajor(payment.PlatformFee * (refundAmount / remaining), currency)
+            : 0;
+        feeReversal = Math.Min(payment.PlatformFee, feeReversal);
+        var payoutReversal = Math.Min(payment.SellerPayout,
+            Math.Max(0, RoundMajor(refundAmount - feeReversal, currency)));
+        var cumulative = RoundMajor(alreadyRefunded + refundAmount, currency);
+        if (!TryToMinor(refundAmount, currency, out var refundMinor) ||
+            !TryToMinor(cumulative, currency, out var cumulativeMinor))
+            return Error("VALIDATION_ERROR", "Refund amount is invalid.", 422, "refund_amount");
+
+        MarketplaceStripeRefund providerRefund;
+        try
+        {
+            providerRefund = await stripe.CreateRefundAsync(
+                payment.StripePaymentIntentId,
+                refundMinor,
+                payment.FundsFlow != "separate_charge_transfer",
+                payment.FundsFlow != "separate_charge_transfer",
+                new Dictionary<string, string>
+                {
+                    ["nexus_order_id"] = order.Id.ToString(CultureInfo.InvariantCulture),
+                    ["nexus_tenant_id"] = tenantId.ToString(CultureInfo.InvariantCulture),
+                    ["nexus_reason"] = reason
+                },
+                $"marketplace-refund-{tenantId}-{payment.Id}-{cumulativeMinor}",
+                ct);
+            if (providerRefund.AmountMinor != refundMinor ||
+                !string.Equals(providerRefund.Currency, currency, StringComparison.Ordinal))
+                throw new InvalidOperationException("Stripe refund economics did not match the request.");
+
+            if (payment.FundsFlow == "separate_charge_transfer" && payment.PayoutStatus == "paid" && payoutReversal > 0)
+            {
+                if (string.IsNullOrWhiteSpace(payment.PayoutId))
+                    throw new InvalidOperationException("Paid marketplace transfer identity is unavailable.");
+                if (!TryToMinor(payoutReversal, currency, out var payoutReversalMinor))
+                    throw new InvalidOperationException("Marketplace transfer reversal amount is invalid.");
+                await stripe.ReverseTransferAsync(
+                    payment.PayoutId,
+                    payoutReversalMinor,
+                    $"marketplace-external-transfer-reversal-{StableHash(providerRefund.Id)}",
+                    ct);
+            }
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(exception,
+                "Marketplace refund failed for tenant {TenantId}, order {OrderId}, payment {PaymentId}.",
+                tenantId, orderId, payment.Id);
+            return Error("RESOLUTION_FAILED", "Marketplace refund failed.", 409);
+        }
+
+        if (await db.MarketplacePaymentRefunds.IgnoreQueryFilters().AnyAsync(x => x.StripeRefundId == providerRefund.Id, ct))
+        {
+            if (transaction is not null) await transaction.CommitAsync(ct);
+            return new(Projection(payment, detailed: true));
+        }
+
+        db.MarketplacePaymentRefunds.Add(new MarketplacePaymentRefund
+        {
+            TenantId = tenantId,
+            MarketplacePaymentId = payment.Id,
+            StripeRefundId = providerRefund.Id,
+            Amount = refundAmount,
+            PlatformFeeReversal = feeReversal,
+            SellerPayoutReversal = payoutReversal,
+            Reason = reason[..Math.Min(reason.Length, 500)]
+        });
+        var isFull = cumulative >= payment.Amount - 0.005m;
+        payment.RefundAmount = Math.Min(payment.Amount, cumulative);
+        payment.RefundReason = reason;
+        payment.RefundedAt = DateTime.UtcNow;
+        payment.Status = isFull ? "refunded" : "partially_refunded";
+        payment.PlatformFee = isFull ? 0 : Math.Max(0, RoundMajor(payment.PlatformFee - feeReversal, currency));
+        payment.SellerPayout = isFull ? 0 : Math.Max(0, RoundMajor(payment.SellerPayout - payoutReversal, currency));
+        if (isFull && payment.FundsFlow == "separate_charge_transfer") payment.PayoutStatus = "failed";
+        payment.UpdatedAt = DateTime.UtcNow;
+
+        var escrow = await db.MarketplaceEscrows.IgnoreQueryFilters()
+            .SingleOrDefaultAsync(x => x.TenantId == tenantId && x.MarketplaceOrderId == orderId, ct);
+        if (escrow is not null)
+        {
+            escrow.Amount = payment.SellerPayout;
+            if (isFull)
+            {
+                escrow.Status = "refunded";
+                escrow.ReleasedAt = DateTime.UtcNow;
+                escrow.ReleaseTrigger = null;
+            }
+            escrow.UpdatedAt = DateTime.UtcNow;
+        }
+        if (isFull && order.Status != "refunded")
+        {
+            order.Status = "refunded";
+            await RestoreInventoryForRefundAsync(order, ct);
+        }
+        order.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync(ct);
+        if (transaction is not null) await transaction.CommitAsync(ct);
+        return new(Projection(payment, detailed: true));
+    }
+
     public async Task<MarketplacePaymentResult> ConfirmDeliveryAsync(
         int tenantId,
         int buyerId,
@@ -1779,6 +1989,18 @@ public sealed class MarketplacePaymentService(
     }
     private static long ParseMinor(IReadOnlyDictionary<string, string> metadata, string key) =>
         metadata.TryGetValue(key, out var value) && long.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var parsed) ? parsed : -1;
+    private async Task RestoreInventoryForRefundAsync(MarketplaceOrder order, CancellationToken ct)
+    {
+        var listing = await db.MarketplaceListings.IgnoreQueryFilters()
+            .SingleOrDefaultAsync(x => x.TenantId == order.TenantId && x.Id == order.MarketplaceListingId, ct);
+        if (listing is null) return;
+        listing.Quantity = checked(listing.Quantity + Math.Max(1, order.Quantity));
+        listing.Status = "active";
+        listing.MarketplaceStatus = "available";
+        listing.UpdatedAt = DateTime.UtcNow;
+    }
+    private static string StableHash(string value) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value))).ToLowerInvariant();
     private static string? NormalizeCurrency(string? value)
     {
         if (string.IsNullOrWhiteSpace(value)) return null;

@@ -570,6 +570,7 @@ public class NexusDbContext : DbContext
     public DbSet<MarketplaceOffer> MarketplaceOffers => Set<MarketplaceOffer>();
     public DbSet<MarketplaceOrder> MarketplaceOrders => Set<MarketplaceOrder>();
     public DbSet<MarketplacePayment> MarketplacePayments => Set<MarketplacePayment>();
+    public DbSet<MarketplacePaymentRefund> MarketplacePaymentRefunds => Set<MarketplacePaymentRefund>();
     public DbSet<MarketplaceEscrow> MarketplaceEscrows => Set<MarketplaceEscrow>();
     public DbSet<MarketplaceOrderNotificationDelivery> MarketplaceOrderNotificationDeliveries => Set<MarketplaceOrderNotificationDelivery>();
     public DbSet<MarketplaceDispute> MarketplaceDisputes => Set<MarketplaceDispute>();
@@ -872,7 +873,7 @@ public class NexusDbContext : DbContext
                 table.HasCheckConstraint("chk_marketplace_payment_status", "\"Status\" IN ('pending','succeeded','failed','refunded','partially_refunded')");
                 table.HasCheckConstraint("chk_marketplace_payment_payout_status", "\"PayoutStatus\" IN ('pending','scheduled','paid','failed')");
                 table.HasCheckConstraint("chk_marketplace_payment_funds_flow", "\"FundsFlow\" IN ('destination_charge','separate_charge_transfer')");
-                table.HasCheckConstraint("chk_marketplace_payment_amounts", "\"Amount\" > 0 AND \"PlatformFee\" >= 0 AND \"SellerPayout\" >= 0 AND \"PlatformFee\" + \"SellerPayout\" = \"Amount\"");
+                table.HasCheckConstraint("chk_marketplace_payment_amounts", "\"Amount\" > 0 AND \"PlatformFee\" >= 0 AND \"SellerPayout\" >= 0 AND COALESCE(\"RefundAmount\", 0) >= 0 AND \"PlatformFee\" + \"SellerPayout\" + COALESCE(\"RefundAmount\", 0) = \"Amount\"");
             });
             entity.Property(e => e.StripePaymentIntentId).HasMaxLength(255);
             entity.Property(e => e.StripeChargeId).HasMaxLength(255);
@@ -886,12 +887,35 @@ public class NexusDbContext : DbContext
             entity.Property(e => e.RefundAmount).HasPrecision(18, 2);
             entity.Property(e => e.PayoutStatus).HasMaxLength(32);
             entity.Property(e => e.PayoutId).HasMaxLength(255);
+            entity.Property(e => e.StripeDisputeId).HasMaxLength(255);
+            entity.Property(e => e.StripeDisputeStatus).HasMaxLength(32);
+            entity.Property(e => e.DisputePreviousOrderStatus).HasMaxLength(32);
             entity.HasIndex(e => new { e.TenantId, e.MarketplaceOrderId });
             entity.HasIndex(e => new { e.TenantId, e.Status });
             entity.HasIndex(e => e.StripePaymentIntentId).IsUnique();
             entity.HasOne<MarketplaceOrder>()
                 .WithMany()
                 .HasForeignKey(e => new { e.TenantId, e.MarketplaceOrderId })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+        modelBuilder.Entity<MarketplacePaymentRefund>(entity =>
+        {
+            entity.ToTable("marketplace_payment_refunds", table =>
+            {
+                table.HasCheckConstraint("chk_marketplace_payment_refund_amounts",
+                    "\"Amount\" > 0 AND \"PlatformFeeReversal\" >= 0 AND \"SellerPayoutReversal\" >= 0 AND \"PlatformFeeReversal\" + \"SellerPayoutReversal\" <= \"Amount\"");
+            });
+            entity.Property(e => e.StripeRefundId).HasMaxLength(255);
+            entity.Property(e => e.Amount).HasPrecision(18, 2);
+            entity.Property(e => e.PlatformFeeReversal).HasPrecision(18, 2);
+            entity.Property(e => e.SellerPayoutReversal).HasPrecision(18, 2);
+            entity.Property(e => e.Reason).HasMaxLength(500);
+            entity.HasIndex(e => e.StripeRefundId).IsUnique();
+            entity.HasIndex(e => new { e.TenantId, e.MarketplacePaymentId });
+            entity.HasOne<MarketplacePayment>()
+                .WithMany()
+                .HasForeignKey(e => new { e.TenantId, e.MarketplacePaymentId })
                 .HasPrincipalKey(e => new { e.TenantId, e.Id })
                 .OnDelete(DeleteBehavior.Cascade);
         });

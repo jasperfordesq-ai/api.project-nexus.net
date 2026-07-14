@@ -23,11 +23,16 @@ public class AdminMarketplaceController : ControllerBase
 {
     private readonly MarketplaceService _marketplace;
     private readonly NexusDbContext _db;
+    private readonly MarketplacePaymentService? _paymentService;
 
-    public AdminMarketplaceController(MarketplaceService marketplace, NexusDbContext db)
+    public AdminMarketplaceController(
+        MarketplaceService marketplace,
+        NexusDbContext db,
+        MarketplacePaymentService? paymentService = null)
     {
         _marketplace = marketplace;
         _db = db;
+        _paymentService = paymentService;
     }
 
     [HttpGet("dashboard")]
@@ -323,7 +328,7 @@ public class AdminMarketplaceController : ControllerBase
     [HttpPut("disputes/{id:long}/resolve")]
     public async Task<IActionResult> ResolveDispute(long id, [FromBody] MarketplaceDisputeResolutionRequest request, CancellationToken ct)
     {
-        var result = await new MarketplaceDisputeService(_db).ResolveAsync(
+        var result = await new MarketplaceDisputeService(_db, _paymentService).ResolveAsync(
             User.GetTenantId() ?? throw new UnauthorizedAccessException(),
             User.GetUserId() ?? throw new UnauthorizedAccessException(), id,
             request.Resolution, request.ResolutionNotes, request.RefundAmount, ct);

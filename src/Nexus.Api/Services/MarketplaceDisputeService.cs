@@ -17,7 +17,7 @@ public sealed record MarketplaceDisputeResult(object? Data, MarketplaceDisputeEr
     public bool Succeeded => Error is null;
 }
 
-public sealed class MarketplaceDisputeService(NexusDbContext db)
+public sealed class MarketplaceDisputeService(NexusDbContext db, MarketplacePaymentService? payments = null)
 {
     private static readonly HashSet<string> Reasons = ["not_received", "not_as_described", "damaged", "wrong_item", "other"];
     private static readonly HashSet<string> Resolutions = ["buyer", "seller", "closed"];
@@ -103,7 +103,16 @@ public sealed class MarketplaceDisputeService(NexusDbContext db)
             }
             else if ((order.TotalAmount ?? 0) > 0)
             {
-                return new(null, new("RESOLUTION_FAILED", "Fiat refund provider settlement is unavailable", 409));
+                if (payments is null)
+                    return new(null, new("RESOLUTION_FAILED", "Fiat refund provider settlement is unavailable", 409));
+                var refund = await payments.ProcessRefundAsync(tenant, order.Id, refundAmount, notes, ct);
+                if (!refund.Succeeded)
+                    return new(null, new(
+                        refund.Error!.Code == "VALIDATION_ERROR" ? "VALIDATION_ERROR" : "RESOLUTION_FAILED",
+                        refund.Error.Message,
+                        refund.Error.Code == "VALIDATION_ERROR" ? 422 : 409,
+                        refund.Error.Field));
+                settledRefund = refundAmount ?? order.TotalAmount;
             }
             else settledRefund = 0m;
             if (order.Status != "refunded") await RestoreInventory(order, tenant, ct);

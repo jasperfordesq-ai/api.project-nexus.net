@@ -219,6 +219,23 @@ public class MarketplacePayment : ITenantEntity
     public string PayoutStatus { get; set; } = "pending";
     public string? PayoutId { get; set; }
     public DateTime? PaidOutAt { get; set; }
+    public string? StripeDisputeId { get; set; }
+    public string? StripeDisputeStatus { get; set; }
+    public string? DisputePreviousOrderStatus { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+
+public class MarketplacePaymentRefund : ITenantEntity
+{
+    public long Id { get; set; }
+    public int TenantId { get; set; }
+    public long MarketplacePaymentId { get; set; }
+    public string StripeRefundId { get; set; } = string.Empty;
+    public decimal Amount { get; set; }
+    public decimal PlatformFeeReversal { get; set; }
+    public decimal SellerPayoutReversal { get; set; }
+    public string Reason { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
