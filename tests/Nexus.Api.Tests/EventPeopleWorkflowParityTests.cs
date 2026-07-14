@@ -21,6 +21,29 @@ public sealed class EventPeopleWorkflowParityTests : IntegrationTestBase
     public EventPeopleWorkflowParityTests(NexusWebApplicationFactory factory) : base(factory) { }
 
     [Fact]
+    public async Task Relationship_ReturnsCanonicalPrivateSelfProjectionOnBothAliases()
+    {
+        var eventId = await EventWithPendingMemberAsync("confirmed");
+        await AuthenticateAsMemberAsync();
+        foreach (var prefix in new[] { "/api/events", "/api/v2/events" })
+        {
+            var response = await Client.GetAsync($"{prefix}/{eventId}/relationship");
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            response.Headers.CacheControl!.NoStore.Should().BeTrue();
+            var data = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+            data.GetProperty("contract_version").GetInt32().Should().Be(1);
+            data.GetProperty("member_id").GetInt32().Should().Be(TestData.MemberUser.Id);
+            data.GetProperty("registration").GetProperty("state").GetString().Should().Be("confirmed");
+            data.GetProperty("capacity").GetProperty("confirmed").GetInt32().Should().Be(1);
+            data.GetProperty("actions").GetProperty("withdraw").GetBoolean().Should().BeTrue();
+            data.GetProperty("privacy").GetProperty("sensitive_fields_redacted").GetBoolean().Should().BeTrue();
+            data.ToString().ToLowerInvariant().Should().NotContain("email").And.NotContain("notes");
+        }
+        await AuthenticateAsOtherTenantUserAsync();
+        (await Client.GetAsync($"/api/v2/events/{eventId}/relationship")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
     public async Task List_FiltersPaginatesAndReturnsStrictRedactedProjection()
     {
         var eventId = await EventWithPendingMemberAsync(); await AuthenticateAsAdminAsync(); var response = await Client.GetAsync($"/api/v2/events/{eventId}/people?registration_state=pending&sort=name&direction=asc"); response.StatusCode.Should().Be(HttpStatusCode.OK); response.Headers.CacheControl!.NoStore.Should().BeTrue(); var json = await response.Content.ReadFromJsonAsync<JsonElement>(); json.GetProperty("data").GetArrayLength().Should().Be(1); var person = json.GetProperty("data")[0]; person.GetProperty("member").GetProperty("id").GetInt32().Should().Be(TestData.MemberUser.Id); person.ToString().ToLowerInvariant().Should().NotContain("email").And.NotContain("notes"); person.GetProperty("privacy").GetProperty("sensitive_fields_redacted").GetBoolean().Should().BeTrue(); var meta = json.GetProperty("meta"); meta.GetProperty("projection").GetString().Should().Be("full"); meta.GetProperty("capabilities").GetProperty("manage_attendance").GetBoolean().Should().BeTrue();

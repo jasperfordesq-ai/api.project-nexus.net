@@ -21,6 +21,83 @@ public sealed class EventPeopleWorkflowService
     private readonly NexusDbContext _db;
     public EventPeopleWorkflowService(NexusDbContext db) => _db = db;
 
+    public async Task<EventPeopleResult> RelationshipAsync(int tenant, int eventId, int actorId, CancellationToken ct)
+    {
+        var actor = await _db.Users.IgnoreQueryFilters().AsNoTracking()
+            .SingleOrDefaultAsync(x => x.TenantId == tenant && x.Id == actorId && x.IsActive, ct);
+        var evt = await _db.Events.IgnoreQueryFilters().AsNoTracking()
+            .SingleOrDefaultAsync(x => x.TenantId == tenant && x.Id == eventId, ct);
+        if (actor is null || evt is null) return Missing();
+
+        var facts = await FactsAsync(evt, actor, ct);
+        var legacy = await _db.EventRsvps.IgnoreQueryFilters().AsNoTracking()
+            .SingleOrDefaultAsync(x => x.TenantId == tenant && x.EventId == eventId && x.UserId == actorId, ct);
+        var registrationState = facts.Registration?.RegistrationState ?? legacy?.Status switch
+        {
+            "going" or "attending" or "yes" => "confirmed",
+            "declined" or "not_going" or "no" => "declined",
+            _ => null
+        };
+        var confirmed = await _db.EventRegistrations.IgnoreQueryFilters().AsNoTracking()
+            .Where(x => x.TenantId == tenant && x.EventId == eventId && x.CapacityPoolKey == "event" && x.RegistrationState == "confirmed")
+            .SumAsync(x => x.PartySize, ct);
+        var limit = evt.MaxAttendees;
+        var remaining = limit is null ? (int?)null : Math.Max(0, limit.Value - confirmed);
+        var full = limit is not null && remaining == 0;
+        var offerActive = facts.Waitlist?.QueueState == "offered" && facts.Waitlist.OfferExpiresAt > DateTime.UtcNow;
+        var registrable = evt.StartsAt > DateTime.UtcNow
+            && evt.PublicationStatus == "published"
+            && evt.OperationalStatus is not ("cancelled" or "archived" or "completed");
+
+        return new(new
+        {
+            contract_version = 1,
+            event_id = eventId,
+            member_id = actorId,
+            engagement = new { state = legacy?.Status is "interested" or "maybe" ? "interested" : "none", consumes_capacity = false },
+            registration = new
+            {
+                id = facts.Registration?.Id,
+                state = registrationState,
+                version = facts.Registration?.RegistrationVersion,
+                capacity_pool_key = facts.Registration?.CapacityPoolKey ?? "event",
+                allocation_key = facts.Registration?.AllocationKey,
+                changed_at = facts.Registration?.StateChangedAt,
+                invited_at = facts.Registration?.InvitedAt,
+                pending_at = facts.Registration?.PendingAt,
+                confirmed_at = facts.Registration?.ConfirmedAt,
+                declined_at = facts.Registration?.DeclinedAt,
+                cancelled_at = facts.Registration?.CancelledAt
+            },
+            waitlist = new
+            {
+                id = facts.Waitlist?.Id,
+                state = facts.Waitlist?.QueueState,
+                version = facts.Waitlist?.QueueVersion,
+                position = facts.Waitlist?.QueueState is "waiting" or "offered" ? facts.Waitlist.QueueSequence : (long?)null,
+                offered_at = facts.Waitlist?.OfferedAt,
+                offer_expires_at = facts.Waitlist?.OfferExpiresAt,
+                offer_active = offerActive,
+                accepted_at = facts.Waitlist?.AcceptedAt,
+                expired_at = facts.Waitlist?.ExpiredAt,
+                cancelled_at = facts.Waitlist?.CancelledAt
+            },
+            attendance = new { state = facts.Attendance?.AttendanceStatus, checked_in_at = facts.Attendance?.CheckedInAt, checked_out_at = facts.Attendance?.CheckedOutAt },
+            capacity = new { limit, confirmed, remaining, is_full = full },
+            actions = new
+            {
+                registrable,
+                confirm = registrable && registrationState != "confirmed" && !offerActive && (remaining is null || remaining > 0),
+                withdraw = registrationState is "invited" or "pending" or "confirmed",
+                join_waitlist = registrable && registrationState != "confirmed" && facts.Waitlist?.QueueState is not ("waiting" or "offered") && full,
+                leave_waitlist = facts.Waitlist?.QueueState is "waiting" or "offered",
+                accept_offer = registrable && offerActive,
+                idempotency_key_required = true
+            },
+            privacy = new { sensitive_fields_redacted = true }
+        });
+    }
+
     public async Task<EventPeopleResult> ListAsync(int tenant, int eventId, int actorId, IReadOnlyDictionary<string, string?> input, CancellationToken ct)
     {
         var access = await ManageAsync(tenant, eventId, actorId, ct); if (access.Error is not null) return access; var evt = (Event)access.Data!; var parsed = Parse(input); if (parsed.Error is not null) return parsed; var q = ((int Page, int PerPage, string? Search, string? Registration, string? Waitlist, string? Attendance, string? Engagement, string Sort, string Direction))parsed.Data!;

@@ -15,8 +15,11 @@ gaps/folds fail closed. Publication converges the complete series while operatio
 lifecycle changes converge the root and future occurrences, preserve immutable
 member evidence, and emit one authoritative root fact. Migration 140 replays from
 an empty PostgreSQL database, model drift is clear, and recurrence/lifecycle/route-
-ownership proof passes 9/9, 11/11, and 114/114. The current inventory is
-2,579/2,608 (98.9%); 29 route shapes and broader runtime certification remain open.
+ownership proof passes 9/9, 11/11, and 114/114. Canonical self-relationship reads
+now expose redacted registration, waitlist, attendance, capacity, and action facts
+on both aliases, with migrated HTTP proof. Personal calendar, guardian grant, and
+guest attendance also have explicit canonical aliases. The current inventory is
+2,583/2,608 (99.0%); 25 route shapes and broader runtime certification remain open.
 
 ## Inventory Baseline
 

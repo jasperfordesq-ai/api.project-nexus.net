@@ -22,9 +22,12 @@ the full chain replay cleanly; model drift, Debug/Release build, comparator fixt
 Recurring publication converges the complete series; operational lifecycle changes
 converge the root and future occurrences, emit one authoritative root fact, and
 preserve immutable per-member evidence. Member/admin cancel and delete routes no
-longer use direct flags or physical deletion. The live inventory is 2,579/2,608
-with 29 misses. Provisional global scores are 815/1000 implementation, 690/1000
-certification, and 70% overall. Resume with the 29-route/runtime queue, then the
+longer use direct flags or physical deletion. Canonical self-relationship reads are
+now redacted, tenant-safe, and available on both aliases; personal calendar,
+guardian grant, and guest attendance also expose explicit canonical aliases. The
+live inventory is 2,583/2,608 with 25 misses. Provisional global scores are
+815/1000 implementation, 690/1000
+certification, and 70% overall. Resume with the 25-route/runtime queue, then the
 complete suite/CI, unchanged canonical frontend smoke, schema/localization depth,
 and live-provider certification.
 

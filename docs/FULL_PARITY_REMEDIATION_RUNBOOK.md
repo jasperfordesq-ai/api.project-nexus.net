@@ -64,15 +64,18 @@ this lifecycle instead of direct flag writes or physical deletion, and
 
 The migrated recurrence suite passes 9/9 and the lifecycle suite passes 11/11.
 The admin route-ownership suite passes 114/114. Debug and Release builds have zero
-errors, EF model drift is clean, and comparator fixture/live refresh remain green
-at 2,579/2,608 operations (98.9%, 29 static misses). A legacy admin-controller test
+errors, EF model drift is clean, and comparator fixture/live refresh remain green.
+The canonical self-relationship read now projects redacted registration, waitlist,
+attendance, capacity, and action facts on both aliases; personal calendar, guardian
+grant, and guest-attendance aliases are explicitly represented. The live inventory
+is 2,583/2,608 operations (99.0%, 25 static misses). A legacy admin-controller test
 attempt was environment-blocked before application assertions because Testcontainers
 could not initialize its resource reaper; it is unknown rather than green.
 
 Current provisional global scores are **815/1000 implementation** and **690/1000
 certification confidence**. The honest combined finish-line estimate is **70%**,
 up from the goal baseline of 42% and the previous published checkpoint of 68%.
-The 29 remaining route shapes, complete-suite/CI proof, unchanged canonical-
+The 25 remaining route shapes, complete-suite/CI proof, unchanged canonical-
 frontend-on-ASP.NET browser proof, broader schema/localization depth, and live-
 provider evidence remain open. No production resource or frontend file was touched.
 

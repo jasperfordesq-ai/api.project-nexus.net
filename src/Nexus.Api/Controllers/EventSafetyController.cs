@@ -12,7 +12,9 @@ namespace Nexus.Api.Controllers;
 [ApiController,Authorize]
 public sealed class EventSafetyController(EventSafetyService safety):ControllerBase
 {
-    [AllowAnonymous,HttpPost("api/events/safety/guardian-consents/grant"),HttpPost("api/v2/events/safety/guardian-consents/grant")]
+    [AllowAnonymous]
+    [HttpPost("api/events/safety/guardian-consents/grant")]
+    [HttpPost("api/v2/events/safety/guardian-consents/grant")]
     public Task<IActionResult> Grant([FromBody]JsonElement b,CancellationToken ct)=>Run(safety.GrantGuardianAsync(Text(b,"token")??"",Text(b,"guardian_email")??"",Key(),ct));
     [HttpGet("api/events/{id:int}/safety"),HttpGet("api/v2/events/{id:int}/safety")]
     public Task<IActionResult> Show(int id,CancellationToken ct)=>Run(safety.ReadAsync(Tenant(),id,UserId(),ct));

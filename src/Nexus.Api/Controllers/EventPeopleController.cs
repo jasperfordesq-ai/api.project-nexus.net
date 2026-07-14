@@ -17,6 +17,10 @@ public sealed class EventPeopleController : ControllerBase
     private readonly EventPeopleWorkflowService _people;
     public EventPeopleController(EventPeopleWorkflowService people) => _people = people;
 
+    [HttpGet("api/events/{id:int}/relationship")]
+    [HttpGet("api/v2/events/{id:int}/relationship")]
+    public async Task<IActionResult> Relationship(int id, CancellationToken ct) => Respond(await _people.RelationshipAsync(TenantId(), id, UserId(), ct));
+
     [HttpGet("api/events/{id:int}/people")]
     [HttpGet("api/v2/events/{id:int}/people")]
     public async Task<IActionResult> Index(int id, CancellationToken ct) => Respond(await _people.ListAsync(TenantId(), id, UserId(), Query(), ct));
