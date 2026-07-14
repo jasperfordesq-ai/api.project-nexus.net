@@ -1852,7 +1852,7 @@ app.use('/events', requireAuth, doubleCsrfProtection, postOnly(formLimiter), eve
 app.use('/event-templates', doubleCsrfProtection, postOnly(formLimiter), eventTemplateRoutes);
 app.use('/marketplace', doubleCsrfProtection, postOnly(formLimiter), marketplaceActionRoutes);
 app.use('/volunteering', requireAuth, doubleCsrfProtection, postOnly(formLimiter), volunteeringActionRoutes);
-app.use('/feed', postOnly(requireAuth), doubleCsrfProtection, postOnly(formLimiter), feedActionRoutes);
+app.use('/feed', doubleCsrfProtection, postOnly(formLimiter), feedActionRoutes);
 app.use('/feed', doubleCsrfProtection, postOnly(formLimiter), feedRoutes);
 app.use('/matches', doubleCsrfProtection, postOnly(formLimiter), matchesRoutes);
 app.use('/achievements', doubleCsrfProtection, postOnly(formLimiter), achievementsRoutes);

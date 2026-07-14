@@ -14482,7 +14482,7 @@ describe('shared accessible frontend shell', () => {
     });
   });
 
-  it('redirects signed-out Laravel feed aliases to the auth-required login', async () => {
+  it('keeps signed-out Laravel feed aliases on the public Feed workflow', async () => {
     const api = require('../src/lib/api');
     const agent = request.agent(app);
     const first = await agent.get('/contact');
@@ -14493,14 +14493,19 @@ describe('shared accessible frontend shell', () => {
       .type('form')
       .send({ _csrf: csrfMatch[1], content: 'Signed out post' });
     expect(createResponse.status).toBe(302);
-    expect(createResponse.headers.location).toBe('/login?status=auth-required');
+    expect(createResponse.headers.location).toBe('/feed');
 
     const actionResponse = await agent
       .post('/feed/posts/42/share')
       .type('form')
       .send({ _csrf: csrfMatch[1] });
     expect(actionResponse.status).toBe(302);
-    expect(actionResponse.headers.location).toBe('/login?status=auth-required');
+    expect(actionResponse.headers.location).toBe('/feed?status=auth-required#feed-item-post-42');
+
+    const publicFeed = await agent.get('/feed?status=auth-required');
+    expect(publicFeed.status).toBe(200);
+    expect(publicFeed.text).toContain('id="feed-auth-required-title"');
+    expect(publicFeed.text).not.toContain('id="feed-action-error-title"');
     expect(api.createFeedPostV2).not.toHaveBeenCalled();
     expect(api.shareFeedItem).not.toHaveBeenCalled();
   });

@@ -338,15 +338,14 @@ function feedIndexStatusMessage(status, t) {
     'save-removed': 'feed_t1.status_save_removed',
     'save-failed': 'feed_t1.status_save_failed',
     'not-interested': 'govuk_alpha_feed.states.not_interested',
-    'not-interested-failed': 'govuk_alpha_feed.states.not_interested_failed',
-    'auth-required': 'govuk_alpha_feed.states.auth_required'
+    'not-interested-failed': 'govuk_alpha_feed.states.not_interested_failed'
   };
   const errorStatuses = new Set([
     'post-empty', 'post-failed', 'post-update-failed', 'post-delete-failed',
     'like-failed', 'comment-empty', 'comment-too-long', 'comment-failed',
     'comment-update-failed', 'comment-delete-failed', 'moderation-failed',
     'poll-vote-failed', 'reaction-failed', 'share-failed', 'share-own',
-    'save-failed', 'not-interested-failed', 'auth-required'
+    'save-failed', 'not-interested-failed'
   ]);
   const key = keys[status];
   if (!key || typeof t !== 'function') return null;
