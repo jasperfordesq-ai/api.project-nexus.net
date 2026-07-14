@@ -13439,9 +13439,12 @@ describe('shared accessible frontend shell', () => {
     });
     expect(response.text).toContain('<h1');
     expect(response.text).toContain('Feed');
-    expect(response.text).toContain('There are no feed items to show yet.');
     expect(response.text).toContain('Your post has been added.');
-    expect(response.text).toContain('Sorry, there is a problem loading the feed.');
+    expect(response.text).toContain('id="feed-load-error-title">There is a problem</h2>');
+    expect(response.text).toContain('Feed items could not be loaded. Try again.');
+    expect(response.text).not.toContain('There are no feed items to show yet.');
+    expect(response.text).not.toContain('No feed items shown');
+    expect(response.text).not.toContain('>Important</h2>');
     expect(response.text).not.toContain('Page not found');
   });
 

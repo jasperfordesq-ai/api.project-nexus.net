@@ -155,13 +155,23 @@
         </fieldset>
       </form>
 
-      <h2 class="govuk-heading-l">{{ t("feed.results_title") }}</h2>
-      <p class="govuk-body nexus-alpha-result-count" aria-live="polite">
-        {{ tc("feed.result_count", posts.length, { count: posts.length }) }}
-      </p>
+      {% if feedLoadError %}
+        <div class="govuk-notification-banner" data-module="govuk-notification-banner" role="region" aria-labelledby="feed-load-error-title">
+          <div class="govuk-notification-banner__header">
+            <h2 class="govuk-notification-banner__title" id="feed-load-error-title">{{ t("states.error_title") }}</h2>
+          </div>
+          <div class="govuk-notification-banner__content">
+            <p class="govuk-notification-banner__heading">{{ feedLoadError }}</p>
+          </div>
+        </div>
+      {% else %}
+        <h2 class="govuk-heading-l">{{ t("feed.results_title") }}</h2>
+        <p class="govuk-body nexus-alpha-result-count" aria-live="polite">
+          {{ tc("feed.result_count", posts.length, { count: posts.length }) }}
+        </p>
 
-      {# Posts list #}
-      {% if posts.length > 0 %}
+        {# Posts list #}
+        {% if posts.length > 0 %}
         <div class="nexus-alpha-card-list">
           {% for post in posts %}
             <article id="feed-item-{{ post.type }}-{{ post.id }}" class="nexus-alpha-card">
@@ -434,11 +444,12 @@
             </div>
           </nav>
         {% endif %}
-      {% else %}
-        <div class="govuk-inset-text">
-          <h3 class="govuk-heading-m">{{ t("states.empty_title") }}</h3>
-          <p class="govuk-body">{{ t("feed.empty") }}</p>
-        </div>
+        {% else %}
+          <div class="govuk-inset-text">
+            <h3 class="govuk-heading-m">{{ t("states.empty_title") }}</h3>
+            <p class="govuk-body">{{ t("feed.empty") }}</p>
+          </div>
+        {% endif %}
       {% endif %}
 
     </div>

@@ -548,7 +548,7 @@ router.get('/', asyncRoute(withTokenRefresh(async (req, res) => {
   const feedResult = token
     ? await getFeedPosts(token, feedParams).catch((error) => {
       if (error instanceof ApiError && error.status === 401) throw error;
-      feedErrorMessage = 'Sorry, there is a problem loading the feed.';
+      feedErrorMessage = (req.t || res.locals.t)('feed.error_detail');
       return { data: [], meta: { per_page: perPage, has_more: false } };
     })
     : { data: [], meta: { per_page: perPage, has_more: false } };
@@ -592,7 +592,8 @@ router.get('/', asyncRoute(withTokenRefresh(async (req, res) => {
     csrfToken: req.csrfToken ? req.csrfToken() : '',
     statusMessage,
     successMessage: req.flash ? req.flash('success')[0] : null,
-    errorMessage: feedErrorMessage || (req.flash ? req.flash('error')[0] : null)
+    feedLoadError: feedErrorMessage,
+    errorMessage: req.flash ? req.flash('error')[0] : null
   });
 })));
 
