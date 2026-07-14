@@ -27410,6 +27410,18 @@ describe('shared accessible frontend shell', () => {
       message: 'Could you help next week?'
     });
 
+    const castExchangeResponse = await post('/listings/42/exchange-request', {
+      proposed_hours: 'not-a-number',
+      prep_time: '30',
+      message: '   '
+    });
+    expect(castExchangeResponse.headers.location).toBe('/exchanges/88?status=exchange-created');
+    expect(api.createExchangeRequest).toHaveBeenLastCalledWith('test-token', {
+      listing_id: 42,
+      proposed_hours: 0.25,
+      prep_time: 30
+    });
+
     const reportResponse = await post('/listings/42/report', {
       reason: 'spam',
       details: ' Duplicate spam '

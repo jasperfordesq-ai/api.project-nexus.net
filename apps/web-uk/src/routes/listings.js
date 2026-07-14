@@ -64,12 +64,13 @@ function positiveInteger(value) {
   return Number.isInteger(number) && number > 0 ? number : null;
 }
 
-function boundedNumber(value, min, max, fallback = null) {
-  const number = Number(value);
-  if (!Number.isFinite(number)) {
-    return fallback;
-  }
-  return Math.max(min, Math.min(max, number));
+function phpFloat(value) {
+  const match = String(value ?? '').trimStart().match(
+    /^[+-]?(?:(?:\d+\.?\d*)|(?:\.\d+))(?:e[+-]?\d+)?/i
+  );
+  if (!match) return 0;
+  const number = Number(match[0]);
+  return Number.isFinite(number) ? number : 0;
 }
 
 function dataFrom(result) {
@@ -1003,13 +1004,16 @@ router.post('/:listingId(\\d+)/exchange-request', asyncRoute(async (req, res) =>
     return redirectTo(res, listingRedirect(listingId, 'exchange-disabled'));
   }
 
+  const proposedHoursInput = Object.prototype.hasOwnProperty.call(req.body || {}, 'proposed_hours')
+    ? req.body.proposed_hours
+    : 1;
   const prepTime = trimmed(req.body.prep_time) === ''
     ? null
-    : boundedNumber(req.body.prep_time, 0, 24, null);
+    : phpFloat(req.body.prep_time);
   const message = trimmed(req.body.message, 5000);
   const payload = {
     listing_id: listingId,
-    proposed_hours: boundedNumber(req.body.proposed_hours, 0.25, 24, 1)
+    proposed_hours: Math.max(0.25, Math.min(24, phpFloat(proposedHoursInput)))
   };
   if (prepTime !== null) {
     payload.prep_time = prepTime;
