@@ -17710,8 +17710,11 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('12.5 hours');
     expect(response.text).toContain('Views over the last 30 days');
     expect(response.text).toContain('1 July');
+    expect(response.text).toContain('<progress value="7" max="7" aria-label="Views on 1 July">7</progress>');
+    expect(response.text).toContain('<progress value="2" max="2" aria-label="Applications in week 209927">2</progress>');
     expect(response.text).toContain('Applications by stage');
     expect(response.text).toContain('Screening');
+    expect(response.text).toContain('aria-label="Screening: 100%"');
     expect(response.text).toContain('Referrals');
     expect(response.text).toContain('Referral shares');
     expect(response.text).toContain('Average scorecard');
@@ -17720,7 +17723,11 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Based on 4 similar filled opportunities');
     expect(response.text).toContain('Expected applications');
     expect(response.text).toContain('14 days');
+    expect(response.text).toContain('Posted 4 days ago');
+    expect(response.text).toContain('govuk-tag--yellow">Below average</strong>');
     expect(response.text).toContain('Salary vs market');
+    expect(response.text).toContain('+9% above average');
+    expect(response.text).not.toContain('class="govuk-button" data-module="govuk-button" href="/jobs/501/pipeline"');
     expect(response.text).not.toContain('Laravel Blade route');
   });
 

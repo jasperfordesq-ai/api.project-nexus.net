@@ -924,39 +924,62 @@ function analyticsSeries(rows, labelKey, labelFormatter = null) {
   });
 }
 
-function decorateAnalytics(result) {
+function decorateAnalytics(result, req) {
   const analytics = analyticsFrom(result);
   if (!analytics) return null;
 
-  const referralStats = analytics.referral_stats && typeof analytics.referral_stats === 'object'
+  const hasReferralStats = analytics.referral_stats && typeof analytics.referral_stats === 'object';
+  const referralStats = hasReferralStats
     ? analytics.referral_stats
     : {};
+  const totalApplications = finiteNumber(analytics.total_applications, 0);
+  const viewsByDay = analyticsSeries(analytics.views_by_day, 'date', formatDateOnlyShort);
+  const weeklyTrend = analyticsSeries(analytics.weekly_trend, 'week');
+  const applicationsByStage = (Array.isArray(analytics.applications_by_stage) ? analytics.applications_by_stage : []).map((row) => {
+    const stage = trimmed(row.stage) || 'applied';
+    const count = finiteNumber(row.count, 0);
+    const percentage = totalApplications > 0 ? Math.round((count / totalApplications) * 100) : 0;
+
+    return {
+      ...row,
+      stage,
+      label: translateStatusMessage(
+        req,
+        `govuk_alpha_jobs.stage.${stage}`,
+        JOB_PIPELINE_LABELS[stage] || JOB_APPLICATION_LABELS[stage] || statusTitle(stage)
+      ),
+      count,
+      percentage
+    };
+  });
 
   return {
     ...analytics,
     totalViews: finiteNumber(analytics.total_views, 0),
+    totalViewsLabel: formatPlainNumber(analytics.total_views),
     uniqueViewers: finiteNumber(analytics.unique_viewers, 0),
-    totalApplications: finiteNumber(analytics.total_applications, 0),
+    uniqueViewersLabel: formatPlainNumber(analytics.unique_viewers),
+    totalApplications,
+    totalApplicationsLabel: formatPlainNumber(totalApplications),
     conversionRate: finiteNumber(analytics.conversion_rate, 0),
-    averageTimeToApplyHours: finiteNumber(analytics.avg_time_to_apply_hours, 0),
-    timeToFillDays: finiteNumber(analytics.time_to_fill_days, 0),
-    viewsByDay: analyticsSeries(analytics.views_by_day, 'date', formatDateOnlyShort),
-    weeklyTrend: analyticsSeries(analytics.weekly_trend, 'week'),
-    applicationsByStage: (Array.isArray(analytics.applications_by_stage) ? analytics.applications_by_stage : []).map((row) => {
-      const stage = trimmed(row.stage);
-
-      return {
-        ...row,
-        stage,
-        label: JOB_PIPELINE_LABELS[stage] || JOB_APPLICATION_LABELS[stage] || statusTitle(stage) || 'Unknown',
-        count: finiteNumber(row.count, 0)
-      };
-    }),
-    referralStats: {
+    averageTimeToApplyHours: analytics.avg_time_to_apply_hours === null || analytics.avg_time_to_apply_hours === undefined
+      ? null
+      : finiteNumber(analytics.avg_time_to_apply_hours, 0),
+    timeToFillDays: analytics.time_to_fill_days === null || analytics.time_to_fill_days === undefined
+      ? null
+      : finiteNumber(analytics.time_to_fill_days, 0),
+    viewsByDay,
+    maxViews: Math.max(1, ...viewsByDay.map((row) => row.count)),
+    weeklyTrend,
+    maxWeekly: Math.max(1, ...weeklyTrend.map((row) => row.count)),
+    applicationsByStage,
+    referralStats: hasReferralStats ? {
       totalShares: finiteNumber(referralStats.total_shares, 0),
+      totalSharesLabel: formatPlainNumber(referralStats.total_shares),
       referralApplications: finiteNumber(referralStats.referral_applications, 0),
+      referralApplicationsLabel: formatPlainNumber(referralStats.referral_applications),
       referralConversionPct: finiteNumber(referralStats.referral_conversion_pct, 0)
-    },
+    } : null,
     scorecardAverage: analytics.scorecard_avg === null || analytics.scorecard_avg === undefined
       ? null
       : finiteNumber(analytics.scorecard_avg, 0)
@@ -1003,7 +1026,9 @@ function decoratePredictions(result) {
       aboveAverage: predictionAboveAverage(expectedApplications)
     },
     estimatedTimeToFill: {
-      value: finiteNumber(estimatedTimeToFill.value, 0),
+      value: estimatedTimeToFill.value === null || estimatedTimeToFill.value === undefined
+        ? null
+        : finiteNumber(estimatedTimeToFill.value, 0),
       daysPosted: finiteNumber(estimatedTimeToFill.days_posted, 0)
     },
     conversionRate: {
@@ -2179,7 +2204,7 @@ router.get('/:id(\\d+)/analytics', asyncRoute(async (req, res) => {
     titleKey: 'govuk_alpha_jobs.analytics.title',
     activeNav: 'explore',
     job: decorateJob(job),
-    analytics: decorateAnalytics(analyticsResult),
+    analytics: decorateAnalytics(analyticsResult, req),
     predictions: decoratePredictions(predictionsResult)
   });
 }));
