@@ -173,7 +173,7 @@ these numbers after either source moves.
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
 | Jest | 49/49 suites, 1,649/1,649 tests | Fresh green code gate |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
-| Static locale usage | 7,339 references, 5,618 unique keys, 0 unresolved | Current complete-reference audit |
+| Static locale usage | 7,337 references, 5,618 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
 | Blade marker check | Current 19/19 | Current-source public GET marker comparison; not screenshot or visual certification |
 | Automated accessibility | Not currently certified: 28 passed, login failed, 58 did not run | Full aggregate requires a disposable Laravel environment; manual AT review remains open |
@@ -403,6 +403,24 @@ gate passes 49/49 suites and 1,649/1,649 tests; lint and the 7,339-reference /
 5,618-unique-key zero-unresolved locale and 322-template zero-match audits are
 green. Route/API inventories remain unchanged, and no Laravel mutation or
 database access ran.
+
+## Marketplace Browse Card Refresh
+
+The marketplace index now follows Blade's browse-card presentation rather
+than reusing listing-detail pricing. A listing with both cash and time-credit
+prices shows only its time-credit price with Blade's blue tag in browse,
+advanced-search, and shared collection cards; detail and checkout retain the
+intentional hybrid cash-or-credit wording and purple tag. The index category
+list also uses Blade's exact class set, and query-status data remains
+request-localized for controller compatibility without rendering the generic
+banner that is absent from the Blade index.
+
+Focused browse, hybrid-detail, and 64-case status-localization proof passes
+66/66. The complete Jest gate passes 49/49 suites and 1,649/1,649 tests; lint,
+the 7,337-reference / 5,618-unique-key zero-unresolved locale audit, and the
+322-template zero-match audit are green. The route matrix remains 688/689 and
+the ledger remains 590 contracts with no untested consumer. No Laravel
+request, mutation, database access, upload, or download ran.
 
 ## Marketplace Offer Workflow Refresh
 

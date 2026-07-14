@@ -121,7 +121,7 @@
         <article class="nexus-alpha-card">
           <div class="nexus-alpha-module-row">
             <h3 class="govuk-heading-s govuk-!-margin-bottom-1"><a class="govuk-link" href="{{ urlFor('/marketplace/' + (item.id | string)) }}">{{ item.title }}</a></h3>
-            <strong class="govuk-tag govuk-tag--blue">{{ item.priceLabel }}</strong>
+            <strong class="govuk-tag govuk-tag--blue">{{ item.cardPriceLabel }}</strong>
           </div>
         {% if item.conditionLabel %}
             <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-0">{{ item.conditionLabel }}</p>

@@ -15,7 +15,7 @@
         <h2 class="govuk-heading-s govuk-!-margin-bottom-1">
           <a class="govuk-link" href="{{ urlFor(item.href) }}">{{ item.title }}</a>
         </h2>
-        <strong class="govuk-tag {{ item.priceTagClass }}">{{ item.priceLabel }}</strong>
+        <strong class="govuk-tag {{ item.cardPriceTagClass }}">{{ item.cardPriceLabel }}</strong>
       </div>
       {% if item.summary %}
         <p class="govuk-body govuk-!-margin-bottom-1">{{ item.summary }}</p>

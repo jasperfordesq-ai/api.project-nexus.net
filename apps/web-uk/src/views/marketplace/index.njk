@@ -8,17 +8,6 @@
 {% block mainContent %}
   {% include "marketplace/_nav.njk" %}
 
-  {% if status %}
-    <div class="{% if status.type == 'error' %}govuk-error-summary{% else %}govuk-notification-banner govuk-notification-banner--success{% endif %}" data-module="{% if status.type == 'error' %}govuk-error-summary{% else %}govuk-notification-banner{% endif %}" tabindex="-1">
-      <div role="alert">
-        <h2 class="{% if status.type == 'error' %}govuk-error-summary__title{% else %}govuk-notification-banner__title{% endif %}">{% if status.type == 'error' %}{{ t("govuk_alpha_commerce.common.error_title") }}{% else %}{{ t("states.success_title") }}{% endif %}</h2>
-        <div class="{% if status.type == 'error' %}govuk-error-summary__body{% else %}govuk-notification-banner__content{% endif %}">
-          <p class="govuk-body">{{ status.message }}</p>
-        </div>
-      </div>
-    </div>
-  {% endif %}
-
   <span class="govuk-caption-xl">{{ t("marketplace.caption", { community: tenantName or serviceName }) }}</span>
   <h1 class="govuk-heading-xl">{{ t("marketplace.title") }}</h1>
   <p class="govuk-body-l">{{ t("marketplace.description") }}</p>
@@ -57,7 +46,7 @@
 
   {% if categories.length %}
     <h2 class="govuk-heading-s">{{ t("govuk_alpha_commerce.category.browse_heading") }}</h2>
-    <ul class="govuk-list nexus-alpha-inline-list govuk-!-margin-bottom-6">
+    <ul class="nexus-alpha-inline-list govuk-!-margin-bottom-6">
       {% for category in categories %}
         {% if category.href %}
           <li><a class="govuk-link" href="{{ urlFor(category.href) }}">{{ category.name }}</a></li>
@@ -83,7 +72,7 @@
             <div class="nexus-alpha-listing-row__body">
               <div class="nexus-alpha-module-row">
                 <h2 class="govuk-heading-s govuk-!-margin-bottom-1"><a class="govuk-link" href="{{ urlFor(item.href) }}">{{ item.title }}</a></h2>
-                <strong class="govuk-tag {{ item.priceTagClass }}">{{ item.priceLabel }}</strong>
+                <strong class="govuk-tag {{ item.cardPriceTagClass }}">{{ item.cardPriceLabel }}</strong>
               </div>
               {% if item.summary %}
                 <p class="govuk-body govuk-!-margin-bottom-1">{{ item.summary }}</p>

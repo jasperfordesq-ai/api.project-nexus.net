@@ -29964,6 +29964,14 @@ describe('shared accessible frontend shell', () => {
             condition: 'good',
             location: 'Belfast',
             image: { thumbnail_url: '/uploads/bike-thumb.jpg' }
+          },
+          {
+            id: 43,
+            title: 'Hybrid tool kit',
+            price: 12.5,
+            price_currency: 'GBP',
+            time_credit_price: 3,
+            price_type: 'fixed'
           }
         ],
         meta: { cursor: null, has_more: false, per_page: 30 }
@@ -29975,7 +29983,7 @@ describe('shared accessible frontend shell', () => {
       });
 
     const response = await request(app)
-      .get('/marketplace?q=bike&category_id=9')
+      .get('/marketplace?q=bike&category_id=9&status=deleted')
       .set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(200);
@@ -29987,6 +29995,10 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Community bike');
     expect(response.text).toContain('Freshly serviced');
     expect(response.text).toContain('GBP 15.50');
+    expect(response.text).toContain('Hybrid tool kit');
+    expect(response.text).toContain('3 time credits');
+    expect(response.text).not.toContain('GBP 12.50 or 3 time credits');
+    expect(response.text).not.toContain('Your listing was deleted.');
     expect(response.text).toContain('Belfast');
     expect(response.text).toContain('href="/marketplace/42"');
     expect(response.text).toContain('href="/marketplace/category/transport"');

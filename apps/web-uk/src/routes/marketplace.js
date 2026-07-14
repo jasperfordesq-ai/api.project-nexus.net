@@ -493,6 +493,22 @@ function priceTagClass(row) {
   return 'govuk-tag--grey';
 }
 
+function cardPriceLabel(row) {
+  const credits = decimalNumber(row.time_credit_price);
+  const money = decimalNumber(row.price);
+  if (credits > 0) return formatCredits(credits);
+  if (money > 0) return formatMoney(money, row.price_currency);
+  return 'Free';
+}
+
+function cardPriceTagClass(row) {
+  const credits = decimalNumber(row.time_credit_price);
+  const money = decimalNumber(row.price);
+  if (credits > 0) return 'govuk-tag--blue';
+  if (money > 0) return 'govuk-tag--grey';
+  return 'govuk-tag--green';
+}
+
 function imageUrls(row) {
   const urls = [];
   const images = Array.isArray(row.images) ? row.images : [];
@@ -548,9 +564,11 @@ function decorateListing(listing) {
     priceType,
     priceTypeLabel: PRICE_TYPE_LABELS[priceType] || priceType,
     priceLabel: priceLabel(row),
+    cardPriceLabel: cardPriceLabel(row),
     moneyLabel: formatMoney(money, row.price_currency),
     askingPriceLabel: money > 0 ? formatMoney(money, row.price_currency) : '',
     priceTagClass: priceTagClass(row),
+    cardPriceTagClass: cardPriceTagClass(row),
     price: row.price ?? '',
     priceCurrency: trimmed(row.price_currency || 'EUR', 3).toUpperCase() || 'EUR',
     timeCreditPrice: row.time_credit_price ?? '',
