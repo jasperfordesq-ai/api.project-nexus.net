@@ -146,6 +146,8 @@ public class MarketplaceOrder : ITenantEntity
     public int Quantity { get; set; } = 1;
     public decimal? TotalAmount { get; set; }
     public decimal? TimeCreditTotal { get; set; }
+    public int? WalletTransactionId { get; set; }
+    public int? WalletRefundTransactionId { get; set; }
     public string Currency { get; set; } = "EUR";
     public string Status { get; set; } = "pending";
     public string DeliveryMethod { get; set; } = "pickup";
@@ -159,6 +161,25 @@ public class MarketplaceOrder : ITenantEntity
     public DateTime? UpdatedAt { get; set; }
 
     public MarketplaceListing? Listing { get; set; }
+}
+
+public class MarketplaceDispute : ITenantEntity
+{
+    public long Id { get; set; }
+    public int TenantId { get; set; }
+    public int MarketplaceOrderId { get; set; }
+    public int OpenedByUserId { get; set; }
+    public string Reason { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string? EvidenceUrlsJson { get; set; }
+    public string Status { get; set; } = "open";
+    public string? PriorOrderStatus { get; set; }
+    public string? ResolutionNotes { get; set; }
+    public int? ResolvedByUserId { get; set; }
+    public DateTime? ResolvedAt { get; set; }
+    public decimal? RefundAmount { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
 
 public class MarketplaceReport : ITenantEntity

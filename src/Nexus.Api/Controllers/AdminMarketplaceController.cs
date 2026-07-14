@@ -312,6 +312,24 @@ public class AdminMarketplaceController : ControllerBase
         return CaseResult(result);
     }
 
+    [HttpGet("disputes")]
+    public async Task<IActionResult> Disputes([FromQuery] string? status = null, [FromQuery] int page = 1, [FromQuery(Name = "per_page")] int perPage = 20, CancellationToken ct = default)
+    {
+        var result = await new MarketplaceDisputeService(_db).AdminListAsync(
+            User.GetTenantId() ?? throw new UnauthorizedAccessException(), status, page, perPage, ct);
+        return DisputeResult(result);
+    }
+
+    [HttpPut("disputes/{id:long}/resolve")]
+    public async Task<IActionResult> ResolveDispute(long id, [FromBody] MarketplaceDisputeResolutionRequest request, CancellationToken ct)
+    {
+        var result = await new MarketplaceDisputeService(_db).ResolveAsync(
+            User.GetTenantId() ?? throw new UnauthorizedAccessException(),
+            User.GetUserId() ?? throw new UnauthorizedAccessException(), id,
+            request.Resolution, request.ResolutionNotes, request.RefundAmount, ct);
+        return DisputeResult(result);
+    }
+
     [HttpGet("transparency")]
     public async Task<IActionResult> Transparency()
     {
@@ -478,12 +496,23 @@ public class AdminMarketplaceController : ControllerBase
         var error = result.Error!;
         return StatusCode(error.Status, new { success = false, errors = new[] { new { code = error.Code, message = error.Message, field = error.Field } } });
     }
+
+    private IActionResult DisputeResult(MarketplaceDisputeResult result)
+    {
+        if (result.Succeeded) return StatusCode(result.Status, new { success = true, data = result.Data });
+        var error = result.Error!;
+        return StatusCode(error.Status, new { success = false, errors = new[] { new { code = error.Code, message = error.Message, field = error.Field } } });
+    }
 }
 
 public record AdminModerationRequest(string? Notes);
 public sealed record MarketplaceReportResolutionRequest(
     [property: JsonPropertyName("action_taken")] string? ActionTaken,
     [property: JsonPropertyName("resolution_reason")] string? ResolutionReason);
+public sealed record MarketplaceDisputeResolutionRequest(
+    string? Resolution,
+    [property: JsonPropertyName("resolution_notes")] string? ResolutionNotes,
+    [property: JsonPropertyName("refund_amount")] decimal? RefundAmount);
 public record AdminBulkModerationRequest(
     int[]? Ids,
     string? Notes,

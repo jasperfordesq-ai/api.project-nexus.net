@@ -6,16 +6,18 @@ Canonical source: `C:\platforms\htdocs\staging` (read-only).
 
 ## Latest Verified Backend Slice
 
-Marketplace report creation, member list/show/appeal, and administrator queue,
-acknowledge/resolve/appeal resolution now share one tenant-safe serialized DSA state
-machine. Affected sellers receive redacted views; enforcement snapshots and ownership
-markers make listing removal and seller suspension safely reversible. Migration 143
-normalizes legacy rows before installing canonical constraints and evidence fields.
-Blank replay, model drift, Debug/Release builds, 2/2 focused workflow proof, and the
-122/122 ownership/admin marketplace gate are green. The live inventory is
-**2,589/2,608 (99.3%, 19 missing)**. Financially coupled order-dispute resolution,
-complete-suite/CI proof, unchanged-frontend runtime proof, schema/localization depth,
-and live-provider certification remain open.
+Marketplace order disputes now have a tenant-safe serialized aggregate, canonical
+creation validation and admin queue, saved prior-order state, replay-safe outcomes,
+durable participant notifications, and exactly-once inventory restoration. Free
+buyer resolutions settle at zero and time-credit resolutions append a linked full
+ledger reversal after verifying the original settlement. Seller/closed outcomes
+restore the prior state; fiat resolution fails closed without mutation until real
+provider/escrow evidence exists. Migration 144 replays in the complete blank chain,
+model drift is clean, focused upgraded/blank proof passes 3/3 each, the affected
+marketplace set passes 16/16, route ownership passes 114/114, and Debug/Release builds
+are green. The live inventory is **2,591/2,608 (99.3%, 17 missing)**. Real fiat
+settlement, complete-suite/CI proof, unchanged-frontend runtime proof, schema/
+localization depth, federation transport, and live-provider certification remain open.
 
 ## Inventory Baseline
 

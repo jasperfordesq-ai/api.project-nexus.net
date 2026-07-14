@@ -330,6 +330,7 @@ public static class TestDataSeeder
                     'federation_api_logs','federation_api_keys',
                     'federation_user_settings','federation_feature_toggles',
                     'merchant_coupon_redemptions','merchant_coupons',
+                    'marketplace_disputes',
                     'marketplace_seller_ratings','marketplace_delivery_offers',
                     'marketplace_pickup_reservations','marketplace_pickup_slots',
                     'marketplace_shipping_options','marketplace_promotions',

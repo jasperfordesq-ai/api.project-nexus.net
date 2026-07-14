@@ -1,9 +1,20 @@
 # Schema Parity Map
 
-Last reviewed: 2026-07-13
+Last reviewed: 2026-07-14
 
 Laravel source of truth: `C:\platforms\htdocs\staging\database\migrations` and
 `C:\platforms\htdocs\staging\app\Models`.
+
+## 2026-07-14 Marketplace Dispute Settlement Schema Evidence
+
+Migration 144 adds `marketplace_disputes`, wallet purchase/refund transaction links
+on marketplace orders, canonical reason/status/refund checks, and tenant-scoped
+queue/order indexes. The refund-link index prevents one reversal transaction from
+settling multiple orders. The full 144-migration chain replays on blank disposable
+PostgreSQL, the same three lifecycle tests pass on upgraded and blank-chain schemas,
+and `has-pending-model-changes` reports no drift. The broader static schema-table
+inventory below predates this migration and must be regenerated before using its
+counts as current coverage evidence.
 
 ## 2026-07-13 Event Recurrence V2 Schema Evidence
 

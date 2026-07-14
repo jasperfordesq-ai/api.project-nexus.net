@@ -43,6 +43,41 @@ Before any production deployment or production-container action, stop and read
 deployment or touching production containers. Never modify the Laravel repo or
 Laravel Edition containers from this worktree.
 
+## 2026-07-14 ASP.NET Marketplace Dispute Settlement Checkpoint (Locally Verified)
+
+Order disputes are no longer redirected into the listing-report workflow. Buyers
+and sellers can open one active dispute for a tenant-owned order in an eligible
+state, with canonical reason, bounded description, and safe evidence-URL validation.
+Opening is serialized, preserves the prior order state, moves the order to
+`disputed`, and creates durable in-app evidence.
+
+The administrator queue returns the canonical opener, order, listing, buyer, seller,
+evidence, status, and pagination projection. Serialized buyer/seller/closed
+resolutions are replay-safe. Buyer resolution restores listing inventory exactly
+once. Free orders settle at zero; time-credit orders require a complete, tenant-safe
+original ledger fact and create a linked seller-to-buyer reversal for the full
+amount. Seller/closed decisions restore the saved prior order state. Both
+participants receive durable resolution notifications. Fiat buyer resolution fails
+closed with `409 RESOLUTION_FAILED` and no mutation because ASP.NET still lacks the
+provider/escrow settlement evidence required for a real refund.
+
+Migration 144 (`20260714030824_MarketplaceDisputeSettlementParity`) adds the dispute
+aggregate, wallet settlement links, state/reason/refund constraints, and tenant/order
+indexes. The complete 144-migration chain replays on blank PostgreSQL and EF reports
+no model drift. Focused behavior passes 3/3 on both upgraded and blank-chain
+databases; the affected marketplace set passes 16/16; route ownership passes
+114/114; comparator fixtures pass; and Debug test-project plus Release API builds
+have zero errors. The live comparator reports 4,541 ASP.NET operations and
+**2,591/2,608 matches (99.3%, 17 static misses)**.
+
+Current provisional global scores are **845/1000 implementation** and **720/1000
+certification confidence**. The honest combined finish-line estimate is **74%**,
+up from the goal baseline of 42% and the previous checkpoint of 73%. Real fiat
+provider/escrow settlement, the remaining route shapes, complete-suite/CI proof,
+unchanged-frontend browser proof, schema/localization depth, federation transport,
+and live-provider evidence remain open. No production resource or frontend source
+was touched by this backend slice.
+
 ## 2026-07-14 ASP.NET Marketplace Report Appeals Checkpoint (Locally Verified)
 
 Marketplace reports now use the Laravel-compatible DSA notice-and-action lifecycle

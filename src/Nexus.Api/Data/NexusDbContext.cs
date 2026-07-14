@@ -568,6 +568,7 @@ public class NexusDbContext : DbContext
     public DbSet<MarketplaceSavedListing> MarketplaceSavedListings => Set<MarketplaceSavedListing>();
     public DbSet<MarketplaceOffer> MarketplaceOffers => Set<MarketplaceOffer>();
     public DbSet<MarketplaceOrder> MarketplaceOrders => Set<MarketplaceOrder>();
+    public DbSet<MarketplaceDispute> MarketplaceDisputes => Set<MarketplaceDispute>();
     public DbSet<MarketplaceReport> MarketplaceReports => Set<MarketplaceReport>();
     public DbSet<MarketplaceSavedSearch> MarketplaceSavedSearches => Set<MarketplaceSavedSearch>();
     public DbSet<MarketplaceCollection> MarketplaceCollections => Set<MarketplaceCollection>();
@@ -840,7 +841,28 @@ public class NexusDbContext : DbContext
             entity.HasIndex(e => new { e.TenantId, e.UserId, e.MarketplaceListingId }).IsUnique();
         });
         modelBuilder.Entity<MarketplaceOffer>().ToTable("marketplace_offers");
-        modelBuilder.Entity<MarketplaceOrder>().ToTable("marketplace_orders");
+        modelBuilder.Entity<MarketplaceOrder>(entity =>
+        {
+            entity.ToTable("marketplace_orders");
+            entity.HasIndex(e => new { e.TenantId, e.WalletRefundTransactionId }).IsUnique().HasFilter("\"WalletRefundTransactionId\" IS NOT NULL");
+        });
+        modelBuilder.Entity<MarketplaceDispute>(entity =>
+        {
+            entity.ToTable("marketplace_disputes", table =>
+            {
+                table.HasCheckConstraint("chk_marketplace_dispute_reason", "\"Reason\" IN ('not_received','not_as_described','damaged','wrong_item','other')");
+                table.HasCheckConstraint("chk_marketplace_dispute_status", "\"Status\" IN ('open','under_review','resolved_buyer','resolved_seller','escalated','closed')");
+                table.HasCheckConstraint("chk_marketplace_dispute_refund", "\"RefundAmount\" IS NULL OR \"RefundAmount\" >= 0");
+            });
+            entity.Property(e => e.Reason).HasMaxLength(32);
+            entity.Property(e => e.Status).HasMaxLength(32);
+            entity.Property(e => e.PriorOrderStatus).HasMaxLength(32);
+            entity.Property(e => e.EvidenceUrlsJson).HasColumnType("jsonb");
+            entity.Property(e => e.RefundAmount).HasPrecision(18, 2);
+            entity.HasIndex(e => new { e.TenantId, e.Status, e.CreatedAt });
+            entity.HasIndex(e => new { e.TenantId, e.MarketplaceOrderId, e.Status });
+            entity.HasIndex(e => new { e.TenantId, e.OpenedByUserId, e.CreatedAt });
+        });
         modelBuilder.Entity<MarketplaceReport>(entity =>
         {
             entity.ToTable("marketplace_reports", table =>

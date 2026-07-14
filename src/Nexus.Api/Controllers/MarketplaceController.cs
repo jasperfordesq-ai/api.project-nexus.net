@@ -674,12 +674,14 @@ public class MarketplaceController : ControllerBase
 
     [HttpPost("orders/{id:int}/dispute")]
     [Authorize]
-    public async Task<IActionResult> DisputeOrder(int id, [FromBody] ReportRequest request)
+    public async Task<IActionResult> DisputeOrder(int id, [FromBody] ReportRequest request, CancellationToken ct)
     {
-        var order = await _db.MarketplaceOrders.FirstOrDefaultAsync(o => o.Id == id);
-        if (order == null) return NotFound(new { error = "Order not found" });
-        var report = await _marketplace.ReportListingAsync(order.MarketplaceListingId, RequireUserId(), request.Reason ?? "order_dispute", request.Details);
-        return Created($"/api/marketplace/reports/{report.Id}", new { data = report });
+        var result = await new MarketplaceDisputeService(_db).OpenAsync(
+            User.GetTenantId() ?? throw new UnauthorizedAccessException(), RequireUserId(), id,
+            request.Reason, request.Details ?? request.Description, request.EvidenceUrls, ct);
+        if (result.Succeeded) return StatusCode(result.Status, new { success = true, data = result.Data });
+        var error = result.Error!;
+        return StatusCode(error.Status, new { success = false, errors = new[] { new { code = error.Code, message = error.Message, field = error.Field } } });
     }
 
     [HttpPost("payments/create-intent")]
