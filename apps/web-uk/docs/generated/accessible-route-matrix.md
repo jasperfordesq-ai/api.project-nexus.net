@@ -1,13 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-13T23:53:29.736Z
+Generated: 2026-07-14T04:18:20.568Z
 
 | Metric | Count |
 | --- | ---: |
 | Laravel accessible routes | 689 |
-| web-uk routes | 690 |
-| Matched routes | 683 |
-| Missing routes | 6 |
+| web-uk routes | 695 |
+| Matched routes | 688 |
+| Missing routes | 1 |
 | Extra web-uk routes | 5 |
 | Ignored web-uk infrastructure routes | 3 |
 
@@ -32,7 +32,7 @@ Generated: 2026-07-13T23:53:29.736Z
 | courses | 26 | 0 | 0 | 0 |
 | dashboard | 1 | 0 | 0 | 0 |
 | event-templates | 4 | 0 | 0 | 0 |
-| events | 88 | 6 | 2 | 0 |
+| events | 93 | 1 | 2 | 0 |
 | exchanges | 4 | 0 | 0 | 0 |
 | explore | 1 | 0 | 0 | 0 |
 | faq | 1 | 0 | 0 | 0 |
@@ -89,12 +89,7 @@ Generated: 2026-07-13T23:53:29.736Z
 
 | Method | Path | Family | Handler | Blade view | Auth | Gates |
 | --- | --- | --- | --- | --- | --- | --- |
-| GET | `/events/moderation` | events | eventsModerationQueue | event-moderation-queue | public-or-unknown |  |
-| GET | `/events/moderation/{param}/approve` | events | eventsModerationApproveConfirmation |  | public-or-unknown |  |
-| GET | `/events/moderation/{param}/reject` | events | eventsModerationRejectConfirmation |  | public-or-unknown |  |
 | POST | `/events/{param}/check-in/code` | events | eventsOfflineCheckinCode |  | public-or-unknown |  |
-| POST | `/events/moderation/{param}/approve` | events | eventsModerationApprove |  | public-or-unknown |  |
-| POST | `/events/moderation/{param}/reject` | events | eventsModerationReject |  | public-or-unknown |  |
 
 ## Extra Web UK Routes
 

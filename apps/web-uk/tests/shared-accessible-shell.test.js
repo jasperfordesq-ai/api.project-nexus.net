@@ -152,6 +152,7 @@ jest.mock('../src/lib/api', () => ({
   callJobApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   uploadJobApplication: jest.fn().mockResolvedValue({ data: { id: 91 } }),
   callAdminJobApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
+  callAdminEventApi: jest.fn().mockResolvedValue({ data: [], meta: { total: 0, current_page: 1, last_page: 1 } }),
   callJobDownload: jest.fn(),
   getEventCategories: jest.fn().mockResolvedValue({ data: [] }),
   uploadEventImage: jest.fn().mockResolvedValue({ data: { cover_image: '/uploads/events/garden.webp' } }),
@@ -608,6 +609,7 @@ describe('shared accessible frontend shell', () => {
     api.getOnboardingSafeguardingOptions.mockReset().mockResolvedValue({ data: [] });
     api.callGroupExchangeApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callEventApi.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.callAdminEventApi.mockReset().mockResolvedValue({ data: [], meta: { total: 0, current_page: 1, last_page: 1 } });
     api.downloadEventApi.mockReset().mockResolvedValue({ status: 200, body: Buffer.from('metric,value'), headers: { 'content-type': 'text/csv; charset=UTF-8', 'content-disposition': 'attachment; filename="event-42-analytics.csv"' } });
     api.getEventCategories.mockReset().mockResolvedValue({ data: [] });
     api.uploadEventImage.mockReset().mockResolvedValue({ data: { cover_image: '/uploads/events/garden.webp' } });
@@ -22360,6 +22362,75 @@ describe('shared accessible frontend shell', () => {
         reason: null
       }]
     });
+  });
+
+  it('renders and submits the tenant-admin Event moderation workflow through Laravel admin contracts', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const pending = {
+      id: 42,
+      title: 'Neighbourhood repair day',
+      description: 'Repair shared equipment together.',
+      publication_state: 'pending_review',
+      start_at: '2026-08-20T09:30:00Z',
+      end_at: '2026-08-20T12:30:00Z',
+      timezone: 'Europe/Dublin',
+      all_day: false,
+      location: 'Community hall',
+      is_recurring_template: true,
+      organizer: { display_name: 'Aisha Khan' },
+      moderation: { submitted_at: '2026-07-14T09:00:00Z' }
+    };
+    api.callAdminEventApi.mockImplementation(async (_token, method, pathName, payload) => {
+      if (method === 'GET' && pathName.startsWith('?')) return { data: [pending], meta: { total: 21, current_page: 1, last_page: 2 } };
+      if (method === 'GET' && pathName === '/42') return { data: pending };
+      if (method === 'POST' && pathName === '/42/approve') return { data: { id: 42, publication_state: 'published' } };
+      if (method === 'POST' && pathName === '/42/reject') {
+        expect(payload).toEqual({ reason: 'The venue information needs more detail.' });
+        return { data: { id: 42, publication_state: 'draft' } };
+      }
+      throw new Error(`Unexpected admin Event call: ${method} ${pathName}`);
+    });
+
+    const index = await agent.get('/acme/accessible/events').set('Cookie', signedCookieHeader());
+    expect(index.status).toBe(200);
+    expect(index.text).toContain('href="/acme/accessible/events/moderation"');
+
+    const queue = await agent.get('/acme/accessible/events/moderation').set('Cookie', signedCookieHeader());
+    expect(queue.status).toBe(200);
+    expect(queue.headers['cache-control']).toBe('private, no-store');
+    expect(queue.headers['x-robots-tag']).toBe('noindex, nofollow');
+    expect(queue.text).toContain('Events awaiting approval');
+    expect(queue.text).toContain('Neighbourhood repair day');
+    expect(queue.text).toContain('Aisha Khan');
+    expect(queue.text).toContain('Community hall');
+    expect(queue.text).toContain('Repeating series');
+    expect(queue.text).toContain('href="/acme/accessible/events/moderation/42/approve"');
+    expect(queue.text).toContain('href="/acme/accessible/events/moderation?page=2"');
+
+    const approve = await agent.get('/acme/accessible/events/moderation/42/approve').set('Cookie', signedCookieHeader());
+    const csrf = approve.text.match(/name="_csrf" value="([^"]+)"/)[1];
+    expect(approve.text).toContain('Approve event');
+    const missingConfirmation = await agent.post('/acme/accessible/events/moderation/42/approve').set('Cookie', signedCookieHeader()).type('form').send({ _csrf: csrf });
+    expect(missingConfirmation.status).toBe(422);
+    expect(missingConfirmation.text).toContain('Confirm that you want to make this decision.');
+
+    const approved = await agent.post('/acme/accessible/events/moderation/42/approve').set('Cookie', signedCookieHeader()).type('form').send({ _csrf: csrf, confirmation: 'approve' });
+    expect(approved.status).toBe(302);
+    expect(approved.headers.location).toBe('/acme/accessible/events/moderation?status=approved');
+    expect(api.callAdminEventApi).toHaveBeenCalledWith('test-token', 'POST', '/42/approve');
+
+    const reject = await agent.get('/events/moderation/42/reject').set('Cookie', signedCookieHeader());
+    const rejectCsrf = reject.text.match(/name="_csrf" value="([^"]+)"/)[1];
+    const rejected = await agent.post('/events/moderation/42/reject').set('Cookie', signedCookieHeader()).type('form').send({ _csrf: rejectCsrf, reason: 'The venue information needs more detail.', confirmation: 'reject' });
+    expect(rejected.status).toBe(302);
+    expect(rejected.headers.location).toBe('/events/moderation?status=rejected');
+    expect(api.callAdminEventApi).toHaveBeenCalledWith('test-token', 'POST', '/42/reject', { reason: 'The venue information needs more detail.' });
+
+    api.callAdminEventApi.mockRejectedValueOnce(new api.ApiError('Forbidden', 403, {}));
+    const forbidden = await agent.get('/events/moderation').set('Cookie', signedCookieHeader());
+    expect(forbidden.status).toBe(403);
+    expect(forbidden.text).not.toContain('Neighbourhood repair day');
   });
 
   it('rejects invalid Event People bulk actions before the Laravel API', async () => {

@@ -935,6 +935,13 @@ async function callEventApi(token, method, path = '', data = undefined, requestO
   return request(`/api/v2/events${normalizedPath}`, options);
 }
 
+async function callAdminEventApi(token, method, path = '', data = undefined) {
+  const normalizedPath = path ? (path.startsWith('/') || path.startsWith('?') ? path : `/${path}`) : '';
+  const options = { method, headers: { Authorization: `Bearer ${token}` } };
+  if (data !== undefined) options.body = JSON.stringify(data);
+  return request(`/api/v2/admin/events${normalizedPath}`, options);
+}
+
 async function callEventTemplateApi(token, method, path = '', data = undefined, requestOptions = {}) {
   const normalizedPath = path ? (path.startsWith('/') || path.startsWith('?') ? path : `/${path}`) : '';
   const options = { method, headers: { Authorization: `Bearer ${token}`, ...(requestOptions.headers || {}) } };
@@ -3394,6 +3401,7 @@ module.exports = {
   callIdeationApi,
   callGroupExchangeApi,
   callEventApi,
+  callAdminEventApi,
   callEventTemplateApi,
   downloadEventApi,
   getEventCategories,

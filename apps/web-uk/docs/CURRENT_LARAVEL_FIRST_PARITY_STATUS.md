@@ -121,8 +121,8 @@ commit as the implementation it describes.
 
 The frontend baseline for the current checkout includes the Event registration,
 account-hub reconciliation, Event Communications, lifecycle-history, and recurrence-
-history slices; its published parent is repository commit `8314c48a`; the current
-checkout also contains the Marketplace listing-form parity slice. The Laravel source
+history slices; its published parent is repository commit `9d978346`; the current
+checkout also contains the Event moderation route slice. The Laravel source
 baseline is `903d03d3`. The first SHA names the
 repository snapshot containing Web UK; it does not make ASP.NET authoritative.
 Refresh the Laravel Blade/API source and Web UK implementation before relying on
@@ -131,15 +131,15 @@ these numbers after either source moves.
 | Measure | Audited result | Meaning |
 |---|---:|---|
 | Laravel accessible HTML routes | 689 | Current source inventory |
-| Web UK routes | 690 | Includes deliberate local compatibility routes |
-| Matched Laravel routes | 683/689 (99.13%) | Declaration coverage only |
-| Missing Laravel routes | 6 | All are Event workflows |
+| Web UK routes | 695 | Includes deliberate local compatibility routes |
+| Matched Laravel routes | 688/689 (99.85%) | Declaration coverage only |
+| Missing Laravel routes | 1 | Event offline check-in code generation |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 48/48 suites, 1,633/1,633 tests | Fresh green code gate |
+| Jest | 48/48 suites, 1,635/1,635 tests | Fresh green code gate |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
-| Static locale usage | 7,063 references, 5,379 unique keys, 0 unresolved | Current complete-reference audit |
-| Template localization | 320 templates, 0 conservative matches | Current hard-coded-copy audit |
+| Static locale usage | 7,104 references, 5,409 unique keys, 0 unresolved | Current complete-reference audit |
+| Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
 | Blade marker check | 19/19 | Text-marker spotcheck, not visual certification |
 | Automated accessibility | Latest recorded 87/87 | Manual AT review remains open |
 
@@ -327,6 +327,34 @@ the separate Web UK host.
 Focused mocked browse, detail, episode, and studio proof passes 12/12. No live
 Laravel request, media upload/download, database write, or migration was run.
 
+## Event Moderation Workflow
+
+Tenant administrators can now open Blade's Event moderation route, review the
+current admin API's pending-review root events, and complete the separate approve or reject
+confirmation workflows. Web UK uses Laravel's `/api/v2/admin/events` list,
+detail, approve, and reject contracts; non-admin API denial fails closed. Queue
+and decision responses carry Blade's private/no-store, noindex, same-origin
+referrer, and auth/cookie variance headers. The Events index exposes the queue
+link only when a signed admin probe succeeds.
+
+The default-English queue, status banners, card metadata, pagination, decision
+summaries, warnings, field-linked errors, confirmation controls, and mounted
+redirects follow Blade. Approval requires the exact confirmation value;
+rejection additionally requires a trimmed reason of at most 2,000 characters.
+Focused mocked queue/decision/action proof is green, including exact API-client
+paths and payloads, the mounted Events-index link, and a 403 fail-closed state.
+The full non-mutating gate passes 48/48 suites and 1,635/1,635 tests. The
+generated matrix is now 688/689 matched, leaving only offline check-in code
+generation as an undeclared route. No live
+Laravel moderation read or mutation, database write, or migration was run.
+
+This route family is implemented but not contract-identical certification.
+Laravel's admin Event list filters publication state and canonical roots, but it
+does not join the pending moderation queue and orders by Event creation time
+rather than queue submission time. Its projection also omits Blade's
+`is_online` field. Queue membership/order and online-only location therefore
+remain upstream contract gaps; Web UK does not synthesize either value.
+
 ## Event Detail Attendee Roster Refresh
 
 Event detail now consumes Laravel's canonical attendee projection in Blade's
@@ -418,10 +446,10 @@ Do not claim complete localization parity merely from this gate: backend-authore
 copy, dynamic-key families, English-identical source values, contextual quality,
 and manual language review remain separate evidence boundaries.
 
-## Six Missing Route Contracts
+## Remaining Event Route And Contract Gaps
 
-Five missing routes are the Event moderation queue and approve/reject
-confirmation/actions:
+The five Event moderation browser routes are now implemented through Laravel's
+real admin Event list/detail/approve/reject APIs:
 
 - `GET /events/moderation`
 - `GET /events/moderation/{id}/approve`
@@ -429,15 +457,13 @@ confirmation/actions:
 - `POST /events/moderation/{id}/approve`
 - `POST /events/moderation/{id}/reject`
 
-Laravel exposes related `/api/v2/admin/events` list/detail/approve/reject APIs,
-but they are not yet contract-identical to Blade. The API list uses Event
-publication state and Event creation order; Blade uses pending moderation-queue
-rows and queue-submission order. API approval uses a general approval workflow;
-Blade requires an atomic pending moderation decision. Do not mark these five
-routes certified until Laravel exposes equivalent queue membership, ordering,
-and race-safe decision semantics.
+They close declaration coverage but not exact contract certification. The API
+list uses Event publication state and Event creation order; Blade uses pending
+moderation-queue rows and queue-submission order. The API projection also omits
+`is_online`. Do not mark this route family contract-identical until Laravel
+exposes equivalent queue membership, ordering, and presentation data.
 
-The sixth missing route is:
+The only remaining undeclared Laravel browser route is:
 
 - `POST /events/{id}/check-in/code`
 

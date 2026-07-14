@@ -19,6 +19,7 @@ const {
   votePoll,
   getPolls,
   callEventApi,
+  callAdminEventApi,
   callEventTemplateApi,
   downloadEventApi,
   getEventCategories,
@@ -67,6 +68,51 @@ function boundedPositiveInteger(value, fallback, max = null) {
 function checked(value) {
   if (Array.isArray(value)) return value.some((item) => checked(item));
   return value === true || ['1', 'true', 'on', 'yes'].includes(String(value || '').toLowerCase());
+}
+
+function moderationPage(value) {
+  if (value === undefined) return 1;
+  const text = String(value || '');
+  return /^[1-9][0-9]*$/.test(text) ? Math.min(Number(text), 1000000) : null;
+}
+
+function moderationEvent(value, t) {
+  const row = value && typeof value === 'object' ? value : {};
+  return {
+    ...row,
+    id: positiveInteger(row.id),
+    title: trimmed(row.title),
+    description: trimmed(row.description),
+    startAt: trimmed(row.start_at || row.start_date),
+    endAt: trimmed(row.end_at || row.end_date),
+    timezone: trimmed(row.timezone) || 'UTC',
+    allDay: Boolean(row.all_day),
+    location: trimmed(row.location),
+    isOnline: Boolean(row.is_online),
+    recurring: Boolean(row.is_recurring_template || row.series?.is_recurring),
+    organizerName: trimmed(row.organizer?.display_name || row.organizer_name || row.creator_name)
+      || t('govuk_alpha_events.moderation.organizer_unavailable'),
+    submittedAt: trimmed(row.moderation?.submitted_at)
+  };
+}
+
+function moderationDate(value, timezone, allDay, formatDate) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const formatter = typeof formatDate === 'function' ? formatDate : (input) => String(input);
+  return formatter(date, allDay
+    ? { day: 'numeric', month: 'long', year: 'numeric', timeZone: timezone }
+    : { day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short', timeZone: timezone });
+}
+
+function moderationPrivate(res) {
+  res.set('Cache-Control', 'private, no-store');
+  res.set('Pragma', 'no-cache');
+  res.set('X-Robots-Tag', 'noindex, nofollow');
+  res.set('Referrer-Policy', 'same-origin');
+  res.vary('Authorization');
+  res.vary('Cookie');
 }
 
 function uploadedFile(req, fieldName) {
@@ -708,6 +754,101 @@ function eventPath(id, suffix = '') {
 function eventRedirect(id, status, fragment = '') {
   return `${eventPath(id)}?status=${encodeURIComponent(status)}${fragment}`;
 }
+
+router.get('/moderation', requireAuth, asyncRoute(async (req, res) => {
+  moderationPrivate(res);
+  const page = moderationPage(req.query.page);
+  if (page === null) return redirectTo(res, '/events/moderation');
+
+  try {
+    const result = await callAdminEventApi(req.token, 'GET', `?publication_state=pending_review&page=${page}&per_page=20`);
+    const meta = result?.meta || {};
+    const total = Math.max(0, Number(meta.total) || 0);
+    const lastPage = Math.max(1, positiveInteger(meta.last_page || meta.total_pages) || Math.ceil(total / 20) || 1);
+    if (page > lastPage) {
+      return redirectTo(res, lastPage > 1 ? `/events/moderation?page=${lastPage}` : '/events/moderation');
+    }
+    const formatDate = res.locals.formatLocaleDate;
+    const items = collectionFrom(result).map((row) => {
+      const event = moderationEvent(row, res.locals.t);
+      return {
+        ...event,
+        startLabel: moderationDate(event.startAt, event.timezone, event.allDay, formatDate),
+        endLabel: moderationDate(event.endAt, event.timezone, event.allDay, formatDate),
+        submittedLabel: moderationDate(event.submittedAt, event.timezone, false, formatDate)
+      };
+    });
+    return res.render('events/moderation-queue', {
+      title: res.locals.t('govuk_alpha_events.moderation.title'),
+      items,
+      status: ['approved', 'rejected', 'action-failed'].includes(req.query.status) ? req.query.status : '',
+      pagination: { page, total, hasPrevious: page > 1, hasNext: page < lastPage }
+    });
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    if (error instanceof ApiError && error.status === 403) return renderForbidden(res, error);
+    throw error;
+  }
+}));
+
+async function renderModerationDecision(req, res, decision, error = '', reason = '', status = 200) {
+  moderationPrivate(res);
+  try {
+    const result = await callAdminEventApi(req.token, 'GET', `/${req.params.id}`);
+    const event = moderationEvent(dataFrom(result), res.locals.t);
+    if (!event.id || trimmed(event.publication_state) !== 'pending_review') {
+      return res.status(404).render('errors/404', { title: 'Event not found' });
+    }
+    event.startLabel = moderationDate(event.startAt, event.timezone, event.allDay, res.locals.formatLocaleDate);
+    return res.status(status).render('events/moderation-decision', {
+      title: res.locals.t(`govuk_alpha_events.moderation.${decision}_title`),
+      event,
+      decision,
+      error,
+      reason,
+      csrfToken: req.csrfToken ? req.csrfToken() : ''
+    });
+  } catch (apiError) {
+    if (redirectOnAuthError(apiError, res)) return undefined;
+    if (apiError instanceof ApiError && apiError.status === 403) return renderForbidden(res, apiError);
+    if (apiError instanceof ApiError && apiError.status === 404) {
+      return res.status(404).render('errors/404', { title: 'Event not found' });
+    }
+    throw apiError;
+  }
+}
+
+router.get('/moderation/:id(\\d+)/approve', requireAuth, asyncRoute(async (req, res) => renderModerationDecision(req, res, 'approve')));
+router.get('/moderation/:id(\\d+)/reject', requireAuth, asyncRoute(async (req, res) => renderModerationDecision(req, res, 'reject')));
+
+router.post('/moderation/:id(\\d+)/approve', requireAuth, asyncRoute(async (req, res) => {
+  if (req.body.confirmation !== 'approve') return renderModerationDecision(req, res, 'approve', 'confirmation_required', '', 422);
+  try {
+    await callAdminEventApi(req.token, 'POST', `/${req.params.id}/approve`);
+    return redirectTo(res, '/events/moderation?status=approved');
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    if (error instanceof ApiError && error.status === 403) return renderForbidden(res, error);
+    if (error instanceof ApiError && error.status === 404) return res.status(404).render('errors/404', { title: 'Event not found' });
+    return redirectTo(res, '/events/moderation?status=action-failed');
+  }
+}));
+
+router.post('/moderation/:id(\\d+)/reject', requireAuth, asyncRoute(async (req, res) => {
+  const reason = trimmed(req.body.reason, 2001);
+  const error = reason === '' ? 'reason_required'
+    : (reason.length > 2000 ? 'reason_too_long' : (req.body.confirmation !== 'reject' ? 'confirmation_required' : ''));
+  if (error) return renderModerationDecision(req, res, 'reject', error, reason.slice(0, 2000), 422);
+  try {
+    await callAdminEventApi(req.token, 'POST', `/${req.params.id}/reject`, { reason });
+    return redirectTo(res, '/events/moderation?status=rejected');
+  } catch (apiError) {
+    if (redirectOnAuthError(apiError, res)) return undefined;
+    if (apiError instanceof ApiError && apiError.status === 403) return renderForbidden(res, apiError);
+    if (apiError instanceof ApiError && apiError.status === 404) return res.status(404).render('errors/404', { title: 'Event not found' });
+    return redirectTo(res, '/events/moderation?status=action-failed');
+  }
+}));
 
 router.get('/browse', asyncRoute(async (req, res) => {
   const categoriesResult = await getEventCategories(tokenFrom(req));
@@ -2720,7 +2861,7 @@ router.get('/', asyncRoute(async (req, res) => {
     }
   }
 
-  const [result, categoriesResult] = await Promise.all([
+  const [result, categoriesResult, moderationProbe] = await Promise.all([
     getEvents(token, {
       per_page: limit,
       cursor: trimmed(req.query.cursor) || undefined,
@@ -2737,7 +2878,14 @@ router.get('/', asyncRoute(async (req, res) => {
     getEventCategories(token).catch((error) => {
       if (isAuthError(error)) throw error;
       return { data: [] };
-    })
+    }),
+    token
+      ? callAdminEventApi(token, 'GET', '?publication_state=pending_review&page=1&per_page=1')
+        .catch((error) => {
+          if (isAuthError(error)) throw error;
+          return null;
+        })
+      : null
   ]);
 
   const events = collectionFrom(result).map(eventWithAssetUrls);
@@ -2762,6 +2910,7 @@ router.get('/', asyncRoute(async (req, res) => {
       cursor: trimmed(meta.cursor || meta.next_cursor)
     },
     isAuthenticated: Boolean(token),
+    canModerateEvents: moderationProbe !== null,
     successMessage: req.flash ? req.flash('success')[0] : null,
     errorMessage: req.flash ? req.flash('error')[0] : null
   });

@@ -2531,6 +2531,47 @@ describe('API Request Functions', () => {
       );
     });
 
+    it('should call Laravel admin event endpoints with the exact query and decision payload', async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: [], meta: { total: 0 } })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { id: 42, publication_state: 'draft' } })
+        });
+
+      await api.callAdminEventApi(
+        'test-token',
+        'GET',
+        '?publication_state=pending_review&page=2&per_page=20'
+      );
+      await api.callAdminEventApi('test-token', 'POST', '/42/reject', {
+        reason: 'The venue information needs more detail.'
+      });
+
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        1,
+        'http://localhost:5000/api/v2/admin/events?publication_state=pending_review&page=2&per_page=20',
+        expect.objectContaining({
+          method: 'GET',
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
+        })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        2,
+        'http://localhost:5000/api/v2/admin/events/42/reject',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' }),
+          body: JSON.stringify({ reason: 'The venue information needs more detail.' })
+        })
+      );
+    });
+
     it('should use the exact Laravel v2 event mutation contracts', async () => {
       mockFetch
         .mockResolvedValueOnce({
