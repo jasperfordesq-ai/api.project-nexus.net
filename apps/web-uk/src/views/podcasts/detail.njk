@@ -40,7 +40,7 @@
   <h1 class="govuk-heading-xl">{{ show.title }}</h1>
 
   {% if show.description %}
-    <div class="govuk-body-l">{{ show.description | nl2br | safe }}</div>
+    <div class="govuk-body-l">{{ show.description | striptags | nl2br | safe }}</div>
   {% endif %}
 
   {% if show.rssEnabled %}

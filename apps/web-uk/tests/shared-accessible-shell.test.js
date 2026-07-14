@@ -20934,7 +20934,7 @@ describe('shared accessible frontend shell', () => {
         discussion: {
           id: 33,
           title: 'Compost rota',
-          content: 'Please swap weeks here if you need help.',
+          content: 'Please <strong>swap weeks</strong> here if you need help.',
           author: {
             name: 'Avery Green'
           },
@@ -20943,7 +20943,7 @@ describe('shared accessible frontend shell', () => {
         items: [
           {
             id: 51,
-            content: 'I can cover the first week.',
+            content: 'I can cover the <em>first week</em>.',
             author: {
               name: 'Sam Lee'
             },
@@ -20967,10 +20967,12 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('Your reply has been posted.');
     expect(signed.text).toContain('Started by Avery Green');
     expect(signed.text).toContain('Please swap weeks here if you need help.');
+    expect(signed.text).not.toContain('&lt;strong&gt;');
     expect(signed.text).toContain('1 replies');
     expect(signed.text).toContain('Reply by Sam Lee');
     expect(signed.text).toContain('14 September 2026, 10:30');
     expect(signed.text).toContain('I can cover the first week.');
+    expect(signed.text).not.toContain('&lt;em&gt;');
     expect(signed.text).toContain('Your reply');
     expect(signed.text).toContain('Add to the conversation.');
     expect(signed.text).toContain('id="content" name="content"');
@@ -28317,7 +28319,7 @@ describe('shared accessible frontend shell', () => {
       data: {
         id: 7,
         title: 'Community voices',
-        description: 'Stories from local members.',
+        description: 'Stories from <strong>local members</strong>.',
         owner: { name: 'Aisha Khan' },
         artwork_url: 'https://media.example.test/podcast.png',
         rss_enabled: true,
@@ -28345,6 +28347,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('By Aisha Khan');
     expect(response.text).toContain('Community voices');
     expect(response.text).toContain('Stories from local members.');
+    expect(response.text).not.toContain('&lt;strong&gt;');
     expect(response.text).toContain('RSS feed');
     expect(response.text).toContain('href="http://127.0.0.1:8088/api/v2/podcasts/7/feed.xml"');
     expect(response.text).toContain('Subscribe to this podcast');
@@ -28360,7 +28363,7 @@ describe('shared accessible frontend shell', () => {
       data: {
         id: 99,
         title: 'First update',
-        description: 'Episode notes for listeners.',
+        description: 'Episode <strong>notes</strong> for listeners.',
         audio_url: '/uploads/podcasts/first.mp3',
         transcript: 'Welcome to the first update.',
         show: { id: 7, title: 'Community voices' }
@@ -28377,6 +28380,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Community voices');
     expect(response.text).toContain('First update');
     expect(response.text).toContain('Episode notes for listeners.');
+    expect(response.text).not.toContain('&lt;strong&gt;');
     expect(response.text).toContain('Listen to First update');
     expect(response.text).toContain('src="http://127.0.0.1:8088/uploads/podcasts/first.mp3"');
     expect(response.text).toContain('Read transcript');

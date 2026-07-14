@@ -33,7 +33,7 @@
         {{ t("groups.discussions.started_by", { name: discussion.authorName }) }}{% if discussion.createdAtLabel %} · {{ discussion.createdAtLabel }}{% endif %}
       </p>
     {% endif %}
-    <div class="govuk-body">{{ discussion.content | nl2br | safe }}</div>
+    <div class="govuk-body">{{ discussion.content | striptags | nl2br | safe }}</div>
   </article>
 
   <h2 class="govuk-heading-l" id="discussion-replies">{{ t("groups.discussions.replies_count", { count: messages.length }) }}</h2>
@@ -48,7 +48,7 @@
             {{ t("polish_groups.reply_posted_by", { name: message.authorName }) }}{% if message.createdAtLabel %} · {{ message.createdAtLabel }}{% endif %}
           </p>
         {% endif %}
-        <div class="govuk-body govuk-!-margin-bottom-0">{{ message.content | nl2br | safe }}</div>
+        <div class="govuk-body govuk-!-margin-bottom-0">{{ message.content | striptags | nl2br | safe }}</div>
       </article>
     {% endfor %}
   {% endif %}

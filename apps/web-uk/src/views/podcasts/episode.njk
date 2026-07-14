@@ -12,7 +12,7 @@
   <h1 class="govuk-heading-xl">{{ episode.title }}</h1>
 
   {% if episode.description %}
-    <div class="govuk-body-l">{{ episode.description | nl2br | safe }}</div>
+    <div class="govuk-body-l">{{ episode.description | striptags | nl2br | safe }}</div>
   {% endif %}
 
   {% if episode.audioUrl %}
