@@ -252,7 +252,9 @@ validation, and conditional visibility are normalized to Laravel's schema.
 The organizer view now also matches Blade's policy description, status/revision,
 event-timezone-local inputs, required and GOV.UK module semantics, and form
 version presentation. Double-brace registration placeholders now interpolate
-cleanly. Focused authorization/render/payload proof passes. Submission, campaign, guest,
+cleanly. Submission, campaign, and guest pagination now preserves the other
+collection parameters and returns to Blade's section anchors. Focused
+authorization/render/payload proof passes. Submission, campaign, guest,
 retention, live disposable effects, manual assistive-technology review, and
 unchanged ASP.NET runtime proof remain open.
 

@@ -1994,6 +1994,28 @@ async function registrationProductState(token, id, query = '') {
   return { attendee, organizer };
 }
 
+function registrationPagination(id, sourceQuery, organizer) {
+  const collections = ['submissions', 'campaigns', 'guests'];
+  const href = (collection, page) => {
+    if (!positiveInteger(page)) return '';
+    const query = new URLSearchParams();
+    for (const candidate of collections) for (const suffix of ['page', 'per_page']) {
+      const key = `${candidate}_${suffix}`;
+      const value = positiveInteger(sourceQuery?.[key]);
+      if (value) query.set(key, String(value));
+    }
+    query.set(`${collection}_page`, String(page));
+    return eventPath(id, `/registration?${query.toString()}#registration-${collection}`);
+  };
+  return Object.fromEntries(collections.map((collection) => {
+    const pagination = organizer?.pagination?.[collection] || {};
+    return [collection, {
+      previousHref: href(collection, pagination.previous_page),
+      nextHref: href(collection, pagination.next_page)
+    }];
+  }));
+}
+
 function registrationQuestions(value) {
   const rows = value && typeof value === 'object' ? Object.values(value).slice(0, 100) : [];
   return rows.filter((row) => row && checked(row.enabled)).map((row, index) => {
@@ -2099,7 +2121,7 @@ router.get('/:id(\\d+)/registration', requireAuth, asyncRoute(async (req, res) =
     }
   };
   res.set('Cache-Control', 'private, no-store');
-  return res.render('events/registration', { title: res.locals.t('event_registration.title'), activeNav: 'events', event: { id, title: trimmed(eventFrom(eventResult).title) }, ...state, organizer, activeRegistration, status: trimmed(req.query.status), answerValues: replay.values, answerErrors: replay.errors, idempotencyKey: randomUUID(), csrfToken: req.csrfToken ? req.csrfToken() : '' });
+  return res.render('events/registration', { title: res.locals.t('event_registration.title'), activeNav: 'events', event: { id, title: trimmed(eventFrom(eventResult).title) }, ...state, organizer, registrationPagination: registrationPagination(id, req.query, organizer), activeRegistration, status: trimmed(req.query.status), answerValues: replay.values, answerErrors: replay.errors, idempotencyKey: randomUUID(), csrfToken: req.csrfToken ? req.csrfToken() : '' });
 }, { notFoundTitle: 'Event not found' }));
 
 router.post('/:id(\\d+)/registration/settings', requireAuth, asyncRoute(async (req, res) => {
