@@ -150,10 +150,10 @@ function statsFor(matches) {
   };
 }
 
-function matchesApiPath(limit) {
+function matchesApiQuery(limit) {
   const params = new URLSearchParams();
   params.set('limit', String(limit));
-  return `/all?${params.toString()}`;
+  return params.toString();
 }
 
 function visibleMatches(matches, source) {
@@ -188,7 +188,7 @@ router.get('/', requireAuth, asyncRoute(async (req, res) => {
   let errorMessage = null;
 
   try {
-    const payload = payloadFrom(await callMatchesApi(req.token, 'GET', matchesApiPath(30)));
+    const payload = payloadFrom(await callMatchesApi(req.token, 'GET', `/all?${matchesApiQuery(30)}`));
     matches = visibleMatches(payload.matches.map((match) => normalizeMatch(match, res.locals.t)), activeSource);
     matchMeta = payload.meta;
   } catch (error) {
@@ -218,7 +218,7 @@ router.get('/board', requireAuth, asyncRoute(async (req, res) => {
   let errorMessage = null;
 
   try {
-    const payload = payloadFrom(await callMatchesApi(req.token, 'GET', matchesApiPath(50)));
+    const payload = payloadFrom(await callMatchesApi(req.token, 'GET', `/all?${matchesApiQuery(50)}`));
     matches = payload.matches.map((match) => normalizeMatch(match, res.locals.t, true, res.locals.formatLocaleRelativeTime));
     matchMeta = payload.meta;
   } catch (error) {

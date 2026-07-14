@@ -735,8 +735,8 @@ async function directBuyCheckout(token, id) {
 
 async function acceptedOfferCheckout(token, id) {
   const [offersResult, ordersResult] = await Promise.all([
-    callMarketplace(token, 'GET', offersPath('sent')),
-    callMarketplace(token, 'GET', ordersPath('buyer', 'all')).catch(() => ({ data: [] }))
+    callMarketplace(token, 'GET', '/my-offers/sent?per_page=50'),
+    callMarketplace(token, 'GET', `/orders/purchases?${ordersQuery('all')}`).catch(() => ({ data: [] }))
   ]);
   const offer = rowsFrom(offersResult).find((row) => positiveInteger(row && row.id) === id);
   if (!offer || trimmed(offer.status) !== 'accepted') throw new ApiError('Accepted offer not found', 404);
@@ -980,7 +980,7 @@ function listingTabs(req, activeTab, counts) {
   }));
 }
 
-function indexPath(query) {
+function indexQuery(query) {
   const params = new URLSearchParams();
   params.set('limit', '30');
 
@@ -993,30 +993,22 @@ function indexPath(query) {
   const cursor = trimmed(query.cursor);
   if (cursor) params.set('cursor', cursor);
 
-  return `/listings?${params.toString()}`;
+  return params.toString();
 }
 
-function myListingsPath(userId) {
-  return `/listings?limit=100&user_id=${userId}`;
+function myListingsQuery(userId) {
+  return `limit=100&user_id=${userId}`;
 }
 
-function savedListingsPath() {
-  return '/listings/saved?limit=50';
-}
-
-function freeListingsPath() {
-  return '/listings/free?limit=50';
-}
-
-function categoryListingsPath(categoryId, query) {
+function categoryListingsQuery(categoryId, query) {
   const params = new URLSearchParams();
   params.set('limit', '30');
   appendText(params, 'q', query.q);
   params.set('category_id', String(categoryId));
-  return `/listings?${params.toString()}`;
+  return params.toString();
 }
 
-function advancedSearchPath(query) {
+function advancedSearchQuery(query) {
   const params = new URLSearchParams();
   params.set('limit', '30');
   appendText(params, 'q', query.q);
@@ -1034,19 +1026,14 @@ function advancedSearchPath(query) {
   const sort = allowed(query.sort, ['newest', 'price_asc', 'price_desc', 'popular'], 'newest');
   if (sort !== 'newest') params.append('sort', sort);
   appendText(params, 'cursor', query.cursor);
-  return `/listings?${params.toString()}`;
+  return params.toString();
 }
 
-function offersPath(tab) {
-  return `/my-offers/${tab}?per_page=50`;
-}
-
-function ordersPath(role, tab) {
+function ordersQuery(tab) {
   const params = new URLSearchParams();
   params.set('limit', '50');
   if (tab !== 'all') params.set('status', tab);
-  const base = role === 'seller' ? '/orders/sales' : '/orders/purchases';
-  return `${base}?${params.toString()}`;
+  return params.toString();
 }
 
 function translateMarketplaceMessage(req, translationKey, fallbackMessage) {
@@ -1131,8 +1118,7 @@ async function loadListing(token, id) {
   return decorateListing(listing);
 }
 
-async function loadListingRows(token, path) {
-  const result = await callMarketplace(token, 'GET', path);
+function listingRowsFrom(result) {
   return {
     rows: rowsFrom(result).map(decorateListing),
     meta: metaFrom(result)
@@ -1327,7 +1313,7 @@ router.get('/', asyncRoute(async (req, res) => {
 
   try {
     const [listingResult, categories] = await Promise.all([
-      callMarketplace(token, 'GET', indexPath(req.query)),
+      callMarketplace(token, 'GET', `/listings?${indexQuery(req.query)}`),
       loadCategories(token)
     ]);
     return res.render('marketplace/index', {
@@ -1382,7 +1368,12 @@ router.get('/mine', asyncRoute(async (req, res) => {
     if (currentUserId === null) {
       throw new ApiError('Authenticated marketplace profile is missing an id.', 502);
     }
-    const allListings = (await loadListingRows(token, myListingsPath(currentUserId))).rows;
+    const listingResult = await callMarketplace(
+      token,
+      'GET',
+      `/listings?${myListingsQuery(currentUserId)}`
+    );
+    const allListings = rowsFrom(listingResult).map(decorateListing);
     const tab = allowed(req.query.tab, LISTING_STATUS_TABS, 'active');
     const counts = countsByStatus(allListings);
     return res.render('marketplace/manage', {
@@ -1405,7 +1396,8 @@ router.get('/saved', asyncRoute(async (req, res) => {
   if (!token) return undefined;
 
   try {
-    const { rows: listings } = await loadListingRows(token, savedListingsPath());
+    const listingResult = await callMarketplace(token, 'GET', '/listings/saved?limit=50');
+    const { rows: listings } = listingRowsFrom(listingResult);
     return res.render('marketplace/listing-list', {
       title: 'Saved items',
       titleKey: 'govuk_alpha_commerce.saved.title',
@@ -1425,7 +1417,8 @@ router.get('/free', asyncRoute(async (req, res) => {
   if (!token) return undefined;
 
   try {
-    const { rows: listings } = await loadListingRows(token, freeListingsPath());
+    const listingResult = await callMarketplace(token, 'GET', '/listings/free?limit=50');
+    const { rows: listings } = listingRowsFrom(listingResult);
     return res.render('marketplace/listing-list', {
       title: 'Free items',
       titleKey: 'govuk_alpha_commerce.free_items.title',
@@ -1449,7 +1442,12 @@ router.get('/category/:slug([A-Za-z0-9_-]+)', asyncRoute(async (req, res) => {
     const categories = await loadCategories(token);
     const category = categories.find((item) => item.slug === slug);
     if (!category) throw new ApiError('Category not found', 404);
-    const listingResult = await loadListingRows(token, categoryListingsPath(category.id, req.query));
+    const result = await callMarketplace(
+      token,
+      'GET',
+      `/listings?${categoryListingsQuery(category.id, req.query)}`
+    );
+    const listingResult = listingRowsFrom(result);
     return res.render('marketplace/listing-list', {
       title: category.name,
       activeNav: 'explore',
@@ -1472,15 +1470,16 @@ router.get('/search', asyncRoute(async (req, res) => {
 
   try {
     const [listingResult, categories] = await Promise.all([
-      loadListingRows(token, advancedSearchPath(req.query)),
+      callMarketplace(token, 'GET', `/listings?${advancedSearchQuery(req.query)}`),
       loadCategories(token)
     ]);
+    const listings = listingRowsFrom(listingResult);
     return res.render('marketplace/search', {
       title: 'Advanced search',
       titleKey: 'govuk_alpha_commerce.marketplace_advanced.title',
       activeNav: 'explore',
       activeTab: 'browse',
-      listings: listingResult.rows,
+      listings: listings.rows,
       categories,
       state: advancedSearchState(req.query),
       ...advancedSearchOptions()
@@ -1497,7 +1496,7 @@ router.get('/seller/:sellerId(\\d+)', asyncRoute(async (req, res) => {
   try {
     const [sellerResult, listingResult] = await Promise.all([
       callMarketplace(token, 'GET', `/sellers/${req.params.sellerId}`),
-      loadListingRows(token, `/sellers/${req.params.sellerId}/listings?per_page=50`)
+      callMarketplace(token, 'GET', `/sellers/${req.params.sellerId}/listings?per_page=50`)
     ]);
     const translate = typeof res.locals.t === 'function' ? res.locals.t : fallbackTranslator;
     const seller = decorateSeller(objectFrom(sellerResult), translate);
@@ -1505,7 +1504,7 @@ router.get('/seller/:sellerId(\\d+)', asyncRoute(async (req, res) => {
       title: seller.name,
       activeNav: 'explore',
       seller,
-      listings: listingResult.rows
+      listings: listingRowsFrom(listingResult).rows
     });
   } catch (error) {
     return renderMarketplaceError(error, res, 'Seller profile');
@@ -1518,7 +1517,9 @@ router.get('/offers', asyncRoute(async (req, res) => {
 
   const tab = allowed(req.query.tab, OFFER_TABS, 'received');
   try {
-    const result = await callMarketplace(token, 'GET', offersPath(tab));
+    const result = tab === 'sent'
+      ? await callMarketplace(token, 'GET', '/my-offers/sent?per_page=50')
+      : await callMarketplace(token, 'GET', '/my-offers/received?per_page=50');
     return res.render('marketplace/offers', {
       title: 'My offers',
       titleKey: 'govuk_alpha_commerce.offers.title',
@@ -1577,7 +1578,9 @@ async function ordersViewModel(req, res, role) {
   const tab = allowed(req.query.tab, allowedTabs, 'all');
   const translate = typeof res.locals.t === 'function' ? res.locals.t : fallbackTranslator;
   try {
-    const result = await callMarketplace(token, 'GET', ordersPath(role, tab));
+    const result = isSeller
+      ? await callMarketplace(token, 'GET', `/orders/sales?${ordersQuery(tab)}`)
+      : await callMarketplace(token, 'GET', `/orders/purchases?${ordersQuery(tab)}`);
     return {
       title: isSeller ? 'Sales' : 'My orders',
       titleKey: isSeller

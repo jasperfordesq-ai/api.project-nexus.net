@@ -42,12 +42,24 @@ const WRAPPERS = {
   callConversationApi: wrapper('/api/v2/conversations', 1, 2, 3),
   callPodcastApi: wrapper('/api/v2/podcasts', 1, 2, 3),
   callFederationApi: wrapper('/api/v2/federation', 1, 2, 3),
-  callGamificationApi: wrapper('/api/v2/gamification', 1, 2, 3),
+  callGamificationApi: wrapper('/api/v2/gamification', 1, 2, 3, false, null, 'required', [
+    { childPrefix: '/achievements/', prefix: '/api' }
+  ]),
   callReviewApi: wrapper('/api/v2/reviews', 1, 2, 3)
 };
 
-function wrapper(prefix, methodIndex, pathIndex, dataIndex, binary = false, defaultMethod = null, authMode = 'required') {
-  return { prefix, methodIndex, pathIndex, dataIndex, binary, defaultMethod, authMode };
+function wrapper(prefix, methodIndex, pathIndex, dataIndex, binary = false, defaultMethod = null, authMode = 'required', prefixOverrides = []) {
+  return { prefix, methodIndex, pathIndex, dataIndex, binary, defaultMethod, authMode, prefixOverrides };
+}
+
+function wrapperEndpoint(config, childPath) {
+  const childSuffix = childPath === ''
+    ? ''
+    : (childPath !== '{dynamic}'
+      ? (childPath.startsWith('/') || childPath.startsWith('?') ? childPath : `/${childPath}`)
+      : '/{dynamic}');
+  const override = config.prefixOverrides.find((item) => childSuffix.startsWith(item.childPrefix));
+  return displayPath(`${override?.prefix || config.prefix}${childSuffix}`);
 }
 
 function readText(filePath) {
@@ -444,12 +456,7 @@ function collectWrapperContracts(parsedConsumers) {
         : staticValue(argumentAt(config.methodIndex));
       const method = normalizeMethod(methodValue, config.defaultMethod || 'GET');
       const childPath = staticValue(argumentAt(config.pathIndex));
-      const childSuffix = childPath === ''
-        ? ''
-        : (childPath !== '{dynamic}'
-          ? (childPath.startsWith('/') || childPath.startsWith('?') ? childPath : `/${childPath}`)
-          : '/{dynamic}');
-      const joinedPath = displayPath(`${config.prefix}${childSuffix}`);
+      const joinedPath = wrapperEndpoint(config, childPath);
       contracts.push({
         helper: wrapperName,
         method,
@@ -743,5 +750,6 @@ module.exports = {
   normalizePath,
   parseJavaScript,
   renderMarkdown,
-  staticValue
+  staticValue,
+  wrapperEndpoint
 };

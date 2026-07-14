@@ -1926,8 +1926,10 @@ router.get('/emergency-alerts', asyncRoute(async (req, res) => {
   let loadError = null;
   const cursor = trimmed(req.query.cursor, 512);
   try {
-    const path = cursor ? `/emergency-alerts?cursor=${encodeURIComponent(cursor)}` : '/emergency-alerts';
-    dashboard = normalizeEmergencyAlertDashboard(await callApi(token, 'GET', path), res.locals.t);
+    const result = cursor
+      ? await callApi(token, 'GET', `/emergency-alerts?cursor=${encodeURIComponent(cursor)}`)
+      : await callApi(token, 'GET', '/emergency-alerts');
+    dashboard = normalizeEmergencyAlertDashboard(result, res.locals.t);
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
     loadError = 'We could not load your urgent shift requests. Please try again.';

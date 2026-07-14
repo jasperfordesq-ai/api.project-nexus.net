@@ -192,17 +192,17 @@ function transferFailurePath(error) {
   return `/wallet?status=transfer-failed&error=${encodeURIComponent(error)}#transfer`;
 }
 
-function walletSearchPath(query) {
+function walletSearchQuery(query) {
   const params = new URLSearchParams();
   params.set('q', query);
   params.set('limit', '10');
-  return `/user-search?${params.toString()}`;
+  return params.toString();
 }
 
 async function walletRecipientsFor(token, query, t) {
   const trimmed = String(query || '').trim();
   if (trimmed.length < 2) return [];
-  return itemsFrom(await callWalletApi(token, 'GET', walletSearchPath(trimmed)), 'users')
+  return itemsFrom(await callWalletApi(token, 'GET', `/user-search?${walletSearchQuery(trimmed)}`), 'users')
     .map((recipient) => normalizeRecipient(recipient, t))
     .filter(Boolean);
 }

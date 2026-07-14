@@ -13,7 +13,9 @@ const {
   laravelApiRouteIndex,
   normalizePath,
   parseJavaScript,
-  staticValue
+  staticValue,
+  wrapperEndpoint,
+  WRAPPERS
 } = require('../scripts/generate-api-consumer-ledger');
 
 function writeFile(filePath, contents) {
@@ -153,6 +155,13 @@ Route::get('/v2/events/legacy', [EventsController::class, 'legacy']);
     expect(displayPath(arithmeticQuery)).toBe('/api/v2/federation/connections?status={param}&limit={param}&offset={param}');
     expect(normalizePath(opaqueQuery)).toBe('/api/v2/blog');
     expect(normalizePath(arithmeticQuery)).toBe('/api/v2/federation/connections');
+  });
+
+  it('models the Laravel gamification helper achievement-prefix exception', () => {
+    expect(wrapperEndpoint(WRAPPERS.callGamificationApi, '/achievements/progress'))
+      .toBe('/api/achievements/progress');
+    expect(wrapperEndpoint(WRAPPERS.callGamificationApi, '/profile'))
+      .toBe('/api/v2/gamification/profile');
   });
 
   it('indexes direct Laravel API route declarations without treating them as OpenAPI', () => {
