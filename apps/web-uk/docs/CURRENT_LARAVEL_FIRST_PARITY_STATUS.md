@@ -113,9 +113,8 @@ commit as the implementation it describes.
 
 The frontend baseline for the current checkout includes the Event registration,
 account-hub reconciliation, Event Communications, and lifecycle-history slices;
-its published parent is repository commit `52a32c2b`; the current checkout also
-contains the Event template-history and recurrence-blueprint history presentation
-slices. The Laravel source
+its published parent is repository commit `cf6de633`; the current checkout also
+contains the recurrence-blueprint history failure-boundary slice. The Laravel source
 baseline is `903d03d3`. The first SHA names the
 repository snapshot containing Web UK; it does not make ASP.NET authoritative.
 Refresh the Laravel Blade/API source and Web UK implementation before relying on
@@ -131,7 +130,7 @@ these numbers after either source moves.
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
 | Jest | 48/48 suites, 1,631/1,631 tests | Fresh green code gate |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
-| Static locale usage | 7,015 references, 5,337 unique keys, 0 unresolved | Current complete-reference audit |
+| Static locale usage | 7,017 references, 5,339 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 320 templates, 0 conservative matches | Current hard-coded-copy audit |
 | Blade marker check | 19/19 | Text-marker spotcheck, not visual certification |
 | Automated accessibility | Latest recorded 87/87 | Manual AT review remains open |

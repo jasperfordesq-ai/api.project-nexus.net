@@ -1253,9 +1253,18 @@ function recurrenceBlueprintSections(body, allowed) {
 
 async function recurrenceBlueprintState(token, id, beforeVersion = null) {
   const suffix = beforeVersion ? `?limit=10&before_version=${beforeVersion}` : '?limit=10';
-  const [eventResult, historyResult] = await Promise.all([callApi(token, 'GET', `/${id}`), callApi(token, 'GET', `/${id}/recurrence-definition-blueprints${suffix}`)]);
+  const eventResult = await callApi(token, 'GET', `/${id}`);
+  let history = { items: [], next_before_version: null };
+  let historyError = false;
+  try {
+    const historyResult = await callApi(token, 'GET', `/${id}/recurrence-definition-blueprints${suffix}`);
+    history = dataFrom(historyResult) || history;
+  } catch (error) {
+    if (error instanceof ApiError && [401, 403, 404].includes(error.status)) throw error;
+    historyError = true;
+  }
   const context = recurrenceBlueprintContext(eventResult);
-  return { ...context, history: dataFrom(historyResult) || { items: [], next_before_version: null } };
+  return { ...context, history, historyError };
 }
 
 function renderRecurrenceBlueprints(req, res, state, extras = {}) {
@@ -1284,7 +1293,7 @@ function renderRecurrenceBlueprints(req, res, state, extras = {}) {
   res.set('Cache-Control', 'private, no-store');
   res.set('Pragma', 'no-cache');
   res.set('Referrer-Policy', 'no-referrer');
-  return res.render('events/recurrence-blueprints', { title: res.locals.t('event_recurrence_blueprints.title'), activeNav: 'events', event: state.event, recurrenceId: state.recurrenceId, allowedSections: state.allowedSections, history, selectedSections: state.allowedSections, preview: null, idempotencyKey: randomUUID(), csrfToken: req.csrfToken ? req.csrfToken() : '', status: trimmed(req.query.status), statusVersion: positiveInteger(req.query.version), ...extras });
+  return res.render('events/recurrence-blueprints', { title: res.locals.t('event_recurrence_blueprints.title'), activeNav: 'events', event: state.event, recurrenceId: state.recurrenceId, allowedSections: state.allowedSections, history, historyError: state.historyError === true, selectedSections: state.allowedSections, preview: null, idempotencyKey: randomUUID(), csrfToken: req.csrfToken ? req.csrfToken() : '', status: trimmed(req.query.status), statusVersion: positiveInteger(req.query.version), ...extras });
 }
 
 router.get('/:id(\\d+)/recurrence-definition-blueprints', requireAuth, asyncRoute(async (req, res) => {

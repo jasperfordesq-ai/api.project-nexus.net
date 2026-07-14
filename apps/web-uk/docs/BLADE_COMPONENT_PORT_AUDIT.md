@@ -325,7 +325,10 @@ render, permission, exact-payload, and confirmation proof passes. Immutable
 history cards now match Blade's labelled summary structure for recorded time,
 effective recurrence identity, allowlisted definition sections and positive
 bounded counts, and the continuation link uses the labelled block-pagination
-pattern. Unknown section/count keys fail closed. Live
+pattern. Unknown section/count keys fail closed. A secondary history-service
+failure now leaves the authorized manager workflow available and renders
+Blade's localized history error instead of taking down the page or showing a
+false empty state; authorization and not-found failures still fail closed. Live
 future-occurrence effects, wider role fixtures, manual assistive-technology
 review, and unchanged ASP.NET runtime proof remain open.
 

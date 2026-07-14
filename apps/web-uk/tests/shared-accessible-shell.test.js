@@ -23498,6 +23498,15 @@ describe('shared accessible frontend shell', () => {
     expect(page.text).toContain('<span class="govuk-pagination__link-title">Load more versions</span>');
     api.callEventApi
       .mockResolvedValueOnce({ data: event })
+      .mockRejectedValueOnce(new api.ApiError('History unavailable', 503));
+    const historyFailure = await agent.get('/events/42/recurrence-definition-blueprints').set('Cookie', signedCookieHeader());
+    expect(historyFailure.status).toBe(200);
+    expect(historyFailure.text).toContain('History could not be loaded');
+    expect(historyFailure.text).toContain('Try again to retrieve the immutable versions.');
+    expect(historyFailure.text).toContain('/events/42/recurrence-definition-blueprints/preview');
+    expect(historyFailure.text).not.toContain('No future setup versions yet');
+    api.callEventApi
+      .mockResolvedValueOnce({ data: event })
       .mockResolvedValueOnce({ data: { items: [], next_before_version: null } })
       .mockResolvedValueOnce({ data: { preview_token: 'signed-preview', can_commit: true, selected_sections: { agenda: true, ticket_types: false, registration: true, safety: false, staff: false }, counts: { agenda_sessions: 2 }, conflicts: [] } });
     const preview = await agent.post('/events/42/recurrence-definition-blueprints/preview').set('Cookie', signedCookieHeader()).type('form').send({ _csrf: csrf, sections: ['agenda', 'registration'] });
