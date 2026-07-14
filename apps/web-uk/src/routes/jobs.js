@@ -642,7 +642,7 @@ function salaryLabel(job) {
   const currency = trimmed(job.salary_currency, 10);
   const min = money(job.salary_min, currency);
   const max = money(job.salary_max, currency);
-  if (min && max) return `${min} - ${max}`;
+  if (min && max) return `${min} – ${max}`;
   return min || max || '';
 }
 
@@ -679,14 +679,14 @@ function countLabel(count, singular, plural, zero) {
 }
 
 function decorateJob(job) {
-  const organizationName = personName(job.organization || job.organisation);
-  const posterName = organizationName || personName(job.creator || job.user);
-  const viewsCount = finiteNumber(job.views_count ?? job.viewsCount, 0);
-  const applicationsCount = finiteNumber(job.applications_count ?? job.applicationsCount, 0);
+  const organizationName = personName(job.organization);
+  const posterName = organizationName || personName(job.creator);
+  const viewsCount = Math.trunc(finiteNumber(job.views_count, 0));
+  const applicationsCount = Math.trunc(finiteNumber(job.applications_count, 0));
 
   return {
     ...job,
-    id: job.id,
+    id: positiveInteger(job.id) || 0,
     title: trimmed(job.title, 255) || 'Jobs',
     description: trimmed(job.description, 20000),
     typeLabel: JOB_TYPE_LABELS[job.type] || JOB_TYPE_LABELS.volunteer,
@@ -705,9 +705,9 @@ function decorateJob(job) {
     applicationsCount,
     viewsLabel: countLabel(viewsCount, 'view', 'views', 'No views'),
     applicationsLabel: countLabel(applicationsCount, 'application', 'applications', 'No applications'),
-    isFeatured: checked(job.is_featured || job.isFeatured),
-    hasApplied: checked(job.has_applied || job.hasApplied),
-    isSaved: checked(job.is_saved || job.isSaved),
+    isFeatured: checked(job.is_featured),
+    hasApplied: checked(job.has_applied),
+    isSaved: checked(job.is_saved),
     isRemote: checked(job.is_remote),
     statusLabel: JOB_POSTING_STATUS_LABELS[job.status] || trimmed(job.status) || JOB_POSTING_STATUS_LABELS.open,
     statusTranslationKey: JOB_POSTING_STATUS_LABELS[job.status]

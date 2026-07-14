@@ -17229,7 +17229,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('name="from" value="detail"');
     expect(response.text).toContain('Part time');
     expect(response.text).toContain('Cork');
-    expect(response.text).toContain('EUR 20,000 - EUR 30,000');
+    expect(response.text).toContain('EUR 20,000 – EUR 30,000');
     expect(response.text).toContain('Applications received');
     expect(response.text).toContain('3');
     expect(response.text).toContain('Coordinate volunteer shifts.');
@@ -17339,6 +17339,49 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('govuk-pagination__icon--next');
     expect(response.text).toContain('cursor=next-saved');
     expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('matches Blade saved-job authoritative fields, integer counts, and salary range', async () => {
+    const api = require('../src/lib/api');
+    api.callJobApi.mockResolvedValueOnce({
+      data: [{
+        id: 'invalid',
+        title: 'Boundary role',
+        type: 'paid',
+        organization: { name: '   ' },
+        organisation: { name: 'Alias organisation' },
+        creator: { name: '   ' },
+        user: { name: 'Alias creator' },
+        salary_currency: 'EUR',
+        salary_min: 10,
+        salary_max: 20,
+        is_featured: false,
+        isFeatured: true,
+        has_applied: false,
+        hasApplied: true,
+        views_count: 1.9,
+        viewsCount: 99,
+        applications_count: 2.9,
+        applicationsCount: 88
+      }]
+    });
+
+    const response = await request(app)
+      .get('/jobs/saved')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('href="/jobs/0">Boundary role</a>');
+    expect(response.text).toContain('action="/jobs/0/unsave"');
+    expect(response.text).toContain('EUR 10 – EUR 20');
+    expect(response.text).toContain('1 view');
+    expect(response.text).toContain('2 applications');
+    expect(response.text).not.toContain('Alias organisation');
+    expect(response.text).not.toContain('Alias creator');
+    expect(response.text).not.toContain('Featured</strong>');
+    expect(response.text).not.toContain('Applied</strong>');
+    expect(response.text).not.toContain('99 views');
+    expect(response.text).not.toContain('88 applications');
   });
 
   it('redirects signed-out visitors away from saved jobs before calling Laravel', async () => {
