@@ -1562,7 +1562,7 @@ describe('shared accessible frontend shell', () => {
             {
               id: 12,
               question: 'How do I reset my password?',
-              answer: '<p>Use the reset link on the sign in page.</p>'
+              answer: '<p class="answer" onclick="alert(1)">Use the <a href="javascript:alert(1)">reset link</a> on the sign in page.</p><script>alert(2)</script>'
             }
           ]
         }
@@ -1581,7 +1581,10 @@ describe('shared accessible frontend shell', () => {
     expect(help.text).toContain('Account help');
     expect(help.text).toContain('class="govuk-accordion"');
     expect(help.text).toContain('How do I reset my password?');
-    expect(help.text).toContain('<p>Use the reset link on the sign in page.</p>');
+    expect(help.text).toContain('<p class="answer">Use the <a>reset link</a> on the sign in page.</p>');
+    expect(help.text).not.toContain('onclick=');
+    expect(help.text).not.toContain('javascript:');
+    expect(help.text).not.toContain('alert(2)');
     expect(help.text).toContain('Still need help?');
     expect(help.text).toContain('href="/contact"');
     expect(help.text).not.toContain('Help centre content will follow');

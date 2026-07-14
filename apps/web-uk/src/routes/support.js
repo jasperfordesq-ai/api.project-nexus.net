@@ -8,6 +8,7 @@ const express = require('express');
 const { getHelpFaqs } = require('../lib/api');
 const { catalogFor, valueInCatalog } = require('../lib/localization');
 const { asyncRoute } = require('../lib/routeHelpers');
+const { sanitizeCmsHtml } = require('../lib/html-sanitizer');
 
 const router = express.Router();
 
@@ -48,7 +49,7 @@ function normalizeFaqGroups(result, t) {
           .map((faq) => ({
             id: faq && faq.id,
             question: trimmed(faq && faq.question),
-            answer: String(faq && faq.answer ? faq.answer : '')
+            answer: sanitizeCmsHtml(faq && faq.answer)
           }))
           .filter((faq) => faq.question || faq.answer)
       };

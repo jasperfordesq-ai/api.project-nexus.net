@@ -61,7 +61,8 @@
     "helmet": "^7.1.0",
     "morgan": "^1.10.0",
     "nunjucks": "^3.2.4",
-    "redis": "^5.12.1"
+    "redis": "^5.12.1",
+    "sanitize-html": "2.13.1"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",
