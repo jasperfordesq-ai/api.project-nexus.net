@@ -5,7 +5,7 @@
 
 const express = require('express');
 const { randomUUID } = require('node:crypto');
-const { ApiError, callMarketplaceApi } = require('../lib/api');
+const { ApiError, callMarketplaceApi, callMerchantOnboardingApi } = require('../lib/api');
 const { flagEnabled } = require('../lib/accessible-shell');
 const { createTranslator } = require('../lib/localization');
 const { asyncRoute } = require('../lib/routeHelpers');
@@ -888,7 +888,14 @@ function decorateCoupon(coupon, req) {
 function onboardingProfile(statusResult) {
   const data = objectFrom(statusResult) || {};
   const profile = objectValue(data.profile);
-  const address = objectValue(profile.business_address);
+  let address = objectValue(profile.business_address);
+  if (typeof profile.business_address === 'string' && profile.business_address.trim() !== '') {
+    try {
+      address = objectValue(JSON.parse(profile.business_address));
+    } catch {
+      address = {};
+    }
+  }
   return {
     completed: Boolean(data.onboarding_completed),
     profile: {
@@ -1226,6 +1233,29 @@ function couponStatusOptions(req) {
   }));
 }
 
+function onboardingFormSessionKey(req) {
+  const tenantSlug = trimmed(
+    req.accessibleRouting?.tenant?.slug
+      || req.accessibleRouting?.tenantSlug
+      || 'default'
+  );
+  return `marketplaceOnboardingForm:${tenantSlug}`;
+}
+
+function consumeOnboardingFormState(req) {
+  const sessionKey = onboardingFormSessionKey(req);
+  const state = req.session?.[sessionKey];
+  if (state && req.session) delete req.session[sessionKey];
+  return state && typeof state === 'object' ? state : null;
+}
+
+function onboardingFormErrors(req, state) {
+  if (!Array.isArray(state?.errorKeys)) return [];
+  return state.errorKeys
+    .map((key) => translateMarketplaceMessage(req, key, key))
+    .filter(Boolean);
+}
+
 function listingFormErrors(req, state, status) {
   if (Array.isArray(state?.errorKeys) && state.errorKeys.length > 0) {
     return state.errorKeys.map((key) => translateMarketplaceMessage(req, key, key));
@@ -1557,16 +1587,16 @@ router.get('/onboarding', asyncRoute(async (req, res) => {
   const token = requireToken(req, res);
   if (!token) return undefined;
 
-  let setupErrorMessage = null;
   try {
-    const result = await callMarketplace(token, 'GET', '/merchant-onboarding/status').catch((error) => {
+    const result = await callMerchantOnboardingApi(token, 'GET', '/status').catch((error) => {
       if (isAuthError(error)) {
         throw error;
       }
-      setupErrorMessage = 'Sorry, there is a problem loading seller setup details.';
       return {};
     });
     const onboarding = onboardingProfile(result);
+    const formState = consumeOnboardingFormState(req);
+    const statusKey = trimmed(req.query.status);
     return res.render('marketplace/onboarding', {
       title: 'Become a seller',
       titleKey: 'govuk_alpha_commerce.onboarding.title',
@@ -1574,12 +1604,19 @@ router.get('/onboarding', asyncRoute(async (req, res) => {
       activeTab: 'sell',
       sellerTypes: SELLER_TYPES.map((value) => ({
         value,
-        label: SELLER_TYPE_LABELS[value],
-        checked: onboarding.profile.seller_type === value
+        label: translateMarketplaceMessage(
+          req,
+          `govuk_alpha_commerce.onboarding.seller_type_${value}`,
+          SELLER_TYPE_LABELS[value]
+        )
       })),
       ...onboarding,
-      setupErrorMessage,
-      status: statusEntry(req, req.query.status)
+      profile: { ...onboarding.profile, ...(formState?.profile || {}) },
+      address: { ...onboarding.address, ...(formState?.address || {}) },
+      formErrors: onboardingFormErrors(req, formState),
+      status: ['onboarding-complete', 'onboarding-failed'].includes(statusKey)
+        ? statusEntry(req, statusKey)
+        : null
     });
   } catch (error) {
     return renderMarketplaceError(error, res, 'Become a seller');

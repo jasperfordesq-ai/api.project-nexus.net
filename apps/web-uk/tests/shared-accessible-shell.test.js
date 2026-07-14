@@ -285,6 +285,7 @@ jest.mock('../src/lib/api', () => ({
   getVolunteeringCategories: jest.fn().mockResolvedValue({ data: [] }),
   callVolunteeringApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callMarketplaceApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
+  callMerchantOnboardingApi: jest.fn().mockResolvedValue({ data: {} }),
   callIdeationApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callGroupExchangeApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callEventApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
@@ -588,6 +589,7 @@ describe('shared accessible frontend shell', () => {
     api.getVolunteeringCategories.mockReset().mockResolvedValue({ data: [] });
     api.callVolunteeringApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callMarketplaceApi.mockReset().mockResolvedValue({ data: { id: 42 } });
+    api.callMerchantOnboardingApi.mockReset().mockResolvedValue({ data: {} });
     api.uploadMarketplaceListingImages.mockReset().mockResolvedValue({ data: [{ id: 9 }] });
     api.callIdeationApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callCourseApi.mockReset().mockResolvedValue({ data: { id: 42, moderation_status: 'approved' } });
@@ -30817,7 +30819,7 @@ describe('shared accessible frontend shell', () => {
 
   it('renders the Laravel-backed marketplace seller onboarding page', async () => {
     const api = require('../src/lib/api');
-    api.callMarketplaceApi.mockResolvedValueOnce({
+    api.callMerchantOnboardingApi.mockResolvedValueOnce({
       data: {
         has_profile: true,
         onboarding_completed: true,
@@ -30827,12 +30829,12 @@ describe('shared accessible frontend shell', () => {
           bio: 'Repairs and refurbished bikes',
           seller_type: 'business',
           business_registration: 'FC-123',
-          business_address: {
+          business_address: JSON.stringify({
             street: '1 Market Street',
             city: 'Belfast',
             postal_code: 'BT1 1AA',
             country: 'United Kingdom'
-          }
+          })
         }
       }
     });
@@ -30842,7 +30844,7 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(200);
-    expect(api.callMarketplaceApi).toHaveBeenCalledWith('test-token', 'GET', '/merchant-onboarding/status');
+    expect(api.callMerchantOnboardingApi).toHaveBeenCalledWith('test-token', 'GET', '/status');
     expect(response.text).toContain('Become a seller');
     expect(response.text).toContain('Your seller details were saved. You can now start selling.');
     expect(response.text).toContain('You have completed seller setup.');
@@ -30850,23 +30852,96 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('value="Jasper Cycles"');
     expect(response.text).toContain('Repairs and refurbished bikes');
     expect(response.text).toContain('value="1 Market Street"');
+    expect(response.text).toContain('class="govuk-caption-l"');
+    expect(response.text).toContain('id="seller_type"');
+    expect(response.text).toContain('id="seller_type-business"');
     expect(response.text).not.toContain('Laravel Blade route');
   });
 
   it('renders the marketplace seller onboarding form when status API is unavailable', async () => {
     const api = require('../src/lib/api');
-    api.callMarketplaceApi.mockRejectedValueOnce(new api.ApiError('Not found', 404, {}));
+    api.callMerchantOnboardingApi.mockRejectedValueOnce(new api.ApiError('Not found', 404, {}));
 
     const response = await request(app)
       .get('/marketplace/onboarding')
       .set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(200);
-    expect(api.callMarketplaceApi).toHaveBeenCalledWith('test-token', 'GET', '/merchant-onboarding/status');
+    expect(api.callMerchantOnboardingApi).toHaveBeenCalledWith('test-token', 'GET', '/status');
     expect(response.text).toContain('Become a seller');
     expect(response.text).toContain('action="/marketplace/onboarding"');
-    expect(response.text).toContain('Sorry, there is a problem loading seller setup details.');
+    expect(response.text).not.toContain('Sorry, there is a problem loading seller setup details.');
     expect(response.text).not.toContain('Page not found');
+  });
+
+  it('replays Laravel seller-onboarding validation and failed saves once', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', signedAuthCookieHeader());
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+    const post = (body) => agent
+      .post('/marketplace/onboarding')
+      .set('Cookie', signedAuthCookieHeader())
+      .type('form')
+      .send({ _csrf: csrfMatch[1], ...body });
+
+    const invalid = await post({
+      seller_type: 'business',
+      business_name: '',
+      display_name: '',
+      bio: ' Keep this description ',
+      business_registration: ' KEEP-REG ',
+      address_street: ' 2 Market Street ',
+      address_city: ' Cork ',
+      address_postal_code: ' T12 TEST ',
+      address_country: ' Ireland '
+    });
+    expect(invalid.headers.location).toBe('/marketplace/onboarding');
+    expect(api.callMerchantOnboardingApi).not.toHaveBeenCalled();
+
+    const invalidForm = await agent
+      .get('/marketplace/onboarding')
+      .set('Cookie', signedAuthCookieHeader());
+    expect(invalidForm.text).toContain('<a href="#display_name">Enter your business name</a>');
+    expect(invalidForm.text).toContain('<a href="#display_name">Enter a display name</a>');
+    expect(invalidForm.text).toContain('Keep this description');
+    expect(invalidForm.text).toContain('value=" KEEP-REG "');
+    expect(invalidForm.text).toContain('value=" 2 Market Street "');
+    expect(invalidForm.text).toContain('value=" Cork "');
+    expect(invalidForm.text).toContain('value=" T12 TEST "');
+    expect(invalidForm.text).toContain('value=" Ireland "');
+
+    const consumed = await agent
+      .get('/marketplace/onboarding')
+      .set('Cookie', signedAuthCookieHeader());
+    expect(consumed.text).not.toContain('Enter a business name');
+    expect(consumed.text).not.toContain('value=" KEEP-REG "');
+
+    api.callMerchantOnboardingApi.mockRejectedValueOnce(new api.ApiError('Save failed', 500, {}));
+    const failed = await post({
+      seller_type: 'private',
+      display_name: ' Local seller ',
+      bio: ' Replayed after failure ',
+      address_city: ' Galway '
+    });
+    expect(failed.headers.location).toBe('/marketplace/onboarding?status=onboarding-failed');
+    expect(api.callMerchantOnboardingApi).toHaveBeenLastCalledWith('test-token', 'POST', '/step-1', {
+      display_name: 'Local seller',
+      bio: 'Replayed after failure',
+      seller_type: 'private'
+    });
+
+    api.callMerchantOnboardingApi.mockResolvedValueOnce({ data: {} });
+    const failedForm = await agent
+      .get(failed.headers.location)
+      .set('Cookie', signedAuthCookieHeader());
+    expect(failedForm.text).toContain('<li>Sorry, your details could not be saved. Please try again.</li>');
+    expect(failedForm.text).not.toContain('href="#display_name">Sorry, your details');
+    expect(failedForm.text).toContain('value=" Local seller "');
+    expect(failedForm.text).toContain('Replayed after failure');
+    expect(failedForm.text).toContain('value=" Galway "');
   });
 
   it('renders the Laravel-backed marketplace seller pickup slot pages', async () => {
@@ -31430,15 +31505,30 @@ describe('shared accessible frontend shell', () => {
       seller_type: 'business',
       business_name: ' Community Supplies ',
       display_name: ' Community Store ',
-      bio: ' Circular economy seller '
+      bio: ' Circular economy seller ',
+      business_registration: ' REG-123 ',
+      address_street: ' 1 Market Street ',
+      address_city: ' Belfast ',
+      address_postal_code: ' BT1 1AA ',
+      address_country: ' United Kingdom '
     });
     expect(onboardingResponse.headers.location).toBe('/marketplace/onboarding?status=onboarding-complete');
-    expect(api.callMarketplaceApi).toHaveBeenLastCalledWith('test-token', 'POST', '/seller/profile', {
-      seller_type: 'business',
+    expect(api.callMerchantOnboardingApi).toHaveBeenNthCalledWith(1, 'test-token', 'POST', '/step-1', {
       business_name: 'Community Supplies',
       display_name: 'Community Store',
-      bio: 'Circular economy seller'
+      bio: 'Circular economy seller',
+      seller_type: 'business',
+      business_registration: 'REG-123'
     });
+    expect(api.callMerchantOnboardingApi).toHaveBeenNthCalledWith(2, 'test-token', 'POST', '/step-2', {
+      business_address: {
+        street: '1 Market Street',
+        city: 'Belfast',
+        postal_code: 'BT1 1AA',
+        country: 'United Kingdom'
+      }
+    });
+    expect(api.callMerchantOnboardingApi).toHaveBeenNthCalledWith(3, 'test-token', 'POST', '/complete');
 
     const slotCreateResponse = await post('/marketplace/slots', {
       slot_start: '2026-08-01T10:00',

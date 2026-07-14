@@ -15,7 +15,8 @@ jest.mock('../src/lib/api', () => ({
       this.data = data;
     }
   },
-  callMarketplaceApi: jest.fn()
+  callMarketplaceApi: jest.fn(),
+  callMerchantOnboardingApi: jest.fn()
 }));
 
 const api = require('../src/lib/api');
@@ -39,6 +40,7 @@ function createApp() {
 
 describe('Laravel-first Marketplace document-title localization', () => {
   beforeEach(() => {
+    api.callMerchantOnboardingApi.mockReset().mockResolvedValue({ data: {} });
     api.callMarketplaceApi.mockReset().mockImplementation((token, method, apiPath) => {
       if (apiPath === '/categories') {
         return Promise.resolve({ data: [{ id: 9, name: 'Dynamic category name', slug: 'transport' }] });
@@ -52,9 +54,6 @@ describe('Laravel-first Marketplace document-title localization', () => {
         return Promise.resolve({
           data: [{ id: 5, title: 'Dynamic coupon title', discount_type: 'percent', discount_value: 10, status: 'draft' }]
         });
-      }
-      if (apiPath === '/merchant-onboarding/status') {
-        return Promise.resolve({ data: {} });
       }
       if (apiPath === '/sellers/77') {
         return Promise.resolve({ data: { id: 77, display_name: 'Dynamic seller name' } });

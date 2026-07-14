@@ -3301,6 +3301,31 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('callMerchantOnboardingApi', () => {
+    it('should call Laravel v2 merchant-onboarding endpoints without a marketplace prefix', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { ok: true } })
+      });
+
+      await api.callMerchantOnboardingApi('test-token', 'POST', '/step-2', {
+        business_address: { city: 'Cork' }
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/merchant-onboarding/step-2',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({ business_address: { city: 'Cork' } })
+        })
+      );
+    });
+  });
+
   describe('callProfileApi', () => {
     it('should call arbitrary Laravel v2 profile-adjacent endpoints with auth, method, and optional payload', async () => {
       mockFetch.mockResolvedValueOnce({

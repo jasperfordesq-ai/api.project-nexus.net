@@ -15,6 +15,7 @@ const WRAPPERS = {
   callNewsletterApi: wrapper('/api/v2/newsletter/unsubscribe', 0, 1, 2, false, null, 'guest'),
   callVolunteeringApi: wrapper('/api/v2/volunteering', 1, 2, 3),
   callMarketplaceApi: wrapper('/api/v2/marketplace', 1, 2, 3),
+  callMerchantOnboardingApi: wrapper('/api/v2/merchant-onboarding', 1, 2, 3),
   callCouponApi: wrapper('/api/v2/coupons', 1, 2, 3),
   callIdeationApi: wrapper('/api/v2', 1, 2, 3),
   callGroupExchangeApi: wrapper('/api/v2/group-exchanges', 1, 2, 3),

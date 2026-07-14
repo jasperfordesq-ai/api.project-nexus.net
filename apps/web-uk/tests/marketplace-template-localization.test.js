@@ -183,7 +183,6 @@ describe('Laravel-first Marketplace template localization', () => {
     expect(formSource).not.toContain('polish_federation.transfer_cancel');
 
     for (const templateName of [
-      'marketplace/onboarding.njk',
       'marketplace/slots.njk',
       'marketplace/slot-form.njk'
     ]) {
@@ -193,6 +192,7 @@ describe('Laravel-first Marketplace template localization', () => {
     }
 
     for (const templateName of [
+      'marketplace/onboarding.njk',
       'marketplace/coupons.njk',
       'marketplace/coupon-form.njk'
     ]) {

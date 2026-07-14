@@ -844,6 +844,20 @@ async function callMarketplaceApi(token, method, path, data = undefined) {
   return request(`/api/v2/marketplace${normalizedPath}`, options);
 }
 
+async function callMerchantOnboardingApi(token, method, path = '', data = undefined) {
+  const normalizedPath = path === '' ? '' : (path.startsWith('/') ? path : `/${path}`);
+  const options = {
+    method,
+    headers: { Authorization: `Bearer ${token}` }
+  };
+
+  if (data !== undefined) {
+    options.body = JSON.stringify(data);
+  }
+
+  return request(`/api/v2/merchant-onboarding${normalizedPath}`, options);
+}
+
 async function callCouponApi(token, method, path = '', data = undefined) {
   const normalizedPath = path === '' ? '' : (path.startsWith('/') ? path : `/${path}`);
   const options = {
@@ -3390,6 +3404,7 @@ module.exports = {
   uploadVolunteerCredential,
   downloadVolunteerCredential,
   callMarketplaceApi,
+  callMerchantOnboardingApi,
   callCouponApi,
   uploadMarketplaceListingImages,
   callCourseApi,

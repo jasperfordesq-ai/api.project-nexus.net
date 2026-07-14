@@ -5,7 +5,7 @@
 
 const express = require('express');
 const { timingSafeEqual } = require('node:crypto');
-const { ApiError, callMarketplaceApi } = require('../lib/api');
+const { ApiError, callMarketplaceApi, callMerchantOnboardingApi } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
@@ -357,6 +357,64 @@ function apiCouponError(error, fallbackKey) {
     if (message && message !== 'API request failed') return { text: message };
   }
   return { key: fallbackKey };
+}
+
+function onboardingFormSessionKey(req) {
+  const tenantSlug = trimmed(
+    req.accessibleRouting?.tenant?.slug
+      || req.accessibleRouting?.tenantSlug
+      || 'default'
+  );
+  return `marketplaceOnboardingForm:${tenantSlug}`;
+}
+
+function onboardingFormState(body) {
+  return {
+    profile: {
+      seller_type: trimmed(body.seller_type, 20),
+      display_name: String(body.display_name || '').slice(0, 200),
+      business_name: String(body.business_name || '').slice(0, 200),
+      bio: String(body.bio || '').slice(0, 2000),
+      business_registration: String(body.business_registration || '').slice(0, 120)
+    },
+    address: {
+      street: String(body.address_street || '').slice(0, 200),
+      city: String(body.address_city || '').slice(0, 120),
+      postal_code: String(body.address_postal_code || '').slice(0, 40),
+      country: String(body.address_country || '').slice(0, 120)
+    }
+  };
+}
+
+function onboardingPayloads(body) {
+  const sellerType = allowed(body.seller_type, SELLER_TYPES, 'business');
+  const identity = {
+    business_name: trimmed(body.business_name, 200),
+    display_name: trimmed(body.display_name, 200),
+    bio: trimmed(body.bio, 2000),
+    seller_type: sellerType,
+    business_registration: trimmed(body.business_registration, 120)
+  };
+  for (const [key, value] of Object.entries(identity)) {
+    if (value === '') delete identity[key];
+  }
+
+  const businessAddress = {
+    street: trimmed(body.address_street, 200),
+    city: trimmed(body.address_city, 120),
+    postal_code: trimmed(body.address_postal_code, 40),
+    country: trimmed(body.address_country, 120)
+  };
+  for (const [key, value] of Object.entries(businessAddress)) {
+    if (value === '') delete businessAddress[key];
+  }
+
+  return { sellerType, identity, businessAddress };
+}
+
+function rememberOnboardingForm(req, state, errorKeys = []) {
+  if (!req.session) return;
+  req.session[onboardingFormSessionKey(req)] = { ...state, errorKeys };
 }
 
 router.post('/create', asyncRoute(async (req, res) => {
@@ -845,38 +903,35 @@ router.post('/orders/:id(\\d+)/rate', asyncRoute(async (req, res) => {
 }));
 
 router.post('/onboarding', asyncRoute(async (req, res) => {
-  if (!tokenFrom(req)) return redirectTo(res, loginRedirect());
-  const sellerType = allowed(req.body.seller_type, SELLER_TYPES, 'business');
-  const businessName = trimmed(req.body.business_name, 200);
-  const displayName = trimmed(req.body.display_name, 100);
-  if (sellerType === 'business' && businessName === '') {
-    return redirectTo(res, '/marketplace/onboarding?status=business-name-required');
+  const token = tokenFrom(req);
+  if (!token) return redirectTo(res, loginRedirect());
+  const state = onboardingFormState(req.body);
+  const { sellerType, identity, businessAddress } = onboardingPayloads(req.body);
+  const errorKeys = [];
+  if (sellerType === 'business' && !identity.business_name) {
+    errorKeys.push('govuk_alpha_commerce.onboarding.error_business_name');
   }
-  if (displayName === '') {
-    return redirectTo(res, '/marketplace/onboarding?status=display-name-required');
+  if (!identity.display_name) {
+    errorKeys.push('govuk_alpha_commerce.onboarding.error_display_name');
   }
-
-  const payload = {
-    seller_type: sellerType,
-    display_name: displayName
-  };
-  if (businessName !== '') {
-    payload.business_name = businessName;
-  }
-  const bio = trimmed(req.body.bio, 1000);
-  if (bio !== '') {
-    payload.bio = bio;
+  if (errorKeys.length > 0) {
+    rememberOnboardingForm(req, state, errorKeys);
+    return redirectTo(res, '/marketplace/onboarding');
   }
 
-  return runAction(
-    req,
-    res,
-    'POST',
-    '/seller/profile',
-    payload,
-    '/marketplace/onboarding?status=onboarding-complete',
-    '/marketplace/onboarding?status=onboarding-failed'
-  );
+  try {
+    await callMerchantOnboardingApi(token, 'POST', '/step-1', identity);
+    if (Object.keys(businessAddress).length > 0) {
+      await callMerchantOnboardingApi(token, 'POST', '/step-2', { business_address: businessAddress });
+    }
+    await callMerchantOnboardingApi(token, 'POST', '/complete');
+    delete req.session[onboardingFormSessionKey(req)];
+    return redirectTo(res, '/marketplace/onboarding?status=onboarding-complete');
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    rememberOnboardingForm(req, state);
+    return redirectTo(res, '/marketplace/onboarding?status=onboarding-failed');
+  }
 }));
 
 router.post('/slots', asyncRoute(async (req, res) => runAction(

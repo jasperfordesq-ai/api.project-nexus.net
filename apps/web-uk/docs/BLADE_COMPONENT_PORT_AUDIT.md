@@ -675,6 +675,19 @@ including Laravel `422` messages. Focused proof passes 6/6; the full gate passes
 keys, zero unresolved or conservative template matches, and a current 19/19
 Blade marker comparison. No live mutation or database access ran.
 
+2026-07-14 Marketplace merchant-onboarding follow-up: Web UK now calls
+Laravel's canonical `/api/v2/merchant-onboarding` family rather than the
+incorrect marketplace-prefixed path. The action follows Blade's `step-1`,
+optional `step-2`, and `complete` sequence, preserving business registration
+and address data. Default-English hierarchy, copy, field IDs, banners,
+validation order, and one-use bounded failure replay now match Blade. Focused
+proof is green; the full gate passes 49/49 suites and 1,645/1,645 tests, with
+7,304 static references, 5,586 unique keys, zero unresolved or conservative
+template matches across 322 templates, and a current 19/19 Blade marker
+comparison. The consumer ledger records 589 contracts: 371 OpenAPI matches,
+201 unmatched, 17 dynamic, and 283 state-changing. Verification used mocks and
+read-only public GET comparisons; no live mutation or database access ran.
+
 | Blade pattern | Laravel source | ASP.NET target | Status |
 | --- | --- | --- | --- |
 | Event moderation queue and decisions | `views/event-moderation-queue.blade.php`, `views/event-moderation-decision.blade.php`, `EventModerationParity`, `Api\AdminEventsController` | `src/routes/events.js`, `src/views/events/moderation-queue.njk`, `src/views/events/moderation-decision.njk`, `src/lib/api.js` | Partial. Signed tenant administrators can open the default-English queue and separate approve/reject confirmation pages through Laravel's current admin Event list/detail contracts. Queue status, count, cards, pagination, decision summaries, warnings, field-linked validation, mounted redirects, and private/no-store headers follow Blade. Approval requires explicit confirmation; rejection requires confirmation plus a bounded reason and submits only that reason to Laravel's canonical reject action. Non-admin or missing-event API responses fail closed. Focused mocked queue/validation/action and direct API-client proof pass; the full non-mutating gate is 48/48 suites and 1,635/1,635 tests, and the generated route matrix is 688/689. This is not contract-identical certification: Laravel's admin list does not join the moderation queue, orders by Event creation rather than queue submission, and omits Blade's `is_online`. Live moderation side effects, manual assistive-technology review, and unchanged ASP.NET runtime proof remain uncertified. |
