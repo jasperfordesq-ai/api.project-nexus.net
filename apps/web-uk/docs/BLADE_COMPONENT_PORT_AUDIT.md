@@ -1038,6 +1038,11 @@ rewriting.
   links, permalink GUIDs, optional RFC-822 publication date, request language,
   and XML escaping. Focused hostile-character feed proof passes `1/1`; live
   feed variants and manual consumer review remain open.
+- Volunteering's server-switched section links and Wallet's transaction-filter
+  links now apply Blade's no-visited-state class only to the active
+  `aria-current="page"` item. Focused active/inactive rendered proof passes
+  `2/2`, preventing browser history from visually overriding the current
+  section while retaining ordinary visited styling on inactive links.
 - The post-slice complete non-mutating checkpoint passes `52/52` suites and
   `1,675/1,675` tests after replacing the stale member star-display guard with
   a current rating-tag/assistive-copy guard. Route, API-ledger, locale,

@@ -171,7 +171,7 @@ Refresh the Laravel Blade/API source and Web UK implementation before relying on
 these numbers after either source moves.
 
 At this documentation audit, the product-source baseline was
-`a742239483c6bc6c5837bd586e5f03be8c7afe91`. The revoked-session confirmation,
+`288beba0ca198cef51b5d8ba376b7b1e57731e7b`. The revoked-session confirmation,
 Laravel method-spoof reconciliation, group-message contract, residual API-
 consumer correction, and backend-request timeout slices are above the frozen
 bank and remain **published and unscored**. The documentation remediation is
@@ -186,14 +186,15 @@ together from a clean published checkout.
   with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
   Only this fixed-rubric audit contributes to the current bank.
 - **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `a7422394`, including the later identity/session confirmation,
+  baseline `288beba0`, including the later identity/session confirmation,
   method-spoof reconciliation, group-message contract, residual API-consumer
   correction, and backend-request timeout slices. Their evidence is useful, but they
   contribute zero points until one complete fixed-rubric re-audit explicitly
   replaces the baseline.
-- **Dirty and uncommitted:** generated provenance and this concise checkpoint
-  are in flight; unrelated ASP.NET backend work remains outside the bank.
-  Recheck `git status` before every report; no dirty file earns estimated points.
+- **Dirty and uncommitted:** no Web UK product file is intended to remain dirty
+  after the evidence commit; unrelated ASP.NET backend work remains outside the
+  bank. Recheck `git status` before every report; no dirty file earns estimated
+  points.
 
 ### Latest Recorded Gates
 
@@ -207,7 +208,7 @@ together from a clean published checkout.
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
 | Jest | 52/52 suites, 1,675/1,675 tests | Latest recorded uninterrupted full gate after the frozen score; later improvements remain unscored until a complete rubric re-audit |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
-| Static locale usage | 7,341 references, 5,620 unique keys, 0 unresolved | Current complete-reference audit |
+| Static locale usage | 7,375 references, 5,629 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
 | Blade marker check | Current 19/19 | Current-source public GET marker comparison; not screenshot or visual certification |
 | Automated accessibility | Not currently certified: 28 passed, login failed, 58 did not run | Full aggregate requires a disposable Laravel environment; manual AT review remains open |
@@ -1329,6 +1330,23 @@ checks. No Laravel source, database, migration, mutation, upload, download,
 cleanup, or production operation was performed. This improves evidence
 classification only; the frozen bank remains 622/1,000 pending a complete
 rubric re-audit.
+
+## 2026-07-14 Active Subnavigation Styling Parity
+
+Frozen evidence at `2026-07-14T19:36:58.3485698+01:00` against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and published Web UK product commit
+`288beba0ca198cef51b5d8ba376b7b1e57731e7b`. The server-switched Volunteering
+sections and Wallet transaction filters now apply Blade's
+`govuk-link--no-visited-state` class only to the active `aria-current="page"`
+link, preventing visited-link colour from obscuring the current section.
+
+Focused rendered proof passes `2/2`; the complete non-mutating gate passes
+`52/52` suites and `1,675/1,675` tests. Brand, lint, CSS, route, API-ledger,
+locale-shape, static-key, 322-template, and diff checks are green. No Laravel
+request, database, migration, mutation, upload, download, container, or
+production operation ran. This published component-audit improvement remains
+unscored, so the frozen bank remains `622/1,000` pending a complete fixed-rubric
+re-audit.
 
 ## 2026-07-14 Premium Currency Display Parity
 
