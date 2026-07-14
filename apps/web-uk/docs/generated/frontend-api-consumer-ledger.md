@@ -4,8 +4,8 @@ Generated from `src/lib/api.js`, routed Web UK consumers, tests, and Laravel `op
 This is static evidence: an OpenAPI match or test reference does not prove runtime behavior, role policy, side effects, cleanup, or frontend parity.
 
 - Contracts: 663
-- Laravel OpenAPI matches: 444
-- Missing OpenAPI matches: 219
+- Laravel OpenAPI matches: 445
+- Missing OpenAPI matches: 218
 - Dynamic unresolved contracts: 0
 - State-changing contracts: 370
 - Rows without detected tests: 0
@@ -508,7 +508,7 @@ The JSON companion contains the full request/response, status/error, redirect, s
 | POST | `/api/v2/podcasts/{param}/episodes` | `callPodcastApi` | documented | state-changing; disposable-environment runtime proof required<br>fixture-specific cleanup and final absence/equality proof required | src/routes/podcast-actions.js | tests/api.test.js<br>tests/runtime/groups-mutation.spec.js<br>tests/runtime/podcasts-mutation.spec.js<br>tests/shared-accessible-shell.test.js |
 | POST | `/api/v2/podcasts/{param}/episodes` | `uploadPodcastEpisode` | documented | state-changing; disposable-environment runtime proof required<br>fixture-specific cleanup and final absence/equality proof required | src/routes/podcast-actions.js | tests/api.test.js<br>tests/shared-accessible-shell.test.js |
 | DELETE | `/api/v2/podcasts/{param}/episodes/{param}` | `callPodcastApi` | documented | state-changing; disposable-environment runtime proof required<br>fixture-specific cleanup and final absence/equality proof required | src/routes/podcast-actions.js | tests/api.test.js<br>tests/runtime/groups-mutation.spec.js<br>tests/runtime/podcasts-mutation.spec.js<br>tests/shared-accessible-shell.test.js |
-| POST | `/api/v2/podcasts/{param}/episodes/{param}` | `updatePodcastEpisode` | missing-openapi-match | state-changing; disposable-environment runtime proof required<br>fixture-specific cleanup and final absence/equality proof required | src/routes/podcast-actions.js | tests/api.test.js<br>tests/shared-accessible-shell.test.js |
+| PUT | `/api/v2/podcasts/{param}/episodes/{param}` | `updatePodcastEpisode` | documented | state-changing; disposable-environment runtime proof required<br>fixture-specific cleanup and final absence/equality proof required | src/routes/podcast-actions.js | tests/api.test.js<br>tests/shared-accessible-shell.test.js |
 | POST | `/api/v2/podcasts/{param}/episodes/{param}/cover` | `uploadPodcastEpisodeCover` | documented | state-changing; disposable-environment runtime proof required<br>fixture-specific cleanup and final absence/equality proof required | src/routes/podcast-actions.js | tests/api.test.js<br>tests/shared-accessible-shell.test.js |
 | POST | `/api/v2/podcasts/{param}/episodes/{param}/publish` | `callPodcastApi` | documented | state-changing; disposable-environment runtime proof required<br>fixture-specific cleanup and final absence/equality proof required | src/routes/podcast-actions.js | tests/api.test.js<br>tests/runtime/groups-mutation.spec.js<br>tests/runtime/podcasts-mutation.spec.js<br>tests/shared-accessible-shell.test.js |
 | POST | `/api/v2/podcasts/{param}/publish` | `callPodcastApi` | documented | state-changing; disposable-environment runtime proof required<br>fixture-specific cleanup and final absence/equality proof required | src/routes/podcast-actions.js | tests/api.test.js<br>tests/runtime/groups-mutation.spec.js<br>tests/runtime/podcasts-mutation.spec.js<br>tests/shared-accessible-shell.test.js |

@@ -538,6 +538,25 @@ the complete component-state deduction, so the banked score remains
 `622/1000`. The uninterrupted complete gate passes `49/49` suites and
 `1,661/1,661` tests, and lint is green.
 
+## Podcast Method-Spoof Ledger Reconciliation
+
+Checkpoint frozen at `2026-07-14T14:13:51.7066412+01:00` against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and published Web UK base
+`9c5fb1a46c40e4986c8f973075164b1d74bd101d`; both matched `origin/main`
+before this Web UK-only slice.
+
+The consumer-ledger generator now treats a multipart `POST` carrying Laravel's
+`_method=PUT` field as the effective `PUT` contract. This preserves Web UK's
+PHP-compatible podcast audio upload transport while matching the declared
+`PUT /api/v2/podcasts/{showId}/episodes/{episodeId}` operation. Focused
+method-spoof proof passes `1/1`; the combined generator gate passes `4/4` in
+the current worktree. Regeneration reports `663` contracts, `445`
+exact OpenAPI matches, `218` unmatched rows, `0` dynamic rows, and `370`
+state-changing rows. No Laravel request, mutation, database, migration, upload,
+or download operation ran. This reconciles one false ledger mismatch but does
+not independently change the frozen API-depth deduction, so the banked score
+remains `622/1000`.
+
 ## Podcast Episode Visibility Labels
 
 Podcast studio episode visibility selects now follow Blade's exact catalog

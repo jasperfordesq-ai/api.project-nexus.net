@@ -34222,7 +34222,7 @@ describe('shared accessible frontend shell', () => {
     const matrix = fs.readFileSync(path.join(__dirname, '..', 'docs', 'LARAVEL_ACCESSIBLE_ROUTE_MATRIX.md'), 'utf8');
     const contract = fs.readFileSync(path.join(__dirname, '..', 'docs', 'BACKEND_SWITCHING_CONTRACT.md'), 'utf8');
 
-    expect(matrix).toContain('Laravel `govuk-alpha*`');
+    expect(matrix).toContain('Laravel Blade accessible');
     expect(matrix).toContain('| Organisations | `/organisations`, `/organisations/browse`, `/organisations/register`, `/organisations/manage`, `/organisations/{id}`, `/organisations/{id}/jobs`, `/organisations/opportunities/{id}/apply` |');
     expect(matrix).toContain('`/organisations` POST and `/organisations/register` POST validate required fields/terms');
     expect(matrix).toContain('Auth enforcement depth, volunteering/job feature gates, tenant-prefixed routes, runtime registration persistence');

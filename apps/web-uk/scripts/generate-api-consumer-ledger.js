@@ -183,6 +183,24 @@ function normalizeMethod(value, fallback = 'GET') {
   return HTTP_METHODS.has(method) ? method : 'DYNAMIC';
 }
 
+function effectiveRequestMethod(functionNode, variables, transportMethod, bodyNode) {
+  if (transportMethod !== 'POST' || bodyNode?.type !== 'Identifier') return transportMethod;
+
+  let spoofedMethod = null;
+  walk(functionNode.body, (node) => {
+    if (spoofedMethod || node.type !== 'CallExpression' || node.callee.type !== 'MemberExpression') return;
+    if (expressionName(node.callee.object) !== bodyNode.name) return;
+    const property = node.callee.computed
+      ? staticValue(node.callee.property, variables)
+      : node.callee.property.name;
+    if (property !== 'append' || staticValue(node.arguments[0], variables) !== '_method') return;
+    const candidate = normalizeMethod(staticValue(node.arguments[1], variables), '');
+    if (candidate !== 'DYNAMIC') spoofedMethod = candidate;
+  });
+
+  return spoofedMethod || transportMethod;
+}
+
 function normalizePath(value) {
   let normalized = String(value || '/').trim().replace(/\\/g, '/');
   normalized = normalized.replace(/\?.*$/, '');
@@ -267,8 +285,9 @@ function collectDirectContracts(apiSource, apiAst) {
       const endpoint = displayPath(staticValue(node.arguments[0], variables));
       const optionsNode = node.arguments[1];
       const methodNode = objectProperty(optionsNode, 'method', variables);
-      const method = normalizeMethod(staticValue(methodNode, variables), 'GET');
+      const transportMethod = normalizeMethod(staticValue(methodNode, variables), 'GET');
       const dataNode = objectProperty(optionsNode, 'body', variables);
+      const method = effectiveRequestMethod(functionNode, variables, transportMethod, dataNode);
       contracts.push({
         helper: name,
         method,

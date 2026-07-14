@@ -8,8 +8,8 @@
   },
   "summary": {
     "contracts": 663,
-    "matchedOpenApi": 444,
-    "missingOpenApi": 219,
+    "matchedOpenApi": 445,
+    "missingOpenApi": 218,
     "dynamicUnresolved": 0,
     "stateChanging": 370,
     "withoutTests": 0
@@ -17826,26 +17826,32 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "POST /api/v2/podcasts/{param}/episodes/{param} [updatePodcastEpisode]",
-      "method": "POST",
+      "id": "PUT /api/v2/podcasts/{param}/episodes/{param} [updatePodcastEpisode]",
+      "method": "PUT",
       "path": "/api/v2/podcasts/{param}/episodes/{param}",
       "apiHelper": "updatePodcastEpisode",
       "source": "src/lib/api.js:2180",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
       "requestShape": "multipart/form-data; see helper fields and Laravel operation",
-      "responseShape": "JSON/text response via ApiError-aware request",
-      "statusCodes": [],
+      "responseShape": "200 application/json schema:PodcastEpisodeResponse",
+      "statusCodes": [
+        "200",
+        "404",
+        "422"
+      ],
       "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
       "redirects": "consumer-controlled: src/routes/podcast-actions.js",
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "matched-openapi",
+        "path": "/api/v2/podcasts/{showId}/episodes/{episodeId}",
         "operationId": "",
         "controllerAction": "",
-        "tags": []
+        "tags": [
+          "Podcast Studio"
+        ]
       },
       "frontendConsumers": [
         "src/routes/podcast-actions.js"
