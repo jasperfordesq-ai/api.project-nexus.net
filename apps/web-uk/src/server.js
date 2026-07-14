@@ -1301,9 +1301,17 @@ function acceptedOrganisationTerms(value) {
   return ['1', 'on', 'true'].includes(String(value || '').toLowerCase());
 }
 
+function unicodeLength(value) {
+  return Array.from(String(value || '')).length;
+}
+
+function unicodeSlice(value, maximumLength) {
+  return Array.from(String(value || '')).slice(0, maximumLength).join('');
+}
+
 function organisationRegistrationStatus(payload, agreedTerms) {
-  if (payload.name.length < 3) return 'org-name-invalid';
-  if (payload.description.length < 20) return 'org-description-invalid';
+  if (unicodeLength(payload.name) < 3) return 'org-name-invalid';
+  if (unicodeLength(payload.description) < 20) return 'org-description-invalid';
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.contact_email)) return 'org-email-invalid';
   if (payload.website && !/^https?:\/\//i.test(payload.website)) return 'org-website-invalid';
   if (!agreedTerms) return 'org-terms-required';
@@ -1341,7 +1349,7 @@ async function handleOrganisationRegistrationPost(req, res, options = {}) {
   const { ApiOfflineError, createVolunteerOrganisation } = require('./lib/api');
   try {
     await createVolunteerOrganisation(token, {
-      name: payload.name,
+      name: unicodeSlice(payload.name, 255),
       description: payload.description,
       contact_email: payload.contact_email,
       website: payload.website || undefined

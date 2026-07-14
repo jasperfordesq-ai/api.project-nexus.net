@@ -16637,6 +16637,55 @@ describe('shared accessible frontend shell', () => {
     });
   });
 
+  it('matches Laravel multibyte registration length checks and name truncation', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const cookie = signedCookieHeader();
+
+    const first = await agent.get('/organisations/register').set('Cookie', cookie);
+    const firstCsrf = first.text.match(/name="_csrf" value="([^"]+)"/)[1];
+    const invalid = await agent
+      .post('/organisations/register')
+      .set('Cookie', cookie)
+      .type('form')
+      .send({
+        _csrf: firstCsrf,
+        name: '🧰🌱',
+        description: 'A sufficiently detailed community description.',
+        email: 'hello@example.org',
+        agreed_terms: '1'
+      });
+
+    expect(invalid.status).toBe(302);
+    expect(invalid.headers.location).toBe('/organisations/register?status=org-name-invalid');
+    expect(api.createVolunteerOrganisation).not.toHaveBeenCalled();
+
+    const second = await agent.get('/organisations/register').set('Cookie', cookie);
+    const secondCsrf = second.text.match(/name="_csrf" value="([^"]+)"/)[1];
+    api.createVolunteerOrganisation.mockResolvedValueOnce({ data: { id: 42 } });
+    const longName = `${'🧰'.repeat(255)}tail`;
+    const valid = await agent
+      .post('/organisations/register')
+      .set('Cookie', cookie)
+      .type('form')
+      .send({
+        _csrf: secondCsrf,
+        name: longName,
+        description: '🌱'.repeat(20),
+        email: 'hello@example.org',
+        agreed_terms: 'true'
+      });
+
+    expect(valid.status).toBe(302);
+    expect(valid.headers.location).toBe('/organisations?status=org-submitted');
+    expect(api.createVolunteerOrganisation).toHaveBeenCalledWith('test-token', {
+      name: '🧰'.repeat(255),
+      description: '🌱'.repeat(20),
+      contact_email: 'hello@example.org',
+      website: undefined
+    });
+  });
+
   it('submits the embedded organisations POST with Laravel coarse validation redirects', async () => {
     const api = require('../src/lib/api');
     const cookieSignature = require('cookie-signature');
