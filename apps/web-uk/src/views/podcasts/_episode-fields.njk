@@ -79,7 +79,7 @@
 <div class="govuk-form-group">
   <label class="govuk-label{% if not episodeFieldEdit %} govuk-label--s{% endif %}" for="episode_visibility{{ episodeFieldSuffix }}">{{ t("govuk_alpha_commerce.podcast_studio.episode_visibility_label") }}</label>
   <select class="govuk-select" id="episode_visibility{{ episodeFieldSuffix }}" name="episode_visibility">
-    {% for value in episodeFieldVisibilities %}<option value="{{ value }}"{% if (episodeField.visibility or "inherit") == value %} selected{% endif %}>{{ t("govuk_alpha_commerce.podcast_studio.episode_visibility_" + value) }}</option>{% endfor %}
+    {% for value in episodeFieldVisibilities %}<option value="{{ value }}"{% if (episodeField.visibility or "inherit") == value %} selected{% endif %}>{% if value == "inherit" %}{{ t("govuk_alpha_commerce.podcast_studio.episode_visibility_inherit") }}{% else %}{{ t("govuk_alpha_commerce.podcast_studio.visibility_" + value) }}{% endif %}</option>{% endfor %}
   </select>
 </div>
 

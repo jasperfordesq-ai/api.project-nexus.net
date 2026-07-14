@@ -173,7 +173,7 @@ these numbers after either source moves.
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
 | Jest | 49/49 suites, 1,637/1,637 tests | Fresh green code gate |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
-| Static locale usage | 7,123 references, 5,423 unique keys, 0 unresolved | Current complete-reference audit |
+| Static locale usage | 7,124 references, 5,424 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
 | Blade marker check | Retained 19/19; current rerun unavailable | Current public-GET rerun timed out against Laravel HTTP; retained result is not visual certification |
 | Automated accessibility | Not currently certified: 28 passed, login failed, 58 did not run | Full aggregate requires a disposable Laravel environment; manual AT review remains open |
@@ -211,6 +211,16 @@ GET requests but reached its ten-minute wrapper timeout because the restored
 Laravel HTTP service did not return the public comparison pages. It is recorded
 as unavailable, not as a failed or green marker result; the retained historical
 19/19 result remains a text-marker spotcheck only.
+
+## Podcast Episode Visibility Labels
+
+Podcast studio episode visibility selects now follow Blade's exact catalog
+mapping: only `inherit` uses `episode_visibility_inherit`; `public`, `members`,
+and `private` use the show-level visibility labels. This prevents nonexistent
+dynamic translation keys from appearing as option text. Focused default-English
+render proof passes 1/1, the full Jest gate remains 49/49 suites and 1,637/1,637
+tests, and lint, localization-key, template-localization, CSS, and brand gates
+are green. No Laravel request, upload, mutation, or database access was used.
 
 ## Marketplace Listing Form Refresh
 

@@ -28350,6 +28350,9 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('http://127.0.0.1:8088/uploads/podcasts/episode.jpg');
     expect(response.text).toContain('action="/podcasts/studio/42/update"');
     expect(response.text).toContain('name="episode_id" value="99"');
+    expect(response.text).toMatch(/id="episode_visibility-99"[\s\S]*?<option value="inherit">Use the show setting<\/option>[\s\S]*?<option value="public">Anyone<\/option>[\s\S]*?<option value="members" selected>Members only<\/option>[\s\S]*?<option value="private">Only me<\/option>/);
+    expect(response.text).toMatch(/id="episode_visibility"[\s\S]*?<option value="inherit" selected>Use the show setting<\/option>[\s\S]*?<option value="public">Anyone<\/option>[\s\S]*?<option value="members">Members only<\/option>[\s\S]*?<option value="private">Only me<\/option>/);
+    expect(response.text).not.toContain('episode_visibility_public');
     expect(response.text).toContain('Add an episode');
     expect(response.text).toContain('Audio link');
     expect(response.text).toContain('Delete this show?');
