@@ -5623,6 +5623,7 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
             {
                 TenantId = TestData.Tenant1.Id,
                 Email = "zara.mention@example.test",
+                Username = "zara",
                 PasswordHash = TestDataSeeder.TestPasswordHash,
                 FirstName = "Zara",
                 LastName = "Mention",
@@ -5635,6 +5636,7 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
             {
                 TenantId = TestData.Tenant1.Id,
                 Email = "zach.connection@example.test",
+                Username = "zach",
                 PasswordHash = TestDataSeeder.TestPasswordHash,
                 FirstName = "Zach",
                 LastName = "Connection",
@@ -5647,6 +5649,7 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
             {
                 TenantId = TestData.Tenant1.Id,
                 Email = "zoe.inactive@example.test",
+                Username = "zoe",
                 PasswordHash = TestDataSeeder.TestPasswordHash,
                 FirstName = "Zoe",
                 LastName = "Inactive",
@@ -5658,6 +5661,7 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
             {
                 TenantId = TestData.Tenant2.Id,
                 Email = "zed.other@example.test",
+                Username = "zed",
                 PasswordHash = TestDataSeeder.TestPasswordHash,
                 FirstName = "Zed",
                 LastName = "Other",
@@ -5695,7 +5699,7 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
         var first = data[0];
         first.GetProperty("id").GetInt32().Should().NotBe(TestData.MemberUser.Id);
         first.GetProperty("name").GetString().Should().Be("Zach");
-        first.GetProperty("username").GetString().Should().Be("zach.connection@example.test");
+        first.GetProperty("username").GetString().Should().Be("zach");
         first.GetProperty("avatar_url").GetString().Should().Be("/storage/avatars/zach.png");
         first.GetProperty("is_connection").GetBoolean().Should().BeTrue();
 
@@ -5704,8 +5708,58 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
         second.GetProperty("avatar_url").GetString().Should().Be("/storage/avatars/zara.png");
         second.GetProperty("is_connection").GetBoolean().Should().BeFalse();
 
-        data.Should().NotContain(row => row.GetProperty("username").GetString() == "zoe.inactive@example.test");
-        data.Should().NotContain(row => row.GetProperty("username").GetString() == "zed.other@example.test");
+        data.Should().NotContain(row => row.GetProperty("username").GetString() == "zoe");
+        data.Should().NotContain(row => row.GetProperty("username").GetString() == "zed");
+    }
+
+    [Fact]
+    public async Task SocialCommentMention_PersistsLaravelMentionAndNotificationsOnPostgres()
+    {
+        int mentionedUserId;
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var mentioned = new User
+            {
+                TenantId = TestData.Tenant1.Id,
+                Email = "mention.target@example.test",
+                Username = "mentiontarget",
+                PasswordHash = TestDataSeeder.TestPasswordHash,
+                FirstName = "Mention",
+                LastName = "Target",
+                PreferredLanguage = "ga",
+                Role = "member",
+                IsActive = true,
+                IsApproved = true
+            };
+            db.Users.Add(mentioned);
+            await db.SaveChangesAsync();
+            mentionedUserId = mentioned.Id;
+        }
+
+        await AuthenticateAsMemberAsync();
+        var response = await Client.PostAsJsonAsync("/api/social/comments", new
+        {
+            action = "submit",
+            target_type = "listing",
+            target_id = TestData.Listing1.Id,
+            content = "Thanks @mentiontarget for helping"
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var verificationScope = Factory.Services.CreateScope();
+        var verificationDb = verificationScope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var mention = await verificationDb.ContentMentions
+            .SingleAsync(row => row.MentionedUserId == mentionedUserId);
+        mention.MentioningUserId.Should().Be(TestData.MemberUser.Id);
+        mention.EntityType.Should().Be("comment");
+        mention.CommentId.Should().Be(mention.EntityId);
+        var mentionedNotification = await verificationDb.Notifications
+            .SingleAsync(row => row.UserId == mentionedUserId && row.Type == "mention");
+        mentionedNotification.Link.Should().Be("/feed");
+        mentionedNotification.Body.Should().Be("Luaigh Member User thú i nóta tráchta.");
+        await verificationDb.Notifications
+            .SingleAsync(row => row.UserId == TestData.AdminUser.Id && row.Type == "comment");
     }
 
     [Fact]

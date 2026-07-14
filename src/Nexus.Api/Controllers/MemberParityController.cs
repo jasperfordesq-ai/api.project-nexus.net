@@ -847,8 +847,9 @@ public class MemberParityController : ControllerBase
                 u.Id != userId &&
                 (u.FirstName.ToLower().Contains(term) ||
                  u.LastName.ToLower().Contains(term) ||
+                 (u.Username != null && u.Username.ToLower().Contains(term)) ||
                  u.Email.ToLower().Contains(term)))
-            .Select(u => new { u.Id, u.FirstName, u.LastName, u.Email, u.AvatarUrl })
+            .Select(u => new { u.Id, u.FirstName, u.LastName, u.Username, u.Email, u.AvatarUrl })
             .ToListAsync();
 
         var users = matchedUsers
@@ -860,7 +861,7 @@ public class MemberParityController : ControllerBase
             {
                 id = u.Id,
                 name = DisplayName(u.FirstName, u.LastName, u.Email),
-                username = u.Email,
+                username = u.Username,
                 avatar_url = u.AvatarUrl,
                 is_connection = connected.Contains(u.Id)
             })

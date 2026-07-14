@@ -449,6 +449,7 @@ public class NexusDbContext : DbContext
 
     // Threaded Comments V2
     public DbSet<ThreadedComment> ThreadedComments => Set<ThreadedComment>();
+    public DbSet<ContentMention> ContentMentions => Set<ContentMention>();
 
     // Vetting/DBS Records
     public DbSet<VettingRecord> VettingRecords => Set<VettingRecord>();

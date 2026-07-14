@@ -816,6 +816,7 @@ public sealed class V15SocialCompatibilityControllerUnitTests
                 Id = 1,
                 TenantId = 1,
                 Email = "alina@example.test",
+                Username = "alina",
                 PasswordHash = "hash",
                 FirstName = "Alina",
                 LastName = "Able",
@@ -861,8 +862,98 @@ public sealed class V15SocialCompatibilityControllerUnitTests
         users[0].GetProperty("id").GetInt32().Should().Be(1);
         users[0].GetProperty("name").GetString().Should().Be("Alina Able");
         users[0].GetProperty("first_name").GetString().Should().Be("Alina");
-        users[0].GetProperty("username").GetString().Should().Be("alina@example.test");
+        users[0].GetProperty("username").GetString().Should().Be("alina");
         users[0].GetProperty("avatar_url").GetString().Should().Be("/avatars/alina.png");
+    }
+
+    [Fact]
+    public async Task SocialComments_PersistsMentionsAndRecipientNotificationsBehindSafeguardingBoundary()
+    {
+        var tenant = CreateTenantContext();
+        await using var db = CreateDbContext(tenant);
+        var policy = new RecordingSocialCommentContactPolicy();
+        var controller = CreateController(db, tenant, userId: 2, contactPolicy: policy);
+
+        db.Users.AddRange(
+            new User { Id = 1, TenantId = 1, Email = "owner@example.test", Username = "owner", PasswordHash = "hash", FirstName = "Owner", LastName = "User", Role = "member", IsActive = true },
+            new User { Id = 2, TenantId = 1, Email = "author@example.test", Username = "author", PasswordHash = "hash", FirstName = "Comment", LastName = "Author", Role = "member", IsActive = true },
+            new User { Id = 3, TenantId = 1, Email = "alice@example.test", Username = "alice", PasswordHash = "hash", FirstName = "Alice", LastName = "Mentioned", PreferredLanguage = "fr", Role = "member", IsActive = true },
+            new User { Id = 4, TenantId = 1, Email = "parent@example.test", Username = "parent", PasswordHash = "hash", FirstName = "Parent", LastName = "Author", Role = "member", IsActive = true },
+            new User { Id = 5, TenantId = 2, Email = "alice-other@example.test", Username = "alice", PasswordHash = "hash", FirstName = "Other", LastName = "Tenant", Role = "member", IsActive = true });
+        db.Listings.Add(new Listing
+        {
+            Id = 20,
+            TenantId = 1,
+            UserId = 1,
+            Title = "Mentionable listing",
+            Description = "Listing with durable social mentions",
+            Type = ListingType.Offer,
+            Status = ListingStatus.Active
+        });
+        db.ThreadedComments.Add(new ThreadedComment
+        {
+            Id = 100,
+            TenantId = 1,
+            TargetType = "listing",
+            TargetId = 20,
+            AuthorId = 4,
+            Content = "Parent comment"
+        });
+        await db.SaveChangesAsync();
+
+        var result = await controller.Comments(JsonDocument.Parse("""
+        {
+          "action": "submit",
+          "target_type": "listing",
+          "target_id": 20,
+          "parent_id": 100,
+          "content": "Thanks @alice for helping"
+        }
+        """).RootElement);
+
+        result.Should().BeOfType<OkObjectResult>();
+        policy.RecipientIds.Should().Equal(1, 3, 4);
+        var mention = db.ContentMentions.Should().ContainSingle().Subject;
+        mention.MentionedUserId.Should().Be(3);
+        mention.MentioningUserId.Should().Be(2);
+        mention.EntityType.Should().Be("comment");
+        mention.CommentId.Should().Be(mention.EntityId);
+        db.Notifications.Should().ContainSingle(row => row.UserId == 3 && row.Type == "mention" && row.Link == "/feed");
+        db.Notifications.Should().ContainSingle(row => row.UserId == 4 && row.Type == "comment_reply");
+        db.Notifications.Should().ContainSingle(row => row.UserId == 1 && row.Type == "comment");
+        db.Notifications.Single(row => row.UserId == 3 && row.Type == "mention").Body
+            .Should().Be("Comment Author vous a mentionné dans un commentaire.");
+        db.ContentMentions.Should().NotContain(row => row.MentionedUserId == 5);
+    }
+
+    [Fact]
+    public async Task SocialComments_SafeguardingDenialDoesNotPersistCommentOrSideEffects()
+    {
+        var tenant = CreateTenantContext();
+        await using var db = CreateDbContext(tenant);
+        var policy = new RecordingSocialCommentContactPolicy("VETTING_REQUIRED");
+        var controller = CreateController(db, tenant, userId: 2, contactPolicy: policy);
+
+        db.Users.AddRange(
+            new User { Id = 1, TenantId = 1, Email = "owner@example.test", PasswordHash = "hash", FirstName = "Owner", LastName = "User", Role = "member", IsActive = true },
+            new User { Id = 2, TenantId = 1, Email = "author@example.test", PasswordHash = "hash", FirstName = "Comment", LastName = "Author", Role = "member", IsActive = true });
+        db.Listings.Add(new Listing { Id = 20, TenantId = 1, UserId = 1, Title = "Protected listing", Description = "Protected", Type = ListingType.Offer, Status = ListingStatus.Active });
+        await db.SaveChangesAsync();
+
+        var result = await controller.Comments(JsonDocument.Parse("""
+        {
+          "action": "submit",
+          "target_type": "listing",
+          "target_id": 20,
+          "content": "Restricted contact"
+        }
+        """).RootElement);
+
+        var forbidden = result.Should().BeOfType<ObjectResult>().Subject;
+        forbidden.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
+        db.ThreadedComments.Should().BeEmpty();
+        db.ContentMentions.Should().BeEmpty();
+        db.Notifications.Should().BeEmpty();
     }
 
     [Fact]
@@ -945,7 +1036,8 @@ public sealed class V15SocialCompatibilityControllerUnitTests
         NexusDbContext db,
         TenantContext tenant,
         int userId,
-        IReadOnlyDictionary<string, string?>? configurationValues = null)
+        IReadOnlyDictionary<string, string?>? configurationValues = null,
+        ISocialCommentContactPolicy? contactPolicy = null)
     {
         var configurationBuilder = new ConfigurationBuilder();
         if (configurationValues is not null)
@@ -960,7 +1052,12 @@ public sealed class V15SocialCompatibilityControllerUnitTests
             configuration,
             NullLogger<PushNotificationService>.Instance);
 
-        var controller = new V15SocialCompatibilityController(db, tenant, push, configuration)
+        var controller = new V15SocialCompatibilityController(
+            db,
+            tenant,
+            push,
+            configuration,
+            contactPolicy ?? new RecordingSocialCommentContactPolicy())
         {
             ControllerContext = new ControllerContext
             {
@@ -978,6 +1075,26 @@ public sealed class V15SocialCompatibilityControllerUnitTests
         };
 
         return controller;
+    }
+
+    private sealed class RecordingSocialCommentContactPolicy(string? denialCode = null) : ISocialCommentContactPolicy
+    {
+        public IReadOnlyList<int> RecipientIds { get; private set; } = Array.Empty<int>();
+
+        public Task AssertAllowedAsync(
+            int senderId,
+            IReadOnlyCollection<int> recipientIds,
+            int tenantId,
+            CancellationToken cancellationToken = default)
+        {
+            RecipientIds = recipientIds.OrderBy(id => id).ToArray();
+            if (denialCode is not null)
+            {
+                throw new SafeguardingPolicyException(denialCode, "Protected contact is restricted.");
+            }
+
+            return Task.CompletedTask;
+        }
     }
 
     private static Dictionary<string, string?> PusherConfiguration() => new()

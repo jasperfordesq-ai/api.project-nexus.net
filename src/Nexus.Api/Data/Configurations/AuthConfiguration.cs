@@ -33,6 +33,9 @@ public class AuthConfiguration : TenantScopedConfiguration
             entity.Property(e => e.PasswordHash).HasMaxLength(255).IsRequired();
             entity.Property(e => e.FirstName).HasMaxLength(100).IsRequired();
             entity.Property(e => e.LastName).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.Username)
+                .HasColumnName("username")
+                .HasMaxLength(50);
             entity.Property(e => e.Role).HasMaxLength(50).IsRequired();
             entity.Property(e => e.IsAdmin)
                 .HasColumnName("is_admin")
@@ -69,6 +72,9 @@ public class AuthConfiguration : TenantScopedConfiguration
 
             // Composite unique: email per tenant
             entity.HasIndex(e => new { e.TenantId, e.Email }).IsUnique();
+            entity.HasIndex(e => new { e.TenantId, e.Username })
+                .IsUnique()
+                .HasDatabaseName("idx_tenant_username");
 
             // Laravel parity: privileged lookups and tenant role filters are
             // frequent authorization paths, so keep the same supporting indexes.

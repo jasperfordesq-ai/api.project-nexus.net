@@ -20,6 +20,11 @@ public class User : ITenantEntity
     public string PasswordHash { get; set; } = string.Empty;
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
+    /// <summary>
+    /// Laravel-compatible public handle. It is tenant-unique when present and
+    /// must be used for mention/autocomplete contracts instead of exposing email.
+    /// </summary>
+    public string? Username { get; set; }
     public string Role { get; set; } = "member";
 
     /// <summary>

@@ -161,6 +161,7 @@ public static class ServiceExtensions
         services.AddScoped<SafeguardingJurisdictionService>();
         services.AddScoped<MemberVettingAttestationService>();
         services.AddScoped<SafeguardingInteractionPolicy>();
+        services.AddScoped<ISocialCommentContactPolicy, SocialCommentContactPolicy>();
         services.AddScoped<EventBroadcastService>();
         services.AddScoped<EventRegistrationLifecycleService>();
         services.AddScoped<EventPeopleWorkflowService>();

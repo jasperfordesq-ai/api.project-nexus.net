@@ -10,6 +10,7 @@ using System.Text;
 using System.Security.Cryptography;
 using System.Globalization;
 using System.Data;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -125,17 +126,20 @@ public class V15SocialCompatibilityController : ControllerBase
     private readonly TenantContext _tenantContext;
     private readonly PushNotificationService _pushService;
     private readonly IConfiguration _configuration;
+    private readonly ISocialCommentContactPolicy _socialCommentContactPolicy;
 
     public V15SocialCompatibilityController(
         NexusDbContext db,
         TenantContext tenantContext,
         PushNotificationService pushService,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        ISocialCommentContactPolicy socialCommentContactPolicy)
     {
         _db = db;
         _tenantContext = tenantContext;
         _pushService = pushService;
         _configuration = configuration;
+        _socialCommentContactPolicy = socialCommentContactPolicy;
     }
 
     [HttpGet("/api/v2/feed")]
@@ -1270,6 +1274,7 @@ public class V15SocialCompatibilityController : ControllerBase
             .Where(u =>
                 ((u.FirstName + " " + u.LastName).Contains(q)) ||
                 u.FirstName.Contains(q) ||
+                (u.Username != null && u.Username.Contains(q)) ||
                 u.Email.Contains(q))
             .Take(10)
             .Select(u => new
@@ -1277,7 +1282,7 @@ public class V15SocialCompatibilityController : ControllerBase
                 id = u.Id,
                 name = (u.FirstName + " " + u.LastName).Trim(),
                 first_name = u.FirstName,
-                username = u.Email,
+                username = u.Username,
                 avatar_url = u.AvatarUrl
             })
             .ToListAsync();
@@ -2445,6 +2450,7 @@ public class V15SocialCompatibilityController : ControllerBase
     {
         var tenantId = TenantId();
         var userId = RequireUserId();
+        var cancellationToken = HttpContext.RequestAborted;
         var content = ReadString(body, "content", "body", "comment", "message")?.Trim();
         if (string.IsNullOrWhiteSpace(content))
         {
@@ -2467,15 +2473,19 @@ public class V15SocialCompatibilityController : ControllerBase
         }
 
         var parentId = ReadInt(body, "parent_id", "parent_comment_id");
+        int? parentAuthorId = null;
         if (parentId.HasValue)
         {
-            var parentExists = await _db.ThreadedComments.AnyAsync(c =>
+            parentAuthorId = await _db.ThreadedComments
+                .Where(c =>
                 c.TenantId == tenantId &&
                 c.Id == parentId.Value &&
                 c.TargetType == targetType &&
                 c.TargetId == targetId &&
-                !c.IsDeleted);
-            if (!parentExists)
+                !c.IsDeleted)
+                .Select(c => (int?)c.AuthorId)
+                .FirstOrDefaultAsync(cancellationToken);
+            if (!parentAuthorId.HasValue)
             {
                 return Ok(new
                 {
@@ -2486,6 +2496,57 @@ public class V15SocialCompatibilityController : ControllerBase
                     }
                 });
             }
+        }
+
+        var mentioningUser = await _db.Users
+            .AsNoTracking()
+            .Where(user => user.TenantId == tenantId && user.Id == userId && user.IsActive)
+            .Select(user => new { user.Id, user.FirstName, user.LastName })
+            .FirstOrDefaultAsync(cancellationToken);
+        if (mentioningUser is null)
+        {
+            return Unauthorized(new { errors = new[] { new { code = "UNAUTHORIZED", message = "Invalid user." } } });
+        }
+
+        var mentionedUsers = await ResolveCommentMentionUsersAsync(content, tenantId, userId, cancellationToken);
+        var targetOwnerId = await ResolveCommentTargetOwnerIdAsync(targetType, targetId, cancellationToken);
+        var recipientIds = mentionedUsers.Select(user => user.Id)
+            .Concat(parentAuthorId.HasValue ? new[] { parentAuthorId.Value } : Array.Empty<int>())
+            .Concat(targetOwnerId.HasValue ? new[] { targetOwnerId.Value } : Array.Empty<int>())
+            .Where(id => id != userId)
+            .Distinct()
+            .OrderBy(id => id)
+            .ToArray();
+
+        await using var transaction = _db.Database.IsRelational()
+            ? await _db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken)
+            : null;
+
+        try
+        {
+            await _socialCommentContactPolicy.AssertAllowedAsync(
+                userId,
+                recipientIds,
+                tenantId,
+                cancellationToken);
+        }
+        catch (SafeguardingPolicyException exception)
+        {
+            if (transaction is not null)
+            {
+                await transaction.RollbackAsync(cancellationToken);
+            }
+
+            var status = exception.ReasonCode switch
+            {
+                "SAFEGUARDING_POLICY_UNAVAILABLE" => StatusCodes.Status503ServiceUnavailable,
+                "SAFEGUARDING_JURISDICTION_REQUIRED" => StatusCodes.Status409Conflict,
+                _ => StatusCodes.Status403Forbidden
+            };
+            return StatusCode(status, new
+            {
+                errors = new[] { new { code = exception.ReasonCode, message = exception.Message } }
+            });
         }
 
         var comment = new ThreadedComment
@@ -2500,7 +2561,92 @@ public class V15SocialCompatibilityController : ControllerBase
         };
 
         _db.ThreadedComments.Add(comment);
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(cancellationToken);
+
+        foreach (var mentioned in mentionedUsers)
+        {
+            _db.ContentMentions.Add(new ContentMention
+            {
+                TenantId = tenantId,
+                CommentId = comment.Id,
+                MentionedUserId = mentioned.Id,
+                MentioningUserId = userId,
+                EntityType = "comment",
+                EntityId = comment.Id,
+                CreatedAt = comment.CreatedAt
+            });
+        }
+
+        var actorName = DisplayName(mentioningUser.FirstName, mentioningUser.LastName) ?? "Someone";
+        var link = SocialCommentLink(targetType, targetId, comment.Id);
+        const string mentionLink = "/feed";
+        var recipientUsers = await _db.Users
+            .AsNoTracking()
+            .Where(user => user.TenantId == tenantId && recipientIds.Contains(user.Id))
+            .Select(user => new { user.Id, user.PreferredLanguage })
+            .ToDictionaryAsync(user => user.Id, cancellationToken);
+        var deliveries = new List<(int UserId, string Title, string Body, string Type, string Link)>();
+
+        foreach (var mentioned in mentionedUsers)
+        {
+            var copy = SocialCommentNotificationCopy(
+                recipientUsers.GetValueOrDefault(mentioned.Id)?.PreferredLanguage,
+                actorName,
+                "mention");
+            AddSocialCommentNotification(tenantId, mentioned.Id, userId, comment, mentionLink, "mention", copy.Title, copy.Body);
+            deliveries.Add((mentioned.Id, copy.Title, copy.Body, "mention", mentionLink));
+        }
+
+        if (parentAuthorId is int replyRecipient && replyRecipient != userId)
+        {
+            var copy = SocialCommentNotificationCopy(
+                recipientUsers.GetValueOrDefault(replyRecipient)?.PreferredLanguage,
+                actorName,
+                "comment_reply");
+            AddSocialCommentNotification(tenantId, replyRecipient, userId, comment, link, "comment_reply", copy.Title, copy.Body);
+            deliveries.Add((replyRecipient, copy.Title, copy.Body, "comment_reply", link));
+        }
+
+        if (targetOwnerId is int ownerId && ownerId != userId)
+        {
+            var copy = SocialCommentNotificationCopy(
+                recipientUsers.GetValueOrDefault(ownerId)?.PreferredLanguage,
+                actorName,
+                "comment");
+            AddSocialCommentNotification(tenantId, ownerId, userId, comment, link, "comment", copy.Title, copy.Body);
+            deliveries.Add((ownerId, copy.Title, copy.Body, "comment", link));
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+        if (transaction is not null)
+        {
+            await transaction.CommitAsync(cancellationToken);
+        }
+
+        foreach (var delivery in deliveries)
+        {
+            try
+            {
+                await _pushService.SendPushAsync(
+                    delivery.UserId,
+                    delivery.Title,
+                    delivery.Body,
+                    JsonSerializer.Serialize(new
+                    {
+                        type = delivery.Type,
+                        comment_id = comment.Id,
+                        target_type = targetType,
+                        target_id = targetId,
+                        link = delivery.Link
+                    }),
+                    tenantId);
+            }
+            catch
+            {
+                // Laravel treats push fan-out as non-critical after the durable
+                // comment, mention, and bell transaction has committed.
+            }
+        }
 
         var saved = await _db.ThreadedComments
             .AsNoTracking()
@@ -3317,6 +3463,156 @@ public class V15SocialCompatibilityController : ControllerBase
             _ => false
         };
     }
+
+    private async Task<List<CommentMentionRecipient>> ResolveCommentMentionUsersAsync(
+        string content,
+        int tenantId,
+        int mentioningUserId,
+        CancellationToken cancellationToken)
+    {
+        var handles = Regex.Matches(content, "@([A-Za-z0-9_.-]+)")
+            .Select(match => match.Groups[1].Value)
+            .Where(handle => !string.IsNullOrWhiteSpace(handle))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        if (handles.Length == 0)
+        {
+            return [];
+        }
+
+        var candidates = await _db.Users
+            .AsNoTracking()
+            .Where(user => user.TenantId == tenantId && user.IsActive && user.Id != mentioningUserId)
+            .Select(user => new
+            {
+                user.Id,
+                user.Username,
+                user.Email,
+                user.FirstName,
+                user.LastName
+            })
+            .ToListAsync(cancellationToken);
+
+        var resolved = new List<CommentMentionRecipient>();
+        foreach (var handle in handles)
+        {
+            var candidate = candidates.FirstOrDefault(user =>
+                string.Equals(user.Username, handle, StringComparison.OrdinalIgnoreCase))
+                ?? candidates.FirstOrDefault(user =>
+                    string.Equals(user.Email.Split('@')[0], handle, StringComparison.OrdinalIgnoreCase))
+                ?? candidates.FirstOrDefault(user =>
+                    string.Equals(
+                        $"{user.FirstName}{user.LastName}".Replace(" ", string.Empty),
+                        handle,
+                        StringComparison.OrdinalIgnoreCase));
+            if (candidate is not null && resolved.All(user => user.Id != candidate.Id))
+            {
+                resolved.Add(new CommentMentionRecipient(candidate.Id));
+            }
+        }
+
+        return resolved;
+    }
+
+    private async Task<int?> ResolveCommentTargetOwnerIdAsync(
+        string targetType,
+        int targetId,
+        CancellationToken cancellationToken)
+    {
+        var tenantId = TenantId();
+        return targetType switch
+        {
+            "post" => await _db.FeedPosts.Where(row => row.TenantId == tenantId && row.Id == targetId).Select(row => (int?)row.UserId).FirstOrDefaultAsync(cancellationToken),
+            "comment" => await _db.PostComments.Where(row => row.TenantId == tenantId && row.Id == targetId).Select(row => (int?)row.UserId).FirstOrDefaultAsync(cancellationToken),
+            "listing" => await _db.Listings.Where(row => row.TenantId == tenantId && row.Id == targetId).Select(row => (int?)row.UserId).FirstOrDefaultAsync(cancellationToken),
+            "event" => await _db.Events.Where(row => row.TenantId == tenantId && row.Id == targetId).Select(row => (int?)row.CreatedById).FirstOrDefaultAsync(cancellationToken),
+            "goal" => await _db.Goals.Where(row => row.TenantId == tenantId && row.Id == targetId).Select(row => (int?)row.UserId).FirstOrDefaultAsync(cancellationToken),
+            "poll" => await _db.Polls.Where(row => row.TenantId == tenantId && row.Id == targetId).Select(row => (int?)row.CreatedById).FirstOrDefaultAsync(cancellationToken),
+            "review" => await _db.Reviews.Where(row => row.TenantId == tenantId && row.Id == targetId).Select(row => (int?)row.ReviewerId).FirstOrDefaultAsync(cancellationToken),
+            "volunteer" => await _db.VolunteerOpportunities.Where(row => row.TenantId == tenantId && row.Id == targetId).Select(row => (int?)row.OrganizerId).FirstOrDefaultAsync(cancellationToken),
+            "resource" => await _db.Resources.Where(row => row.TenantId == tenantId && row.Id == targetId).Select(row => (int?)row.CreatedById).FirstOrDefaultAsync(cancellationToken),
+            "job" => await _db.JobVacancies.Where(row => row.TenantId == tenantId && row.Id == targetId).Select(row => (int?)row.PostedByUserId).FirstOrDefaultAsync(cancellationToken),
+            "blog" => await _db.BlogPosts.Where(row => row.TenantId == tenantId && row.Id == targetId).Select(row => (int?)row.AuthorId).FirstOrDefaultAsync(cancellationToken),
+            "discussion" => await _db.GroupDiscussions.Where(row => row.TenantId == tenantId && row.Id == targetId).Select(row => (int?)row.AuthorId).FirstOrDefaultAsync(cancellationToken),
+            _ => null
+        };
+    }
+
+    private void AddSocialCommentNotification(
+        int tenantId,
+        int recipientId,
+        int actorId,
+        ThreadedComment comment,
+        string link,
+        string type,
+        string title,
+        string body)
+    {
+        _db.Notifications.Add(new Notification
+        {
+            TenantId = tenantId,
+            UserId = recipientId,
+            Type = type,
+            Title = title,
+            Body = body,
+            Link = link,
+            Data = JsonSerializer.Serialize(new
+            {
+                actor_id = actorId,
+                comment_id = comment.Id,
+                target_type = comment.TargetType,
+                target_id = comment.TargetId
+            }),
+            CreatedAt = comment.CreatedAt
+        });
+    }
+
+    private static (string Title, string Body) SocialCommentNotificationCopy(
+        string? locale,
+        string actorName,
+        string type)
+    {
+        var language = string.IsNullOrWhiteSpace(locale)
+            ? "en"
+            : locale.Trim().Split('-', '_')[0].ToLowerInvariant();
+        return (language, type) switch
+        {
+            ("de", "mention") => ("Neue Erwähnung", $"{actorName} hat Sie in einem Kommentar erwähnt."),
+            ("de", "comment_reply") => ("Neue Antwort", $"{actorName} hat auf Ihren Kommentar geantwortet."),
+            ("de", _) => ("Neuer Kommentar", $"{actorName} hat Ihren Inhalt kommentiert."),
+            ("es", "mention") => ("Nueva mención", $"{actorName} te mencionó en un comentario."),
+            ("es", "comment_reply") => ("Nueva respuesta", $"{actorName} respondió a tu comentario."),
+            ("es", _) => ("Nuevo comentario", $"{actorName} comentó tu contenido."),
+            ("fr", "mention") => ("Nouvelle mention", $"{actorName} vous a mentionné dans un commentaire."),
+            ("fr", "comment_reply") => ("Nouvelle réponse", $"{actorName} a répondu à votre commentaire."),
+            ("fr", _) => ("Nouveau commentaire", $"{actorName} a commenté votre contenu."),
+            ("ga", "mention") => ("Lua nua", $"Luaigh {actorName} thú i nóta tráchta."),
+            ("ga", "comment_reply") => ("Freagra nua", $"D'fhreagair {actorName} do nóta tráchta."),
+            ("ga", _) => ("Nóta tráchta nua", $"Rinne {actorName} trácht ar d'ábhar."),
+            (_, "mention") => ("New mention", $"{actorName} mentioned you in a comment."),
+            (_, "comment_reply") => ("New reply", $"{actorName} replied to your comment."),
+            _ => ("New comment", $"{actorName} commented on your content.")
+        };
+    }
+
+    private static string SocialCommentLink(string targetType, int targetId, int commentId) => targetType switch
+    {
+        "post" => $"/feed/posts/{targetId}#comment-{commentId}",
+        "listing" => $"/listings/{targetId}#comment-{commentId}",
+        "event" => $"/events/{targetId}#comment-{commentId}",
+        "goal" => $"/goals/{targetId}#comment-{commentId}",
+        "poll" => $"/polls#comment-{commentId}",
+        "resource" => $"/resources#comment-{commentId}",
+        "volunteer" => $"/volunteering/opportunities/{targetId}#comment-{commentId}",
+        "challenge" => $"/ideation/{targetId}#comment-{commentId}",
+        "review" => $"/reviews#comment-{commentId}",
+        "job" => $"/jobs/{targetId}#comment-{commentId}",
+        "blog" => $"/blog/{targetId}#comment-{commentId}",
+        "discussion" => $"/groups/discussions/{targetId}#comment-{commentId}",
+        _ => "/feed"
+    };
+
+    private sealed record CommentMentionRecipient(int Id);
 
     private static string NormalizeLegacyFeedTrackingType(string? targetType)
     {

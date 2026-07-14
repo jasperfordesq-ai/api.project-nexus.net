@@ -53,6 +53,36 @@ public class ResourcesCommentsConfiguration : TenantScopedConfiguration
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
         });
 
+        modelBuilder.Entity<ContentMention>(entity =>
+        {
+            entity.ToTable("mentions");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.EntityType).HasMaxLength(30).HasDefaultValue("comment");
+            entity.HasIndex(e => new { e.CommentId, e.MentionedUserId })
+                .IsUnique()
+                .HasDatabaseName("unique_mention");
+            entity.HasIndex(e => e.MentioningUserId);
+            entity.HasIndex(e => e.MentionedUserId).HasDatabaseName("idx_mentioned_user");
+            entity.HasIndex(e => e.CommentId).HasDatabaseName("idx_comment");
+            entity.HasIndex(e => e.TenantId).HasDatabaseName("idx_tenant");
+            entity.HasIndex(e => new { e.MentionedUserId, e.SeenAt }).HasDatabaseName("idx_unseen");
+            entity.HasIndex(e => new { e.TenantId, e.MentionedUserId }).HasDatabaseName("idx_tenant_mentioned");
+            entity.HasIndex(e => new { e.TenantId, e.EntityType, e.EntityId }).HasDatabaseName("idx_tenant_entity");
+            entity.HasOne(e => e.Comment).WithMany().HasForeignKey(e => e.CommentId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.MentionedUser)
+                .WithMany()
+                .HasForeignKey(e => new { e.TenantId, e.MentionedUserId })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.MentioningUser)
+                .WithMany()
+                .HasForeignKey(e => new { e.TenantId, e.MentioningUserId })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+
         modelBuilder.Entity<CommentReaction>(entity =>
         {
             entity.ToTable("comment_reactions");
