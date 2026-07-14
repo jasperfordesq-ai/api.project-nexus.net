@@ -519,6 +519,12 @@ Direct conversation detail now follows the same Blade full-width card and
 sender-avatar pattern, places the source search card after the thread, restores
 image-preview versus file-download attachment semantics, and limits translation
 controls to messages with a body; focused default-English proof passes `2/2`.
+2026-07-14 message-media origin follow-up: direct-message sender avatars, voice
+audio, image attachments, and file downloads, plus group-message sender
+avatars, now resolve Laravel-relative paths against the configured backend
+origin rather than Web UK's separate origin. Focused direct/group rendering
+proof passes, and the complete non-mutating gate is green at `52/52` suites and
+`1,681/1,681` tests with lint, brand, CSS, and both localization audits passing.
 The direct inbox now also uses Blade's full-width conversation cards, sender
 labels, filter and pagination structure, disabled/restricted notices, conditional
 empty-state action, and query-driven archive/restore success outcome; focused

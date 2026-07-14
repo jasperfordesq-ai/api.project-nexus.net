@@ -171,7 +171,7 @@ Refresh the Laravel Blade/API source and Web UK implementation before relying on
 these numbers after either source moves.
 
 At this documentation audit, the product-source baseline was
-`3ad92a66dca8e6971bd408603beb8f8eed8b7e1b`. The post-bank implementation,
+`c73440b7d013a0bd237a5418520682667dcdf9e2`. The post-bank implementation,
 contract, resilience, component-audit, attached Event-poll, and Listing-
 analytics slices are above the frozen bank and remain **published and
 unscored**. The documentation remediation is
@@ -186,7 +186,7 @@ together from a clean published checkout.
   with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
   Only this fixed-rubric audit contributes to the current bank.
 - **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `3ad92a66`, including the later implementation, contract,
+  baseline `c73440b7`, including the later implementation, contract,
   resilience, and component-audit slices. Their evidence is useful, but they
   contribute zero points until one complete fixed-rubric re-audit explicitly
   replaces the baseline.
@@ -205,7 +205,7 @@ together from a clean published checkout.
 | Missing Laravel routes | 1 | Event offline check-in code generation |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 52/52 suites, 1,681/1,681 tests | Latest uninterrupted complete non-mutating gate at validation baseline `e20e076d`; the timestamp follow-up has focused proof because three full reruns timed out without a verdict under machine load |
+| Jest | 52/52 suites, 1,681/1,681 tests | Latest uninterrupted complete non-mutating gate at product baseline `c73440b7` |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
 | Static locale usage | 7,577 references, 5,784 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
