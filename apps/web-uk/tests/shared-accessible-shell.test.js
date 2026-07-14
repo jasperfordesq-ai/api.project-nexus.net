@@ -23485,9 +23485,17 @@ describe('shared accessible frontend shell', () => {
     const event = { id: 42, title: 'Community garden day', permissions: { manage_agenda: true, manage_finance: false, manage_registration: true, edit: true, manage_staff: false }, series: { recurrence: { recurrence_id: '20260801T090000Z' } } };
     api.callEventApi
       .mockResolvedValueOnce({ data: event })
-      .mockResolvedValueOnce({ data: { items: [{ blueprint_version: 2, effective_from_recurrence_id: '20260701T090000Z', selected_sections: { agenda: true } }], next_before_version: null } });
+      .mockResolvedValueOnce({ data: { items: [{ blueprint_version: 2, effective_from_recurrence_id: '20260701T090000Z', created_at: '2026-07-13T12:00:00Z', selected_sections: { agenda: true, unknown: true }, counts: { sessions: 3, speakers: 2, unknown: 99 } }], next_before_version: 1 } });
     const page = await agent.get('/events/42/recurrence-definition-blueprints').set('Cookie', signedCookieHeader());
     expect(page.status).toBe(200); expect(page.text).toContain('20260801T090000Z'); expect(page.text).toContain('name="sections" type="checkbox" value="staff" disabled');
+    expect(page.text).toContain('<ol class="govuk-list" aria-label="Future occurrence setup versions">');
+    expect(page.text).toContain('<dt class="govuk-summary-list__key">Immutable</dt><dd class="govuk-summary-list__value">Yes</dd>');
+    expect(page.text).toContain('<dt class="govuk-summary-list__key">Recorded at</dt><dd class="govuk-summary-list__value">13 July 2026 at 12:00</dd>');
+    expect(page.text).toContain('<dt class="govuk-summary-list__key">Included definitions</dt>');
+    expect(page.text).toContain('<dt class="govuk-summary-list__key">Sessions</dt><dd class="govuk-summary-list__value">3</dd>');
+    expect(page.text).toContain('<dt class="govuk-summary-list__key">Speakers</dt><dd class="govuk-summary-list__value">2</dd>');
+    expect(page.text).not.toContain('event_recurrence_blueprints.counts.unknown');
+    expect(page.text).toContain('<span class="govuk-pagination__link-title">Load more versions</span>');
     api.callEventApi
       .mockResolvedValueOnce({ data: event })
       .mockResolvedValueOnce({ data: { items: [], next_before_version: null } })

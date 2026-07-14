@@ -1203,6 +1203,11 @@ router.post('/:id(\\d+)/waitlist/leave', asyncRoute(async (req, res) => {
 }));
 
 const RECURRENCE_BLUEPRINT_SECTIONS = ['agenda', 'ticket_types', 'registration', 'safety', 'staff'];
+const RECURRENCE_BLUEPRINT_COUNTS = [
+  'sessions', 'speakers', 'resources', 'ticket_types',
+  'registration_settings', 'published_forms', 'form_questions',
+  'safety_requirements', 'staff_assignments'
+];
 
 function recurrenceBlueprintContext(result) {
   const event = eventFrom(result);
@@ -1254,10 +1259,32 @@ async function recurrenceBlueprintState(token, id, beforeVersion = null) {
 }
 
 function renderRecurrenceBlueprints(req, res, state, extras = {}) {
+  const formatDate = typeof res.locals.formatLocaleDate === 'function'
+    ? res.locals.formatLocaleDate
+    : (value) => trimmed(value);
+  const formatNumber = typeof res.locals.formatLocaleNumber === 'function'
+    ? res.locals.formatLocaleNumber
+    : (value) => String(Number(value) || 0);
+  const historyItems = Array.isArray(state.history?.items) ? state.history.items.map((item) => {
+    const recordedAt = new Date(item?.created_at);
+    return {
+      ...item,
+      recordedAtLabel: item?.created_at && !Number.isNaN(recordedAt.getTime())
+        ? formatDate(recordedAt, {
+          day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'UTC'
+        })
+        : res.locals.t('event_recurrence_blueprints.time_unknown'),
+      selectedSectionKeys: RECURRENCE_BLUEPRINT_SECTIONS.filter((section) => item?.selected_sections?.[section] === true),
+      countItems: RECURRENCE_BLUEPRINT_COUNTS
+        .filter((key) => Number.isInteger(item?.counts?.[key]) && item.counts[key] > 0)
+        .map((key) => ({ key, value: formatNumber(item.counts[key]) }))
+    };
+  }) : [];
+  const history = { ...(state.history || {}), items: historyItems };
   res.set('Cache-Control', 'private, no-store');
   res.set('Pragma', 'no-cache');
   res.set('Referrer-Policy', 'no-referrer');
-  return res.render('events/recurrence-blueprints', { title: res.locals.t('event_recurrence_blueprints.title'), activeNav: 'events', event: state.event, recurrenceId: state.recurrenceId, allowedSections: state.allowedSections, history: state.history, selectedSections: state.allowedSections, preview: null, idempotencyKey: randomUUID(), csrfToken: req.csrfToken ? req.csrfToken() : '', status: trimmed(req.query.status), statusVersion: positiveInteger(req.query.version), ...extras });
+  return res.render('events/recurrence-blueprints', { title: res.locals.t('event_recurrence_blueprints.title'), activeNav: 'events', event: state.event, recurrenceId: state.recurrenceId, allowedSections: state.allowedSections, history, selectedSections: state.allowedSections, preview: null, idempotencyKey: randomUUID(), csrfToken: req.csrfToken ? req.csrfToken() : '', status: trimmed(req.query.status), statusVersion: positiveInteger(req.query.version), ...extras });
 }
 
 router.get('/:id(\\d+)/recurrence-definition-blueprints', requireAuth, asyncRoute(async (req, res) => {
