@@ -30231,14 +30231,24 @@ describe('shared accessible frontend shell', () => {
 
   it('renders the Laravel-backed marketplace offer form', async () => {
     const api = require('../src/lib/api');
-    api.callMarketplaceApi.mockResolvedValueOnce({
-      data: {
-        id: 42,
-        title: 'Community bike',
-        price: 15.5,
-        price_currency: 'GBP'
-      }
-    });
+    api.callMarketplaceApi
+      .mockResolvedValueOnce({
+        data: {
+          id: 42,
+          title: 'Community bike',
+          price: 15.5,
+          price_currency: 'GBP'
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          id: 43,
+          title: 'Community lesson',
+          price: 0,
+          price_currency: 'EUR',
+          time_credit_price: 2
+        }
+      });
 
     const response = await request(app)
       .get('/marketplace/42/offer?status=offer-amount-invalid')
@@ -30255,6 +30265,55 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Message to the seller');
     expect(response.text).toContain('Send offer');
     expect(response.text).not.toContain('Laravel Blade route');
+
+    const timeCreditOnly = await request(app)
+      .get('/marketplace/43/offer')
+      .set('Cookie', signedCookieHeader());
+    expect(timeCreditOnly.status).toBe(200);
+    expect(timeCreditOnly.text).toContain('Community lesson');
+    expect(timeCreditOnly.text).not.toContain('Asking price');
+    expect(timeCreditOnly.text).not.toContain('2 time credits');
+  });
+
+  it('replays marketplace offer values once and blocks offers on an owned listing', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const first = await request(app)
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+    const csrfCookies = (first.headers['set-cookie'] || []).map((cookie) => cookie.split(';')[0]);
+    const cookieHeader = [`token=${encodeURIComponent(signedToken)}`, ...csrfCookies].join('; ');
+
+    const invalid = await request(app)
+      .post('/marketplace/42/offer')
+      .set('Cookie', cookieHeader)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], amount: '0', message: 'Can collect this evening' });
+    expect(invalid.status).toBe(302);
+    expect(invalid.headers.location).toBe('/marketplace/42/offer?status=offer-amount-invalid');
+    expect(api.callMarketplaceApi).not.toHaveBeenCalled();
+
+    api.callMarketplaceApi.mockResolvedValueOnce({
+      data: { id: 42, title: 'Community bike', price: 15.5, price_currency: 'GBP', is_own: false }
+    });
+    const replay = await request(app)
+      .get(invalid.headers.location)
+      .set('Cookie', cookieHeader);
+    expect(replay.status).toBe(200);
+    expect(replay.text).toContain('value="0"');
+    expect(replay.text).toContain('>Can collect this evening</textarea>');
+    expect(replay.text).toContain('href="#amount"');
+
+    api.callMarketplaceApi.mockResolvedValueOnce({
+      data: { id: 42, title: 'My bicycle', price: 15.5, price_currency: 'GBP', is_own: true }
+    });
+    const owned = await request(app)
+      .get('/marketplace/42/offer')
+      .set('Cookie', signedCookieHeader());
+    expect(owned.status).toBe(403);
+    expect(owned.text).not.toContain('name="amount"');
   });
 
   it('renders the Laravel-backed marketplace report form', async () => {
@@ -30473,12 +30532,29 @@ describe('shared accessible frontend shell', () => {
     expect(api.callMarketplaceApi).toHaveBeenCalledWith('test-token', 'GET', '/my-offers/received?per_page=50');
     expect(response.text).toContain('My offers');
     expect(response.text).toContain('You accepted the offer.');
+    expect(response.text).toContain('id="commerce-offers-status"');
+    expect(response.text).toContain('govuk-notification-banner--success');
     expect(response.text).toContain('Community bike');
     expect(response.text).toContain('GBP 13.25');
     expect(response.text).toContain('From: Sam Buyer');
     expect(response.text).toContain('Accept');
     expect(response.text).toContain('action="/marketplace/offers/12/decline"');
     expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('uses Blade notification-banner semantics for failed marketplace offer actions', async () => {
+    const api = require('../src/lib/api');
+    api.callMarketplaceApi.mockResolvedValueOnce({ data: [] });
+
+    const response = await request(app)
+      .get('/marketplace/offers?tab=sent&status=withdraw-failed')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('id="commerce-offers-status"');
+    expect(response.text).toContain('Sorry, that action could not be completed.');
+    expect(response.text).not.toContain('govuk-notification-banner--success');
+    expect(response.text).not.toContain('govuk-error-summary');
   });
 
   it('matches Laravel direct marketplace checkout payment, fulfilment and idempotency contracts', async () => {

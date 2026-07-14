@@ -171,13 +171,13 @@ these numbers after either source moves.
 | Missing Laravel routes | 1 | Event offline check-in code generation |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 49/49 suites, 1,637/1,637 tests | Fresh green code gate |
+| Jest | 49/49 suites, 1,639/1,639 tests | Fresh green code gate |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
-| Static locale usage | 7,189 references, 5,487 unique keys, 0 unresolved | Current complete-reference audit |
+| Static locale usage | 7,212 references, 5,507 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
 | Blade marker check | Retained 19/19; current rerun unavailable | Current public-GET rerun timed out against Laravel HTTP; retained result is not visual certification |
 | Automated accessibility | Not currently certified: 28 passed, login failed, 58 did not run | Full aggregate requires a disposable Laravel environment; manual AT review remains open |
-| Frontend API consumer ledger | 582 contracts: 371 OpenAPI matches, 194 unmatched, 17 dynamic | Static method/path and ownership evidence; unresolved rows are not parity claims |
+| Frontend API consumer ledger | 583 contracts: 371 OpenAPI matches, 195 unmatched, 17 dynamic | Static method/path and ownership evidence; unresolved rows are not parity claims |
 
 The generated route matrix was refreshed against the same route inventories
 and reports the counts above. It remains declaration evidence, not runtime or
@@ -193,10 +193,10 @@ request-scoped tenant authority, auth/role boundary, request and response shape,
 status/error behavior, redirects, side effects, cleanup requirements, Laravel
 operation/controller metadata, frontend consumers, and detected tests.
 
-The current static inventory contains 582 consumed contracts. It matches 371
-method/path pairs to Laravel OpenAPI, leaves 194 without an exact OpenAPI match,
+The current static inventory contains 583 consumed contracts. It matches 371
+method/path pairs to Laravel OpenAPI, leaves 195 without an exact OpenAPI match,
 and marks 17 variable method/path callsites as dynamically unresolved. It also
-classifies 276 rows as state-changing and therefore requiring disposable-
+classifies 277 rows as state-changing and therefore requiring disposable-
 environment runtime proof. An unmatched row may be an OpenAPI documentation
 gap, a frontend contract gap, or a generator-normalization gap; it is not proof
 that Laravel lacks the endpoint. A detected test reference is not proof that
@@ -204,7 +204,7 @@ the test asserts the full contract. These unresolved classifications are now a
 concrete reconciliation queue rather than hidden readiness debt.
 
 Focused generator proof passes 2/2 and the full Jest gate passes 49/49 suites,
-1,637/1,637 tests. Brand, lint, CSS, route matrix, ledger regeneration, locale
+1,639/1,639 tests. Brand, lint, CSS, route matrix, ledger regeneration, locale
 sync/shape, static-key resolution, and the 322-template zero-match audit are
 green. A fresh current-checkout `visual:blade` attempt used only unauthenticated
 GET requests but reached its ten-minute wrapper timeout because the restored
@@ -255,6 +255,20 @@ Focused default-English detail and hybrid-price proof passes 2/2; the complete
 Jest gate passes 49/49 suites and 1,637/1,637 tests. Lint, CSS, brand, the
 7,189-reference / 5,487-unique-key zero-unresolved audit, and the 322-template
 zero-match audit are green. No Laravel request, mutation, upload, download, or
+database access ran.
+
+## Marketplace Offer Workflow Refresh
+
+The offer form and offer dashboard now follow Blade's exact commerce copy,
+summary and notification semantics, monetary-only asking-price rule, status and
+counterparty labels, actions, and empty states. Laravel's `is_own` projection
+now blocks owners from opening the offer form. Invalid or API-rejected offers
+replay bounded amount and message values once, with Blade's field-linked error
+summary; the explicit offer POST is now represented in the consumer ledger.
+Focused default-English proof passes 4/4, and the complete Jest gate passes
+49/49 suites and 1,639/1,639 tests. Lint, CSS, brand, route, ledger,
+7,212-reference / 5,507-unique-key zero-unresolved locale, and 322-template
+zero-match gates are green. No Laravel request, mutation, upload, download, or
 database access ran.
 
 ## Marketplace Listing Form Refresh
@@ -627,7 +641,7 @@ After the localization P0, the remaining priority order is:
    normalized marker check only.
 5. Complete manual keyboard, screen-reader, focus-order, error-summary, no-JS,
    zoom/reflow, forced-colour, and disabled-user evidence.
-6. Maintain the generated frontend-consumer API ledger and reconcile its 194
+6. Maintain the generated frontend-consumer API ledger and reconcile its 195
    unmatched and 17 dynamic rows against Laravel routes/controllers and real
    consumers. Do not count an OpenAPI match or test-file reference as behavioral
    certification.

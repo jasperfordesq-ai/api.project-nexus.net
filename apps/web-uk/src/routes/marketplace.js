@@ -534,6 +534,7 @@ function decorateListing(listing) {
     priceTypeLabel: PRICE_TYPE_LABELS[priceType] || priceType,
     priceLabel: priceLabel(row),
     moneyLabel: formatMoney(money, row.price_currency),
+    askingPriceLabel: money > 0 ? formatMoney(money, row.price_currency) : '',
     priceTagClass: priceTagClass(row),
     price: row.price ?? '',
     priceCurrency: trimmed(row.price_currency || 'EUR', 3).toUpperCase() || 'EUR',
@@ -551,7 +552,7 @@ function decorateListing(listing) {
     sellerName,
     images,
     primaryImage: images[0] || '',
-    isOwnItem: Boolean(row.is_owner || row.owned_by_current_user),
+    isOwnItem: Boolean(row.is_own || row.is_owner || row.owned_by_current_user),
     href: id ? `/marketplace/${id}` : '/marketplace'
   };
 }
@@ -584,7 +585,7 @@ function decorateSeller(seller) {
   };
 }
 
-function decorateOffer(offer, tab) {
+function decorateOffer(offer, tab, translate = fallbackTranslator) {
   const row = offer && typeof offer === 'object' ? offer : {};
   const listing = row.listing && typeof row.listing === 'object' ? row.listing : {};
   const buyer = row.buyer && typeof row.buyer === 'object' ? row.buyer : {};
@@ -599,18 +600,24 @@ function decorateOffer(offer, tab) {
     ...row,
     id: positiveInteger(row.id),
     listingId,
-    listingTitle: trimmed(listing.title || row.listing_title) || 'Marketplace',
+    listingTitle: trimmed(listing.title || row.listing_title) || translate('marketplace.title'),
     href: listingId ? `/marketplace/${listingId}` : '',
     amountLabel: formatMoney(row.amount, row.currency || row.price_currency || 'EUR'),
     status,
-    statusLabel: OFFER_STATUS_LABELS[status] || status,
+    statusLabel: Object.hasOwn(OFFER_STATUS_LABELS, status)
+      ? translate(`govuk_alpha_commerce.offers.status_${status}`)
+      : status,
     statusTagClass: status === 'accepted' ? 'govuk-tag--green' : (status === 'pending' ? 'govuk-tag--blue' : 'govuk-tag--grey'),
     counterparty,
-    counterpartyLabel: tab === 'sent' ? 'To' : 'From',
+    counterpartyLabel: translate(`govuk_alpha_commerce.offers.${tab === 'sent' ? 'to_label' : 'from_label'}`),
     message: limitText(row.message || '', 200),
     canAct: status === 'pending' || status === 'countered',
     canPurchase: tab === 'sent' && status === 'accepted'
   };
+}
+
+function offerFormSessionKey(id) {
+  return `marketplaceOfferForm:${id}`;
 }
 
 function acceptedOfferSessionKey(id) {
@@ -1349,7 +1356,7 @@ router.get('/offers', asyncRoute(async (req, res) => {
       activeNav: 'explore',
       activeTab: 'offers',
       tab,
-      offers: rowsFrom(result).map((offer) => decorateOffer(offer, tab)),
+      offers: rowsFrom(result).map((offer) => decorateOffer(offer, tab, res.locals.t)),
       status: statusEntry(req, req.query.status)
     });
   } catch (error) {
@@ -1664,12 +1671,17 @@ router.get('/:id(\\d+)/offer', asyncRoute(async (req, res) => {
 
   try {
     const listing = await loadListing(token, req.params.id);
+    if (listing.isOwnItem) throw new ApiError('Cannot offer on own listing', 403);
+    const replay = req.session?.[offerFormSessionKey(listing.id)] || null;
+    if (req.session) delete req.session[offerFormSessionKey(listing.id)];
+    const status = statusEntry(req, req.query.status);
     return res.render('marketplace/offer', {
       title: 'Make an offer',
       titleKey: 'govuk_alpha_commerce.offer.title',
       activeNav: 'explore',
       item: listing,
-      status: statusEntry(req, req.query.status)
+      offerErrors: status?.type === 'error' ? [status.message] : [],
+      oldInput: replay || {}
     });
   } catch (error) {
     return renderMarketplaceError(error, res, 'Make an offer');

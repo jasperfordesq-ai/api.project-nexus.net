@@ -160,6 +160,10 @@ function offersRedirect(tab, status) {
   return `/marketplace/offers?tab=${encodeURIComponent(tab)}&status=${encodeURIComponent(status)}`;
 }
 
+function offerFormSessionKey(id) {
+  return `marketplaceOfferForm:${id}`;
+}
+
 function acceptedOfferSessionKey(id) {
   return `marketplaceAcceptedOffer:${id}`;
 }
@@ -601,10 +605,16 @@ router.post('/offers/:id(\\d+)/buy', asyncRoute(async (req, res) => {
 }));
 
 router.post('/:id(\\d+)/offer', asyncRoute(async (req, res) => {
-  if (!tokenFrom(req)) return redirectTo(res, loginRedirect());
+  const token = tokenFrom(req);
+  if (!token) return redirectTo(res, loginRedirect());
   const id = Number(req.params.id);
+  const oldInput = {
+    amount: trimmed(req.body.amount, 50),
+    message: trimmed(req.body.message, 500)
+  };
   const amount = decimalNumber(req.body.amount);
   if (amount <= 0) {
+    req.session[offerFormSessionKey(id)] = oldInput;
     return redirectTo(res, `/marketplace/${id}/offer?status=offer-amount-invalid`);
   }
 
@@ -614,15 +624,15 @@ router.post('/:id(\\d+)/offer', asyncRoute(async (req, res) => {
     payload.message = message;
   }
 
-  return runAction(
-    req,
-    res,
-    'POST',
-    `/listings/${id}/offers`,
-    payload,
-    '/marketplace/offers?status=offer-sent',
-    `/marketplace/${id}/offer?status=offer-failed`
-  );
+  try {
+    await callApi(token, 'POST', `/listings/${id}/offers`, payload);
+    delete req.session[offerFormSessionKey(id)];
+    return redirectTo(res, '/marketplace/offers?status=offer-sent');
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    req.session[offerFormSessionKey(id)] = oldInput;
+    return redirectTo(res, `/marketplace/${id}/offer?status=offer-failed`);
+  }
 }));
 
 router.post('/:id(\\d+)/report', asyncRoute(async (req, res) => {
