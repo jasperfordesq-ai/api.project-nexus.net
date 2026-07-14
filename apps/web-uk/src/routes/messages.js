@@ -432,6 +432,8 @@ function normalizeInboxConversation(conversation, currentUserId, t) {
     ? source.other_user
     : (source.otherUser && typeof source.otherUser === 'object' ? source.otherUser : {});
   const combinedName = `${trimmed(otherUser.first_name)} ${trimmed(otherUser.last_name)}`.trim();
+  const sourceName = otherUser.name ?? '';
+  const filterName = sourceName !== '' ? trimmed(sourceName) : combinedName;
   const displayName = trimmed(otherUser.name || otherUser.full_name || otherUser.fullName)
     || combinedName
     || trimmed(source.other_user_name || source.otherUserName)
@@ -451,6 +453,7 @@ function normalizeInboxConversation(conversation, currentUserId, t) {
       avatarAssetUrl: resolveBackendAssetUrl(otherUser.avatar_url || otherUser.avatarUrl)
     },
     displayName,
+    filterName,
     unreadCount: Number(source.unread_count ?? source.unreadCount ?? 0) || 0,
     lastMessageText: bladeLimit(lastMessageText),
     lastMessageSenderLabel: lastMessageSenderId !== null && lastMessageSenderId === currentUserId
@@ -1005,7 +1008,8 @@ router.get('/', requireAuth, asyncRoute(async (req, res) => {
   const normalizedFilter = filter.toLowerCase();
   const visibleConversations = normalizedFilter
     ? conversations.filter((conversation) => {
-      return conversation.displayName.toLowerCase().includes(normalizedFilter);
+      const filterName = conversation.filterName.toLowerCase();
+      return filterName === '' || filterName.includes(normalizedFilter);
     })
     : conversations;
   const meta = conversationsData?.meta || {};

@@ -6858,6 +6858,30 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('href="/messages/78"');
   });
 
+  it('keeps blank-identity conversations reachable through a filtered Blade inbox', async () => {
+    const api = require('../src/lib/api');
+    api.getConversations.mockResolvedValueOnce({
+      data: [
+        { id: 77, other_user: { id: 77, name: 'Avery Stone' }, last_message: null },
+        { id: 78, other_user: { id: 78, name: '   ' }, last_message: null },
+        { id: 79, other_user: { id: 79, name: '', first_name: 'Morgan', last_name: 'Lee' }, last_message: null }
+      ],
+      meta: { cursor: null, has_more: false, per_page: 20 }
+    });
+    api.getUnreadCount.mockResolvedValueOnce({ data: { count: 0 } });
+
+    const response = await request(app)
+      .get('/messages?filter=avery')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('href="/messages/77"');
+    expect(response.text).toContain('href="/messages/78"');
+    expect(response.text).toContain('Community member');
+    expect(response.text).not.toContain('href="/messages/79"');
+    expect(response.text).not.toContain('Morgan Lee');
+  });
+
   it('renders the Blade direct-messaging restriction notice and suppresses starting a conversation', async () => {
     const api = require('../src/lib/api');
     api.getConversations.mockResolvedValueOnce({ data: [], meta: { cursor: null, has_more: false } });
