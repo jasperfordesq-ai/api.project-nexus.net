@@ -9,13 +9,14 @@ describe('production session configuration', () => {
     const config = createSessionStore({ nodeEnv: 'test', redisUrl: '' });
     expect(config.store).toBeUndefined();
     expect(config.client).toBeNull();
+    expect(config.isReady()).toBe(true);
     await expect(config.ready).resolves.toBeUndefined();
     expect(() => createSessionStore({ nodeEnv: 'production', redisUrl: '' }))
       .toThrow('SESSION_REDIS_URL is required in production');
   });
 
   it('constructs and connects the configured Redis store', async () => {
-    const client = { on: jest.fn(), connect: jest.fn().mockResolvedValue(undefined) };
+    const client = { on: jest.fn(), connect: jest.fn().mockResolvedValue(undefined), isReady: false };
     const createClient = jest.fn(() => client);
     const RedisStore = jest.fn(function RedisStore(options) { this.options = options; });
     const config = createSessionStore({
@@ -29,6 +30,9 @@ describe('production session configuration', () => {
     expect(createClient).toHaveBeenCalledWith({ url: 'rediss://sessions.example.test:6380/2' });
     expect(RedisStore).toHaveBeenCalledWith({ client, prefix: 'web:test:' });
     expect(client.on).toHaveBeenCalledWith('error', expect.any(Function));
+    expect(config.isReady()).toBe(false);
+    client.isReady = true;
+    expect(config.isReady()).toBe(true);
     await expect(config.ready).resolves.toBeUndefined();
   });
 

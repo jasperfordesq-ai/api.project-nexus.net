@@ -24,7 +24,12 @@ function createSessionStore({
     if (nodeEnv === 'production') {
       throw new Error('SESSION_REDIS_URL is required in production');
     }
-    return { store: undefined, ready: Promise.resolve(), client: null };
+    return {
+      store: undefined,
+      ready: Promise.resolve(),
+      client: null,
+      isReady: () => true
+    };
   }
   if (!isRedisUrl(configuredUrl)) {
     throw new Error('SESSION_REDIS_URL must use redis:// or rediss://');
@@ -40,7 +45,8 @@ function createSessionStore({
   return {
     client,
     store: new RedisStore({ client, prefix }),
-    ready: client.connect()
+    ready: client.connect(),
+    isReady: () => client.isReady === true
   };
 }
 

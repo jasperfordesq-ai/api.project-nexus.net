@@ -651,6 +651,9 @@ app.get('/', async (req, res) => {
 });
 
 app.get('/health', (req, res) => {
+  if (!sessionStore.isReady()) {
+    return res.status(503).type('text/plain').send('NOT READY');
+  }
   res.type('text/plain').send('OK');
 });
 

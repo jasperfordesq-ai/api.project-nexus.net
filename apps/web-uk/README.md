@@ -128,7 +128,7 @@ use `docs/BLADE_COMPONENT_PORT_AUDIT.md` for workflow certification.
 | Route | Description |
 |-------|-------------|
 | `GET /` | Home page |
-| `GET /health` | Health check (plain text "OK") |
+| `GET /health` | Readiness check. Returns plain text `OK`; production returns `503 NOT READY` while the required Redis session client is not ready. |
 | `GET /components` | Components demo page |
 | `GET /login` | Login page |
 | `POST /login` | Process login |
