@@ -7415,6 +7415,14 @@ describe('shared accessible frontend shell', () => {
           color: '#0b7285',
           items_count: 3,
           is_public: true
+        },
+        {
+          id: 13,
+          name: 'Neighbourhood projects',
+          description: '',
+          color: 'not-a-colour',
+          items_count: 0,
+          is_public: true
         }
       ]
     });
@@ -7448,6 +7456,9 @@ describe('shared accessible frontend shell', () => {
     expect(collections.text).toContain('Community repair ideas');
     expect(collections.text).toContain('Saved resources to share.');
     expect(collections.text).toContain('3 items');
+    expect(collections.text).toContain('style="background-color: #0b7285;');
+    expect(collections.text).toContain('style="background-color: #6366f1;');
+    expect(collections.text).toContain('<p class="govuk-body nexus-alpha-meta">3 items</p>');
     expect(collections.text).toContain('href="/members/77"');
     expect(collections.text).not.toContain('shared accessible frontend preparation page');
 

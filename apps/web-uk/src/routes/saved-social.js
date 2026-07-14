@@ -93,7 +93,7 @@ function selectedSavedType(value) {
 
 function safeColor(value) {
   const color = trimmed(value);
-  return /^#[0-9a-fA-F]{6}$/.test(color) ? color : '#1d70b8';
+  return /^#[0-9a-fA-F]{6}$/.test(color) ? color : '#6366f1';
 }
 
 function normalizeOwner(result, fallbackId) {

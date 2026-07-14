@@ -21,7 +21,7 @@
             <span class="nexus-alpha-avatar" style="background-color: {{ collection.color }}; width: 1rem; height: 1rem; display: inline-block; border-radius: 50%; vertical-align: middle;" aria-hidden="true"></span>
             <a class="govuk-link" href="{{ urlFor('/me/collections/' + (collection.id | string)) }}">{{ collection.name or t("govuk_alpha_saved.detail.title") }}</a>
           </h2>
-          <p class="govuk-body-s nexus-alpha-meta">{{ tc("govuk_alpha_saved.collections.count", collection.itemsCount, { count: collection.itemsCount }) }}</p>
+          <p class="govuk-body nexus-alpha-meta">{{ tc("govuk_alpha_saved.collections.count", collection.itemsCount, { count: collection.itemsCount }) }}</p>
           {% if collection.description %}
             <p class="govuk-body">{{ collection.description }}</p>
           {% endif %}
