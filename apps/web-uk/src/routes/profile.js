@@ -1278,25 +1278,27 @@ router.post('/password', asyncRoute(async (req, res) => {
     return redirectTo(res, profileSettingsRedirect(preStatus));
   }
 
-  let status = 'password-changed';
   try {
     await callUserSettings(token, 'POST', '/password', {
       current_password: currentPassword,
       new_password: newPassword
     });
+    invalidateUserCache(token);
+    await destroyRequestSession(req);
+    clearAuthCookies(res);
+    return redirectTo(res, profileSettingsRedirect('password-changed'));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    const code = String(error?.data?.code || error?.data?.error || '').toUpperCase();
-    status = code.includes('INVALID')
+    const code = apiErrorCode(error);
+    const status = code.includes('INVALID')
       ? 'password-current-incorrect'
       : code.includes('REUSED')
         ? 'password-reused'
         : code.includes('WEAK')
           ? 'password-weak'
           : 'password-failed';
+    return redirectTo(res, profileSettingsRedirect(status));
   }
-
-  return redirectTo(res, profileSettingsRedirect(status));
 }));
 
 router.post('/language', asyncRoute(async (req, res) => {
@@ -1740,15 +1742,16 @@ router.post('/two-factor/disable', asyncRoute(async (req, res) => {
     return redirectTo(res, twoFactorRedirect('2fa-password-required'));
   }
 
-  let status = '2fa-disabled';
   try {
     await callProfile(token, 'POST', '/auth/2fa/disable', { password });
+    invalidateUserCache(token);
+    await destroyRequestSession(req);
+    clearAuthCookies(res);
+    return redirectTo(res, twoFactorRedirect('2fa-disabled'));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    status = '2fa-disable-failed';
+    return redirectTo(res, twoFactorRedirect('2fa-disable-failed'));
   }
-
-  return redirectTo(res, twoFactorRedirect(status));
 }));
 
 function requireOwnProfileFeature(req, res, next) {

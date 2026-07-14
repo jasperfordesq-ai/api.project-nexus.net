@@ -112,7 +112,7 @@ commit as the implementation it describes.
 ## Audited Baseline
 
 The committed frontend starting baseline for the current checkout was refreshed
-through ASP.NET-repository commit `c836ba34`, and the Laravel source baseline is
+through ASP.NET-repository commit `eff79b2e`, and the Laravel source baseline is
 `903d03d3`. The first SHA names the
 repository snapshot containing Web UK; it does not make ASP.NET authoritative.
 Refresh the Laravel Blade/API source and Web UK implementation before relying on
@@ -126,7 +126,7 @@ these numbers after either source moves.
 | Missing Laravel routes | 6 | All are Event workflows |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 48/48 suites, 1,619/1,619 tests | Fresh green code gate |
+| Jest | 48/48 suites, 1,622/1,622 tests | Fresh green code gate |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
 | Blade marker check | 19/19 | Text-marker spotcheck, not visual certification |
 | Automated accessibility | Latest recorded 87/87 | Manual AT review remains open |
@@ -165,6 +165,14 @@ localized settings errors. A successful removal must include Laravel's
 complete cookie pair, and shows the Blade success message on sign-in. Mocked
 contract proof covers these paths. No real passkey, session, or database record
 was changed.
+
+Laravel also revokes every access, refresh-family, and Sanctum session after a
+successful password change or TOTP disable. Web UK now invalidates its local
+session and clears the complete cookie pair after either success instead of
+carrying visibly authenticated but server-revoked credentials into the next
+request. Password failures read Laravel's standard `errors[0].code` envelope,
+preserving distinct incorrect, reused, weak, and generic states. These paths are
+mock-certified only; no account credential or factor was changed.
 
 ## Direct Marketplace Checkout Refresh
 

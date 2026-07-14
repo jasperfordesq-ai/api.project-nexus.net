@@ -172,6 +172,55 @@ describe('request-scoped profile status localization', () => {
     expect(auth.clearAuthCookies).not.toHaveBeenCalled();
   });
 
+  it('clears stale local credentials after Laravel revokes sessions on password change', async () => {
+    const response = await request(createApp('en'))
+      .post('/profile/password')
+      .type('form')
+      .send({
+        current_password: 'current-password',
+        new_password: 'new-password-long-enough',
+        new_password_confirmation: 'new-password-long-enough'
+      });
+
+    expect(response.headers.location).toBe('/profile/settings?status=password-changed');
+    expect(api.callUserSettingsApi).toHaveBeenCalledWith('test-token', 'POST', '/password', {
+      current_password: 'current-password',
+      new_password: 'new-password-long-enough'
+    });
+    expect(auth.clearAuthCookies).toHaveBeenCalledTimes(1);
+  });
+
+  it('reads Laravel password errors from the standard error envelope', async () => {
+    api.callUserSettingsApi.mockRejectedValueOnce(new api.ApiError('Reused', 400, {
+      errors: [{ code: 'PASSWORD_REUSED' }]
+    }));
+
+    const response = await request(createApp('en'))
+      .post('/profile/password')
+      .type('form')
+      .send({
+        current_password: 'current-password',
+        new_password: 'new-password-long-enough',
+        new_password_confirmation: 'new-password-long-enough'
+      });
+
+    expect(response.headers.location).toBe('/profile/settings?status=password-reused');
+    expect(auth.clearAuthCookies).not.toHaveBeenCalled();
+  });
+
+  it('clears stale local credentials after Laravel revokes sessions on 2FA disable', async () => {
+    const response = await request(createApp('en'))
+      .post('/profile/two-factor/disable')
+      .type('form')
+      .send({ password: 'current-password' });
+
+    expect(response.headers.location).toBe('/profile/two-factor?status=2fa-disabled');
+    expect(api.callProfileApi).toHaveBeenCalledWith('test-token', 'POST', '/auth/2fa/disable', {
+      password: 'current-password'
+    });
+    expect(auth.clearAuthCookies).toHaveBeenCalledTimes(1);
+  });
+
   it('renders the neutral profile-updated query status in Arabic on the destination page', async () => {
     const t = createTranslator('ar');
     const response = await request(createApp('ar')).get('/profile?status=profile-updated');
