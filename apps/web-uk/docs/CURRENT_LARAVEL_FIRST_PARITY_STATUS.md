@@ -171,7 +171,7 @@ Refresh the Laravel Blade/API source and Web UK implementation before relying on
 these numbers after either source moves.
 
 At this documentation audit, the product-source baseline was
-`49c248e5c3c0670e5ea4487349fe742a840b4cf6`. The revoked-session confirmation,
+`d05a3caff85981d1da9bf4883a64dbc2a25143cb`. The revoked-session confirmation,
 Laravel method-spoof reconciliation, group-message contract, residual API-
 consumer correction, and backend-request timeout slices are above the frozen
 bank and remain **published and unscored**. The documentation remediation is
@@ -186,7 +186,7 @@ together from a clean published checkout.
   with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
   Only this fixed-rubric audit contributes to the current bank.
 - **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `49c248e5`, including the later identity/session confirmation,
+  baseline `d05a3caf`, including the later identity/session confirmation,
   method-spoof reconciliation, group-message contract, residual API-consumer
   correction, and backend-request timeout slices. Their evidence is useful, but they
   contribute zero points until one complete fixed-rubric re-audit explicitly
@@ -1530,6 +1530,21 @@ Laravel source, database, migration, mutation, container, or production
 operation was performed. This published component-audit improvement remains
 unscored, so the frozen bank remains 622/1,000 pending a complete fixed-rubric
 re-audit.
+
+## 2026-07-14 Cookie Hide-Link Semantics
+
+Frozen evidence at `2026-07-14T17:39:20.8158201+01:00` against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and Web UK product commit
+`d05a3caff85981d1da9bf4883a64dbc2a25143cb`. The cookie confirmation banner's
+`Hide cookie message` control now retains its native link role like Blade; the
+incorrect `role="button"` override is removed.
+
+Focused shell-partial proof passes 15/15 with green lint, the 322-template zero-
+match localization audit, and diff checks. The immediately preceding complete
+gate is green at 52/52 suites and 1,672/1,672 tests. No Laravel source, database,
+migration, mutation, container, or production operation was performed. This
+published component-audit improvement remains unscored, so the frozen bank
+remains 622/1,000 pending a complete fixed-rubric re-audit.
 
 ## 2026-07-14 Wallet And Rating Choice Parity
 

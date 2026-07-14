@@ -1014,6 +1014,9 @@ rewriting.
   heading, blue `n out of 5` tag, assistive rating copy, and comment body. The
   legacy star/date header is removed; focused default-English rendering passes
   `1/1`, while broader runtime and manual certification remain open.
+- The cookie confirmation banner's hide control now keeps native link semantics
+  like Blade instead of overriding its role to button. Focused shell-partial
+  proof passes `15/15`; manual assistive-technology certification remains open.
 
 ### Jobs member-page evidence
 
