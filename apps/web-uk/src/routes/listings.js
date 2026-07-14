@@ -641,25 +641,41 @@ function listingOwnerId(listing) {
     || positiveInteger(listing && listing.public_contract && listing.public_contract.provider && listing.public_contract.provider.id);
 }
 
-function listingReportStatus(status) {
+function listingReportStatus(status, t) {
   const messages = {
-    'report-invalid': 'Select a reason for reporting',
-    'report-failed': 'We could not submit your report. Please try again.',
+    'report-invalid': t('polish_listings.report_reason_required'),
+    'report-failed': t('polish_listings.status_listing_report_failed'),
     'already-reported': 'You have already reported this listing.'
   };
   const message = messages[trimmed(status)];
   return message ? { type: 'error', message } : null;
 }
 
-function listingReportReasons() {
+function listingReportReasons(t) {
   return [
-    { value: 'inappropriate', label: 'Inappropriate content' },
-    { value: 'safety_concern', label: 'Safety concern' },
-    { value: 'misleading', label: 'Misleading information' },
-    { value: 'spam', label: 'Spam or misleading' },
-    { value: 'not_timebank_service', label: 'Not a timebank service' },
-    { value: 'other', label: 'Other' }
+    { value: 'inappropriate', label: t('polish_listings.report_reason_inappropriate') },
+    { value: 'safety_concern', label: t('polish_listings.report_reason_safety_concern') },
+    { value: 'misleading', label: t('polish_listings.report_reason_misleading') },
+    { value: 'spam', label: t('polish_listings.report_reason_spam') },
+    { value: 'not_timebank_service', label: t('polish_listings.report_reason_not_timebank_service') },
+    { value: 'other', label: t('polish_listings.report_reason_other') }
   ];
+}
+
+function storeListingReportReplay(req, listingId, body) {
+  if (!req.session) return;
+  req.session.listingReportReplay = {
+    listingId: positiveInteger(listingId),
+    reason: trimmed(body && body.reason, 40),
+    details: trimmed(body && body.details, 500)
+  };
+}
+
+function consumeListingReportReplay(req, listingId) {
+  if (!req.session || !req.session.listingReportReplay) return null;
+  const replay = req.session.listingReportReplay;
+  delete req.session.listingReportReplay;
+  return replay.listingId === positiveInteger(listingId) ? replay : null;
 }
 
 function suggestedExchangeHours(listing) {
@@ -1138,13 +1154,14 @@ router.get('/:id(\\d+)/comments', asyncRoute(async (req, res) => {
 
 router.post('/:id(\\d+)/report', asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
-  const payload = reportPayload(req.body);
-  if (payload === null) {
-    return redirectTo(res, `/listings/${id}/report?status=report-invalid`);
-  }
-
   const token = tokenFrom(req);
   if (!token) return redirectTo(res, loginRedirect());
+
+  const payload = reportPayload(req.body);
+  if (payload === null) {
+    storeListingReportReplay(req, id, req.body);
+    return redirectTo(res, `/listings/${id}/report?status=report-invalid`);
+  }
 
   let status = 'listing-reported';
   try {
@@ -1181,11 +1198,15 @@ router.get('/:id(\\d+)/report', asyncRoute(async (req, res) => {
     });
   }
 
+  const t = res.locals.t;
+  const oldInput = consumeListingReportReplay(req, id) || { reason: '', details: '' };
+
   res.render('listings/report', {
-    title: 'Report a listing',
+    title: t('polish_listings.report_form_title'),
     listing: { ...listing, id },
-    status: listingReportStatus(req.query.status),
-    reasons: listingReportReasons(),
+    status: listingReportStatus(req.query.status, t),
+    reasons: listingReportReasons(t),
+    oldInput,
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { notFoundTitle: 'Listing not found' }));

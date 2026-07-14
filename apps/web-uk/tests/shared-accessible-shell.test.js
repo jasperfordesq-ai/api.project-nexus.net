@@ -26953,7 +26953,7 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('Report listing');
     expect(signed.text).toContain('Tell us why you are reporting this listing. We review all reports and take action where needed.');
     expect(signed.text).toContain('There is a problem');
-    expect(signed.text).toContain('Select a reason for reporting');
+    expect(signed.text).toContain('Choose a reason for this report.');
     expect(signed.text).toContain('method="post" action="/listings/42/report"');
     expect(signed.text).toContain('Reason for report');
     expect(signed.text).toContain('Inappropriate content');
@@ -26967,6 +26967,38 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('Send report');
     expect(signed.text).toContain('Cancel');
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
+  });
+
+  it('preserves bounded Listing report input after Laravel-style validation failure', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', signedCookieHeader());
+    const csrf = first.text.match(/name="_csrf" value="([^"]+)"/)[1];
+
+    const invalid = await agent
+      .post('/listings/42/report')
+      .set('Cookie', signedCookieHeader())
+      .type('form')
+      .send({ _csrf: csrf, reason: '', details: ' Unsafe wiring near the entrance ' });
+
+    expect(invalid.status).toBe(302);
+    expect(invalid.headers.location).toBe('/listings/42/report?status=report-invalid');
+    expect(api.callListingApi).not.toHaveBeenCalledWith('test-token', 'POST', '/42/report', expect.anything());
+
+    api.getProfile.mockResolvedValueOnce({ data: { id: 101, name: 'Signed in member' } });
+    api.callListingApi.mockResolvedValueOnce({
+      data: { id: 42, title: 'Bike trailer loan', user_id: 77 }
+    });
+    const replay = await agent
+      .get(invalid.headers.location)
+      .set('Cookie', signedCookieHeader());
+
+    expect(replay.status).toBe(200);
+    expect(replay.text).toContain('href="#reason-inappropriate"');
+    expect(replay.text).toContain('Choose a reason for this report.');
+    expect(replay.text).toContain('>Unsafe wiring near the entrance</textarea>');
   });
 
   it('renders the Laravel-backed listing exchange request form', async () => {
