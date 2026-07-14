@@ -20,7 +20,11 @@
 {% endblock %}
 
 {% block mainContent %}
-      {% if status == "waitlist-offer-accepted" %}
+      {% if status == "poll-voted" %}
+        <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="event-poll-success-title"><div class="govuk-notification-banner__header"><h2 class="govuk-notification-banner__title" id="event-poll-success-title">{{ t("govuk_alpha.states.success_title") }}</h2></div><div class="govuk-notification-banner__content"><p class="govuk-notification-banner__heading">{{ t("events.states.poll-voted") }}</p></div></div>
+      {% elif status == "poll-vote-failed" %}
+        <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1"><div role="alert"><h2 class="govuk-error-summary__title">{{ t("govuk_alpha.states.error_title") }}</h2><div class="govuk-error-summary__body"><p>{{ t("events.states.poll-vote-failed") }}</p></div></div></div>
+      {% elif status == "waitlist-offer-accepted" %}
         <div class="govuk-notification-banner govuk-notification-banner--success" role="alert"><div class="govuk-notification-banner__header"><h2 class="govuk-notification-banner__title">{{ t("govuk_alpha.states.success_title") }}</h2></div><div class="govuk-notification-banner__content"><p class="govuk-notification-banner__heading">{{ t("govuk_alpha.events.waitlist_offer_accepted") }}</p></div></div>
       {% elif status == "waitlist-offer-accept-failed" %}
         <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1"><div role="alert"><h2 class="govuk-error-summary__title">{{ t("govuk_alpha.states.error_title") }}</h2><div class="govuk-error-summary__body"><p>{{ t("govuk_alpha.events.waitlist_offer_accept_failed") }}</p></div></div></div>
@@ -329,6 +333,64 @@
         <div class="govuk-inset-text">
           <a class="govuk-link" href="{{ urlFor('/login') }}">{{ t("nav.login") }}</a>. {{ t("events.auth_required_detail", { community: tenantName or serviceName }) }}
         </div>
+      {% endif %}
+
+      {% if polls.length > 0 %}
+        <section class="govuk-!-margin-top-8" aria-labelledby="event-polls-heading">
+          <h2 class="govuk-heading-l" id="event-polls-heading">{{ t("events.polls_heading") }}</h2>
+          <p class="govuk-body">{{ t("events.polls_intro") }}</p>
+
+          {% for poll in polls %}
+            <article class="nexus-alpha-card govuk-!-margin-bottom-6" id="poll-{{ poll.id }}">
+              <div class="nexus-alpha-module-row">
+                <h3 class="govuk-heading-m govuk-!-margin-bottom-1">{{ poll.question }}</h3>
+                <strong class="govuk-tag govuk-tag--{% if poll.isOpen %}green{% else %}grey{% endif %}">{{ t("events.poll_" + ("open" if poll.isOpen else "closed") + "_tag") }}</strong>
+              </div>
+              {% if poll.description %}<p class="govuk-body">{{ poll.description }}</p>{% endif %}
+
+              {% if poll.options.length == 0 %}
+                <div class="govuk-inset-text"><p class="govuk-body">{{ t("events.poll_no_options") }}</p></div>
+              {% elif poll.isOpen and not poll.hasVoted %}
+                <form method="post" action="{{ urlFor('/events/' + (event.id | string) + '/polls/' + (poll.id | string) + '/vote') }}">
+                  <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                  <fieldset class="govuk-fieldset" aria-describedby="event-poll-{{ poll.id }}-hint">
+                    <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">{{ t("events.poll_choose_label") }}</legend>
+                    <div id="event-poll-{{ poll.id }}-hint" class="govuk-hint">{{ t("events.poll_vote_once_hint") }}</div>
+                    <div class="govuk-radios govuk-radios--small" data-module="govuk-radios">
+                      {% for option in poll.options %}
+                        <div class="govuk-radios__item">
+                          <input class="govuk-radios__input" id="event-poll-{{ poll.id }}-opt-{{ option.id }}" name="option_id" type="radio" value="{{ option.id }}">
+                          <label class="govuk-label govuk-radios__label" for="event-poll-{{ poll.id }}-opt-{{ option.id }}">{{ option.label }}</label>
+                        </div>
+                      {% endfor %}
+                    </div>
+                  </fieldset>
+                  <button class="govuk-button govuk-!-margin-top-2 govuk-!-margin-bottom-0" data-module="govuk-button">{{ t("events.poll_vote_button") }}</button>
+                </form>
+              {% elif poll.resultsVisible %}
+                <p class="govuk-body-s nexus-alpha-meta">{{ tc("events.poll_votes_count", poll.totalVotes, { count: poll.totalVotes }) }}</p>
+                {% for option in poll.options %}
+                  <div class="govuk-!-margin-bottom-3">
+                    <p class="govuk-body govuk-!-margin-bottom-1">
+                      {{ option.label }}
+                      {% if option.isLeading %}<strong class="govuk-tag govuk-tag--green">{{ t("events.poll_leading") }}</strong>{% endif %}
+                      {% if option.isMine %}<strong class="govuk-tag govuk-tag--blue">{{ t("events.poll_your_choice") }}</strong>{% endif %}
+                    </p>
+                    <progress max="100" value="{{ option.percentage }}" aria-label="{{ option.label }}: {{ option.percentageRounded }}%">{{ option.percentageRounded }}%</progress>
+                    <span class="govuk-body-s">{{ option.percentageRounded }}% &mdash; {{ tc("events.poll_per_option_votes", option.voteCount, { count: option.voteCount }) }}</span>
+                  </div>
+                {% endfor %}
+              {% else %}
+                <div class="govuk-inset-text">{{ t("events.poll_results_pending_note") }}</div>
+                <ul class="govuk-list">
+                  {% for option in poll.options %}
+                    <li>{{ option.label }} {% if option.isMine %}<strong class="govuk-tag govuk-tag--blue">{{ t("events.poll_your_choice") }}</strong>{% endif %}</li>
+                  {% endfor %}
+                </ul>
+              {% endif %}
+            </article>
+          {% endfor %}
+        </section>
       {% endif %}
 
       {% if attendeesLoadFailed or attendees.length > 0 %}

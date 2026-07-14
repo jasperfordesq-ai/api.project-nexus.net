@@ -22342,6 +22342,93 @@ describe('shared accessible frontend shell', () => {
     expect(unavailable.text).not.toContain('name="scope" type="radio" value="all"');
   });
 
+  it('renders attached Event polls with Blade ballot-secrecy states', async () => {
+    const api = require('../src/lib/api');
+    api.getPolls.mockResolvedValueOnce({
+      data: [
+        { id: 12, event_id: 42 },
+        { id: 13, event_id: 42 },
+        { id: 14, event_id: 42 },
+        { id: 15, event_id: 42 }
+      ]
+    });
+    api.getPoll.mockImplementation(async (_token, pollId) => ({ data: ({
+      12: {
+        id: 12,
+        event_id: 42,
+        question: 'Which day works?',
+        description: 'Choose one day.',
+        status: 'open',
+        has_voted: false,
+        results_visible: false,
+        total_votes: 9,
+        options: [
+          { id: 3, text: 'Tuesday', vote_count: 8, percentage: 88.6 },
+          { id: 4, text: 'Thursday', vote_count: 1, percentage: 11.4 }
+        ]
+      },
+      13: {
+        id: 13,
+        event_id: 42,
+        question: 'Closed result',
+        status: 'closed',
+        has_voted: true,
+        voted_option_id: 6,
+        results_visible: true,
+        total_votes: 3,
+        options: [
+          { id: 5, text: 'Morning', vote_count: 1, percentage: 33.4 },
+          { id: 6, text: 'Evening', vote_count: 2, percentage: 66.6 }
+        ]
+      },
+      14: {
+        id: 14,
+        event_id: 42,
+        question: 'Open after voting',
+        status: 'open',
+        has_voted: true,
+        voted_option_id: 8,
+        results_visible: false,
+        total_votes: 27,
+        options: [
+          { id: 7, text: 'Indoors', vote_count: 20, percentage: 74 },
+          { id: 8, text: 'Outdoors', vote_count: 7, percentage: 26 }
+        ]
+      },
+      15: { id: 15, event_id: 42, question: 'No choices yet', status: 'open', options: [] }
+    })[pollId] }));
+
+    const response = await request(app)
+      .get('/events/42?status=poll-voted')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(api.getPolls).toHaveBeenCalledWith('test-token', { event_id: 42, limit: 20 });
+    expect(api.getPoll).toHaveBeenCalledTimes(4);
+    expect(response.text).toContain('Your vote has been recorded.');
+    expect(response.text).toContain('id="event-polls-heading">Event polls</h2>');
+    expect(response.text).toContain('id="poll-12"');
+    expect(response.text).toContain('method="post" action="/events/42/polls/12/vote"');
+    expect(response.text).toContain('id="event-poll-12-opt-3" name="option_id" type="radio" value="3"');
+    expect(response.text).not.toContain('Tuesday: 89%');
+    expect(response.text).toContain('Closed result');
+    expect(response.text).toContain('3 votes');
+    expect(response.text).toContain('Evening: 67%');
+    expect(response.text).toContain('67% &mdash; 2 votes');
+    expect(response.text).toContain('Leading');
+    expect(response.text).toContain('Your choice');
+    expect(response.text).toContain('Thanks for voting. Results will be shown when the poll closes.');
+    expect(response.text).toContain('Outdoors <strong class="govuk-tag govuk-tag--blue">Your choice</strong>');
+    expect(response.text).not.toContain('Indoors: 74%');
+    expect(response.text).toContain('This poll has no options yet.');
+
+    const failed = await request(app)
+      .get('/events/42?status=poll-vote-failed')
+      .set('Cookie', signedCookieHeader());
+    expect(failed.status).toBe(200);
+    expect(failed.text).toContain('Your vote could not be recorded. Try again.');
+  });
+
   it('redirects non-series events from Laravel recurring edit to the normal edit page', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');

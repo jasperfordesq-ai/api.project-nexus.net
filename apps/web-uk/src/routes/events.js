@@ -18,6 +18,7 @@ const {
   rsvpToEvent,
   votePoll,
   getPolls,
+  getPoll,
   callEventApi,
   callEventBroadcastApi,
   callAdminEventApi,
@@ -477,6 +478,67 @@ function eventPerson(row = {}) {
       undo: checked(management.undo_attendance)
     }
   };
+}
+
+function eventPollDetailFrom(item, eventId, t = (key) => key) {
+  const row = item && typeof item === 'object' ? item : {};
+  const id = positiveInteger(row.id);
+  const scopedEventId = positiveInteger(row.event_id ?? row.eventId);
+  if (id === null || (scopedEventId !== null && scopedEventId !== eventId)) return null;
+
+  const votedOptionId = positiveInteger(row.voted_option_id ?? row.votedOptionId);
+  const totalVotes = Math.max(0, Number.parseInt(row.total_votes ?? row.totalVotes, 10) || 0);
+  const rawOptions = Array.isArray(row.options) ? row.options : [];
+  const maxVotes = rawOptions.reduce(
+    (maximum, option) => Math.max(maximum, Math.max(0, Number.parseInt(option?.vote_count ?? option?.voteCount, 10) || 0)),
+    0
+  );
+  const options = rawOptions.map((option) => {
+    const optionId = positiveInteger(option?.id);
+    if (optionId === null) return null;
+    const voteCount = Math.max(0, Number.parseInt(option.vote_count ?? option.voteCount, 10) || 0);
+    const numericPercentage = Number(option.percentage);
+    const percentage = Number.isFinite(numericPercentage) ? numericPercentage : 0;
+    return {
+      id: optionId,
+      label: trimmed(option.text ?? option.label),
+      voteCount,
+      percentage,
+      percentageRounded: Math.max(0, Math.min(100, Math.round(percentage))),
+      isMine: votedOptionId !== null && optionId === votedOptionId,
+      isLeading: totalVotes > 0 && voteCount === maxVotes
+    };
+  }).filter(Boolean);
+
+  return {
+    id,
+    question: trimmed(row.question ?? row.title) || t('events.polls_heading'),
+    description: trimmed(row.description),
+    isOpen: trimmed(row.status).toLowerCase() === 'open',
+    hasVoted: checked(row.has_voted ?? row.hasVoted),
+    resultsVisible: checked(row.results_visible ?? row.resultsVisible),
+    totalVotes,
+    options
+  };
+}
+
+async function eventPollDetails(token, eventId, t) {
+  if (!token) return [];
+  try {
+    const summaries = collectionFrom(await getPolls(token, { event_id: eventId, limit: 20 }));
+    const details = await Promise.all(summaries.map(async (summary) => {
+      const pollId = positiveInteger(summary?.id);
+      if (pollId === null) return null;
+      try {
+        return eventPollDetailFrom(dataFrom(await getPoll(token, pollId)), eventId, t);
+      } catch {
+        return null;
+      }
+    }));
+    return details.filter(Boolean);
+  } catch {
+    return [];
+  }
 }
 
 function eventAttendee(row = {}, t = (key) => key) {
@@ -3190,7 +3252,7 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   const attendeesCursor = trimmed(req.query.attendees_cursor, 2048);
 
-  const [eventResult, rsvpsResult, currentUserResult, relationshipResult] = await Promise.all([
+  const [eventResult, rsvpsResult, currentUserResult, relationshipResult, polls] = await Promise.all([
     getEvent(token, id),
     getEventRsvps(token, id, { status: 'all', perPage: 50, cursor: attendeesCursor }).catch((error) => {
       if (isAuthError(error)) throw error;
@@ -3203,7 +3265,8 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
     token ? callApi(token, 'GET', `/${id}/relationship`).catch((error) => {
       if (isAuthError(error)) throw error;
       return null;
-    }) : Promise.resolve(null)
+    }) : Promise.resolve(null),
+    eventPollDetails(token, Number(id), res.locals.t)
   ]);
 
   const event = currentEventDetail(eventFrom(eventResult));
@@ -3258,6 +3321,7 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
     eventStartLabel: scheduleLabels.startLabel,
     eventEndLabel: scheduleLabels.endLabel,
     recurrenceDefinitions,
+    polls,
     attendees,
     attendeesLoadFailed: rsvpsResult.attendeesLoadFailed === true,
     attendeesNextPath,
