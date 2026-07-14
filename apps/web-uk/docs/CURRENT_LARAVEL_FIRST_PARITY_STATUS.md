@@ -186,7 +186,7 @@ together from a clean published checkout.
   with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
   Only this fixed-rubric audit contributes to the current bank.
 - **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `55aec02b`, including the later implementation, contract,
+  baseline `211d45e3`, including the later implementation, contract,
   resilience, and component-audit slices. Their evidence is useful, but they
   contribute zero points until one complete fixed-rubric re-audit explicitly
   replaces the baseline.
@@ -272,6 +272,26 @@ state-changing contracts. No Laravel database, migration, authentication,
 mutation, upload, download, cleanup, or production operation was performed.
 This component-audit improvement remains published and unscored, so the frozen
 bank remains `622/1,000` pending a complete fixed-rubric re-audit.
+
+## 2026-07-15 Canonical Event Index Cards
+
+Frozen evidence refreshed at `2026-07-15T00:52:55.5824862+01:00` against
+Laravel `903d03d3db78bbf87129ad35728be3b72819acaf` and Web UK product commit
+`211d45e3`. Event index cards now consume both Laravel's canonical nested
+`schedule`, `location`, `metrics`, `relationship`, and `primary_image`
+projection and its legacy flat compatibility projection. Canonical all-day
+ranges use Blade's exclusive-end to inclusive-end conversion, event timezone,
+All day label, zero-preserving attendee count, interested count, backend-origin
+image, and relationship/contract data attributes. Nested locations no longer
+risk rendering as `[object Object]`.
+
+Focused legacy/canonical/filter proof passes `3/3`; the uninterrupted complete
+non-mutating gate passes `52/52` suites and `1,696/1,696` tests. Brand, lint,
+static-key, 322-template, generated route/API, and scoped diff gates are green.
+No Laravel request, database, migration, authentication, mutation, upload,
+download, cleanup, container, or production operation was performed for this
+card-projection slice. It remains published and unscored, and the frozen bank
+remains `622/1,000` pending a complete fixed-rubric re-audit.
 
 ### Finite P0/P1 Completion Queue
 

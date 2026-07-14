@@ -235,11 +235,11 @@ if ($null -ne $architecture) {
 $status = Get-DocumentText 'docs/CURRENT_ASPNET_CONTRACT_STATUS.md'
 if ($null -ne $status) {
     Assert-Contains 'docs/CURRENT_ASPNET_CONTRACT_STATUS.md' $status `
-        '<!--\s*doc-consistency:\s*ASPNET_CURRENT_BANKED_SCORE=701/1000\s*-->' `
-        'must expose the canonical 701/1000 banked-score marker.'
+        '<!--\s*doc-consistency:\s*ASPNET_CURRENT_BANKED_SCORE=708/1000\s*-->' `
+        'must expose the canonical 708/1000 banked-score marker.'
     Assert-Contains 'docs/CURRENT_ASPNET_CONTRACT_STATUS.md' $status `
-        '(?i)current banked score is\s+\*{0,2}701/1000' `
-        'must state the current banked score as 701/1000.'
+        '(?i)current banked score is\s+\*{0,2}708/1000' `
+        'must state the current banked score as 708/1000.'
     Assert-Contains 'docs/CURRENT_ASPNET_CONTRACT_STATUS.md' $status `
         '2,601/2,601' `
         'must preserve the current active route-representation result.'
@@ -448,7 +448,7 @@ $runbook = Get-DocumentText 'docs/FULL_PARITY_REMEDIATION_RUNBOOK.md'
 if ($null -ne $runbook) {
     $runbookOpening = ($runbook -split '(?m)^## Historical Published Evidence\s*$')[0]
     Assert-NotContains 'docs/FULL_PARITY_REMEDIATION_RUNBOOK.md' $runbookOpening `
-        '\b701/1000\b' `
+        '\b708/1000\b' `
         'must link the canonical ASP.NET status rather than mirror its live score in maintained opening text.'
     Assert-Contains 'docs/FULL_PARITY_REMEDIATION_RUNBOOK.md' $runbook `
         '(?m)^## Current Remediation Queue\s*$' `
@@ -490,7 +490,7 @@ foreach ($relativePath in $historicalOpenings) {
     if ($null -eq $text) { continue }
     $opening = Get-OpeningRegion $text 60
     Assert-NotContains $relativePath $opening `
-        '(?i)\b(?:701/1000|698/1000|684/1000|680/1000|622/1000|688/689|1,661/1,661)\b|663\s+contracts' `
+        '(?i)\b(?:708/1000|701/1000|698/1000|684/1000|680/1000|622/1000|688/689|1,661/1,661)\b|663\s+contracts' `
         'must not copy live workstream scores or generated totals into its archive banner.'
 }
 
@@ -536,8 +536,8 @@ foreach ($relativePath in $currentScoreDocuments) {
         '(?i)\b(?:current|latest)\s+(?:(?:overall|published|ASP\.NET|fixed-rubric|banked)\s+){0,5}(?:score|bank)\s+(?:is|:)\s+\*{0,2}(?<points>\d{1,4})/1000'
     )
     foreach ($claim in $currentScoreClaims) {
-        if ([int]$claim.Groups['points'].Value -ne 701) {
-            Add-Failure "${relativePath}: contains a current overall score that contradicts 701/1000."
+        if ([int]$claim.Groups['points'].Value -ne 708) {
+            Add-Failure "${relativePath}: contains a current overall score that contradicts 708/1000."
         }
     }
     Assert-NotContains $relativePath $currentRegion `

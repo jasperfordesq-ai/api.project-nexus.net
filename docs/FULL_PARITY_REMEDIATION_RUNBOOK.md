@@ -406,6 +406,37 @@ semantic, 127/150 schema, 94/100 security/localization, 45/100 build/test/CI,
 10/125 unchanged-frontends, and 24/75 providers/ops/docs. Exact remaining
 deductions are 0, 49, 23, 6, 55, 115, and 51 points.
 
+### 2026-07-15 Social Comment Mention Parity (Published)
+
+Evidence snapshot: Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf`, ASP.NET implementation
+`1ff6447012c89744e94d6693463a8032361c5946`, captured 2026-07-15
+00:52:15 +01:00. Canonical mention search now exposes Laravel's optional,
+tenant-unique public username rather than leaking the member email address. The
+legacy social-comment mutation resolves canonical React `@username` tokens,
+persists one durable mention per comment/recipient, and creates recipient-locale
+mention, direct-reply, and content-owner notifications with push fan-out after
+the database transaction commits.
+
+The shared safeguarding policy evaluates the complete recipient set while the
+relational write transaction is held. Denial returns Laravel's stable policy
+envelope and persists no comment, mention, or notification. The migration adds
+the Laravel-compatible username and mention state, with tenant-composite foreign
+keys preventing cross-tenant mentioned/mentioning users at the database boundary.
+
+Release API and test builds pass with zero errors. The complete affected V15
+controller class passes 17/17, focused workflow proof passes 4/4, and unchanged
+canonical React mention search plus the real PostgreSQL mention/notification
+mutation pass 2/2. Migration SQL from the prior published migration contains
+only the username column, mention table, tenant-bound foreign keys, and indexes.
+Full-suite/CI, broader provider delivery, and unchanged-browser proof remain open.
+
+This banks 4 semantic, 2 schema, and 1 security/localization point for
+**708/1000**: 100/100 route, 305/350 semantic, 129/150 schema, 95/100
+security/localization, 45/100 build/test/CI, 10/125 unchanged-frontends, and
+24/75 providers/ops/docs. Exact remaining deductions are 0, 45, 21, 5, 55,
+115, and 51 points.
+
 ## Historical Checkpoints
 
 Everything in this section is dated implementation evidence. Its older

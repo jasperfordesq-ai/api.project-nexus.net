@@ -1238,6 +1238,15 @@ tests, and the fresh-current-container marker comparison passes `19/19` at
 `/hour-timebank/accessible`. Runtime side effects and manual assistive-
 technology certification remain open.
 
+The adjacent canonical-card follow-up now accepts Laravel's nested `schedule`,
+`location`, `metrics`, `relationship`, and `primary_image` projection as well
+as its legacy flat compatibility projection. All-day ranges use Blade's
+exclusive-end conversion, configured timezone, All day marker, zero-preserving
+metrics, backend-origin image resolution, and relationship/contract data
+attributes. Focused legacy/canonical/filter proof passes `3/3`; the complete
+non-mutating gate passes `52/52` suites and `1,696/1,696` tests. Manual and
+disposable-runtime certification remain open.
+
 - GOV.UK crown, logotype, official header identity, OGL block, or Crown
   copyright wording.
 - Laravel/PHP implementation details.
