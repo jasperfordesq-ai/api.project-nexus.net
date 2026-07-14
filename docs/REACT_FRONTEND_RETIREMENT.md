@@ -1,6 +1,8 @@
 # React Frontend Retirement Policy
 
-Last reviewed: 2026-07-05
+Last reviewed: 2026-07-14
+
+Status: **Maintained reference — current frontend retirement policy**
 
 ## Decision
 
@@ -27,12 +29,11 @@ be weakened to accommodate ASP.NET gaps.
 
 ## Working Rule
 
-Do not modify frontend files in this repository unless the user explicitly
-approves that specific frontend change. This includes:
-
-- `apps/react-frontend/`
-- `apps/admin/`
-- `apps/web-uk/`
+Do not modify `apps/react-frontend/`; it is frozen even though its image remains
+operationally deployed. `apps/admin/` is secondary and requires an explicitly
+scoped admin task. `apps/web-uk/` is the separately approved accessible-
+frontend implementation target and follows its own `AGENTS.md` and current
+Laravel-first status; that approval does not extend to the frozen React copy.
 
 Backend parity work should happen in ASP.NET backend code, contracts, tests, and
 documentation. If a frontend file is touched during backend parity work, the
@@ -40,8 +41,11 @@ change must explain why backend conformance was not enough.
 
 ## Contract Target
 
-For every API call made by the Laravel React frontend, ASP.NET must expose a
-compatible endpoint.
+For every API call made by the canonical Laravel React frontend and every
+backend contract consumed by the unchanged shared Web UK frontend, ASP.NET must
+expose compatible behavior. Web UK itself remains Laravel-first and is not
+certified until its canonical status records the missing runtime and
+accessibility evidence.
 
 Compatibility means:
 

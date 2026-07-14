@@ -4,7 +4,9 @@
 
 **Docker is the ONLY supported development environment.**
 
-The `compose.yml` file defines how to run the UK frontend in development and production modes. Do not use native Node.js, XAMPP, or any other local setup.
+The `compose.yml` file defines local development and a local production-image
+profile. It is not an approved production deployment specification. Do not use
+native Node.js, XAMPP, or any other local setup.
 
 ### Why Docker Only?
 
@@ -50,10 +52,13 @@ docker compose up --build
 docker compose logs -f
 ```
 
-### Start (Production mode)
+### Start (Local production-image profile)
 ```bash
 docker compose --profile prod up
 ```
+
+This command is for local image/runtime checks only. It does not authorize
+deployment and does not establish backend-switching certification.
 
 ## Port Mapping
 
@@ -78,6 +83,17 @@ Laravel API define Web UK behaviour and contracts; ASP.NET is a separate future
 compatibility target owned by another workstream. The ordinary Laravel database
 is not a disposable mutation fixture and must not be migrated or repaired from
 Web UK work.
+
+## Root Production Override Is Not Certified
+
+The repository-root `compose.prod.yml` currently sets Web UK's
+`API_BASE_URL=http://api:8080`, which points at the ASP.NET service. This is a
+legacy/uncertified override, not an approved production path and not evidence
+that the unchanged frontend passes against ASP.NET. Do not run or deploy that
+Web UK service definition as production work from this workstream. Any future
+production action must first follow the repository-root
+`.claude/production-containers.md`, use an explicitly approved deployment plan,
+and cite banked unchanged-Web-UK ASP.NET certification.
 
 ## File Structure
 

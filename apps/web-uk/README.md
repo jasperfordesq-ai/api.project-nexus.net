@@ -34,10 +34,11 @@ the root [docs/ACCESSIBLE_SHARED_FRONTEND.md](../../docs/ACCESSIBLE_SHARED_FRONT
 Maintained implementation and certification docs:
 
 - [docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md](docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md) - start here for the current architecture, boundaries, evidence and queue.
-- [docs/CURRENT_WEB_UK_HANDOFF.md](docs/CURRENT_WEB_UK_HANDOFF.md) - chronological implementation history; current status supersedes old counts and wording.
+- [docs/CURRENT_WEB_UK_HANDOFF.md](docs/CURRENT_WEB_UK_HANDOFF.md) - historical chronological archive only; never use it as a current resume or scoring source.
 - [docs/LARAVEL_ACCESSIBLE_ROUTE_MATRIX.md](docs/LARAVEL_ACCESSIBLE_ROUTE_MATRIX.md)
 - [docs/BLADE_COMPONENT_PORT_AUDIT.md](docs/BLADE_COMPONENT_PORT_AUDIT.md)
 - [docs/BACKEND_SWITCHING_CONTRACT.md](docs/BACKEND_SWITCHING_CONTRACT.md)
+- [../../docs/CURRENT_ASPNET_CONTRACT_STATUS.md](../../docs/CURRENT_ASPNET_CONTRACT_STATUS.md) - separate backend-owned status for the ASP.NET switching target; never combine it with the Web UK score.
 
 ## Credits and Origins
 
@@ -152,7 +153,7 @@ use `docs/BLADE_COMPONENT_PORT_AUDIT.md` for workflow certification.
 | `GET /help` | Laravel Blade-aligned Help Centre page |
 | `GET /kb` | Laravel-backed Knowledge Base index |
 | `GET /trust-and-safety` | Laravel Blade-aligned Trust and Safety page |
-| `GET /cookies` | Blade-style cookie settings candidate using the Laravel `nexus_alpha_cookie_consent` choice cookie; backend consent audit persistence/tenant certification still not complete |
+| `GET /cookies` | Blade-style cookie settings candidate using `nexus_accessible_cookie_consent`; legacy `nexus_alpha_cookie_consent` is accepted only as a read-only dismissal fallback. Backend consent audit persistence/tenant certification remains incomplete. |
 | `POST /cookie-consent` | No-JS cookie choice handler matching Laravel accept/reject/save form behavior; sets `all` or `essential` locally, without certifying backend consent storage parity |
 | `GET /report-a-problem` | Laravel Blade-aligned support-report workflow |
 | `GET /accessibility` | Laravel Blade-aligned accessibility statement |
@@ -335,6 +336,14 @@ nexus-uk-frontend/
 
 ## NPM Scripts
 
+The ordinary Laravel environment at `127.0.0.1:8088` uses a confidential
+production-derived database and is read-only. Any command that logs in, writes
+limiter/audit state, changes settings, uploads/downloads, or exercises a
+mutation may run only after `LARAVEL_BASE_URL` has been explicitly set to a
+separately provisioned and verified disposable Laravel environment. Owner
+authorization, unique fixture names, restoration code, or cleanup do not make
+the ordinary environment disposable.
+
 | Script | Description |
 |--------|-------------|
 | `npm run dev` | Development mode with watch (runs brand check first) |
@@ -350,8 +359,8 @@ nexus-uk-frontend/
 | `npm run route:matrix` | Refresh and verify Laravel accessible route coverage |
 | `npm run api:ledger` | Generate the Web UK frontend-consumer contract ledger and match concrete method/path calls to Laravel OpenAPI |
 | `npm run visual:blade` | Compare scoped Web UK and Laravel Blade text markers |
-| `npm run smoke:laravel:local` | Run the core Laravel smoke against a fresh ephemeral Web UK listener |
-| `npm run smoke:federation:local` | Traverse federation onboarding, read settings back, and restore the E2E fixture |
+| `npm run smoke:laravel:local` | Stateful login smoke; disposable Laravel environment required. The ephemeral process is Web UK only and does not make the backend/database disposable. |
+| `npm run smoke:federation:local` | Stateful federation lifecycle; separately provisioned, verified disposable Laravel environment required. |
 | `npm run test:accessibility` | Run the public/authenticated Playwright/axe gate against a separately verified disposable Laravel environment; never use the ordinary production-derived local database |
 
 ## Docker

@@ -6,7 +6,7 @@
 # Usage:
 #   docker compose up              # Development mode (default)
 #   docker compose up -d           # Development mode, detached
-#   docker compose --profile prod up  # Production mode
+#   docker compose --profile prod up  # Local production-image mode only
 #
 # Port: 5180 (host) -> 3001 (container)
 # API:  Connects to Laravel backend at http://host.docker.internal:8088
@@ -43,7 +43,7 @@ services:
       retries: 3
 
   # ---------------------------------------------------------------------------
-  # Production service (use with --profile prod)
+  # Local production-image service (use with --profile prod; not deployment)
   # ---------------------------------------------------------------------------
   nexus-uk-frontend-prod:
     container_name: nexus-uk-frontend-prod

@@ -1,110 +1,78 @@
 # NEXUS Admin Panel
 
-Standalone admin panel for Project NEXUS, built with React + TypeScript + Refine + Ant Design.
+Last reviewed: 2026-07-14
 
-## Quick Start
+Status: **Maintained reference — secondary admin surface, not a parity authority**
+
+This is the repository's standalone React/TypeScript administration client. It
+is a secondary surface: Laravel and its canonical React client define product
+and API-contract behavior, while the two primary unchanged-client switching
+targets are documented in [`../../docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md).
+The existence of an admin route or page module does not certify its payload,
+authorization, tenant, error, side-effect, or runtime parity.
+
+## Local Development
+
+From `apps/admin`:
 
 ```bash
-# Install dependencies
 npm install
-
-# Start dev server (port 5190)
 npm run dev
 ```
 
-**Prerequisite:** The ASP.NET backend must be running on port 5080 (see `asp.net-backend/compose.yml`).
+The Vite development server uses port `5190`. Its default API target is
+`http://localhost:5080`; start a suitable local ASP.NET backend separately.
 
-### Docker
+The local Compose file offers development and production-image test profiles:
 
 ```bash
-# Development (port 5190)
 docker compose up
-
-# Production (port 5191)
 docker compose --profile production up
 ```
 
-## Test Credentials
+Both commands are **local only**. The second builds the production image on
+local port `5191`; it is not a production deployment procedure. Before any real
+production-container action, obtain explicit authorization and read
+[`../../.claude/production-containers.md`](../../.claude/production-containers.md).
 
-| Email | Password | Tenant | Role |
-|-------|----------|--------|------|
-| admin@acme.test | NexusV2!Demo#2026 | acme | admin |
-| admin@globex.test | NexusV2!Demo#2026 | globex | admin |
+## Verification
 
-## Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Bundler | Vite 6 |
-| Framework | React 18 + TypeScript |
-| Admin framework | Refine v4 |
-| UI | Ant Design 5 |
-| HTTP | Axios (JWT interceptor + token refresh) |
-| Routing | React Router v6 |
-
-## Environment Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `VITE_API_URL` | `http://localhost:5080` | ASP.NET backend URL |
-
-## Architecture
-
-```
-nexus-admin/
-├── src/
-│   ├── config/         # Resources, constants
-│   ├── providers/      # Auth, data, access control providers
-│   ├── utils/          # Axios instance, token helpers
-│   ├── components/     # Layout, common components
-│   └── pages/          # All admin pages
-├── Dockerfile          # Multi-stage (dev + prod)
-├── compose.yml         # Docker Compose
-└── .env.development    # Dev environment
+```bash
+npm test
+npm run build
 ```
 
-### Backend Integration
+## Current Source Inventory
 
-- Auth: JWT login via `POST /api/auth/login` with `tenant_slug`
-- Admin check: JWT `role` claim must be `"admin"`
-- Tenant: resolved from JWT automatically
-- 144+ admin API endpoints consumed across 20 controllers
+Snapshot: repository commit
+`9c5fb1a46c40e4986c8f973075164b1d74bd101d`, inspected 2026-07-14.
 
-### Port Allocation
+- `src/App.tsx` is the route-registration source.
+- `src/pages/` contains 55 page source files in this snapshot.
+- CRM, Blog, Broker, Email Templates, Events, Gamification, Groups, Matching,
+  Jobs, Notifications, Organisations, Pages CMS, Search Admin, Translations,
+  Vetting, and the other modules imported under the `Full pages` block are real
+  routed page modules, not the old stub list.
+- `src/components/common/page-stub.tsx` remains in the tree but has no source
+  consumer. Do not infer a live stub route from that unused component.
+- Several compatibility routes intentionally reuse a shared full page or
+  `CompatAdminPage`; route presence still is not workflow certification.
 
-| Service | Port |
-|---------|------|
-| Backend API | 5080 |
-| React Frontend | 5173 |
-| UK Frontend | 5180 |
-| **Admin Panel (dev)** | **5190** |
-| Admin Panel (prod) | 5191 |
+Regenerate these observations from `src/App.tsx` and `src/pages/` after either
+moves; do not manually preserve the file count as a completion percentage.
 
-## Implemented Pages
+## Stack And Contract Boundary
 
-### Real pages (13)
-- Dashboard (stats cards from `/api/admin/dashboard`)
-- Users (list, show, edit + suspend/activate)
-- Content Moderation (pending queue + approve/reject)
-- Categories (CRUD)
-- Roles & Permissions (CRUD)
-- Registration Policy (settings form)
-- Registration Pending (approval queue)
-- System Settings (key-value editor)
-- Announcements (CRUD)
-- Emergency Lockdown (toggle)
-- System Health (display)
-- Audit Logs (query with filters)
-- Analytics (overview, exchange health, top users)
-- Tenant Config (key-value editor)
+The checked-in package currently uses React 18, TypeScript 5.6, Vite 6, Refine
+4/5 packages, Ant Design 5, React Router 6, Axios, and Vitest. Authentication is
+JWT-based, and tenant/role behavior must be verified against the current
+backend contract rather than inferred from this README.
 
-### Stub pages (15)
-CRM, Blog, Broker, Email Templates, Events, Gamification, Groups,
-Matching, Jobs, Notifications, Organisations, Pages CMS, Search Admin,
-Translations, Vetting
-
-Each stub lists the backend endpoints ready for integration.
+Local seeded credentials, when the matching development fixtures are loaded,
+are environment fixtures rather than production accounts. Consult the active
+local setup documentation before relying on them.
 
 ## License
 
-AGPL-3.0-or-later. See LICENSE and NOTICE files.
+AGPL-3.0-or-later. See [`LICENSE`](../../LICENSE) and
+[`NOTICE`](../../NOTICE).

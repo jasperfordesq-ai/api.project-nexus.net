@@ -1,6 +1,13 @@
 # Generated Laravel Accessible Route Matrix
 
-Generated: 2026-07-14T11:49:50.892Z
+Status: **Generated snapshot — structural route inventory, not certification**
+
+Generated: 2026-07-14T13:55:07.114Z
+Laravel commit SHA: `903d03d3db78bbf87129ad35728be3b72819acaf`
+Web UK repository commit SHA: `327984b02de82350b8f17b6cb885a3a27c7d95be`
+Laravel working tree dirty: yes
+Web UK repository working tree dirty: yes
+Provenance caveat: Laravel and Web UK repository working trees were dirty when generated. Commit SHAs identify HEAD only; generated content may include uncommitted changes from the dirty working trees.
 
 | Metric | Count |
 | --- | ---: |

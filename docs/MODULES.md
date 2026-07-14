@@ -1,6 +1,8 @@
 # Laravel-to-.NET Module Map
 
-Last reviewed: 2026-07-10
+Last reviewed: 2026-07-14
+
+Status: **Maintained reference — qualitative map, not a completion score**
 
 Laravel source of truth: `C:\platforms\htdocs\staging`.
 
@@ -8,6 +10,19 @@ React frontend source of truth:
 `C:\platforms\htdocs\staging\react-frontend`. The ASP.NET repo copy at
 `apps/react-frontend/` is legacy/frozen and must not be used as the forward
 development target unless the user explicitly approves that frontend work.
+
+This is a qualitative module map, not current completion scoring. Read
+`CURRENT_ASPNET_CONTRACT_STATUS.md` for the current baseline and
+`../apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md` for accessible-
+frontend status. A **Mapped** or **Partial** row does not certify either
+unchanged frontend against ASP.NET.
+
+Marketplace checkpoint note: published destination-charge settlement
+(`768801f1`) and Stripe Connect onboarding/status/account-webhook behavior
+(`25110d7f`) supersede the older local payment-intent/onboarding-only wording in
+the long qualitative row below. The module remains **Partial**: live-provider,
+escrow/refund/dispute, full-suite/CI, and unchanged-client runtime certification
+are open, and later dirty marketplace work is not completed evidence.
 
 Status values:
 

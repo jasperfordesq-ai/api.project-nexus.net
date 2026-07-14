@@ -1,6 +1,8 @@
 # Database Migration Workflow
 
-Last reviewed: 2026-07-12
+Last reviewed: 2026-07-14
+
+Status: **Maintained reference — current migration workflow with historical evidence**
 
 ## Overview
 
@@ -8,9 +10,20 @@ All database schema changes go through a single canonical workflow. This prevent
 
 **Golden Rule: Never modify the production database directly. All changes flow through migrations committed to git.**
 
-## Current Runtime Chain And Replay Evidence
+For the current migration/schema deductions and named evidence baseline, read
+`CURRENT_ASPNET_CONTRACT_STATUS.md` and `SCHEMA_PARITY.md`. The long runtime
+chain below is a retained 2026-07-12 checkpoint; its count and latest migration
+must not be presented as the current repository chain.
 
-EF currently discovers 115 migration IDs. The latest is
+The current published migration tail includes marketplace payment settlement
+`20260714105831_MarketplacePaymentSettlementParity` and Connect onboarding
+`20260714115746_MarketplaceConnectOnboardingParity`. Their replay, preflight,
+and model-drift evidence is recorded in `SCHEMA_PARITY.md`. Always obtain the
+runtime migration list from the current checkout before an upgrade claim.
+
+## Historical Runtime Chain And Replay Evidence (2026-07-12)
+
+At this checkpoint, EF discovered 115 migration IDs. The latest was
 `20260712060051_DirectMessageStateParity`. The runtime inventory was
 repaired by restoring explicit `[Migration]` and `[DbContext]` metadata to 27
 essential designer-less migrations, including
@@ -25,7 +38,7 @@ discovering both would attempt duplicate table creation.
 because `InitialCreate` already creates `tenants.UpdatedAt`; discovering it
 would attempt to add the same column again.
 
-Current non-production evidence is:
+Recorded non-production evidence at this checkpoint was:
 
 - the recorded runtime inventory contains 115 discovered IDs from
   `20260202085043_InitialCreate` through
@@ -198,10 +211,14 @@ Before applying `RecurringShiftGenerationParity`, inventory duplicate rows by
 null. Reconcile any duplicates and their linked check-ins, applications,
 reservations, waitlist entries, and other history explicitly before retrying.
 
-Before applying `GuardianConsentLifecycle` to production, take the normal
-pre-migration backup and review affected-row counts. The migration deliberately
-expires legacy pending/active rows that cannot prove guardian possession of a
-credential and removes consent rows whose minor user no longer exists.
+If an explicitly authorized future production plan includes
+`GuardianConsentLifecycle`, first read
+`../.claude/production-containers.md`, verify the exact component, source SHA,
+and database target, and require independently checked backup/restore evidence
+plus an agreed rollback or forward-remediation plan. Review affected-row counts
+before approval. The migration deliberately expires legacy pending/active rows
+that cannot prove guardian possession of a credential and removes consent rows
+whose minor user no longer exists.
 
 `AdminVolunteerApprovalWorkflow` deliberately changes the tenant/opportunity/
 user application index from unique to non-unique. Declined or withdrawn history
@@ -216,10 +233,10 @@ recorded the migration are not changed or replayed.
 
 Migration discovery must continue to fail closed if a new source migration is
 invisible to EF, a deliberately excluded overlapping migration becomes
-discoverable, or an intended migration ID no longer matches its type. Once
-run against the final migration source, the green blank replay certifies all
-115 IDs that EF discovers. Discovery does not
-authorize replaying either intentionally excluded duplicate.
+discoverable, or an intended migration ID no longer matches its type. At this
+checkpoint, the green blank replay certified the 115 IDs discovered in that
+exact source snapshot. It did not certify later migrations or authorize
+replaying either intentionally excluded duplicate.
 
 ## Read-Only Legacy Financial Audit
 
@@ -459,15 +476,27 @@ ORDER BY f."TenantId", f."Id";
 ROLLBACK;
 ```
 
+## Maintained Migration Workflow
+
+```text
+Edit entity/DbContext -> create migration -> review SQL -> disposable replay ->
+focused/full tests -> PR/CI -> merge -> explicitly authorized deployment plan
 ```
-Edit Entity/DbContext → make migrate → Test → PR → CI Gate → Merge → Deploy → make migrate-prod
-```
+
+> **Production boundary:** This document does not authorize production access,
+> migration, backup, restore, or deployment. Before any production action, read
+> `../.claude/production-containers.md`, obtain explicit authorization for the
+> exact component and SHA, and inspect the current operator scripts. The
+> production-oriented Make targets are helpers, not a standing runbook or proof
+> that a backup, workflow, or target is currently valid.
 
 ## Prerequisites
 
 - Docker Compose running locally (`docker compose up -d`)
 - `make` available (Git Bash on Windows, native on macOS/Linux)
-- For production commands: `NEXUS_DEPLOY_HOST` environment variable set
+- For an explicitly authorized production operation only: verified current
+  operator access and `NEXUS_DEPLOY_HOST`; never infer authorization from the
+  variable being present
 - EF Core CLI tools installed in the API Docker container (already included)
 
 ## Quick Reference
@@ -477,9 +506,9 @@ Edit Entity/DbContext → make migrate → Test → PR → CI Gate → Merge →
 | `make migrate NAME=AddFeature` | Create + apply a migration locally |
 | `make migrate-apply` | Apply pending migrations locally |
 | `make migrate-status` | Show local migration status |
-| `make migrate-prod` | Apply pending migrations on production (with backup) |
-| `make backup-prod-db` | Backup production database |
-| `make drift-check` | Compare local vs production migration state |
+| `make migrate-prod` | Production helper; use only after the production boundary above is satisfied and its target/backup commands are reviewed |
+| `make backup-prod-db` | Production helper; explicit authorization and verified target required |
+| `make drift-check` | Local model check by default; production comparison requires separately authorized access |
 
 ## Step-by-Step Workflow
 
@@ -549,29 +578,40 @@ The PR Quality Gate workflow automatically:
 The discovery gate must cover every compiled migration subclass and keep any
 reviewed overlapping source explicitly outside the runtime chain. It prevents a
 new class from becoming silently invisible, but it does not make duplicate DDL
-safe. A successful blank `database update` against the final source certifies
-all 114 discovered IDs, not every migration-shaped source file or either
-intentionally excluded duplicate. The final blank replay and
-`has-pending-model-changes` gate are green.
+safe. A successful blank `database update` certifies only the IDs discovered in
+that exact checkout; it does not certify every migration-shaped source file or
+an intentionally excluded duplicate. Record the exact source SHA, discovered
+count, latest ID, replay result, and `has-pending-model-changes` result for each
+new claim. The historical checkpoint above is not current-chain proof.
 
 ### 7. Deploy to Production
 
-After merge to `main`:
+Merge does not itself authorize or prove a deployment. Do not assume GitHub
+Actions applies migrations automatically. A production migration must not run
+unless every item below is satisfied:
 
-```bash
-# Option A: Automated (GitHub Actions deploy workflow handles it)
-# Migrations apply automatically during deployment
+1. the user explicitly authorized the named component, source SHA, migration
+   set, and database target;
+2. the operator read `../.claude/production-containers.md` immediately before
+   the action and confirmed the component-specific procedure;
+3. the live target and currently deployed source/image SHA were independently
+   verified;
+4. a restorable pre-change backup has recorded path, timestamp, size,
+   completion evidence, checksum, and appropriate restore-test evidence; and
+5. write fencing/maintenance handling, health checks, abort criteria, and an
+   agreed rollback or forward-remediation plan are recorded.
 
-# Option B: Manual migration (if needed)
-export NEXUS_DEPLOY_HOST=azureuser@your-server
-make migrate-prod
-```
+If any item is missing or uncertain, stop. This guide supplies no executable
+production migration or restore command.
 
-`make migrate-prod` will:
-1. Ask for confirmation (type `YES`)
-2. Create a pre-migration backup
-3. Apply pending migrations
-4. Run a health check
+The current `make migrate-prod` and `make backup-prod-db` targets are
+**unapproved and unverified for production use**. They hard-code database
+`nexus_prod`, while the checked-in Compose topology and deployment workflow use
+`nexus_dev`. That mismatch can invalidate the claimed pre-migration backup and
+restore target. Do not run either target in production until the implementation
+has been reconciled with the live inventory, independently reviewed, and a
+component-specific procedure has been explicitly authorized. The presence of a
+prompt, health probe, or target name is not safety evidence.
 
 ## Drift Detection
 
@@ -588,9 +628,8 @@ Schema drift occurs when the database schema doesn't match what the codebase exp
 # Local only (checks model vs last migration)
 make drift-check
 
-# Full comparison with production
-export NEXUS_DEPLOY_HOST=azureuser@your-server
-make drift-check
+# Production comparison is a separate read-only operator action. Run it only
+# after explicit authorization and current target verification.
 ```
 
 The drift check verifies:
@@ -611,32 +650,24 @@ The PR workflow prevents drift from entering `main`:
 
 ## Production Safety
 
-### Automatic Backups
+### Backup Evidence
 
-- **Pre-deployment backup**: Created before every deployment (GitHub Actions)
-- **Pre-migration backup**: Created by `make migrate-prod` before applying
-- **Daily scheduled backup**: Runs at 03:00 UTC via GitHub Actions
-- **Manual backup**: `make backup-prod-db`
+Never assume a backup exists because a workflow or Make target intends to
+create one. Before an authorized migration, record the exact backup path,
+timestamp, size, completion marker, checksum, and an appropriate restore test.
+Verify scheduled or deployment backups from the current external system rather
+than treating this repository document as evidence that they ran.
 
 ### Rollback
 
-If a migration causes issues in production:
-
-1. **Restore from backup:**
-   ```bash
-   # SSH to production
-   ssh -i ~/.ssh/project-nexus.pem azureuser@your-server
-   cd /opt/nexus-backend
-
-   # List available backups
-   ls -la backups/
-
-   # Restore (replace filename with actual backup)
-   gunzip -c backups/pre_migrate_20260222_120000.sql.gz | \
-     sudo docker compose exec -T db psql -U postgres -d nexus_prod
-   ```
-
-2. **Revert the migration code** and redeploy (preferred over manual DB changes).
+If a production migration causes issues, stop and use the previously reviewed
+incident plan. A restore requires fresh explicit authorization for the named
+database and backup; migration authorization alone is not restore
+authorization. Do not paste a generic restore command from repository
+documentation: confirm the active database container, database name, backup
+integrity, restore ordering, application stop/write fencing, and exact source
+SHA with the operator. Prefer a tested forward remediation where safe; restore
+only the verified backup through the explicitly approved procedure.
 
 `20260710171315_AdminVolunteerApprovalWorkflow` cannot be rolled back with an
 automatic down-migration: its `Down()` throws before changing schema because
@@ -721,12 +752,13 @@ make migrate NAME=FixedName
 
 ### "Production has migrations not in local codebase"
 
-Someone applied a migration directly to production. This is dangerous.
-
-1. Get the migration files from production
-2. Add them to the local codebase
-3. Commit and push
-4. Ensure all environments are in sync
+Treat this as a production incident, not a prompt to copy files or modify the
+database. Stop the planned change and preserve the evidence. With explicit
+authorization for read-only investigation, read
+`../.claude/production-containers.md`, verify the target and deployed SHA, then
+compare the live migration history with trusted repository history. Escalate
+the discrepancy and agree a reviewed reconciliation and recovery plan before
+any source, schema, migration-history, or deployment change.
 
 ### "Entity changes detected but no migration in PR" (CI warning)
 
@@ -735,7 +767,9 @@ Not all entity file changes require migrations (e.g., adding a `[NotMapped]` pro
 ## Architecture Notes
 
 - **Development**: Migrations auto-apply on startup (`Program.cs` calls `MigrateAsync()`)
-- **Production**: Migrations must be applied explicitly via `make migrate-prod` or deployment
+- **Production**: No standing command is authorized here. Follow an explicitly
+  approved, component-specific plan after reading the production container map
 - **Testing**: Uses Testcontainers with a fresh database per test run
 - **EF Core tools** run inside the Docker container to match the exact runtime environment
-- **PostgreSQL 16.4** is used in all environments (local, CI, production)
+- **PostgreSQL 16.4** is the recorded local/CI target; verify the live
+  production engine/version during each explicitly authorized operation

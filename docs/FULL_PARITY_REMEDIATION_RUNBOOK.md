@@ -2,6 +2,8 @@
 
 Last reviewed: 2026-07-14
 
+Status: **Maintained reference — fixed rubric and cross-workstream completion gate**
+
 This is the maintained execution map for completing both parity workstreams:
 
 1. finish `apps/web-uk` as the accessible frontend against the Laravel backend;
@@ -12,6 +14,12 @@ The counts below are a dated audit snapshot, not permanent truth. Regenerate
 them before editing, scoring, or claiming completion. This runbook supersedes
 older numeric scores and completion claims in the handoff documents, while the
 handoffs remain useful for detailed implementation history and commands.
+
+For live workstream scores, published-versus-dirty boundaries, and remaining
+deductions, read `CURRENT_ASPNET_CONTRACT_STATUS.md` and
+`../apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md`. This runbook owns
+the fixed rubric and evidence gates, but deliberately does not mirror either
+current overall score.
 
 ## Objective
 
@@ -51,12 +59,12 @@ completion percentage. Effective 2026-07-14, the only overall denominator is:
 
 | Category | Weight |
 | --- | ---: |
-| Active route/call-site representation | 100 |
+| Active Laravel API route representation | 100 |
 | Semantic workflow and canonical-consumer contract parity | 350 |
 | Schema, migrations, data integrity, and upgrade safety | 150 |
 | Auth, tenant isolation, security, and localization | 100 |
 | Full build/test/CI evidence | 100 |
-| Unchanged canonical React plus unchanged certified Web UK runtime proof | 125 |
+| Unchanged canonical React plus unchanged Web UK dual-backend runtime proof | 125 |
 | Providers, jobs, integrations, operational proof, and reproducible docs | 75 |
 
 Fixed Rubric Baseline 1 freezes Laravel
@@ -69,12 +77,19 @@ and 15/75 providers/operations/docs. Exact deductions are respectively 0,
 100, 40, 10, 55, 115, and 60 points. New Laravel drift creates a separately
 named baseline and scope-added delta; it does not silently rewrite this score.
 
-## 2026-07-14 Marketplace Payment Settlement (Published)
+## Historical Published Evidence
+
+The two dated checkpoints below explain how Fixed Rubric Baseline 1 was first
+advanced. They are audit history, not a second current score source. The
+canonical ASP.NET status document decides which published movement remains
+banked now.
+
+### 2026-07-14 Marketplace Payment Settlement (Published)
 
 Evidence snapshot: Laravel
 `903d03d3db78bbf87129ad35728be3b72819acaf`, ASP.NET parent
 `1871130ed5dff15e5333f4110d46f44395c1ae53`, captured 2026-07-14
-12:24:14 +01. This candidate replaces the local fake-payment-intent path with
+12:24:14 +01. This published slice replaces the local fake-payment-intent path with
 Stripe destination-charge orchestration: currency-exponent-aware amounts,
 stable idempotency, exact provider identity/economics validation, buyer and
 tenant ownership, checkout claim/expiry guards, post-provider race rechecks,
@@ -100,7 +115,7 @@ and 4 schema points for **632/1000**:
 45/100 build/test/CI, 10/125 unchanged-frontends, and 15/75 providers/ops/docs.
 Exact remaining deductions are 0, 92, 36, 10, 55, 115, and 60 points.
 
-## 2026-07-14 Marketplace Connect Onboarding (Published)
+### 2026-07-14 Marketplace Connect Onboarding (Published)
 
 Evidence snapshot: Laravel
 `903d03d3db78bbf87129ad35728be3b72819acaf`, ASP.NET parent
@@ -137,7 +152,14 @@ security/localization, 45/100 build/test/CI, 10/125 unchanged-frontends, and
 16/75 providers/ops/docs. Exact remaining deductions are 0, 88, 35, 10, 55,
 115, and 59 points.
 
-## 2026-07-14 Retired Vetting OpenAPI Reconciliation (Locally Verified)
+## Historical Checkpoints
+
+Everything in this section is dated implementation evidence. Its older
+implementation/certification/combined percentages, route denominators, “current”
+wording, and remaining-work lists are retired and must not override the fixed
+rubric or the two current status documents above.
+
+### 2026-07-14 Retired Vetting OpenAPI Reconciliation (Locally Verified)
 
 The final seven apparent static gaps were stale OpenAPI-only document-era vetting
 writes, not live Laravel contracts. Laravel's current route table deliberately omits
@@ -166,7 +188,7 @@ the 1000/1000 gate: real fiat settlement, complete-suite/CI proof, unchanged-fro
 browser proof, schema/localization depth, federation transport, and live-provider
 evidence remain open. No production resource or frontend source was touched.
 
-## 2026-07-14 ASP.NET Prerender Control-Plane Checkpoint (Locally Verified)
+### 2026-07-14 ASP.NET Prerender Control-Plane Checkpoint (Locally Verified)
 
 The external `POST /api/v2/prerender/invalidate` hook and administrator
 `POST /api/v2/admin/prerender/reset-all` operation now have explicit Laravel-
@@ -193,14 +215,14 @@ ASP.NET operations and **2,601/2,608 matches (99.7%, 7 static misses)**. Those s
 are exactly the document-era vetting create/bulk/update/delete/upload/verify/reject
 writes.
 
-Current provisional global scores are **875/1000 implementation** and **750/1000
+Retired provisional checkpoint scores under the pre-fixed-rubric scale were **875/1000 implementation** and **750/1000
 certification confidence**. The honest combined finish-line estimate is **79%**, up
 from the goal baseline of 42% and the previous checkpoint of 78%. Legacy-evidence
 vetting safety, real fiat settlement, complete-suite/CI proof, unchanged-frontend
 browser proof, schema/localization depth, federation transport, and live-provider
 evidence remain open. No production resource or frontend source was touched.
 
-## 2026-07-14 ASP.NET Group Auto-Assignment Checkpoint (Locally Verified)
+### 2026-07-14 ASP.NET Group Auto-Assignment Checkpoint (Locally Verified)
 
 All four canonical administrator auto-assignment routes now own a real typed workflow
 instead of the prior recorded-only placeholder. List joins only same-tenant groups and
@@ -219,7 +241,7 @@ ownership gate passes 116/116; EF model drift is clean; comparator fixtures pass
 Debug test-project plus Release API builds have zero errors. The live comparator
 reports 4,551 ASP.NET operations and **2,599/2,608 matches (99.7%, 9 static misses)**.
 
-Current provisional global scores are **870/1000 implementation** and **745/1000
+Retired provisional checkpoint scores under the pre-fixed-rubric scale were **870/1000 implementation** and **745/1000
 certification confidence**. The honest combined finish-line estimate is **78%**, up
 from the goal baseline of 42% and the previous checkpoint of 77%. The remaining seven
 document-era vetting writes, two prerender operations, real fiat settlement, complete-
@@ -227,7 +249,7 @@ suite/CI proof, unchanged-frontend browser proof, schema/localization depth, fed
 transport, and live-provider evidence remain open. No production resource or frontend
 source was touched by this backend slice.
 
-## 2026-07-14 ASP.NET Podcast Artwork Checkpoint (Locally Verified)
+### 2026-07-14 ASP.NET Podcast Artwork Checkpoint (Locally Verified)
 
 The canonical show-artwork and episode-cover uploads now have explicit owners at
 `POST /api/v2/podcasts/{id}/artwork` and
@@ -253,7 +275,7 @@ operation, real fiat settlement, complete-suite/CI proof, unchanged-frontend bro
 proof, schema/localization depth, federation transport, and live-provider evidence
 remain open. No production resource or frontend source was touched by this slice.
 
-## 2026-07-14 ASP.NET Atomic Notification Settings Checkpoint (Locally Verified)
+### 2026-07-14 ASP.NET Atomic Notification Settings Checkpoint (Locally Verified)
 
 The canonical React member-settings save at
 `PUT /api/v2/users/me/notification-settings` now has one concrete owner and one
@@ -284,7 +306,7 @@ proof, schema/localization depth, federation transport, and live-provider eviden
 remain open. No production resource or frontend source was touched by this backend
 slice.
 
-## 2026-07-14 ASP.NET Event Configuration Policy Checkpoint (Locally Verified)
+### 2026-07-14 ASP.NET Event Configuration Policy Checkpoint (Locally Verified)
 
 The four canonical administrator event-configuration routes now own a typed,
 tenant-safe policy aggregate rather than falling through the missing-route surface.
@@ -309,7 +331,7 @@ errors. No schema migration was needed because the existing tenant-config and au
 ledgers provide durable typed state and history. The live comparator reports 4,545
 ASP.NET operations and **2,595/2,608 matches (99.5%, 13 static misses)**.
 
-Current provisional global scores are **855/1000 implementation** and **730/1000
+Retired provisional checkpoint scores under the pre-fixed-rubric scale were **855/1000 implementation** and **730/1000
 certification confidence**. The honest combined finish-line estimate is **75%**,
 up from the goal baseline of 42% and the previous checkpoint of 74%. The remaining
 document-era vetting writes, podcast artwork, prerender, group-auto-assignment and
@@ -318,7 +340,7 @@ unchanged-frontend browser proof, schema/localization depth, federation transpor
 and live-provider evidence remain open. No production resource or frontend source
 was touched by this backend slice.
 
-## 2026-07-14 ASP.NET Marketplace Dispute Settlement Checkpoint (Locally Verified)
+### 2026-07-14 ASP.NET Marketplace Dispute Settlement Checkpoint (Locally Verified)
 
 Order disputes are no longer redirected into the listing-report workflow. Buyers
 and sellers can open one active dispute for a tenant-owned order in an eligible
@@ -345,7 +367,7 @@ databases; the affected marketplace set passes 16/16; route ownership passes
 have zero errors. The live comparator reports 4,541 ASP.NET operations and
 **2,591/2,608 matches (99.3%, 17 static misses)**.
 
-Current provisional global scores are **845/1000 implementation** and **720/1000
+Retired provisional checkpoint scores under the pre-fixed-rubric scale were **845/1000 implementation** and **720/1000
 certification confidence**. The honest combined finish-line estimate is **74%**,
 up from the goal baseline of 42% and the previous checkpoint of 73%. Real fiat
 provider/escrow settlement, the remaining route shapes, complete-suite/CI proof,
@@ -353,7 +375,7 @@ unchanged-frontend browser proof, schema/localization depth, federation transpor
 and live-provider evidence remain open. No production resource or frontend source
 was touched by this backend slice.
 
-## 2026-07-14 ASP.NET Marketplace Report Appeals Checkpoint (Locally Verified)
+### 2026-07-14 ASP.NET Marketplace Report Appeals Checkpoint (Locally Verified)
 
 Marketplace reports now use the Laravel-compatible DSA notice-and-action lifecycle
 rather than shallow `open/resolved` rows. Canonical creation validates reason,
@@ -378,7 +400,7 @@ focused migrated-schema proof passes 2/2, the ownership/admin-marketplace gate p
 122/122, and Debug/Release builds have zero errors. The live comparator reports
 4,537 ASP.NET operations and **2,589/2,608 matches (99.3%, 19 static misses)**.
 
-Current provisional global scores are **835/1000 implementation** and **710/1000
+Retired provisional checkpoint scores under the pre-fixed-rubric scale were **835/1000 implementation** and **710/1000
 certification confidence**. The honest combined finish-line estimate is **73%**,
 up from the goal baseline of 42% and the previous checkpoint of 72%. Marketplace
 order-dispute settlement/refund parity, the remaining route shapes, complete-suite/
@@ -386,7 +408,7 @@ CI proof, unchanged-frontend browser proof, schema/localization depth, and live-
 provider evidence remain open. No production resource or frontend source was
 touched by this backend slice.
 
-## 2026-07-14 ASP.NET Event Federation Reliability Checkpoint (Locally Verified)
+### 2026-07-14 ASP.NET Event Federation Reliability Checkpoint (Locally Verified)
 
 Event lifecycle mutations now maintain a monotonic federation version and enqueue
 one durable, idempotent delivery record per active Nexus event partner. Published,
@@ -411,7 +433,7 @@ reports 4,529 ASP.NET operations and **2,585/2,608 matches (99.1%, 23 static
 misses)**. The test reset fixture now truncates the new ledger so reused event IDs
 cannot contaminate integration cases.
 
-Current provisional global scores are **825/1000 implementation** and **700/1000
+Retired provisional checkpoint scores under the pre-fixed-rubric scale were **825/1000 implementation** and **700/1000
 certification confidence**. The honest combined finish-line estimate is **72%**,
 up from the goal baseline of 42% and the previous checkpoint of 71%. Outbound claim,
 HTTP signing/delivery, retry/dead-letter processing, inbound federation, complete-
@@ -419,7 +441,7 @@ suite/CI proof, unchanged-frontend-on-ASP.NET browser proof, broader schema and
 localization depth, and live-provider evidence remain open. No production resource
 or frontend source was touched by this backend slice.
 
-## 2026-07-14 ASP.NET Custom Recurrence And Series Lifecycle Checkpoint (Locally Verified)
+### 2026-07-14 ASP.NET Custom Recurrence And Series Lifecycle Checkpoint (Locally Verified)
 
 Event reminder preferences are no longer handled by the shallow event update/read
 fallback. GET/PUT/DELETE now own a tenant-safe aggregate on both API aliases with
@@ -457,14 +479,14 @@ is 2,584/2,608 operations (99.1%, 24 static misses). A legacy admin-controller t
 attempt was environment-blocked before application assertions because Testcontainers
 could not initialize its resource reaper; it is unknown rather than green.
 
-Current provisional global scores are **820/1000 implementation** and **695/1000
+Retired provisional checkpoint scores under the pre-fixed-rubric scale were **820/1000 implementation** and **695/1000
 certification confidence**. The honest combined finish-line estimate is **71%**,
 up from the goal baseline of 42% and the previous published checkpoint of 68%.
 The 24 remaining route shapes, complete-suite/CI proof, unchanged canonical-
 frontend-on-ASP.NET browser proof, broader schema/localization depth, and live-
 provider evidence remain open. No production resource or frontend file was touched.
 
-## 2026-07-13 ASP.NET Event Recurrence V2 Checkpoint (Locally Verified)
+### 2026-07-13 ASP.NET Event Recurrence V2 Checkpoint (Locally Verified)
 
 ASP.NET now owns the canonical recurrence capability, finite/never-series create,
 effective revision preview/commit, and definition-blueprint history/preview/commit
@@ -494,7 +516,7 @@ and database immutability. Debug and Release API builds pass with zero errors;
 `has-pending-model-changes` is clean and the comparator fixture passes. The live
 inventory is 2,579/2,608 (98.9%) with 29 static misses.
 
-Current provisional global scores are **800/1000 implementation** and
+Retired provisional checkpoint scores under the pre-fixed-rubric scale were **800/1000 implementation** and
 **675/1000 certification confidence**. The honest combined finish-line estimate is
 **68%**, up from the goal baseline of 42% and the previous published checkpoint of
 65%. Custom RRULE/exdate/rdate create input, full recurring-series lifecycle
@@ -502,7 +524,7 @@ propagation, the 29 remaining route shapes, complete-suite/CI proof, unchanged
 canonical-frontend-on-ASP.NET browser proof, and live-provider evidence remain open.
 No production resource or frontend file was touched by this backend slice.
 
-## 2026-07-13 ASP.NET Event Publication Lifecycle Checkpoint (Locally Verified)
+### 2026-07-13 ASP.NET Event Publication Lifecycle Checkpoint (Locally Verified)
 
 ASP.NET now owns the Laravel-compatible member event lifecycle at both `/api/events`
 and `/api/v2/events`: submit for review, direct/admin publish, and manager-only
@@ -523,14 +545,14 @@ grew concurrently from 2,592 to 2,608 operations, so the current global inventor
 is 2,573/2,608 (98.7%) with 35 misses; that larger remainder does not reverse this
 slice's three-route closure and is still static representation, not certification.
 
-Current provisional global scores are **780/1000 implementation** and
+Retired provisional checkpoint scores under the pre-fixed-rubric scale were **780/1000 implementation** and
 **650/1000 certification confidence**. The honest combined finish-line estimate is
 **65%**, up from the goal baseline of 42% and the preceding checkpoint of 64%.
 Recurring-series propagation, the newly exposed recurrence and relationship routes,
 full-suite/CI evidence, canonical-frontend-on-ASP.NET browser proof, and live-provider
 evidence remain open. No production resource or frontend file was touched.
 
-## 2026-07-13 ASP.NET Event Analytics Checkpoint (Locally Verified And Published)
+### 2026-07-13 ASP.NET Event Analytics Checkpoint (Locally Verified And Published)
 
 ASP.NET now implements the canonical organizer analytics summary and CSV export
 contracts at both `/api/events/{id}/analytics` and `/api/v2/events/{id}/analytics`
@@ -562,14 +584,14 @@ fixture. The refreshed live inventory represents 2,567/2,592 Laravel operations
 (99.0%), up from 2,541/2,592 at the previous checkpoint, leaving 25 static misses.
 This is route representation only, not semantic certification.
 
-Current provisional global scores are **770/1000 implementation** and
+Retired provisional checkpoint scores under the pre-fixed-rubric scale were **770/1000 implementation** and
 **635/1000 certification confidence**. The honest combined finish-line estimate is
 **64%** (up from 62%). The increase is deliberately small because the complete
 3,000-plus test suite, canonical-frontend-on-ASP.NET browser runs, CI, live-provider
 evidence, and the remaining lifecycle/vetting/static-route queue are still open.
 No production resource or frontend file was touched by this backend slice.
 
-## 2026-07-13 ASP.NET Event Registration Product Checkpoint (Locally Verified; Publication Pending)
+### 2026-07-13 ASP.NET Event Registration Product Checkpoint (Locally Verified; Publication Pending)
 
 This uncommitted backend-only slice replaces the event-registration product
 stubs with durable settings/forms/submissions, audited answer access and export,
@@ -668,7 +690,7 @@ and **620/1000 certification confidence**. These superseded the 2026-07-10
 2,541/2,592 Laravel routes represented (98%); route representation is not
 semantic workflow parity.
 
-## 2026-07-12 ASP.NET Safeguarding And Messaging Checkpoint
+### 2026-07-12 ASP.NET Safeguarding And Messaging Checkpoint
 
 Laravel at `C:\platforms\htdocs\staging` and the canonical React frontend remain
 the read-only contract sources. This backend-only slice did not authorize or
@@ -775,7 +797,7 @@ by disposable PostgreSQL OOM `exit 137`; the race was green in isolation.
 Neither aggregate is fully green. Do not report full-suite, CI, unchanged-
 frontend runtime, or backend 1000/1000 green from this checkpoint.
 
-## 2026-07-12 ASP.NET Volunteer Hours Ledger Checkpoint (Preceding)
+### 2026-07-12 ASP.NET Volunteer Hours Ledger Checkpoint (Preceding)
 
 The current backend slice replaces the former unavailable/recorded-only
 volunteer-hours paths with one canonical `VolunteerHoursService` workflow across
@@ -847,7 +869,7 @@ discovered 3,007 tests, selected 243, and passed 243/243 with zero failed and ze
 skipped in 418.639s. Do not report the full 3,007-test suite, CI, unchanged-
 frontend runtime, or backend 1000/1000 as green from this checkpoint.
 
-## 2026-07-11 ASP.NET Volunteer QR Attendance Checkpoint (Preceding)
+### 2026-07-11 ASP.NET Volunteer QR Attendance Checkpoint (Preceding)
 
 The preceding backend slice implements Laravel's four QR-attendance routes:
 personal token issue at
@@ -915,7 +937,7 @@ The only direct regression from the preceding `bfeafb2e`
 backend slice was nested transaction handling; it is fixed and green locally.
 The remaining failures still need independent triage.
 
-## 2026-07-11 ASP.NET Financial Safety And Evidence Checkpoint (Preceding)
+### 2026-07-11 ASP.NET Financial Safety And Evidence Checkpoint (Preceding)
 
 That preceding backend slice hardens personal, volunteer-organisation, and generic
 organisation wallets; completes the group-exchange settlement state machine;
@@ -1012,7 +1034,7 @@ one-to-one exchange, sub-account pooling, community-fund writes, federation
 settlement, provider/localization depth, the full 3,007-test suite, CI, and
 unchanged-frontend runtime proof are not complete.
 
-## 2026-07-10 Current Web UK Checkpoint
+### 2026-07-10 Web UK Checkpoint (Historical)
 
 This checkpoint supersedes the Web UK scores and test counts in the audit
 baseline below. It does not change the ASP.NET workstream scores.
@@ -1051,7 +1073,7 @@ Current evidence at commit `702ece83`:
 The Laravel-first 1000/1000 gate is therefore not met, and meaningful local
 work remains. The permitted external-blocker-only stop condition is not met.
 
-## 2026-07-10 Audit Baseline
+### 2026-07-10 Audit Baseline
 
 Repository snapshot at audit time:
 
@@ -1273,7 +1295,7 @@ passed 39/39 suites and 1,187/1,187 tests. A successful live POST is blocked
 on a disposable isolated GDPR fixture; it must not be run against the shared
 smoke member.
 
-## Workstream A: Accessible Frontend To Laravel Completion
+### Historical Workstream A: Accessible Frontend To Laravel Completion
 
 This workstream ends at complete, evidence-backed Laravel-first certification.
 It must not wait for ASP.NET parity, and it must not implement ASP.NET-specific
@@ -1370,7 +1392,7 @@ Do not claim this workstream complete until all of the following are true:
 ASP.NET smoke is a separate shared-switchability gate. Record it honestly as
 pending rather than blocking Laravel-first completion.
 
-## Workstream B: ASP.NET As A Laravel-Compatible Twin
+### Historical Workstream B: ASP.NET As A Laravel-Compatible Twin
 
 This workstream is contract and workflow parity, not route transcription. Drive
 each slice from Laravel routes/controllers plus actual canonical React call
@@ -1608,11 +1630,26 @@ Do not claim completion until all of the following are true:
   migration-history changes;
 - the unchanged canonical Laravel React frontend passes representative and then
   exhaustive workflow smoke against ASP.NET;
-- the unchanged certified Web UK frontend passes its same smoke buckets against
+- the unchanged Web UK frontend, after its Laravel-first certification, passes
+  the same smoke buckets against
   ASP.NET;
 - parity docs are refreshed from live evidence and no stale score is presented
   as current truth;
 - the worktree contains no unrelated staged changes.
+
+## Current Remediation Queue
+
+Do not duplicate either live queue in this runbook:
+
+- Web UK Laravel-first blockers, ownership, and its finite ordered packages live
+  in `../apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md`.
+- ASP.NET banked deductions, published-versus-dirty boundary, and backend
+  certification gates live in `CURRENT_ASPNET_CONTRACT_STATUS.md`.
+
+Read both at the start of a status report or implementation session. Select work
+from the appropriate canonical queue, then apply the shared loop and evidence
+rules below. The older Workstream A/B material above remains historical planning
+context only.
 
 ## Autonomous Execution Loop
 
@@ -1701,9 +1738,10 @@ a separately provisioned, verified disposable Laravel database/environment.
 The production-derived ordinary local database is read-only and is not a
 fixture, even when a script creates unique rows or attempts cleanup.
 
-Use the chunk controls documented in
-`apps/web-uk/docs/CURRENT_WEB_UK_HANDOFF.md` for exhaustive module and body-text
-recertification. Record every chunk and do not extrapolate from one chunk.
+Use the certification commands and ownership boundaries documented in
+`apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md`; consult
+`apps/web-uk/docs/CURRENT_WEB_UK_HANDOFF.md` only as historical detail. Record
+every exhaustive module/body-text chunk and do not extrapolate from one chunk.
 
 ## Evidence And Blocker Rules
 
@@ -1711,8 +1749,9 @@ recertification. Record every chunk and do not extrapolate from one chunk.
   stale process/image, or skipped relevant cases.
 - Never convert route counts, table-name counts, commits, or marker checks into
   behavioral parity claims.
-- Keep implementation progress and green/certification confidence as separate
-  scores with an explicit rubric.
+- Keep one fixed-rubric banked overall score per workstream. Report
+  implementation evidence and certification confidence separately as named,
+  unscored dimensions; do not invent competing overall percentages.
 - A missing credential, unavailable provider, production secret, account
   permission, or external service can be an external blocker. Record the exact
   command, error, affected acceptance criterion, safe local proof completed, and
@@ -1731,6 +1770,7 @@ At the end of either session, report and record:
 - exact before/after comparator and route-matrix counts;
 - exact build, test, accessibility, and runtime-smoke commands and results;
 - completed workflow families and remaining gaps;
-- implementation score and certification-confidence score, each with rubric;
+- the canonical fixed-rubric banked score, plus separately named implementation
+  and certification evidence without additional overall percentages;
 - external blockers with evidence and owner/action needed;
 - the next five concrete tasks if any work remains.

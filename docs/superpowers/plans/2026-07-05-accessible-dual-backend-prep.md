@@ -1,5 +1,14 @@
 # Accessible Dual-Backend Preparation Implementation Plan
 
+Status: **Historical checkpoint — completed 2026-07-05 plan, not a current queue**
+
+> Do not execute or resume this plan. Its “candidate” framing and backend notes
+> are preserved as implementation history. Read
+> `../../../apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md` for the
+> current Web UK boundary and queue, and
+> `../../CURRENT_ASPNET_CONTRACT_STATUS.md` for the separate backend-owned
+> switching gate.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Prepare `apps/web-uk` as the future shared accessible frontend candidate by mirroring the Laravel Blade shell contract, documenting route/backend compatibility, and adding safe smoke-test scaffolding.

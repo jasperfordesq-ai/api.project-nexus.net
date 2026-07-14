@@ -1,5 +1,8 @@
 # Active Club Evidence Parity Slice
 
+> **Historical plan:** Retained for implementation history only. Do not use it
+> as a current queue; read `../../CURRENT_LARAVEL_FIRST_PARITY_STATUS.md`.
+
 ## Source evidence
 
 - Laravel `AlphaController::clubs()` requires a signed-in user, then checks

@@ -5,9 +5,11 @@
 > production use.
 
 The experimental ASP.NET Core 8 backend for Project NEXUS, a
-timebanking/community platform. It is a next-generation .NET implementation that
-shares frontend goals with the canonical Laravel Edition, which remains the
-production source of truth.
+timebanking/community platform. Laravel remains the production and contract
+source of truth. This backend is being made a contract-correct, switchable twin:
+the unchanged canonical React frontend and the unchanged shared accessible Web
+UK frontend must ultimately run against either Laravel or ASP.NET by changing
+configuration only.
 
 Current local Laravel parity source: `C:\platforms\htdocs\staging`.
 
@@ -17,6 +19,17 @@ backend defines its API contract. The experimental ASP.NET backend is not a
 source of truth for Web UK; a separate parity workstream must make ASP.NET
 compatible before the same unchanged frontend can switch to it. See
 [`apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md`](apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md).
+
+Current status is deliberately split by workstream:
+
+- [`docs/CURRENT_ASPNET_CONTRACT_STATUS.md`](docs/CURRENT_ASPNET_CONTRACT_STATUS.md)
+  is the current ASP.NET contract-correctness score, evidence boundary, and
+  remaining queue.
+- [`apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md`](apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md)
+  is the current accessible-frontend score, evidence boundary, and remaining
+  queue.
+- [`docs/FULL_PARITY_REMEDIATION_RUNBOOK.md`](docs/FULL_PARITY_REMEDIATION_RUNBOOK.md)
+  defines the fixed completion rubric and the end-to-end two-by-two gate.
 
 ## Credits and Origins
 
@@ -64,6 +77,9 @@ attribution requirements.
 - [CLAUDE.md](CLAUDE.md) - authoritative agent guide, invariants, commands, and parity policy.
 - [docs/README.md](docs/README.md) - maintained documentation index.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - .NET architecture and runtime map.
+- [docs/CURRENT_ASPNET_CONTRACT_STATUS.md](docs/CURRENT_ASPNET_CONTRACT_STATUS.md) - current ASP.NET contract-correctness status.
+- [docs/FULL_PARITY_REMEDIATION_RUNBOOK.md](docs/FULL_PARITY_REMEDIATION_RUNBOOK.md) - fixed rubric and cross-workstream completion gate.
+- [docs/DOCUMENTATION_GOVERNANCE.md](docs/DOCUMENTATION_GOVERNANCE.md) - canonical status hierarchy and documentation consistency rules.
 - [docs/MODULES.md](docs/MODULES.md) - Laravel-to-.NET module map.
 - [docs/LARAVEL_PARITY_MAP.md](docs/LARAVEL_PARITY_MAP.md) - canonical full-parity gap register.
 - [docs/PARITY_BACKLOG.md](docs/PARITY_BACKLOG.md) - generated parity backlog rollup and implementation queue rules.

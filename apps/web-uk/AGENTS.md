@@ -41,6 +41,8 @@ Urgent first-read rules:
 Maintained docs that future agents must keep current:
 
 - `docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md` (read first)
+- `../../docs/CURRENT_ASPNET_CONTRACT_STATUS.md` (separate backend-owned score
+  and later switching gate; not an input to Laravel-first frontend design)
 - `docs/LARAVEL_ACCESSIBLE_ROUTE_MATRIX.md`
 - `docs/BLADE_COMPONENT_PORT_AUDIT.md`
 - `docs/TENANT_ROUTING_PARITY.md`

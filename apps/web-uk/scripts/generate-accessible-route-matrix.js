@@ -5,6 +5,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { collectGeneratorProvenance } = require('./generator-provenance');
 
 const LOCAL_INFRASTRUCTURE_ROUTES = new Set([
   'GET|/health',
@@ -599,7 +600,7 @@ function routeFamily(routePath) {
   return first || 'home';
 }
 
-function summarize(matrix, laravelRoutes, webUkRoutes, sourceRoot, targetRoot) {
+function summarize(matrix, laravelRoutes, webUkRoutes, sourceRoot, targetRoot, generatedAt) {
   const count = (status) => matrix.filter((row) => row.status === status).length;
   const familyCounts = {};
 
@@ -620,7 +621,7 @@ function summarize(matrix, laravelRoutes, webUkRoutes, sourceRoot, targetRoot) {
   }
 
   return {
-    generatedAt: new Date().toISOString(),
+    generatedAt,
     sourceRoot,
     targetRoot,
     laravelRoutes: laravelRoutes.length,
@@ -670,7 +671,7 @@ function writeCsv(rows, filePath) {
   fs.writeFileSync(filePath, `${lines.join('\n')}\n`, 'utf8');
 }
 
-function writeMarkdown(summary, matrix, filePath) {
+function writeMarkdown(summary, matrix, filePath, provenance) {
   const familyRows = Object.entries(summary.familyCounts)
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([family, counts]) => `| ${family} | ${counts.matched} | ${counts.missing} | ${counts.extraWebUk} | ${counts.ignoredInfrastructure} |`);
@@ -687,7 +688,14 @@ function writeMarkdown(summary, matrix, filePath) {
   const lines = [
     '# Generated Laravel Accessible Route Matrix',
     '',
+    'Status: **Generated snapshot — structural route inventory, not certification**',
+    '',
     `Generated: ${summary.generatedAt}`,
+    `Laravel commit SHA: \`${provenance.laravelCommitSha}\``,
+    `Web UK repository commit SHA: \`${provenance.webUkRepositoryCommitSha}\``,
+    `Laravel working tree dirty: ${provenance.laravelWorkingTreeDirty ? 'yes' : 'no'}`,
+    `Web UK repository working tree dirty: ${provenance.webUkRepositoryWorkingTreeDirty ? 'yes' : 'no'}`,
+    `Provenance caveat: ${provenance.caveat}`,
     '',
     '| Metric | Count |',
     '| --- | ---: |',
@@ -731,24 +739,37 @@ function generateAccessibleRouteMatrix(options = {}) {
   const targetRoot = options.targetRoot || path.resolve(__dirname, '..', '..', '..');
   const sourceRoot = options.sourceRoot || 'C:\\platforms\\htdocs\\staging';
   const outDir = options.outDir || path.join(targetRoot, 'apps', 'web-uk', 'docs', 'generated');
+  const provenance = options.provenance || collectGeneratorProvenance({
+    laravelRoot: sourceRoot,
+    webUkRoot: path.join(targetRoot, 'apps', 'web-uk'),
+    generatedAt: options.generatedAt
+  });
   const laravelRoutes = parseLaravelRoutes(sourceRoot);
   const methodDetails = parseControllerMethods(sourceRoot);
   const webUkRoutes = parseWebUkRoutes(targetRoot).filter((route) => (
     path.basename(route.webUkFile || '') !== 'laravel-prep-pages.js'
   ));
   const matrix = buildMatrix(laravelRoutes, webUkRoutes, methodDetails);
-  const summary = summarize(matrix, laravelRoutes, webUkRoutes, sourceRoot, targetRoot);
+  const summary = summarize(
+    matrix,
+    laravelRoutes,
+    webUkRoutes,
+    sourceRoot,
+    targetRoot,
+    provenance.generatedAt
+  );
+  const report = { generatedAt: provenance.generatedAt, provenance, summary, matrix };
 
   ensureDir(outDir);
   fs.writeFileSync(
     path.join(outDir, 'accessible-route-matrix.json'),
-    `${JSON.stringify({ summary, matrix }, null, 2)}\n`,
+    `${JSON.stringify(report, null, 2)}\n`,
     'utf8'
   );
   writeCsv(matrix, path.join(outDir, 'accessible-route-matrix.csv'));
-  writeMarkdown(summary, matrix, path.join(outDir, 'accessible-route-matrix.md'));
+  writeMarkdown(summary, matrix, path.join(outDir, 'accessible-route-matrix.md'), provenance);
 
-  return { summary, matrix };
+  return report;
 }
 
 function parseArgs(argv) {

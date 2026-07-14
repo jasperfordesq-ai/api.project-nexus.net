@@ -1,6 +1,6 @@
 # Docker Compose - NEXUS Admin Panel
 # Dev: docker compose up
-# Prod: docker compose --profile production up
+# Local production-image test: docker compose --profile production up
 
 services:
   # ===========================================================================
@@ -25,7 +25,7 @@ services:
       - "host.docker.internal:host-gateway"
 
   # ===========================================================================
-  # Production (use: docker compose --profile production up)
+  # Local production-image service (not a deployment procedure)
   # ===========================================================================
   admin-prod:
     build:

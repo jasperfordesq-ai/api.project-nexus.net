@@ -1,5 +1,7 @@
 # Frontend Audit Report - Project NEXUS UK
 
+Status: **Historical checkpoint — retained audit evidence, not current status**
+
 > **Historical snapshot:** This February 2026 report is retained as audit
 > history. It is not current architecture, completion, route, or certification
 > evidence. Read `CURRENT_LARAVEL_FIRST_PARITY_STATUS.md` first. Laravel Blade

@@ -2,6 +2,15 @@
 
 Last reviewed: 2026-07-14
 
+Status: **Maintained reference — detailed evidence ledger, not the current aggregate**
+
+`CURRENT_LARAVEL_FIRST_PARITY_STATUS.md` is the sole current coordination and
+scoring source. This file is a detailed evidence ledger: counts and green runs
+inside dated rows are preserved checkpoints, not a current aggregate. It
+intentionally does not mirror the live score, generated totals, latest test
+aggregate, blocker set, or dirty-worktree boundary; read the canonical status
+document for all of them.
+
 > **Certification-evidence correction:** Every live mutation, upload, download,
 > destructive, "disposable", persistence, cleanup, or final-absence result
 > recorded anywhere in this ledger against the ordinary local Laravel instance
@@ -463,10 +472,12 @@ inspect, change, or accommodate the incomplete ASP.NET backend during Web UK
 implementation, and it is not a Laravel-first component-completion criterion.
 
 The Laravel repository, schema, and ordinary local database are read-only from
-this workstream. Runtime mutation evidence must come from an isolated disposable
-Laravel environment or explicit user authorization with verified cleanup.
+this workstream. Runtime mutation evidence must come from a separately
+provisioned and verified disposable Laravel application, database, and storage
+environment. Authorization, fixture uniqueness, cleanup, or restoration code
+never permits writes to the ordinary production-derived Laravel environment.
 
-## Current Reconciliation (2026-07-13)
+## Historical Reconciliation Checkpoint (2026-07-13)
 
 The table contains `138` open implementation rows: `136` are **Partial**, `2`
 are **Started**, and `0` are **Complete**. These statuses were retained after a
@@ -760,7 +771,7 @@ references, 5,618 unique keys, zero unresolved or conservative template
 matches across 322 templates, unchanged 688/689 route coverage and 590-contract
 ledger, and no Laravel request, mutation, database access, upload, or download.
 
-| Blade pattern | Laravel source | ASP.NET target | Status |
+| Blade pattern | Laravel source | Web UK implementation | Status |
 | --- | --- | --- | --- |
 | Event moderation queue and decisions | `views/event-moderation-queue.blade.php`, `views/event-moderation-decision.blade.php`, `EventModerationParity`, `Api\AdminEventsController` | `src/routes/events.js`, `src/views/events/moderation-queue.njk`, `src/views/events/moderation-decision.njk`, `src/lib/api.js` | Partial. Signed tenant administrators can open the default-English queue and separate approve/reject confirmation pages through Laravel's current admin Event list/detail contracts. Queue status, count, cards, pagination, decision summaries, warnings, field-linked validation, mounted redirects, and private/no-store headers follow Blade. Approval requires explicit confirmation; rejection requires confirmation plus a bounded reason and submits only that reason to Laravel's canonical reject action. Non-admin or missing-event API responses fail closed. Focused mocked queue/validation/action and direct API-client proof pass; the full non-mutating gate is 48/48 suites and 1,635/1,635 tests, and the generated route matrix is 688/689. This is not contract-identical certification: Laravel's admin list does not join the moderation queue, orders by Event creation rather than queue submission, and omits Blade's `is_online`. Live moderation side effects, manual assistive-technology review, and unchanged ASP.NET runtime proof remain uncertified. |
 | Custom dark header | `accessible-frontend/views/layout.blade.php` | `src/views/layouts/base.njk`, `src/lib/accessible-shell.js` | Partial. Text brand, language selector, My account link, and tenant-only service navigation are present. The no-JS language selector mirrors Blade's `request()->except(['locale'])` behavior for scalar query params, preserving filters/status/return values while excluding `locale`. My account now exposes `aria-current` across Blade's complete account-family active-nav set, and active Sign in/Register items use the source strong fallback. Tenant bootstrap `logo_dark_url`/`logo_url` and validated wide/landscape/square shape metadata now render Laravel's aspect-ratio-aware image brand, while untrusted external origins are rejected and CSP permits only the configured backend origin. Focused source/render tests passed, and a real default-English `timebanking-org` browser check loaded the `392x105` logo at `179x48`, with exact tenant alt text and no horizontal overflow. Web UK's mandatory non-government header disclosure remains an intentional branding-policy divergence from Blade. Validated per-tenant header colours remain blocked because Laravel's public bootstrap response does not expose `header_bg_color` or `header_accent_color`; full manual visual/assistive-technology proof also remains open. |

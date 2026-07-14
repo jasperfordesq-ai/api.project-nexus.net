@@ -2,8 +2,42 @@
 
 Last reviewed: 2026-07-14
 
+Status: **Maintained reference — current comparison method with dated evidence**
+
+Evidence provenance: maintained policy and the latest published backend prose
+were reviewed on 2026-07-14 against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and repository commit
+`9c5fb1a46c40e4986c8f973075164b1d74bd101d`. Dirty migrations/entities are
+excluded. Any older table/count without its own exact source pair is a
+historical, provenance-incomplete checkpoint and cannot support current score
+or upgrade-safety claims.
+
 Laravel source of truth: `C:\platforms\htdocs\staging\database\migrations` and
 `C:\platforms\htdocs\staging\app\Models`.
+
+Use [`CURRENT_ASPNET_CONTRACT_STATUS.md`](CURRENT_ASPNET_CONTRACT_STATUS.md) for
+the current banked score and active schema/upgrade deductions. Dated sections
+here are retained evidence. Static table-name counts are never an overall score
+and remain historical until explicitly regenerated against named SHAs.
+
+## 2026-07-14 Marketplace Connect Onboarding Schema Evidence
+
+Published migration `20260714115746_MarketplaceConnectOnboardingParity` aligns
+the seller provider-account identifier with Laravel's 100-character contract,
+enforces global provider-account uniqueness, and fails before schema mutation
+when legacy values are overlong or duplicated. It applies after the published
+payment-settlement migration on disposable upgraded PostgreSQL; the focused
+Connect/payment suite passes and EF reports no pending model changes. Live
+provider certification remains separate from schema proof.
+
+## 2026-07-14 Marketplace Payment Settlement Schema Evidence
+
+Published migration `20260714105831_MarketplacePaymentSettlementParity` adds
+durable payment and payout ledgers, tenant/order composite integrity, unique
+provider-intent identity, seller onboarding state, checkout mode, expiry, and
+economic/status checks. It applies on disposable PostgreSQL and EF reports no
+pending model changes. Escrow, refunds, disputes, notifications, and live Stripe
+evidence remain certification gaps rather than missing migration claims.
 
 ## 2026-07-14 Group Auto-Assignment Schema Evidence
 
@@ -65,7 +99,7 @@ database replayed the complete chain through migration 139; the focused runtime
 suite passes 8/8 on that migrated schema, including the history immutability trigger,
 and EF reports no pending model changes.
 
-## Current Source Counts
+## Historical Static Source Counts (2026-07-13)
 
 The static schema-table counts were regenerated with
 `scripts/compare-laravel-schema-parity.ps1` on 2026-07-13 after the event
@@ -82,7 +116,7 @@ blank PostgreSQL replay.
 | Laravel explicit model tables | 267 | Unique `protected/public $table = ...` model declarations. |
 | Laravel source tables | 455 | Union of migration-created, migration-touched, and explicit model tables. |
 | ASP.NET tables | 383 | Static table union after adding canonical Event Ticketing storage. |
-| Exact matched tables | 192 | Current exact table-name matches. |
+| Exact matched tables | 192 | Exact table-name matches in this dated snapshot. |
 | Missing Laravel tables | 263 | Laravel source names not represented exactly in ASP.NET. |
 | Extra ASP.NET tables | 191 | .NET table names with no exact Laravel table name. |
 

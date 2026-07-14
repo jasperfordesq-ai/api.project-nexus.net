@@ -1,6 +1,6 @@
 # Project NEXUS .NET Edition - Agent Guide
 
-Last reviewed: 2026-07-10
+Last reviewed: 2026-07-14
 
 > WARNING: Before deploying or touching any production container, read
 > `.claude/production-containers.md`.
@@ -8,8 +8,9 @@ Last reviewed: 2026-07-10
 > The .NET Edition user-facing SPA is the `nexus-react-frontend` container on
 > port `5210`, image `nexus-react-frontend:prod`, built from
 > `apps/react-frontend/Dockerfile.prod`. It is run with raw `docker run`, not
-> `docker compose`. Never touch the Laravel Edition blue/green PHP containers
-> from this repo.
+> `docker compose`. This is the currently deployed legacy client, not the
+> canonical development source; `apps/react-frontend` remains frozen. Never
+> touch the Laravel Edition blue/green PHP containers from this repo.
 
 ## What This Project Is
 
@@ -27,6 +28,12 @@ surfaces, admin and super-admin surfaces, accessible frontend behavior,
 background jobs, integrations, tenant settings, localization, tests, and
 documentation. Earlier "out of scope" exclusions are retired and are now tracked
 as parity gaps.
+
+“Parity” here means contract correctness and switchability, not route-count
+similarity. The end state is two unchanged frontends by two backends: canonical
+React and shared accessible Web UK must each run against Laravel and ASP.NET by
+configuration only. Laravel remains the behavior baseline; ASP.NET conforms to
+its contracts and workflows.
 
 ## React Frontend Retirement And Contract Policy
 
@@ -78,29 +85,22 @@ Compatibility claims require proof:
 
 See `docs/REACT_FRONTEND_RETIREMENT.md` for the maintained policy.
 
-## Current Inventory Snapshot
+## Current Status Sources
 
-Backend, API, schema, frontend, localization, and backlog counts were refreshed
-from source on 2026-07-09. The accessible `apps/web-uk` route count was
-superseded by the 2026-07-08 consolidated Web UK route matrix noted below.
+Do not copy fast-changing counts into this first-read guide. Read and refresh the
+workstream-specific status source instead:
 
-| Surface | Laravel Edition (`C:\platforms\htdocs\staging`) | .NET Edition (this repo) |
-| --- | ---: | ---: |
-| Controllers | 309 PHP controller files | 225 C# controller files |
-| Services | 483 PHP service files | 188 C# service files |
-| Models/entities | 200 Laravel model files | 191 EF entity files |
-| Migrations | 323 Laravel migrations | 102 EF migration classes excluding designers/snapshot |
-| API contract | 679 OpenAPI paths / 891 operations | no committed OpenAPI snapshot; 4,295 static operations from `scripts/compare-laravel-api-parity.ps1`; 2,436 static matches / 0 missing source operations |
-| Schema tables | 361 Laravel source tables from `scripts/compare-laravel-schema-parity.ps1` | 324 static EF/migration table names; 131 exact matches |
-| Frontend routes | 589 React routes / 607 accessible routes from `scripts/compare-laravel-frontend-parity.ps1`; current Web UK matrix separately reports 608 Laravel accessible declarations | 462 legacy React routes; current `apps/web-uk` matrix reports 610 local declarations, 608 matched Laravel accessible routes, 0 missing, 0 extra Web UK routes, and 3 ignored infrastructure routes |
-| Localization | 11 locales / 605 locale namespaces; English key scan has 17,280 Laravel keys | 7 locales / 280 locale namespaces; English key scan has 5,575 .NET keys and 157 matches |
-| Module docs | 24 curated Laravel module guides | docs recreated in this pass |
-| Locales | 11 Laravel locales | 7 React locale directories |
+- `docs/CURRENT_ASPNET_CONTRACT_STATUS.md` is the current ASP.NET fixed-rubric
+  score, evidence boundary, published-but-unscored work, and next queue.
+- `apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md` is the current Web UK
+  fixed-rubric score, route/API ledgers, certification boundary, and next queue.
+- `docs/FULL_PARITY_REMEDIATION_RUNBOOK.md` defines the shared 1000-point rubric
+  and the two-frontends-by-two-backends completion gate.
 
-The static operation count is not a parity score. The .NET controllers include
-compatibility and admin routes that must be normalized through the parity script
-and, eventually, a generated .NET OpenAPI snapshot before they can be compared
-fairly with Laravel `openapi.json`.
+Generated route, schema, localization, and frontend inventories are evidence,
+not completion scores. Regenerate them at the recorded Laravel and ASP.NET SHAs
+before reporting them. Never combine a newly discovered denominator with an old
+numerator or silently rescore an already named baseline.
 
 ## Parity Status Policy
 
@@ -109,18 +109,24 @@ until the parity maps in `docs/` show no open gaps and the relevant test suites
 pass. Previous numeric parity scores in this repo are retired because they
 excluded modules that are now in scope.
 
-If an agent is resuming this work after an interrupted session, start with
-`docs/CURRENT_LARAVEL_PARITY_HANDOFF.md`. For the accessible frontend branch,
-also read `apps/web-uk/docs/CURRENT_WEB_UK_HANDOFF.md`. These handoff documents
-give live-state refresh commands, current handoff checklists, known verification
-blockers, and rules for working safely while other agents may still be
-committing parity work.
+If an agent is resuming backend work, start with
+`docs/CURRENT_ASPNET_CONTRACT_STATUS.md`. If resuming accessible frontend work,
+start with `apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md`. The older
+`CURRENT_LARAVEL_PARITY_HANDOFF.md` and `CURRENT_WEB_UK_HANDOFF.md` files are
+chronological histories: their old “latest” headings, counts, and scores are not
+current status.
 
 The canonical tracking documents are:
 
-- `docs/FULL_PARITY_REMEDIATION_RUNBOOK.md` - current cross-workstream audit,
-  prioritized autonomous execution queue, and completion evidence gates.
-- `docs/CURRENT_LARAVEL_PARITY_HANDOFF.md` - resume protocol and current-state refresh checklist.
+- `docs/FULL_PARITY_REMEDIATION_RUNBOOK.md` - fixed cross-workstream rubric,
+  shared completion evidence gates, and autonomous execution loop; it links to
+  the two canonical status documents for their live queues.
+- `docs/CURRENT_ASPNET_CONTRACT_STATUS.md` - current backend score, evidence,
+  blockers, and resume queue.
+- `apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md` - current accessible
+  frontend score, evidence, blockers, and resume queue.
+- `docs/CURRENT_LARAVEL_PARITY_HANDOFF.md` - historical backend implementation
+  log; never use its old scores as current.
 - `docs/LARAVEL_PARITY_MAP.md` - gap register and backlog.
 - `docs/PARITY_BACKLOG.md` - generated backlog rollup and implementation queue rules.
 - `docs/API_PARITY.md` - API contract comparison method and known gaps.
@@ -170,7 +176,7 @@ canonical React frontend is the Laravel repo frontend at
   side-effect contract. Its location in this repository does not make ASP.NET
   authoritative.
 - If resuming the accessible frontend work after an interrupted session, start
-  with `apps/web-uk/docs/CURRENT_WEB_UK_HANDOFF.md`.
+  with `apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md`.
 - The Laravel Blade accessible frontend remains the current visual/workflow
   source of truth. Port its shell, information architecture, footer, card-list,
   and Explore patterns into `apps/web-uk` while keeping the Express/Nunjucks/GOV.UK
@@ -251,7 +257,7 @@ Services:
 | Swagger | `http://localhost:5080/swagger` | Runtime API documentation |
 | Health | `http://localhost:5080/health` | Anonymous health endpoint |
 | React frontend | `http://localhost:5173` | Legacy/frozen .NET React copy; use only when explicitly approved |
-| Web UK frontend | `http://localhost:5180` | Accessible parity candidate |
+| Web UK frontend | `http://localhost:5180` | Laravel-first shared accessible frontend; ASP.NET switching is a separate certification gate |
 | Standalone admin | `http://localhost:5190` | Secondary admin app |
 
 Test credentials:
@@ -277,7 +283,13 @@ regression tests plus route/API matrix and runtime smoke tests against the
 canonical Laravel React frontend.
 
 For docs-only changes, at minimum run link/path sanity checks with `rg` and
-inspect `git diff`.
+inspect `git diff`. For maintained documentation changes, also run:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-documentation-consistency.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-markdown-links.ps1
+git diff --check
+```
 
 ## Database Migration Workflow
 

@@ -1,15 +1,20 @@
-# Current Web UK Accessible Frontend Handoff
+# Historical Web UK Accessible Frontend Handoff Archive
 
-Last reviewed: 2026-07-13
+Last reviewed as an archive: 2026-07-14
 
-> **Current audit notice (2026-07-13):** The source-refresh checkpoint below
-> supersedes older counts and completion estimates in this chronological handoff.
-> Read `CURRENT_LARAVEL_FIRST_PARITY_STATUS.md` first for the current
-> architecture, ownership boundary, database incident, counts, and queue, then
+Status: **Historical checkpoint — not a current status or resume source**
+
+> **Archive notice:** This is not a current handoff despite its retained
+> filename. Do not start or resume work, report a score, select the next job, or
+> copy execution commands from this file. Read
+> `CURRENT_LARAVEL_FIRST_PARITY_STATUS.md` for the only current Web UK
+> architecture, ownership boundary, safety rule, counts, score, and queue, then
 > use `../../../docs/FULL_PARITY_REMEDIATION_RUNBOOK.md` for the broader
 > cross-workstream gate.
-> Route equality is current, but it is not workflow, localization, runtime, or
-> shared-backend certification.
+> This archive intentionally does not repeat the live score, route inventory,
+> API-ledger totals, test aggregate, blocker set, or working-tree boundary.
+> Those values change independently and must be read from the canonical status
+> document at reporting time.
 >
 > Historical references in this file to a "candidate", "skeleton", ASP.NET
 > compatibility work, or direct mutation of the ordinary Laravel development
@@ -25,12 +30,21 @@ Last reviewed: 2026-07-13
 > runs may explain retained frontend regressions, but they are not current
 > certification evidence. No separately provisioned disposable Laravel
 > environment is currently evidenced.
+>
+> **Execution fence:** Every login, authenticated journey, runtime smoke,
+> mutation, upload, download, cleanup, migration, or destructive command in
+> this archive is historical text, not an instruction. It may be rerun only
+> after `LARAVEL_BASE_URL` is explicitly pointed at a separately provisioned
+> and verified disposable Laravel application/database/storage environment.
+> The ordinary `127.0.0.1:8088` Laravel environment is always read-only;
+> authorization, unique fixtures, `finally` cleanup, or restoration logic never
+> make it disposable.
 
-This is the first file to read if an agent needs to resume the accessible
-frontend rewrite after a session interruption. The previous parallel `main`
-and `codex/web-uk-laravel-parity` work streams were consolidated back onto
-`main` on 2026-07-08. Every count here is still a snapshot. Regenerate live
-state before editing, scoring, or claiming completion.
+This archive records how earlier implementation slices evolved. The previous
+parallel `main` and `codex/web-uk-laravel-parity` work streams were consolidated
+back onto `main` on 2026-07-08. Every count, queue, completion statement, and
+runtime outcome below is a dated historical snapshot and is superseded by the
+current-status document.
 
 ## Objective
 
@@ -3973,7 +3987,7 @@ After `npm run route:matrix`, inspect:
 
 ```powershell
 Get-Content docs\generated\accessible-route-matrix.md -TotalCount 120
-Select-String -Path docs\generated\accessible-route-matrix.csv -Pattern 'laravel-prep-pages.js'
+Select-String -Path docs\generated\accessible-route-matrix.json -Pattern 'laravel-prep-pages.js'
 ```
 
 The route matrix only proves method/path declarations. It does not certify
@@ -5105,9 +5119,10 @@ no Podcast, Poll, or Group fixture remained and the shared theme was restored.
 Publish/moderation, subscribe behavior, author-role depth, manual
 assistive-technology review, and ASP.NET compatibility remain open.
 
-## Documents To Trust
+## Historical Document Order (Superseded)
 
-Read these in order:
+At this checkpoint, readers used the following order. It is not the current
+resume order; the archive notice at the top of this file governs.
 
 1. `apps/web-uk/AGENTS.md`
 2. `apps/web-uk/CLAUDE.md`
@@ -5115,17 +5130,17 @@ Read these in order:
 4. `apps/web-uk/docs/ACCESSIBLE_SHARED_FRONTEND.md`
 5. `apps/web-uk/docs/LARAVEL_ACCESSIBLE_ROUTE_MATRIX.md`
 6. `apps/web-uk/docs/generated/accessible-route-matrix.md`
-7. `apps/web-uk/docs/generated/accessible-route-matrix.csv`
+7. `apps/web-uk/docs/generated/accessible-route-matrix.json`
 8. `apps/web-uk/docs/BLADE_COMPONENT_PORT_AUDIT.md`
 9. `apps/web-uk/docs/BACKEND_SWITCHING_CONTRACT.md`
 
 Treat `FRONTEND_BUILD_LOG.md` and `FRONTEND_AUDIT_REPORT.md` as historical
 context unless a current handoff explicitly says otherwise.
 
-## Certification Table
+## Historical Certification Table (Superseded)
 
-Use this table shape when certifying a route family. Add the updated result to
-`LARAVEL_ACCESSIBLE_ROUTE_MATRIX.md` or a focused follow-up doc.
+This was the checkpoint's table shape. Do not use it for current scoring; use
+the fixed rubric and queue in `CURRENT_LARAVEL_FIRST_PARITY_STATUS.md`.
 
 | Family | Route declared | Blade layout ported | Laravel API-backed | Mock-tested | Laravel runtime-smoked | ASP.NET-smoked |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -5135,7 +5150,7 @@ Do not mark a family complete unless the answer is "yes" through Laravel
 runtime smoke. Do not mark shared-backend readiness unless ASP.NET smoke is also
 yes.
 
-## What Counts As Done
+## Historical Completion Checklist (Superseded)
 
 A route family is not complete until all of these are true:
 

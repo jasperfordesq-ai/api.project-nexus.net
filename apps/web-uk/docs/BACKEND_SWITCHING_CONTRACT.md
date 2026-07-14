@@ -1,6 +1,14 @@
 # Backend Switching Contract
 
-Last reviewed: 2026-07-13
+Last reviewed: 2026-07-14
+
+Status: **Maintained reference — current backend-switching contract, not a score**
+
+`CURRENT_LARAVEL_FIRST_PARITY_STATUS.md` is the sole current Web UK status and
+scoring source. This document defines the switching contract; dated evidence
+paragraphs are historical checkpoints and do not override the current status,
+generated route matrix, generated frontend-consumer API ledger, or root backend
+parity evidence.
 
 ## Decision
 
@@ -15,6 +23,11 @@ evidence suite.
 The repository containing Web UK is not an architectural authority: locating
 `apps/web-uk` inside `asp.net-backend` does not make ASP.NET the frontend's
 backend source of truth.
+
+Live route, API-ledger, test, score, and certification totals are intentionally
+not copied here. Read `CURRENT_LARAVEL_FIRST_PARITY_STATUS.md` at reporting time;
+generated inventories remain static evidence rather than switching
+certification.
 
 Backend target resolution lives in:
 
@@ -81,10 +94,17 @@ full Laravel-fixture smoke is not portable to the ASP.NET seed as-is and also
 trips the development rate limiter; do not report that run as a product
 regression or weaken the limiter to make the harness green.
 
-The static Laravel/API comparator currently reports `2,436/2,449` source
-operations matched and `13` missing. None of those 13 missing routes is called
-by Web UK, but static route presence does not override the live tenant-context
-blocker or certify response shapes, auth, mutations, uploads, or redirects.
+The maintained backend comparator's latest committed checkpoint reports
+`2,601/2,601` active Laravel source operations represented and `0` missing.
+That static route result does not certify response shapes, auth, tenant
+selection, roles, mutations, uploads, downloads, redirects, or unchanged-Web-UK
+runtime behavior. The ASP.NET switching gate therefore remains open.
+
+The repository-root `compose.prod.yml` currently overrides Web UK with
+`API_BASE_URL=http://api:8080`, pointing it at the ASP.NET service. That is a
+legacy, uncertified configuration, not an approved production deployment path
+and not evidence that the switching gate has passed. Do not deploy it or use it
+as a completion claim.
 
 ## Locale And Direction Contract
 
@@ -183,7 +203,14 @@ future ASP.NET mode must preserve equivalent local redirect semantics.
 
 ## Laravel Runtime Smoke
 
-The Laravel-backed runtime proof command is:
+Every command in this section authenticates or may change server-side state.
+Run it only when `LARAVEL_BASE_URL` explicitly identifies a separately
+provisioned, verified disposable Laravel application/database/storage
+environment. Never point it at the ordinary `127.0.0.1:8088`
+production-derived snapshot; authorization, unique fixture names, cleanup, and
+restoration logic do not make that environment disposable.
+
+The Laravel-backed runtime commands are:
 
 ```bash
 npm run smoke:laravel
@@ -231,13 +258,18 @@ the defaults target the Laravel local E2E fixture:
 `e2e.user.a@project-nexus.local`, `TestPassword123!`, tenant slug
 `hour-timebank`.
 
-The local Laravel E2E users currently live under tenant id `2`, so the web-uk
-process must be started with `TENANT_ID=2` for Laravel login/API calls to carry
-the correct `X-Tenant-ID` context. Current local result on 2026-07-07:
+Historical 2026-07-07 evidence used an E2E user under tenant id `2`, so that
+temporary Web UK process was started with `TENANT_ID=2` and sent the fallback
+`X-Tenant-ID` context. This is not a current universal configuration rule.
+Current request authority prefers a routed tenant slug, then
+`ACCESSIBLE_TENANT_SLUG`, and uses `TENANT_ID` only as a final legacy fallback;
+the checked-in local Docker environment intentionally uses
+`ACCESSIBLE_TENANT_SLUG=hour-timebank` with `TENANT_ID=1`. The dated result was:
 `WEB_UK_BASE_URL=http://127.0.0.1:5181 SMOKE_TIMEOUT_MS=60000 npm run
 smoke:laravel` passed against a temporary web-uk process started with
-`TENANT_ID=2`. Without that tenant context, Laravel returns `401` for the same
-valid E2E credentials. On 2026-07-10, the new `npm run smoke:laravel:local`
+`TENANT_ID=2`. In that old process, omitting the matching fallback context made
+Laravel return `401`; it does not override the current slug-first authority
+contract. On 2026-07-10, the new `npm run smoke:laravel:local`
 wrapper passed the core Laravel-backed flow with 10/10 checks and module chunks
 `SMOKE_MODULE_PAGE_CHUNK=2/8` through `8/8` with 106/106 checks each against
 Laravel `http://127.0.0.1:8088`; chunk 1/8 was also green at 106/106 against a
@@ -1143,8 +1175,8 @@ but stale runtime (`stale-tenant-middleware`, where public v2 calls still demand
 This diagnostic does not permit a Web UK fallback; rebuild the ASP.NET runtime
 from compatible source and rerun the slug-first checks.
 
-Use `docs/generated/accessible-route-matrix.csv` as the route-by-route backlog
-seed before certifying any family. It is refreshed with `npm run route:matrix`
+Use `docs/generated/accessible-route-matrix.md` (or its JSON companion) as the
+route-by-route backlog seed before certifying any family. It is refreshed with `npm run route:matrix`
 and records Laravel route names, handlers, inferred Blade views, feature/module
 gates, auth classification, API/service hints, and current `apps/web-uk`
 method/path matches.
@@ -1159,8 +1191,8 @@ reference certifies behavior against Laravel or ASP.NET.
 
 `src/routes/laravel-prep-pages.js` registers generated Laravel GET preparation
 pages after all real route modules only for rows that the generated matrix marks
-as `missing`. The current `681/687` matrix exports `3` runtime preparation pages
-for the unmatched Event moderation GETs; the three missing POSTs remain absent.
+as `missing`. Consult the generated matrix for the live missing-route and
+runtime-preparation-page totals; do not copy them into this switching contract.
 Any future fallback page counts as route discoverability only. It is not a
 backend adapter and must not be used as proof of Laravel or ASP.NET workflow
 compatibility.

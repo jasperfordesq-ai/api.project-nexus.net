@@ -1,6 +1,8 @@
 # apps/web-uk Shared Accessible Frontend Notes
 
-Last reviewed: 2026-07-13
+Last reviewed: 2026-07-14
+
+Status: **Maintained reference — current Web UK direction, not readiness status**
 
 `apps/web-uk` is the implementation target for the future shared accessible
 frontend. Its location in the ASP.NET repository does not make ASP.NET a source
@@ -52,6 +54,14 @@ work and must not be treated as certified compatibility. ASP.NET is not an
 input to frontend design or workflow decisions; the separate backend parity
 workstream must make it conform to the Laravel contract.
 
+## Current Status Pointer
+
+`CURRENT_LARAVEL_FIRST_PARITY_STATUS.md` is the sole current coordination and
+scoring source. This maintained architecture note deliberately does not mirror
+its live score, route/API totals, test aggregate, blockers, or working-tree
+boundary. Static and code gates are not runtime, manual-accessibility,
+production, or ASP.NET-switching certification.
+
 ## Repository And Data Boundary
 
 - Change only `apps/web-uk/**` and approved documentation pointers from this
@@ -62,8 +72,11 @@ workstream must make it conform to the Laravel contract.
   Never edit Laravel source, run Laravel migrations, alter its schema, query its
   database directly, or perform database cleanup.
 - Mutation, upload, download, and destructive certification must use a dedicated
-  disposable Laravel test environment. An ordinary/shared Laravel development
-  database requires explicit user authorization and verified cleanup.
+  separately provisioned and verified disposable Laravel application,
+  database, and storage environment. The ordinary/shared Laravel environment
+  must never receive those operations; authorization, unique fixture names,
+  cleanup, restoration code, or a successful prior run do not make it
+  disposable.
 - Do not touch production containers or production data.
 
 ## Historical Evidence Boundary (2026-07-10)
@@ -111,7 +124,10 @@ copy and sign-out action with the same RTL/reflow/axe checks; mocked rendering
 also covers the localized unread-message plural. Actual screen-reader,
 assistive-technology, Firefox, and WebKit certification remain open.
 
-The current-source Laravel smoke is certified in deterministic serial shards.
+At that historical checkpoint, the Laravel smoke was recorded green in
+deterministic serial shards. Because it used the ordinary Laravel environment,
+the result is now invalid as certification and is retained only as
+regression-discovery history.
 The base bucket passed `93/93`; six shards then covered all `276` default module
 pages and all `270` default body markers. Shards 1, 2, 4, and 6 passed
 `101/101`. Shards 3 and 5 each initially passed `100/101` because one request
@@ -137,7 +153,11 @@ atomic member multi-write contracts; exchange `prep_time`, idempotency, and
 rating/attention drift; review mutation/listing-review gaps; and missing matches
 event coverage plus event/volunteering dismiss support.
 
-Runtime smoke evidence has two dedicated commands:
+The commands below authenticate and may write server-side limiter, audit,
+session, preference, or workflow state. Run them only after
+`LARAVEL_BASE_URL` is explicitly set to a separately provisioned and verified
+disposable Laravel environment. Never run them against the ordinary
+`127.0.0.1:8088` production-derived snapshot.
 
 ```bash
 npm run smoke:laravel
@@ -773,7 +793,12 @@ Do not add React, Vue, Next.js, client-side routing, or another CSS framework.
 Use GOV.UK Frontend for reusable components and patterns. Do not copy
 government identity.
 
-## Current Prep Work
+## Chronological Implementation Detail
+
+The descriptions below preserve implementation detail accumulated across
+earlier slices. Any word such as "current" inside those descriptions is relative
+to its checkpoint; the current-status document and generated artifacts govern
+today's counts and queue.
 
 The app now has a shared shell contract in:
 
@@ -1546,9 +1571,9 @@ Additional preparation docs:
   switching requirements without implementing a real adapter yet.
 
 Generated route-matrix artifacts live under `docs/generated/` and are refreshed
-with `npm run route:matrix`. The current generated baseline is 608 Laravel
-accessible route declarations, 610 `apps/web-uk` route declarations, 608 exact
-method/path matches, 0 missing Laravel routes, 0 true extra local route
+with `npm run route:matrix`. The current generated baseline is 689 Laravel
+accessible route declarations, 695 `apps/web-uk` route declarations, 688 exact
+method/path matches, 1 missing Laravel route, 5 deliberate extra local route
 declarations, and 3 ignored local infrastructure/helper routes.
 `src/routes/laravel-prep-pages.js` now registers generated preparation pages
 only for matrix rows explicitly marked `missing`; the current matrix exports 0

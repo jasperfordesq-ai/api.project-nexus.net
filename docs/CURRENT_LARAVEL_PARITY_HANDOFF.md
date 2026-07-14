@@ -1,18 +1,25 @@
-# Current Laravel Backend Parity Handoff
+# Laravel Backend Contract-Parity Handoff History
 
 Last reviewed: 2026-07-14
 
-> **Current audit notice (2026-07-12):** Read the verified slice below and
-> `docs/FULL_PARITY_REMEDIATION_RUNBOOK.md` before using the historical numeric
-> snapshot or score. Route closure is not workflow, schema, localization, or
-> runtime certification.
+Status: **Historical archive — not a current status or resume source**
 
-This is the first file to read if an agent needs to resume the Laravel backend
-parity job after a session interruption. The implementation branches may still
-be moving, so treat every numeric snapshot below as advisory. Regenerate the
-live state before editing code or claiming progress.
+> **Historical archive — not current status.** For backend status or resumption,
+> read `docs/CURRENT_ASPNET_CONTRACT_STATUS.md`, then
+> `docs/FULL_PARITY_REMEDIATION_RUNBOOK.md`. Do not copy a score, route count,
+> queue, or dirty-worktree statement from this archive into a status report.
+> Every “latest”,
+> “current”, “previous”, score, route count, and test count below is historical
+> evidence scoped to its checkpoint date; none overrides the current status
+> document.
 
-## Latest Resume Point: Zero Active Static Gaps And Retired Vetting Writes
+This file preserves detailed implementation history and older verification
+commands. Regenerate live state at named Laravel and ASP.NET SHAs before editing
+code or claiming progress.
+
+## Historical Checkpoints
+
+### 2026-07-14 Zero Active Static Gaps And Retired Vetting Writes
 
 The seven apparent remaining gaps were stale OpenAPI-only document-era vetting writes,
 not current Laravel routes. Laravel deliberately removed generic create/bulk/update/
@@ -29,7 +36,7 @@ is closed, but the goal remains active. Resume with real fiat settlement and the
 broader complete-suite/CI, unchanged-frontend runtime, schema/localization, federation-
 transport, and live-provider certification queue.
 
-## Previous Resume Point: Prerender Invalidation And Reset-All
+### 2026-07-14 Prerender Invalidation And Reset-All
 
 The external invalidation alias now matches Laravel's bearer/HMAC/platform-super-admin
 authentication modes, timestamp and replay protection, route canonicalization and
@@ -51,7 +58,7 @@ model; never let document evidence authorize contact. Fiat settlement, complete-
 CI, unchanged-frontend smoke, schema/localization depth, federation transport, and
 live-provider certification remain open.
 
-## Previous Resume Point: Group Auto-Assignment Workflow
+### 2026-07-14 Group Auto-Assignment Workflow
 
 Administrator group auto-assignment list/create/update/delete now use a typed
 `group_auto_assign_rules` aggregate rather than recorded-only compatibility writes.
@@ -72,7 +79,7 @@ traced. Real fiat settlement, complete-suite/CI, unchanged canonical frontend sm
 schema/localization depth, federation transport, and live-provider certification
 remain open.
 
-## Previous Resume Point: Podcast Artwork Uploads
+### 2026-07-14 Podcast Artwork Uploads
 
 The canonical React show-artwork and episode-cover multipart calls now have explicit
 legacy and V2 owners. Both require the `image` field, use the platform image allowlist,
@@ -91,7 +98,7 @@ gated until their legacy-evidence safety contract is traced. Real fiat settlemen
 complete-suite/CI, unchanged canonical frontend smoke, schema/localization depth,
 federation transport, and live-provider certification remain open.
 
-## Previous Resume Point: Atomic Notification Settings
+### 2026-07-14 Atomic Notification Settings
 
 The canonical React settings save now owns all three Laravel persistence domains in
 one serializable tenant/user transaction: general/federation flags on the user, match
@@ -115,9 +122,14 @@ provider certification remain open.
 
 ## Objective
 
-Make the ASP.NET backend contract-compatible with the Laravel backend so the
-canonical Laravel React frontend can run against either backend without
-frontend adapters.
+Make the ASP.NET backend contract-compatible with the Laravel backend so both
+unchanged canonical frontends can run against either backend by configuration
+only:
+
+| Frontend | Laravel backend | ASP.NET backend |
+| --- | --- | --- |
+| Canonical Laravel React | Production source-of-truth baseline | Contract-correct and runtime-certified |
+| Shared accessible Web UK | Laravel-first implementation and certification | Same Web UK code and workflows, runtime-certified after backend parity |
 
 The target is not "similar behavior". The target is compatible methods, paths,
 aliases, request bodies, query strings, multipart fields, response envelopes,
@@ -133,7 +145,9 @@ workflow side effects.
 | Laravel OpenAPI | `C:\platforms\htdocs\staging\openapi.json` |
 | Laravel routes | `C:\platforms\htdocs\staging\routes` |
 | Laravel React frontend contract | `C:\platforms\htdocs\staging\react-frontend` |
+| Laravel accessible browser contract | `C:\platforms\htdocs\staging\accessible-frontend` and `routes\govuk-alpha*` |
 | ASP.NET backend target | `C:\platforms\htdocs\asp.net-backend` |
+| Shared accessible frontend target | `C:\platforms\htdocs\asp.net-backend\apps\web-uk` |
 
 The Laravel repo is read-only reference material from this workspace. Do not
 edit it, deploy it, run destructive commands in it, or touch Laravel production
@@ -153,7 +167,12 @@ containers from this repo.
 - Keep generated scratch artifacts out of committed docs unless curated into a
   maintained map.
 
-## Latest Verified Backend Slice — 2026-07-12
+## Historical Detailed Backend Record
+
+The remaining sections preserve dated evidence and old queue state. They are
+not the current score, current blocker list, or current resume point.
+
+### Latest Verified Backend Slice At That Checkpoint — 2026-07-12
 
 The latest backend-only slice closes all eight Event People workspace routes:
 redacted roster listing, formula-safe CSV export, bounded bulk operations,
@@ -822,12 +841,15 @@ Read these in order:
 1. `AGENTS.md`
 2. `CLAUDE.md`
 3. `docs/README.md`
-4. `docs/API_PARITY.md`
-5. `docs/LARAVEL_PARITY_MAP.md`
-6. `docs/SCHEMA_PARITY.md`
-7. `docs/LOCALIZATION_PARITY.md`
-8. `docs/PARITY_BACKLOG.md`
-9. `docs/REACT_FRONTEND_RETIREMENT.md`
+4. `docs/CURRENT_ASPNET_CONTRACT_STATUS.md`
+5. `apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md`
+6. `docs/FULL_PARITY_REMEDIATION_RUNBOOK.md`
+7. `docs/API_PARITY.md`
+8. `docs/LARAVEL_PARITY_MAP.md`
+9. `docs/SCHEMA_PARITY.md`
+10. `docs/LOCALIZATION_PARITY.md`
+11. `docs/PARITY_BACKLOG.md`
+12. `docs/REACT_FRONTEND_RETIREMENT.md`
 
 Some older count tables are intentionally historical. The comparator commands
 above are the source of current numeric truth.
@@ -846,9 +868,14 @@ A module or endpoint family is not complete until all of these are true:
 - Focused ASP.NET regression tests cover the contract.
 - Runtime smoke tests prove the Laravel React frontend can use the ASP.NET
   backend for the workflow.
+- The same unchanged, Laravel-certified Web UK frontend can exercise the
+  equivalent ASP.NET workflow by changing configuration only.
 - Docs are updated with evidence and any remaining gaps.
 
-## Known Remaining Work
+## Historical Remaining-Work Snapshot
+
+The queue below is retained as implementation history. Use
+`CURRENT_ASPNET_CONTRACT_STATUS.md` for the current ordered queue.
 
 Prioritize workflow-complete slices over raw endpoint count. Route declarations
 are mostly closed; the remaining work is contract correctness.

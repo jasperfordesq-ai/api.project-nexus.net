@@ -1,5 +1,12 @@
 # Accessible Shared Frontend Prep Implementation Plan
 
+Status: **Historical checkpoint — completed 2026-07-05 plan, not a current queue**
+
+> Do not execute or resume this plan. Its older “candidate” and “ASP.NET
+> accessible stack” wording is retained only as history. Read
+> `../../../apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md` for the
+> current Web UK architecture, ownership boundary, safety rules, and queue.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Prepare `apps/web-uk` as the future shared accessible frontend candidate by making its shell and Explore skeleton follow the production Laravel Blade accessible frontend.

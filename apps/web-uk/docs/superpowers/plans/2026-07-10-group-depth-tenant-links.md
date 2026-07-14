@@ -1,5 +1,14 @@
 # Group Depth Tenant Links Implementation Plan
 
+> **Historical plan:** Retained for implementation history only. Do not use it
+> as a current queue; read `../../CURRENT_LARAVEL_FIRST_PARITY_STATUS.md`.
+
+> **Stateful-command fence:** The signed Laravel smoke below is historical, not
+> standing authorization. It may run only against a separately provisioned and
+> verified disposable Laravel application, database, and storage environment.
+> Never point it at the ordinary `127.0.0.1:8088` environment or its
+> confidential production-derived database.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Convert remaining group discussion, invite, image, notification, and management links/forms/redirects to the active tenant-aware URL helper.

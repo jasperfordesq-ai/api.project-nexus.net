@@ -1,5 +1,8 @@
 # Tenant Chooser Order Implementation Plan
 
+> **Historical plan:** Retained for implementation history only. Do not use it
+> as a current queue; read `../../CURRENT_LARAVEL_FIRST_PARITY_STATUS.md`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Make the Web UK shared-root tenant chooser match Laravel Blade ordering for active non-master tenants.

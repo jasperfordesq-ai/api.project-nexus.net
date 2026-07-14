@@ -16,6 +16,20 @@ function writeFile(filePath, contents) {
   fs.writeFileSync(filePath, contents, 'utf8');
 }
 
+function fixtureProvenance(sourceRoot, targetRoot) {
+  return {
+    generatedAt: '2026-07-14T00:00:00.000Z',
+    laravelRepositoryRoot: sourceRoot,
+    laravelCommitSha: '1111111111111111111111111111111111111111',
+    laravelWorkingTreeDirty: true,
+    webUkRepositoryRoot: targetRoot,
+    webUkPath: 'apps/web-uk',
+    webUkRepositoryCommitSha: '2222222222222222222222222222222222222222',
+    webUkRepositoryWorkingTreeDirty: false,
+    caveat: 'Laravel working tree was dirty when generated. Commit SHAs identify HEAD only; generated content may include uncommitted changes from the dirty working tree.'
+  };
+}
+
 describe('accessible route matrix generator', () => {
   let fixtureRoot;
   let sourceRoot;
@@ -141,7 +155,12 @@ module.exports = router;
   });
 
   it('maps Laravel routes to Blade views and Express equivalents', () => {
-    const report = generateAccessibleRouteMatrix({ sourceRoot, targetRoot, outDir });
+    const report = generateAccessibleRouteMatrix({
+      sourceRoot,
+      targetRoot,
+      outDir,
+      provenance: fixtureProvenance(sourceRoot, targetRoot)
+    });
     const route = (method, routePath) => report.matrix.find(
       (row) => row.method === method && row.path === routePath
     );
@@ -150,6 +169,12 @@ module.exports = router;
     expect(report.summary.webUkRoutes).toBe(3);
     expect(report.summary.matchedRoutes).toBe(3);
     expect(report.summary.missingRoutes).toBe(1);
+    expect(report.provenance).toEqual(expect.objectContaining({
+      laravelCommitSha: '1111111111111111111111111111111111111111',
+      laravelWorkingTreeDirty: true,
+      webUkRepositoryCommitSha: '2222222222222222222222222222222222222222',
+      webUkRepositoryWorkingTreeDirty: false
+    }));
 
     expect(route('GET', '/dashboard')).toEqual(expect.objectContaining({
       status: 'matched',
@@ -177,6 +202,14 @@ module.exports = router;
     expect(fs.existsSync(path.join(outDir, 'accessible-route-matrix.json'))).toBe(true);
     expect(fs.existsSync(path.join(outDir, 'accessible-route-matrix.csv'))).toBe(true);
     expect(fs.existsSync(path.join(outDir, 'accessible-route-matrix.md'))).toBe(true);
+    const json = JSON.parse(fs.readFileSync(path.join(outDir, 'accessible-route-matrix.json'), 'utf8'));
+    const markdown = fs.readFileSync(path.join(outDir, 'accessible-route-matrix.md'), 'utf8');
+    expect(json.generatedAt).toBe('2026-07-14T00:00:00.000Z');
+    expect(json.provenance.laravelCommitSha).toBe('1111111111111111111111111111111111111111');
+    expect(markdown).toContain('Status: **Generated snapshot — structural route inventory, not certification**');
+    expect(markdown).toContain('Web UK repository commit SHA: `2222222222222222222222222222222222222222`');
+    expect(markdown).toContain('Laravel working tree dirty: yes');
+    expect(markdown).toContain('Provenance caveat: Laravel working tree was dirty when generated.');
   });
 
   it('discovers every router in a combined app.use mount', () => {
@@ -262,7 +295,12 @@ const prepPages = [
 module.exports.prepPages = prepPages;
 `);
 
-    const report = generateAccessibleRouteMatrix({ sourceRoot, targetRoot, outDir });
+    const report = generateAccessibleRouteMatrix({
+      sourceRoot,
+      targetRoot,
+      outDir,
+      provenance: fixtureProvenance(sourceRoot, targetRoot)
+    });
     const route = (method, routePath) => report.matrix.find(
       (row) => row.method === method && row.path === routePath
     );
@@ -321,7 +359,12 @@ router.get('/:id(\\\\d+)/files/:fileId(\\\\d+)/download', (req, res) => {
 module.exports = router;
 `);
 
-    const report = generateAccessibleRouteMatrix({ sourceRoot, targetRoot, outDir });
+    const report = generateAccessibleRouteMatrix({
+      sourceRoot,
+      targetRoot,
+      outDir,
+      provenance: fixtureProvenance(sourceRoot, targetRoot)
+    });
     const route = report.matrix.find(
       (row) => row.method === 'GET' && row.path === '/groups/{param}/files/{param}/download'
     );
@@ -346,7 +389,12 @@ app.get('/local-only-page', (req, res) => res.render('local-only'));
 app.use('/dashboard', dashboardRoutes);
 `);
 
-    const report = generateAccessibleRouteMatrix({ sourceRoot, targetRoot, outDir });
+    const report = generateAccessibleRouteMatrix({
+      sourceRoot,
+      targetRoot,
+      outDir,
+      provenance: fixtureProvenance(sourceRoot, targetRoot)
+    });
     const byPath = (method, routePath) => report.matrix.find(
       (row) => row.method === method && row.path === routePath
     );

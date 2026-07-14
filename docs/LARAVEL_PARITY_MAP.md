@@ -2,7 +2,23 @@
 
 Last reviewed: 2026-07-14
 
+Status: **Maintained reference — detailed evidence and gap map, not a current score**
+
+Evidence provenance: the latest published-backend summary was reviewed on
+2026-07-14 against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and repository commit
+`9c5fb1a46c40e4986c8f973075164b1d74bd101d`; dirty backend work is excluded.
+Every older inventory lacking its own exact source pair is historical and
+provenance-incomplete, regardless of words such as “latest” retained inside a
+checkpoint.
+
 Canonical source: `C:\platforms\htdocs\staging` (read-only).
+
+This is the detailed evidence and gap map. Use
+[`CURRENT_ASPNET_CONTRACT_STATUS.md`](CURRENT_ASPNET_CONTRACT_STATUS.md) for the
+only current overall score, baseline SHAs, published/unscored split, and active
+completion queue. Every inventory below is dated evidence and must be
+regenerated before it is described as current.
 
 ## Latest Verified Backend Slice
 
@@ -24,11 +40,11 @@ Laravel live routes omit them, the controller prohibits them, feature tests asse
 conditionally retires them only while Laravel routes omit them; fixture and live proof
 pass at **2,601/2,601 active operations matched, 0 missing**, with seven retired entries
 reported separately. ASP.NET runtime proof matches the removal responses and preserves
-both legacy and current vetting rows. Static route parity is closed. Real fiat
-settlement, complete-suite/CI proof, unchanged-frontend runtime proof, schema/
+both legacy and current vetting rows. Static route parity is closed. Live-
+provider settlement, complete-suite/CI proof, unchanged-frontend runtime proof, schema/
 localization depth, federation transport, and live-provider certification remain open.
 
-## Inventory Baseline
+## Historical Inventory Baseline
 
 | Surface | Laravel Edition | .NET Edition |
 | --- | ---: | ---: |
@@ -38,7 +54,7 @@ localization depth, federation transport, and live-provider certification remain
 | Migrations | 377 | 131 static migration source files; 129 EF-discovered/applied runtime IDs |
 | OpenAPI operations | 1,022 | 4,452 static controller operations from parity script |
 | Schema tables | 455 Laravel source tables | 378 .NET static table names |
-| Frontend routes | 589 React / 607 accessible in the historical comparator; current Web UK matrix separately reports 608 Laravel accessible declarations | 462 legacy React routes; current `apps/web-uk` matrix reports 612 local declarations, 608 matched Laravel accessible routes, 0 missing, 2 extra exchange workflow routes, and 3 ignored infrastructure routes |
+| Frontend routes | 589 React / 607 accessible in the historical comparator; the separate 2026-07-08 Web UK checkpoint reported 608 Laravel declarations | 462 legacy React routes; the 2026-07-08 Web UK checkpoint reported 612 local declarations, 608 matches, 0 missing, 2 extra exchange workflow routes, and 3 ignored infrastructure routes |
 | Localization | 11 locales / 605 locale namespaces | 7 locales / 280 locale namespaces |
 | Module guides | 24 curated Laravel module guides | maintained .NET parity docs recreated in this pass |
 | Locales | 11 | 7 |
@@ -81,9 +97,9 @@ in this repo unless explicitly approved. Use the production Laravel React
 frontend at `C:\platforms\htdocs\staging\react-frontend` as the contract target
 for ASP.NET backend compatibility.
 
-For current `apps/web-uk` accessible frontend work, prefer
-`apps/web-uk/docs/generated/accessible-route-matrix.*`. After the 2026-07-08
-merge commit `f7c80d32`, that matrix reports 608/608 Laravel accessible routes
+For current `apps/web-uk` accessible frontend work, read
+`apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md` and then its generated
+matrix. At the historical 2026-07-08 merge commit `f7c80d32`, that matrix reported 608/608 Laravel accessible routes
 matched, 0 missing, 2 extra local exchange workflow routes, and 3 ignored
 infrastructure routes.
 

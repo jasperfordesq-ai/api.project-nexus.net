@@ -1,5 +1,17 @@
 {
   "schemaVersion": 1,
+  "generatedAt": "2026-07-14T13:55:14.179Z",
+  "provenance": {
+    "generatedAt": "2026-07-14T13:55:14.179Z",
+    "laravelRepositoryRoot": "C:\\platforms\\htdocs\\staging",
+    "laravelCommitSha": "903d03d3db78bbf87129ad35728be3b72819acaf",
+    "laravelWorkingTreeDirty": true,
+    "webUkRepositoryRoot": "C:\\platforms\\htdocs\\asp.net-backend",
+    "webUkPath": "apps/web-uk",
+    "webUkRepositoryCommitSha": "327984b02de82350b8f17b6cb885a3a27c7d95be",
+    "webUkRepositoryWorkingTreeDirty": true,
+    "caveat": "Laravel and Web UK repository working trees were dirty when generated. Commit SHAs identify HEAD only; generated content may include uncommitted changes from the dirty working trees."
+  },
   "sources": {
     "api": "src/lib/api.js",
     "apiSha256": "010ddd2dd08bb7004120aa93bf08799bcfd102bf82dbe0ad031f4f3b1e9259ef",
@@ -8,8 +20,8 @@
   },
   "summary": {
     "contracts": 663,
-    "matchedOpenApi": 445,
-    "missingOpenApi": 218,
+    "matchedOpenApi": 448,
+    "missingOpenApi": 215,
     "dynamicUnresolved": 0,
     "stateChanging": 370,
     "withoutTests": 0
@@ -47,9 +59,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/ai/conversations??{param} [getAiConversations]",
+      "id": "GET /api/ai/conversations?{query} [getAiConversations]",
       "method": "GET",
-      "path": "/api/ai/conversations??{param}",
+      "path": "/api/ai/conversations?{query}",
       "apiHelper": "getAiConversations",
       "source": "src/lib/api.js:1884",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -182,6 +194,7 @@
         "tests/marketplace-payment-contract.test.js",
         "tests/profile-account-deletion-contract.test.js",
         "tests/profile-email-security-contract.test.js",
+        "tests/profile-status-localization.test.js",
         "tests/profile-two-factor-contract.test.js",
         "tests/registration-contract.test.js",
         "tests/route-matrix-generator.test.js",
@@ -525,45 +538,6 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/activity/dashboard [callProfileApi]",
-      "method": "GET",
-      "path": "/api/v2/activity/dashboard",
-      "apiHelper": "callProfileApi",
-      "source": "src/routes/activity.js:281",
-      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
-      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
-      "requestShape": "query/path parameters; no request body expected",
-      "responseShape": "JSON/text response via ApiError-aware request",
-      "statusCodes": [],
-      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
-      "redirects": "consumer-controlled: src/routes/activity.js",
-      "sideEffects": "read-only by HTTP method",
-      "cleanup": "not applicable",
-      "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
-        "operationId": "",
-        "controllerAction": "",
-        "tags": []
-      },
-      "frontendConsumers": [
-        "src/routes/activity.js"
-      ],
-      "tests": [
-        "tests/api.test.js",
-        "tests/auth-localization.test.js",
-        "tests/profile-account-deletion-contract.test.js",
-        "tests/profile-email-security-contract.test.js",
-        "tests/profile-status-localization.test.js",
-        "tests/profile-tenant-locales.test.js",
-        "tests/profile-two-factor-contract.test.js",
-        "tests/runtime/profile-skills-mutation.spec.js",
-        "tests/settings-contract-parity.test.js",
-        "tests/shared-accessible-shell.test.js"
-      ],
-      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
-    },
-    {
       "id": "GET /api/v2/admin/events?publication_state=pending_review&page={param}&per_page=20 [callAdminEventApi]",
       "method": "GET",
       "path": "/api/v2/admin/events?publication_state=pending_review&page={param}&per_page=20",
@@ -864,7 +838,7 @@
       "method": "POST",
       "path": "/api/v2/auth/2fa/disable",
       "apiHelper": "callProfileApi",
-      "source": "src/routes/profile.js:1746",
+      "source": "src/routes/profile.js:1751",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
       "requestShape": "JSON caller payload; validate against Laravel operation",
@@ -907,7 +881,7 @@
       "method": "POST",
       "path": "/api/v2/auth/2fa/setup",
       "apiHelper": "callProfileApi",
-      "source": "src/routes/profile.js:1668",
+      "source": "src/routes/profile.js:1673",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
       "requestShape": "JSON caller payload; validate against Laravel operation",
@@ -950,7 +924,7 @@
       "method": "GET",
       "path": "/api/v2/auth/2fa/status",
       "apiHelper": "callProfileApi",
-      "source": "src/routes/profile.js:1664",
+      "source": "src/routes/profile.js:1669",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
       "requestShape": "query/path parameters; no request body expected",
@@ -993,7 +967,7 @@
       "method": "POST",
       "path": "/api/v2/auth/2fa/verify",
       "apiHelper": "callProfileApi",
-      "source": "src/routes/profile.js:1712",
+      "source": "src/routes/profile.js:1717",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
       "requestShape": "JSON caller payload; validate against Laravel operation",
@@ -1111,9 +1085,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/blog??{param} [getBlogPosts]",
+      "id": "GET /api/v2/blog?{query} [getBlogPosts]",
       "method": "GET",
-      "path": "/api/v2/blog??{param}",
+      "path": "/api/v2/blog?{query}",
       "apiHelper": "getBlogPosts",
       "source": "src/lib/api.js:1590",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -1141,6 +1115,7 @@
         "src/routes/blog.js"
       ],
       "tests": [
+        "tests/api-consumer-ledger.test.js",
         "tests/api.test.js",
         "tests/shared-accessible-shell.test.js"
       ],
@@ -1177,6 +1152,7 @@
         "src/routes/blog.js"
       ],
       "tests": [
+        "tests/api-consumer-ledger.test.js",
         "tests/api.test.js",
         "tests/runtime/blog-mutation.spec.js",
         "tests/shared-accessible-shell.test.js"
@@ -1216,9 +1192,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/bookmarks??{param} [getBookmarks]",
+      "id": "GET /api/v2/bookmarks?{query} [getBookmarks]",
       "method": "GET",
-      "path": "/api/v2/bookmarks??{param}",
+      "path": "/api/v2/bookmarks?{query}",
       "apiHelper": "getBookmarks",
       "source": "src/lib/api.js:1377",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -1357,9 +1333,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/clubs??{param} [getClubs]",
+      "id": "GET /api/v2/clubs?{query} [getClubs]",
       "method": "GET",
-      "path": "/api/v2/clubs??{param}",
+      "path": "/api/v2/clubs?{query}",
       "apiHelper": "getClubs",
       "source": "src/lib/api.js:681",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -1429,9 +1405,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/comments??{param} [getComments]",
+      "id": "GET /api/v2/comments?{query} [getComments]",
       "method": "GET",
-      "path": "/api/v2/comments??{param}",
+      "path": "/api/v2/comments?{query}",
       "apiHelper": "getComments",
       "source": "src/lib/api.js:1605",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -1548,9 +1524,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/connections??{param} [getConnections]",
+      "id": "GET /api/v2/connections?{query} [getConnections]",
       "method": "GET",
-      "path": "/api/v2/connections??{param}",
+      "path": "/api/v2/connections?{query}",
       "apiHelper": "getConnections",
       "source": "src/lib/api.js:2233",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -1829,20 +1805,20 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/conversations/{param}/messages?{query} [callConversationApi]",
-      "method": "GET",
-      "path": "/api/v2/conversations/{param}/messages?{query}",
+      "id": "POST /api/v2/conversations/{param}/messages [callConversationApi]",
+      "method": "POST",
+      "path": "/api/v2/conversations/{param}/messages",
       "apiHelper": "callConversationApi",
-      "source": "src/routes/messages.js:889",
+      "source": "src/routes/messages.js:740",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
-      "requestShape": "query/path parameters; no request body expected",
+      "requestShape": "JSON caller payload; validate against Laravel operation",
       "responseShape": "JSON/text response via ApiError-aware request",
       "statusCodes": [],
       "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
       "redirects": "consumer-controlled: src/routes/messages.js",
-      "sideEffects": "read-only by HTTP method",
-      "cleanup": "not applicable",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
         "status": "missing-openapi-match",
         "path": "",
@@ -1860,20 +1836,20 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "POST /api/v2/conversations/{param}/messages [callConversationApi]",
-      "method": "POST",
-      "path": "/api/v2/conversations/{param}/messages",
+      "id": "GET /api/v2/conversations/{param}/messages?{query} [callConversationApi]",
+      "method": "GET",
+      "path": "/api/v2/conversations/{param}/messages?{query}",
       "apiHelper": "callConversationApi",
-      "source": "src/routes/messages.js:740",
+      "source": "src/routes/messages.js:889",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
-      "requestShape": "JSON caller payload; validate against Laravel operation",
+      "requestShape": "query/path parameters; no request body expected",
       "responseShape": "JSON/text response via ApiError-aware request",
       "statusCodes": [],
       "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
       "redirects": "consumer-controlled: src/routes/messages.js",
-      "sideEffects": "state-changing; disposable-environment runtime proof required",
-      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "sideEffects": "read-only by HTTP method",
+      "cleanup": "not applicable",
       "laravel": {
         "status": "missing-openapi-match",
         "path": "",
@@ -2924,9 +2900,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/event-templates??{param} [callEventTemplateApi]",
+      "id": "GET /api/v2/event-templates?{query} [callEventTemplateApi]",
       "method": "GET",
-      "path": "/api/v2/event-templates??{param}",
+      "path": "/api/v2/event-templates?{query}",
       "apiHelper": "callEventTemplateApi",
       "source": "src/routes/events.js:1537",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -3003,9 +2979,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/event-templates/{param}/history??{param} [callEventTemplateApi]",
+      "id": "GET /api/v2/event-templates/{param}/history?{query} [callEventTemplateApi]",
       "method": "GET",
-      "path": "/api/v2/event-templates/{param}/history??{param}",
+      "path": "/api/v2/event-templates/{param}/history?{query}",
       "apiHelper": "callEventTemplateApi",
       "source": "src/routes/event-templates.js:70",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -3204,9 +3180,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/events??{param} [getEvents]",
+      "id": "GET /api/v2/events?{query} [getEvents]",
       "method": "GET",
-      "path": "/api/v2/events??{param}",
+      "path": "/api/v2/events?{query}",
       "apiHelper": "getEvents",
       "source": "src/lib/api.js:2596",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -3826,9 +3802,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/events/{param}/attendees??{param} [getEventRsvps]",
+      "id": "GET /api/v2/events/{param}/attendees?{query} [getEventRsvps]",
       "method": "GET",
-      "path": "/api/v2/events/{param}/attendees??{param}",
+      "path": "/api/v2/events/{param}/attendees?{query}",
       "apiHelper": "getEventRsvps",
       "source": "src/lib/api.js:2662",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -4155,9 +4131,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/events/{param}/lifecycle-history??{param} [callEventApi]",
+      "id": "GET /api/v2/events/{param}/lifecycle-history?{query} [callEventApi]",
       "method": "GET",
-      "path": "/api/v2/events/{param}/lifecycle-history??{param}",
+      "path": "/api/v2/events/{param}/lifecycle-history?{query}",
       "apiHelper": "callEventApi",
       "source": "src/routes/events.js:2333",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -4322,9 +4298,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/events/{param}/people??{param} [callEventApi]",
+      "id": "GET /api/v2/events/{param}/people?{query} [callEventApi]",
       "method": "GET",
-      "path": "/api/v2/events/{param}/people??{param}",
+      "path": "/api/v2/events/{param}/people?{query}",
       "apiHelper": "callEventApi",
       "source": "src/routes/events.js:914",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -6812,9 +6788,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/exchanges??{param} [getExchanges]",
+      "id": "GET /api/v2/exchanges?{query} [getExchanges]",
       "method": "GET",
-      "path": "/api/v2/exchanges??{param}",
+      "path": "/api/v2/exchanges?{query}",
       "apiHelper": "getExchanges",
       "source": "src/lib/api.js:1767",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -7117,6 +7093,7 @@
         "src/routes/federation-actions.js"
       ],
       "tests": [
+        "tests/api-consumer-ledger.test.js",
         "tests/api.test.js",
         "tests/federation-onboarding-session.test.js",
         "tests/laravel-runtime-smoke.test.js",
@@ -7125,9 +7102,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/federation/connections?status={param}&limit={param}1&offset={dynamic} [callFederationApi]",
+      "id": "GET /api/v2/federation/connections?status={param}&limit={param}&offset={param} [callFederationApi]",
       "method": "GET",
-      "path": "/api/v2/federation/connections?status={param}&limit={param}1&offset={dynamic}",
+      "path": "/api/v2/federation/connections?status={param}&limit={param}&offset={param}",
       "apiHelper": "callFederationApi",
       "source": "src/routes/federation.js:1355",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -7150,6 +7127,7 @@
         "src/routes/federation.js"
       ],
       "tests": [
+        "tests/api-consumer-ledger.test.js",
         "tests/api.test.js",
         "tests/federation-onboarding-session.test.js",
         "tests/laravel-runtime-smoke.test.js",
@@ -7183,6 +7161,7 @@
         "src/routes/federation-actions.js"
       ],
       "tests": [
+        "tests/api-consumer-ledger.test.js",
         "tests/api.test.js",
         "tests/federation-onboarding-session.test.js",
         "tests/laravel-runtime-smoke.test.js",
@@ -7255,9 +7234,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/federation/events?{param} [callFederationApi]",
+      "id": "GET /api/v2/federation/events?{query} [callFederationApi]",
       "method": "GET",
-      "path": "/api/v2/federation/events?{param}",
+      "path": "/api/v2/federation/events?{query}",
       "apiHelper": "callFederationApi",
       "source": "src/routes/federation.js:1136",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -7297,9 +7276,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/federation/groups?{param} [callFederationApi]",
+      "id": "GET /api/v2/federation/groups?{query} [callFederationApi]",
       "method": "GET",
-      "path": "/api/v2/federation/groups?{param}",
+      "path": "/api/v2/federation/groups?{query}",
       "apiHelper": "callFederationApi",
       "source": "src/routes/federation.js:959",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -7330,9 +7309,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/federation/listings?{param} [callFederationApi]",
+      "id": "GET /api/v2/federation/listings?{query} [callFederationApi]",
       "method": "GET",
-      "path": "/api/v2/federation/listings?{param}",
+      "path": "/api/v2/federation/listings?{query}",
       "apiHelper": "callFederationApi",
       "source": "src/routes/federation.js:1019",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -7367,9 +7346,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/federation/members?{param} [callFederationApi]",
+      "id": "GET /api/v2/federation/members?{query} [callFederationApi]",
       "method": "GET",
-      "path": "/api/v2/federation/members?{param}",
+      "path": "/api/v2/federation/members?{query}",
       "apiHelper": "callFederationApi",
       "source": "src/routes/federation.js:1263",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -7404,9 +7383,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/federation/members/{param}?{param} [callFederationApi]",
+      "id": "GET /api/v2/federation/members/{param}?{query} [callFederationApi]",
       "method": "GET",
-      "path": "/api/v2/federation/members/{param}?{param}",
+      "path": "/api/v2/federation/members/{param}?{query}",
       "apiHelper": "callFederationApi",
       "source": "src/routes/federation.js:1092",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -7441,9 +7420,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/federation/members/{param}/reviews?{param} [callFederationApi]",
+      "id": "GET /api/v2/federation/members/{param}/reviews?{query} [callFederationApi]",
       "method": "GET",
-      "path": "/api/v2/federation/members/{param}/reviews?{param}",
+      "path": "/api/v2/federation/members/{param}/reviews?{query}",
       "apiHelper": "callFederationApi",
       "source": "src/routes/federation.js:1616",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -7896,9 +7875,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/feed??{param} [getFeedPosts]",
+      "id": "GET /api/v2/feed?{query} [getFeedPosts]",
       "method": "GET",
-      "path": "/api/v2/feed??{param}",
+      "path": "/api/v2/feed?{query}",
       "apiHelper": "getFeedPosts",
       "source": "src/lib/api.js:2698",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -7933,9 +7912,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/feed/hashtags/{param}??{param} [getFeedHashtagPosts]",
+      "id": "GET /api/v2/feed/hashtags/{param}?{query} [getFeedHashtagPosts]",
       "method": "GET",
-      "path": "/api/v2/feed/hashtags/{param}??{param}",
+      "path": "/api/v2/feed/hashtags/{param}?{query}",
       "apiHelper": "getFeedHashtagPosts",
       "source": "src/lib/api.js:2738",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -7968,9 +7947,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/feed/hashtags/search??{param} [getFeedHashtags]",
+      "id": "GET /api/v2/feed/hashtags/search?{query} [getFeedHashtags]",
       "method": "GET",
-      "path": "/api/v2/feed/hashtags/search??{param}",
+      "path": "/api/v2/feed/hashtags/search?{query}",
       "apiHelper": "getFeedHashtags",
       "source": "src/lib/api.js:2725",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -8002,9 +7981,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/feed/hashtags/trending??{param} [getFeedHashtags]",
+      "id": "GET /api/v2/feed/hashtags/trending?{query} [getFeedHashtags]",
       "method": "GET",
-      "path": "/api/v2/feed/hashtags/trending??{param}",
+      "path": "/api/v2/feed/hashtags/trending?{query}",
       "apiHelper": "getFeedHashtags",
       "source": "src/lib/api.js:2727",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -8472,9 +8451,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/gamification/badges??{param} [getAllBadges]",
+      "id": "GET /api/v2/gamification/badges?{query} [getAllBadges]",
       "method": "GET",
-      "path": "/api/v2/gamification/badges??{param}",
+      "path": "/api/v2/gamification/badges?{query}",
       "apiHelper": "getAllBadges",
       "source": "src/lib/api.js:2899",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -9180,9 +9159,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/goals??{param} [getGoals]",
+      "id": "GET /api/v2/goals?{query} [getGoals]",
       "method": "GET",
-      "path": "/api/v2/goals??{param}",
+      "path": "/api/v2/goals?{query}",
       "apiHelper": "getGoals",
       "source": "src/lib/api.js:1047",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -9500,9 +9479,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/goals/{param}/history??{param} [callGoalApi]",
+      "id": "GET /api/v2/goals/{param}/history?{query} [callGoalApi]",
       "method": "GET",
-      "path": "/api/v2/goals/{param}/history??{param}",
+      "path": "/api/v2/goals/{param}/history?{query}",
       "apiHelper": "callGoalApi",
       "source": "src/routes/goals.js:963",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -9712,9 +9691,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/goals/discover??{param} [callGoalApi]",
+      "id": "GET /api/v2/goals/discover?{query} [callGoalApi]",
       "method": "GET",
-      "path": "/api/v2/goals/discover??{param}",
+      "path": "/api/v2/goals/discover?{query}",
       "apiHelper": "callGoalApi",
       "source": "src/routes/goals.js:776",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -9785,9 +9764,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/goals/mentoring??{param} [callGoalApi]",
+      "id": "GET /api/v2/goals/mentoring?{query} [callGoalApi]",
       "method": "GET",
-      "path": "/api/v2/goals/mentoring??{param}",
+      "path": "/api/v2/goals/mentoring?{query}",
       "apiHelper": "callGoalApi",
       "source": "src/routes/goals.js:772",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -9821,9 +9800,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/goals/templates??{param} [callGoalApi]",
+      "id": "GET /api/v2/goals/templates?{query} [callGoalApi]",
       "method": "GET",
-      "path": "/api/v2/goals/templates??{param}",
+      "path": "/api/v2/goals/templates?{query}",
       "apiHelper": "callGoalApi",
       "source": "src/routes/goals.js:739",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -9929,9 +9908,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/group-exchanges??{param} [callGroupExchangeApi]",
+      "id": "GET /api/v2/group-exchanges?{query} [callGroupExchangeApi]",
       "method": "GET",
-      "path": "/api/v2/group-exchanges??{param}",
+      "path": "/api/v2/group-exchanges?{query}",
       "apiHelper": "callGroupExchangeApi",
       "source": "src/routes/group-exchanges.js:178",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -10210,9 +10189,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/groups??{param} [getGroups]",
+      "id": "GET /api/v2/groups?{query} [getGroups]",
       "method": "GET",
-      "path": "/api/v2/groups??{param}",
+      "path": "/api/v2/groups?{query}",
       "apiHelper": "getGroups",
       "source": "src/lib/api.js:2484",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -10952,9 +10931,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/groups/{param}/members??{param} [getGroupMembers]",
+      "id": "GET /api/v2/groups/{param}/members?{query} [getGroupMembers]",
       "method": "GET",
-      "path": "/api/v2/groups/{param}/members??{param}",
+      "path": "/api/v2/groups/{param}/members?{query}",
       "apiHelper": "getGroupMembers",
       "source": "src/lib/api.js:2536",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -11225,9 +11204,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/help/faqs??{param} [getHelpFaqs]",
+      "id": "GET /api/v2/help/faqs?{query} [getHelpFaqs]",
       "method": "GET",
-      "path": "/api/v2/help/faqs??{param}",
+      "path": "/api/v2/help/faqs?{query}",
       "apiHelper": "getHelpFaqs",
       "source": "src/lib/api.js:760",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -11439,6 +11418,42 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
+      "id": "POST /api/v2/ideation-campaigns/{param}/challenges [callIdeationApi]",
+      "method": "POST",
+      "path": "/api/v2/ideation-campaigns/{param}/challenges",
+      "apiHelper": "callIdeationApi",
+      "source": "src/routes/ideation-actions.js:404",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "path:id",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/ideation-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/ideation-campaigns/{id}/challenges",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Ideation-campaigns"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/ideation-actions.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/runtime/ideation-campaign-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
       "id": "DELETE /api/v2/ideation-campaigns/{param}/challenges/{param} [callIdeationApi]",
       "method": "DELETE",
       "path": "/api/v2/ideation-campaigns/{param}/challenges/{param}",
@@ -11463,38 +11478,6 @@
         "tags": [
           "Ideation-campaigns"
         ]
-      },
-      "frontendConsumers": [
-        "src/routes/ideation-actions.js"
-      ],
-      "tests": [
-        "tests/api.test.js",
-        "tests/runtime/ideation-campaign-mutation.spec.js",
-        "tests/shared-accessible-shell.test.js"
-      ],
-      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
-    },
-    {
-      "id": "POST /api/v2/ideation-campaigns/0/challenges [callIdeationApi]",
-      "method": "POST",
-      "path": "/api/v2/ideation-campaigns/0/challenges",
-      "apiHelper": "callIdeationApi",
-      "source": "src/routes/ideation-actions.js:400",
-      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
-      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
-      "requestShape": "JSON caller payload; validate against Laravel operation",
-      "responseShape": "JSON/text response via ApiError-aware request",
-      "statusCodes": [],
-      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
-      "redirects": "consumer-controlled: src/routes/ideation-actions.js",
-      "sideEffects": "state-changing; disposable-environment runtime proof required",
-      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
-      "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
-        "operationId": "",
-        "controllerAction": "",
-        "tags": []
       },
       "frontendConsumers": [
         "src/routes/ideation-actions.js"
@@ -11799,7 +11782,7 @@
       "method": "POST",
       "path": "/api/v2/ideation-challenges/{param}/ideas",
       "apiHelper": "callIdeationApi",
-      "source": "src/routes/ideation-actions.js:440",
+      "source": "src/routes/ideation-actions.js:444",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
       "requestShape": "path:id",
@@ -11943,7 +11926,7 @@
       "method": "PUT",
       "path": "/api/v2/ideation-challenges/{param}/outcome",
       "apiHelper": "callIdeationApi",
-      "source": "src/routes/ideation-actions.js:413",
+      "source": "src/routes/ideation-actions.js:417",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
       "requestShape": "path:id",
@@ -12015,7 +11998,7 @@
       "method": "DELETE",
       "path": "/api/v2/ideation-comments/{param}",
       "apiHelper": "callIdeationApi",
-      "source": "src/routes/ideation-actions.js:469",
+      "source": "src/routes/ideation-actions.js:473",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
       "requestShape": "path:id",
@@ -12051,7 +12034,7 @@
       "method": "DELETE",
       "path": "/api/v2/ideation-ideas/{param}",
       "apiHelper": "callIdeationApi",
-      "source": "src/routes/ideation-actions.js:525",
+      "source": "src/routes/ideation-actions.js:529",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
       "requestShape": "path:id",
@@ -12123,7 +12106,7 @@
       "method": "POST",
       "path": "/api/v2/ideation-ideas/{param}/comments",
       "apiHelper": "callIdeationApi",
-      "source": "src/routes/ideation-actions.js:454",
+      "source": "src/routes/ideation-actions.js:458",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
       "requestShape": "path:id",
@@ -12195,7 +12178,7 @@
       "method": "POST",
       "path": "/api/v2/ideation-ideas/{param}/convert-to-group",
       "apiHelper": "callIdeationApi",
-      "source": "src/routes/ideation-actions.js:553",
+      "source": "src/routes/ideation-actions.js:557",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
       "requestShape": "path:id",
@@ -12231,7 +12214,7 @@
       "method": "PUT",
       "path": "/api/v2/ideation-ideas/{param}/draft",
       "apiHelper": "callIdeationApi",
-      "source": "src/routes/ideation-actions.js:427",
+      "source": "src/routes/ideation-actions.js:431",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
       "requestShape": "path:id",
@@ -12303,7 +12286,7 @@
       "method": "POST",
       "path": "/api/v2/ideation-ideas/{param}/media",
       "apiHelper": "callIdeationApi",
-      "source": "src/routes/ideation-actions.js:539",
+      "source": "src/routes/ideation-actions.js:543",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
       "requestShape": "path:id",
@@ -12339,7 +12322,7 @@
       "method": "PUT",
       "path": "/api/v2/ideation-ideas/{param}/status",
       "apiHelper": "callIdeationApi",
-      "source": "src/routes/ideation-actions.js:511",
+      "source": "src/routes/ideation-actions.js:515",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
       "requestShape": "path:id",
@@ -12375,7 +12358,7 @@
       "method": "POST",
       "path": "/api/v2/ideation-ideas/{param}/vote",
       "apiHelper": "callIdeationApi",
-      "source": "src/routes/ideation-actions.js:483",
+      "source": "src/routes/ideation-actions.js:487",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
       "requestShape": "path:id",
@@ -12553,9 +12536,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/jobs??{param} [getJobs]",
+      "id": "GET /api/v2/jobs?{query} [getJobs]",
       "method": "GET",
-      "path": "/api/v2/jobs??{param}",
+      "path": "/api/v2/jobs?{query}",
       "apiHelper": "getJobs",
       "source": "src/lib/api.js:1294",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -13347,41 +13330,6 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/jobs/applications?limit=200 [callJobApi]",
-      "method": "GET",
-      "path": "/api/v2/jobs/applications?limit=200",
-      "apiHelper": "callJobApi",
-      "source": "src/routes/jobs.js:1751",
-      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
-      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
-      "requestShape": "query/path parameters; no request body expected",
-      "responseShape": "JSON/text response via ApiError-aware request",
-      "statusCodes": [],
-      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
-      "redirects": "consumer-controlled: src/routes/jobs.js",
-      "sideEffects": "read-only by HTTP method",
-      "cleanup": "not applicable",
-      "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
-        "operationId": "",
-        "controllerAction": "",
-        "tags": []
-      },
-      "frontendConsumers": [
-        "src/routes/jobs.js"
-      ],
-      "tests": [
-        "tests/api.test.js",
-        "tests/jobs-status-localization.test.js",
-        "tests/jobs-title-localization.test.js",
-        "tests/laravel-runtime-smoke.test.js",
-        "tests/runtime/jobs-mutation.spec.js",
-        "tests/shared-accessible-shell.test.js"
-      ],
-      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
-    },
-    {
       "id": "PUT /api/v2/jobs/applications/{param} [callJobApi]",
       "method": "PUT",
       "path": "/api/v2/jobs/applications/{param}",
@@ -13579,6 +13527,44 @@
         "operationId": "",
         "controllerAction": "",
         "tags": []
+      },
+      "frontendConsumers": [
+        "src/routes/jobs.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/jobs-status-localization.test.js",
+        "tests/jobs-title-localization.test.js",
+        "tests/runtime/jobs-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "GET /api/v2/jobs/my-applications?per_page=100 [callJobApi]",
+      "method": "GET",
+      "path": "/api/v2/jobs/my-applications?per_page=100",
+      "apiHelper": "callJobApi",
+      "source": "src/routes/jobs.js:1751",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "query/path parameters; no request body expected",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/jobs.js",
+      "sideEffects": "read-only by HTTP method",
+      "cleanup": "not applicable",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/jobs/my-applications",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Jobs"
+        ]
       },
       "frontendConsumers": [
         "src/routes/jobs.js"
@@ -13798,9 +13784,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/kb??{param} [getKnowledgeBaseArticles]",
+      "id": "GET /api/v2/kb?{query} [getKnowledgeBaseArticles]",
       "method": "GET",
-      "path": "/api/v2/kb??{param}",
+      "path": "/api/v2/kb?{query}",
       "apiHelper": "getKnowledgeBaseArticles",
       "source": "src/lib/api.js:744",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -13866,9 +13852,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/kb/search??{param} [getKnowledgeBaseArticles]",
+      "id": "GET /api/v2/kb/search?{query} [getKnowledgeBaseArticles]",
       "method": "GET",
-      "path": "/api/v2/kb/search??{param}",
+      "path": "/api/v2/kb/search?{query}",
       "apiHelper": "getKnowledgeBaseArticles",
       "source": "src/lib/api.js:736",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -13969,9 +13955,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/listings??{param} [getListings]",
+      "id": "GET /api/v2/listings?{query} [getListings]",
       "method": "GET",
-      "path": "/api/v2/listings??{param}",
+      "path": "/api/v2/listings?{query}",
       "apiHelper": "getListings",
       "source": "src/lib/api.js:568",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -14425,9 +14411,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/listings/tags/popular??{param} [getPopularListingTags]",
+      "id": "GET /api/v2/listings/tags/popular?{query} [getPopularListingTags]",
       "method": "GET",
-      "path": "/api/v2/listings/tags/popular??{param}",
+      "path": "/api/v2/listings/tags/popular?{query}",
       "apiHelper": "getPopularListingTags",
       "source": "src/lib/api.js:615",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -15864,9 +15850,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/me/collections/{param}/items??{param} [getSavedCollectionItems]",
+      "id": "GET /api/v2/me/collections/{param}/items?{query} [getSavedCollectionItems]",
       "method": "GET",
-      "path": "/api/v2/me/collections/{param}/items??{param}",
+      "path": "/api/v2/me/collections/{param}/items?{query}",
       "apiHelper": "getSavedCollectionItems",
       "source": "src/lib/api.js:1423",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -15958,9 +15944,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "DELETE /api/v2/me/saved-items??{param} [unsaveSavedItem]",
+      "id": "DELETE /api/v2/me/saved-items?{query} [unsaveSavedItem]",
       "method": "DELETE",
-      "path": "/api/v2/me/saved-items??{param}",
+      "path": "/api/v2/me/saved-items?{query}",
       "apiHelper": "unsaveSavedItem",
       "source": "src/lib/api.js:1387",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -16020,9 +16006,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/me/saved-items/check??{param} [checkSavedItem]",
+      "id": "GET /api/v2/me/saved-items/check?{query} [checkSavedItem]",
       "method": "GET",
-      "path": "/api/v2/me/saved-items/check??{param}",
+      "path": "/api/v2/me/saved-items/check?{query}",
       "apiHelper": "checkSavedItem",
       "source": "src/lib/api.js:1406",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -16312,9 +16298,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/members/nearby??{param} [getMembersNearby]",
+      "id": "GET /api/v2/members/nearby?{query} [getMembersNearby]",
       "method": "GET",
-      "path": "/api/v2/members/nearby??{param}",
+      "path": "/api/v2/members/nearby?{query}",
       "apiHelper": "getMembersNearby",
       "source": "src/lib/api.js:3077",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -16546,9 +16532,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/messages??{param} [getConversations]",
+      "id": "GET /api/v2/messages?{query} [getConversations]",
       "method": "GET",
-      "path": "/api/v2/messages??{param}",
+      "path": "/api/v2/messages?{query}",
       "apiHelper": "getConversations",
       "source": "src/lib/api.js:2126",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -16895,9 +16881,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/newsletter/unsubscribe??{param} [callNewsletterApi]",
+      "id": "GET /api/v2/newsletter/unsubscribe?{query} [callNewsletterApi]",
       "method": "GET",
-      "path": "/api/v2/newsletter/unsubscribe??{param}",
+      "path": "/api/v2/newsletter/unsubscribe?{query}",
       "apiHelper": "callNewsletterApi",
       "source": "src/routes/public-info.js:147",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -16963,9 +16949,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/notifications??{param} [getNotifications]",
+      "id": "GET /api/v2/notifications?{query} [getNotifications]",
       "method": "GET",
-      "path": "/api/v2/notifications??{param}",
+      "path": "/api/v2/notifications?{query}",
       "apiHelper": "getNotifications",
       "source": "src/lib/api.js:2370",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -17136,9 +17122,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/notifications/grouped??{param} [getGroupedNotifications]",
+      "id": "GET /api/v2/notifications/grouped?{query} [getGroupedNotifications]",
       "method": "GET",
-      "path": "/api/v2/notifications/grouped??{param}",
+      "path": "/api/v2/notifications/grouped?{query}",
       "apiHelper": "getGroupedNotifications",
       "source": "src/lib/api.js:2383",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -17548,6 +17534,7 @@
         "src/routes/podcast-actions.js"
       ],
       "tests": [
+        "tests/api-consumer-method-spoof.test.js",
         "tests/api.test.js",
         "tests/runtime/groups-mutation.spec.js",
         "tests/runtime/podcasts-mutation.spec.js",
@@ -17587,6 +17574,7 @@
         "src/routes/podcast-actions.js"
       ],
       "tests": [
+        "tests/api-consumer-method-spoof.test.js",
         "tests/api.test.js",
         "tests/runtime/groups-mutation.spec.js",
         "tests/runtime/podcasts-mutation.spec.js",
@@ -17626,6 +17614,7 @@
         "src/routes/podcasts.js"
       ],
       "tests": [
+        "tests/api-consumer-method-spoof.test.js",
         "tests/api.test.js",
         "tests/runtime/groups-mutation.spec.js",
         "tests/runtime/podcasts-mutation.spec.js",
@@ -17666,6 +17655,7 @@
         "src/routes/podcast-actions.js"
       ],
       "tests": [
+        "tests/api-consumer-method-spoof.test.js",
         "tests/api.test.js",
         "tests/runtime/groups-mutation.spec.js",
         "tests/runtime/podcasts-mutation.spec.js",
@@ -18089,9 +18079,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/polls??{param} [getPolls]",
+      "id": "GET /api/v2/polls?{query} [getPolls]",
       "method": "GET",
-      "path": "/api/v2/polls??{param}",
+      "path": "/api/v2/polls?{query}",
       "apiHelper": "getPolls",
       "source": "src/lib/api.js:1634",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -18444,9 +18434,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/reactions/{param}/{param}/users/{param}??{param} [getReactors]",
+      "id": "GET /api/v2/reactions/{param}/{param}/users/{param}?{query} [getReactors]",
       "method": "GET",
-      "path": "/api/v2/reactions/{param}/{param}/users/{param}??{param}",
+      "path": "/api/v2/reactions/{param}/{param}/users/{param}?{query}",
       "apiHelper": "getReactors",
       "source": "src/lib/api.js:1620",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -18509,9 +18499,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/resources??{param} [getResources]",
+      "id": "GET /api/v2/resources?{query} [getResources]",
       "method": "GET",
-      "path": "/api/v2/resources??{param}",
+      "path": "/api/v2/resources?{query}",
       "apiHelper": "getResources",
       "source": "src/lib/api.js:1472",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -18886,9 +18876,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/reviews/user/{param}??{param} [getUserReviews]",
+      "id": "GET /api/v2/reviews/user/{param}?{query} [getUserReviews]",
       "method": "GET",
-      "path": "/api/v2/reviews/user/{param}??{param}",
+      "path": "/api/v2/reviews/user/{param}?{query}",
       "apiHelper": "getUserReviews",
       "source": "src/lib/api.js:3088",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -19153,9 +19143,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/search??{param} [searchV2]",
+      "id": "GET /api/v2/search?{query} [searchV2]",
       "method": "GET",
-      "path": "/api/v2/search??{param}",
+      "path": "/api/v2/search?{query}",
       "apiHelper": "searchV2",
       "source": "src/lib/api.js:3001",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -19430,9 +19420,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/skills/members??{param} [getSkillMembers]",
+      "id": "GET /api/v2/skills/members?{query} [getSkillMembers]",
       "method": "GET",
-      "path": "/api/v2/skills/members??{param}",
+      "path": "/api/v2/skills/members?{query}",
       "apiHelper": "getSkillMembers",
       "source": "src/lib/api.js:1500",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -19491,9 +19481,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/tenant/bootstrap??{param} [getTenantBootstrap]",
+      "id": "GET /api/v2/tenant/bootstrap?{query} [getTenantBootstrap]",
       "method": "GET",
-      "path": "/api/v2/tenant/bootstrap??{param}",
+      "path": "/api/v2/tenant/bootstrap?{query}",
       "apiHelper": "getTenantBootstrap",
       "source": "src/lib/api.js:301",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -19537,9 +19527,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/tenants??{param} [getTenants]",
+      "id": "GET /api/v2/tenants?{query} [getTenants]",
       "method": "GET",
-      "path": "/api/v2/tenants??{param}",
+      "path": "/api/v2/tenants?{query}",
       "apiHelper": "getTenants",
       "source": "src/lib/api.js:268",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -19604,9 +19594,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/users??{param} [getMembersV2]",
+      "id": "GET /api/v2/users?{query} [getMembersV2]",
       "method": "GET",
-      "path": "/api/v2/users??{param}",
+      "path": "/api/v2/users?{query}",
       "apiHelper": "getMembersV2",
       "source": "src/lib/api.js:3062",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -19639,9 +19629,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/users??{param} [getUsers]",
+      "id": "GET /api/v2/users?{query} [getUsers]",
       "method": "GET",
-      "path": "/api/v2/users??{param}",
+      "path": "/api/v2/users?{query}",
       "apiHelper": "getUsers",
       "source": "src/lib/api.js:480",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -19746,9 +19736,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/users/{param}/appreciations??{param} [getUserAppreciations]",
+      "id": "GET /api/v2/users/{param}/appreciations?{query} [getUserAppreciations]",
       "method": "GET",
-      "path": "/api/v2/users/{param}/appreciations??{param}",
+      "path": "/api/v2/users/{param}/appreciations?{query}",
       "apiHelper": "getUserAppreciations",
       "source": "src/lib/api.js:1440",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -19906,9 +19896,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/users/{param}/listings??{param} [getUserListings]",
+      "id": "GET /api/v2/users/{param}/listings?{query} [getUserListings]",
       "method": "GET",
-      "path": "/api/v2/users/{param}/listings??{param}",
+      "path": "/api/v2/users/{param}/listings?{query}",
       "apiHelper": "getUserListings",
       "source": "src/lib/api.js:517",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -20045,7 +20035,7 @@
       "method": "GET",
       "path": "/api/v2/users/blocked",
       "apiHelper": "callProfileApi",
-      "source": "src/routes/profile.js:1685",
+      "source": "src/routes/profile.js:1690",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
       "requestShape": "query/path parameters; no request body expected",
@@ -20250,6 +20240,49 @@
       ],
       "tests": [
         "tests/api.test.js",
+        "tests/settings-contract-parity.test.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "GET /api/v2/users/me/activity/dashboard [callProfileApi]",
+      "method": "GET",
+      "path": "/api/v2/users/me/activity/dashboard",
+      "apiHelper": "callProfileApi",
+      "source": "src/routes/activity.js:281",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "query/path parameters; no request body expected",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/activity.js",
+      "sideEffects": "read-only by HTTP method",
+      "cleanup": "not applicable",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/users/me/activity/dashboard",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Users"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/activity.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/auth-localization.test.js",
+        "tests/profile-account-deletion-contract.test.js",
+        "tests/profile-email-security-contract.test.js",
+        "tests/profile-status-localization.test.js",
+        "tests/profile-tenant-locales.test.js",
+        "tests/profile-two-factor-contract.test.js",
+        "tests/runtime/profile-skills-mutation.spec.js",
         "tests/settings-contract-parity.test.js",
         "tests/shared-accessible-shell.test.js"
       ],
@@ -21408,9 +21441,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/users/search??{param} [searchUsers]",
+      "id": "GET /api/v2/users/search?{query} [searchUsers]",
       "method": "GET",
-      "path": "/api/v2/users/search??{param}",
+      "path": "/api/v2/users/search?{query}",
       "apiHelper": "searchUsers",
       "source": "src/lib/api.js:490",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -22544,9 +22577,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/volunteering/my-organisations??{param} [callVolunteeringApi]",
+      "id": "GET /api/v2/volunteering/my-organisations?{query} [callVolunteeringApi]",
       "method": "GET",
-      "path": "/api/v2/volunteering/my-organisations??{param}",
+      "path": "/api/v2/volunteering/my-organisations?{query}",
       "apiHelper": "callVolunteeringApi",
       "source": "src/routes/volunteering-actions.js:2100",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -22584,9 +22617,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/volunteering/my-organisations??{param} [getMyVolunteerOrganisations]",
+      "id": "GET /api/v2/volunteering/my-organisations?{query} [getMyVolunteerOrganisations]",
       "method": "GET",
-      "path": "/api/v2/volunteering/my-organisations??{param}",
+      "path": "/api/v2/volunteering/my-organisations?{query}",
       "apiHelper": "getMyVolunteerOrganisations",
       "source": "src/lib/api.js:787",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -22698,9 +22731,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/volunteering/opportunities??{param} [getOrganisationOpportunities]",
+      "id": "GET /api/v2/volunteering/opportunities?{query} [getOrganisationOpportunities]",
       "method": "GET",
-      "path": "/api/v2/volunteering/opportunities??{param}",
+      "path": "/api/v2/volunteering/opportunities?{query}",
       "apiHelper": "getOrganisationOpportunities",
       "source": "src/lib/api.js:720",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -22735,9 +22768,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/volunteering/opportunities??{param} [getVolunteeringOpportunities]",
+      "id": "GET /api/v2/volunteering/opportunities?{query} [getVolunteeringOpportunities]",
       "method": "GET",
-      "path": "/api/v2/volunteering/opportunities??{param}",
+      "path": "/api/v2/volunteering/opportunities?{query}",
       "apiHelper": "getVolunteeringOpportunities",
       "source": "src/lib/api.js:695",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -22884,9 +22917,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/volunteering/organisations??{param} [getVolunteerOrganisations]",
+      "id": "GET /api/v2/volunteering/organisations?{query} [getVolunteerOrganisations]",
       "method": "GET",
-      "path": "/api/v2/volunteering/organisations??{param}",
+      "path": "/api/v2/volunteering/organisations?{query}",
       "apiHelper": "getVolunteerOrganisations",
       "source": "src/lib/api.js:669",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -23136,9 +23169,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/volunteering/organisations/{param}/volunteers??{param} [callVolunteeringApi]",
+      "id": "GET /api/v2/volunteering/organisations/{param}/volunteers?{query} [callVolunteeringApi]",
       "method": "GET",
-      "path": "/api/v2/volunteering/organisations/{param}/volunteers??{param}",
+      "path": "/api/v2/volunteering/organisations/{param}/volunteers?{query}",
       "apiHelper": "callVolunteeringApi",
       "source": "src/routes/volunteering-actions.js:2252",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
@@ -24009,9 +24042,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/wallet/transactions??{param} [getTransactions]",
+      "id": "GET /api/v2/wallet/transactions?{query} [getTransactions]",
       "method": "GET",
-      "path": "/api/v2/wallet/transactions??{param}",
+      "path": "/api/v2/wallet/transactions?{query}",
       "apiHelper": "getTransactions",
       "source": "src/lib/api.js:1321",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",

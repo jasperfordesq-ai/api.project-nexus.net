@@ -2,15 +2,34 @@
 
 Last reviewed: 2026-07-14
 
+Status: **Maintained reference — current comparison method with dated evidence**
+
+Evidence provenance: maintained policy and the latest published backend prose
+were reviewed on 2026-07-14 against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and repository commit
+`9c5fb1a46c40e4986c8f973075164b1d74bd101d`. Dirty backend work is excluded.
+Any older numeric table or narrative without its own exact source pair is a
+historical, provenance-incomplete checkpoint and must not be cited as current.
+
 Laravel source of truth: `C:\platforms\htdocs\staging\openapi.json` plus route
 files under `C:\platforms\htdocs\staging\routes`.
 
-Frontend contract source of truth:
-`C:\platforms\htdocs\staging\react-frontend`.
+Current overall score, baseline SHAs, in-flight boundary, and remaining
+certification gates live only in
+[`CURRENT_ASPNET_CONTRACT_STATUS.md`](CURRENT_ASPNET_CONTRACT_STATUS.md).
+Numbers in dated sections below are point-in-time evidence and never override
+that status file.
+
+Frontend contract consumers are the canonical React client at
+`C:\platforms\htdocs\staging\react-frontend` and the unchanged Web UK client at
+`apps/web-uk`. Web UK is Laravel-first but not yet runtime-certified; Laravel
+routes, OpenAPI, controllers, and workflows remain authoritative for both.
 
 The legacy ASP.NET React copy at `apps/react-frontend/` is no longer the target
-for API design. ASP.NET API parity means the ASP.NET backend can satisfy the API
-calls made by the production Laravel React frontend.
+for API design. Contract compatibility means both unchanged frontend consumers
+can use ASP.NET with Laravel-compatible methods, paths, shapes, status/error
+behavior, auth, tenancy, side effects, jobs, and provider outcomes. Static
+method/path representation is one evidence category, not completion.
 
 ## 2026-07-14 Marketplace Connect Onboarding Refresh
 
@@ -189,7 +208,7 @@ operations matched. Because the Laravel source added 16 operations since the pri
 snapshot, the refreshed global inventory is 2,573/2,608 matched (35 missing), not
 the older 2,567/2,592 snapshot. Route matching alone remains non-certifying.
 
-## Current Source Counts
+## Historical Static Source Counts (2026-07-14)
 
 | Source | Count | Notes |
 | --- | ---: | --- |
@@ -752,9 +771,11 @@ regression coverage for the final three comparator misses:
 `GET /api/v2/admin/volunteering/expenses/{id}/receipt`,
 `GET /api/v2/media/thumbnail`, and
 `POST /api/v2/merchant-onboarding/image`. That checkpoint's comparator reported
-2,436/2,436 source operations matched and 0 missing operations. The current
-2026-07-12 live inventory supersedes it with 2,439/2,583 matched and the 144
-exact missing routes listed above.
+2,436/2,436 source operations matched and 0 missing operations. A later
+2026-07-12 checkpoint superseded it with 2,439/2,583 matched and 144 exact
+missing routes. Both are historical; the dated static source-count section at
+the top of this document and `CURRENT_ASPNET_CONTRACT_STATUS.md` govern current
+representation and scoring.
 Static method/path coverage alone does not prove the deeper contract, schema,
 service side-effect, and runtime smoke checks tracked in the module map and gap
 register.

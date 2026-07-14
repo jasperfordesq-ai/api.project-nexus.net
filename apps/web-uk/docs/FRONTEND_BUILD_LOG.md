@@ -1,5 +1,7 @@
 # Frontend Build Log
 
+Status: **Historical checkpoint — retained implementation log, not current status**
+
 This document tracks the implementation progress of the NEXUS UK Frontend.
 
 > **Historical implementation log:** Phase labels and completion statements in

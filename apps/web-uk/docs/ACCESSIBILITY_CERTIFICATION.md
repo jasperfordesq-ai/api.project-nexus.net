@@ -1,5 +1,7 @@
 # Web UK accessibility verification
 
+Status: **Maintained reference — current verification method, not a conformance certificate**
+
 This repository has an automated browser accessibility gate for representative
 public and authenticated Laravel-first Web UK pages. It is a release signal,
 not a certificate of complete WCAG conformance.
@@ -37,8 +39,10 @@ against a fresh current-checkout listener and Laravel at
 `http://127.0.0.1:8088`. After a missing bearer token on member-only Knowledge
 Base calls was corrected and focused proof passed, the uninterrupted aggregate
 passed `87/87` in `1,344.8` seconds with no skipped or failed cases. This is an
-automated release signal, not manual keyboard or assistive-technology
-certification. Generated evidence remains below the ignored
+implementation-history result only: because it used the ordinary Laravel
+environment, it is invalid as current runtime or release certification. It is
+also not manual keyboard or assistive-technology certification. Generated
+evidence remains below the ignored
 `artifacts/accessibility/` directory.
 
 On 2026-07-14 an attempted current aggregate against ordinary local Laravel was

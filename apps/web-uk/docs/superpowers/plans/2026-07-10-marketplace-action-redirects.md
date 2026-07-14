@@ -1,5 +1,8 @@
 # Marketplace Action Redirect Tenant Awareness
 
+> **Historical plan:** Retained for implementation history only. Do not use it
+> as a current queue; read `../../CURRENT_LARAVEL_FIRST_PARITY_STATUS.md`.
+
 ## Goal
 
 Move `apps/web-uk/src/routes/marketplace-actions.js` POST exits behind the

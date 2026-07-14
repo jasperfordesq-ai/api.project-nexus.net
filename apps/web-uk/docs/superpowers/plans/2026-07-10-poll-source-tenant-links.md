@@ -1,5 +1,11 @@
 # Poll Source Tenant Links Implementation Plan
 
+> **Historical plan:** Do not execute this plan as a current queue. Read
+> `../../CURRENT_LARAVEL_FIRST_PARITY_STATUS.md` first. Any runtime smoke in
+> this file is stateful and may run only against a separately provisioned,
+> verified disposable Laravel environment, never the ordinary
+> production-derived environment.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Keep every local poll link, button target, and no-JS form action source-auditable through `urlFor()` so poll pages remain tenant-aware under shared `/accessible`, slugless custom-domain, and parent-domain child contexts.

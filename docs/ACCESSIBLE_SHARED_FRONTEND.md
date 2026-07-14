@@ -1,6 +1,8 @@
 # Accessible Shared Frontend Direction
 
-Last reviewed: 2026-07-13
+Last reviewed: 2026-07-14
+
+Status: **Maintained reference — current shared-frontend direction, not readiness status**
 
 ## Decision
 
@@ -50,6 +52,7 @@ or complete API/side-effect compatibility.
 
 Current local preparation docs in `apps/web-uk/docs/`:
 
+- `CURRENT_LARAVEL_FIRST_PARITY_STATUS.md` (read first; only current score and queue)
 - `LARAVEL_ACCESSIBLE_ROUTE_MATRIX.md`
 - `BLADE_COMPONENT_PORT_AUDIT.md`
 - `BACKEND_SWITCHING_CONTRACT.md`

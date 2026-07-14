@@ -1,114 +1,118 @@
-# Project NEXUS .NET Architecture
+# Project NEXUS Contract-Correct Architecture
 
-Last reviewed: 2026-07-05
+Last reviewed: 2026-07-14
 
-This is the maintained architecture map for the ASP.NET Core implementation.
-Laravel at `C:\platforms\htdocs\staging` remains the parity source of truth.
+Status: **Maintained reference — canonical architecture; no current score**
 
-## System Shape
+This is the maintained product and runtime boundary map. Laravel at
+`C:\platforms\htdocs\staging` is the production implementation and contract
+source of truth. ASP.NET is an experimental second backend being made
+contract-correct for the same frontend consumers.
+
+## Two-Frontends-By-Two-Backends Model
+
+The target is not a Laravel-like ASP.NET API or separate frontend forks. Both
+unchanged frontends must ultimately run against either backend by configuration
+only:
+
+| Frontend | Laravel backend | ASP.NET backend |
+| --- | --- | --- |
+| Canonical React at `C:\platforms\htdocs\staging\react-frontend` | Production source-of-truth baseline | Same methods, paths, payloads, envelopes, statuses, auth, tenancy, side effects, and workflows; runtime-certified |
+| Shared accessible Web UK at `apps/web-uk` | Laravel-first implementation and certification target | Same unchanged Web UK code and page flows; runtime-certified after backend contract parity |
 
 ```mermaid
 flowchart TD
-    users["Members and admins"]
-    react["Canonical React SPA\nLaravel repo react-frontend"]
-    legacyReact["Legacy frozen React copy\napps/react-frontend"]
-    webuk["Accessible frontend candidate\napps/web-uk"]
-    api["ASP.NET Core 8 API\nsrc/Nexus.Api"]
-    services["Domain services\nsrc/Nexus.Api/Services"]
-    db["PostgreSQL via EF Core"]
-    messaging["SignalR / RabbitMQ messaging"]
-    external["Stripe, email, push, AI, federation providers"]
+    users["Members and administrators"]
+    react["Canonical React frontend\nLaravel repository"]
+    webuk["Shared accessible Web UK frontend\napps/web-uk"]
+    legacy["Frozen historical React copy\napps/react-frontend"]
+    laravel["Laravel backend\nproduction contract source"]
+    aspnet["ASP.NET Core 8 backend\nexperimental contract-correct twin"]
+    laravelBlade["Laravel Blade accessible UI\nvisual and workflow source"]
+    services["ASP.NET domain services"]
+    database["ASP.NET PostgreSQL via EF Core"]
+    integrations["Messaging and external providers"]
 
     users --> react
-    legacyReact -. historical reference .-> api
     users --> webuk
-    react --> api
-    webuk --> api
-    api --> services
-    services --> db
-    services --> messaging
-    services --> external
+    react -->|"current production"| laravel
+    webuk -->|"Laravel-first certification"| laravel
+    react -. "target: configuration-only switch" .-> aspnet
+    webuk -. "target: configuration-only switch" .-> aspnet
+    laravelBlade -. "browser experience contract" .-> webuk
+    legacy -. "historical reference only" .-> aspnet
+    aspnet --> services
+    services --> database
+    services --> integrations
 ```
 
-## Runtime Boundaries
+Dashed frontend-to-ASP.NET edges are target certification gates, not a claim
+that either combination is currently production-ready. Route representation is
+only inventory evidence; it does not certify payload semantics, security,
+persistence, providers, or workflows.
+
+## Source-Of-Truth Boundaries
 
 | Surface | Primary path | Responsibility |
 | --- | --- | --- |
-| API | `src/Nexus.Api/Controllers`, `src/Nexus.Api/Program.cs` | JSON API, auth, tenant resolution, admin routes, health, Swagger. |
-| Domain services | `src/Nexus.Api/Services` | Business rules, integrations, background-friendly operations. |
-| Data model | `src/Nexus.Api/Entities`, `src/Nexus.Api/Data`, `src/Nexus.Api/Migrations` | EF entities, configurations, tenant-aware persistence, migrations. |
-| Contracts | `src/Nexus.Contracts` | Shared DTOs/contracts where used outside API internals. |
-| Messaging | `src/Nexus.Messaging`, `tests/Nexus.Messaging.Tests` | RabbitMQ publishing and messaging integration tests. |
-| Canonical React frontend | `C:\platforms\htdocs\staging\react-frontend` | Production Laravel React frontend and source of truth for ASP.NET API compatibility. |
-| Legacy React copy | `apps/react-frontend` | Frozen historical ASP.NET React fork. Do not modify unless explicitly approved. |
-| Accessible frontend | `apps/web-uk` | .NET candidate for Laravel `accessible-frontend/` and `routes/govuk-alpha*` parity. |
-| Standalone admin | `apps/admin` | Secondary admin surface, not the main Laravel parity target. |
+| Laravel backend | `C:\platforms\htdocs\staging` | Production behavior and API/workflow contract; read-only from this repository. |
+| Canonical React frontend | `C:\platforms\htdocs\staging\react-frontend` | Production API consumer and call-site contract source; unchanged for ASP.NET compatibility. |
+| Laravel accessible UI/routes | `C:\platforms\htdocs\staging\accessible-frontend` and `routes/govuk-alpha*` | Browser experience, content, route, form, redirect, accessibility, and workflow source for Web UK; read-only. |
+| ASP.NET API | `src/Nexus.Api/Controllers`, `src/Nexus.Api/Program.cs` | Contract-compatible JSON API, auth, tenant resolution, admin routes, health, and OpenAPI. |
+| ASP.NET domain services | `src/Nexus.Api/Services` | Business rules, integrations, and background operations. |
+| ASP.NET data model | `src/Nexus.Api/Entities`, `src/Nexus.Api/Data`, `src/Nexus.Api/Migrations` | Tenant-aware EF persistence and forward-only migrations. |
+| Shared contracts | `src/Nexus.Contracts` | DTOs/contracts used outside API internals. |
+| Messaging | `src/Nexus.Messaging`, `tests/Nexus.Messaging.Tests` | RabbitMQ publishing and messaging integration proof. |
+| Shared accessible Web UK | `apps/web-uk` | Laravel-first accessible implementation; must remain backend-neutral. |
+| Legacy React copy | `apps/react-frontend` | Frozen historical ASP.NET fork; do not modify without explicit approval. |
+| Standalone admin | `apps/admin` | Secondary surface, not the canonical Laravel parity target. |
 
-## Source-Backed Inventory
+## Current-State Evidence
 
-Generated from source on 2026-07-05:
+Fast-changing counts do not belong in this architecture document. Use these
+canonical status sources:
 
-| Area | Count |
-| --- | ---: |
-| C# controllers | 216 |
-| C# service files | 188 |
-| EF entity files | 187 |
-| EF migration classes excluding designers/snapshot | 89 |
-| Static controller operations from `scripts/compare-laravel-api-parity.ps1` | 3,591 |
-| Static EF/migration table names from `scripts/compare-laravel-schema-parity.ps1` | 316 |
-| Static React routes from `scripts/compare-laravel-frontend-parity.ps1` | 462 |
-| Static `apps/web-uk` routes from `scripts/compare-laravel-frontend-parity.ps1` | 136 |
-| React locale directories | 7 |
-| React locale namespaces from `scripts/compare-laravel-localization-parity.ps1` | 280 |
-| C# test files | 248 |
-| React admin TSX files | 302 |
+- `CURRENT_ASPNET_CONTRACT_STATUS.md` for the current ASP.NET fixed-rubric score,
+  evidence SHAs, published-but-unscored work, blockers, and next queue;
+- `../apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md` for the current
+  accessible frontend score, route/API ledgers, certification boundary, and
+  next queue;
+- `FULL_PARITY_REMEDIATION_RUNBOOK.md` for the shared 1000-point rubric and
+  end-to-end completion gate.
 
-The static controller operation count needs normalization through the parity
-script and a future Swagger/OpenAPI export before being used as an API parity
-score. The current static API report found 2,346 matched operations and 83
-missing Laravel source operations.
-
-The static table count needs alias triage before being used as a schema parity
-score. The current schema report found 361 Laravel source tables, 316 .NET table
-names, 126 exact matches, 235 missing Laravel-side names, and 190 .NET-only
-names.
-
-The static frontend route count is a historical route inventory only. The first
-frontend report found 589 Laravel React routes versus 462 legacy .NET React
-routes, with 393 matches and 196 missing Laravel-side React routes. Those React
-counts no longer define the forward development target. The current target is
-backend contract compatibility with the canonical Laravel React frontend. The
-same report found 607 Laravel accessible routes versus 136 `apps/web-uk` routes,
-with 53 matches and 554 missing Laravel-side accessible routes. That accessible
-count is now historical: after the 2026-07-08 Web UK consolidation on `main`,
-`apps/web-uk/docs/generated/accessible-route-matrix.*` reports 608 Laravel
-accessible declarations, 612 local Web UK declarations, 608 exact matches, 0
-missing Laravel routes, 2 extra local exchange workflow routes, and 3 ignored
-infrastructure/helper routes.
-
-The localization report scans all locale/namespace presence and scans English
-keys by default. It found 11 Laravel locales versus 7 .NET locales, 605 Laravel
-locale namespaces versus 280 .NET locale namespaces, and 4,942 missing English
-keys in matched namespaces.
+Historical controller, route, migration, schema, locale, and test counts remain
+available in the dated parity maps and handoff histories. They must not be
+presented as current without regenerating them at named Laravel and ASP.NET
+SHAs.
 
 ## Invariants
 
-- All business data access must preserve tenant isolation.
-- JWT auth, refresh tokens, admin policies, CORS, and FIDO2/WebAuthn rules are
-  platform invariants, not optional parity details.
-- PostgreSQL/EF migrations are the only schema-change path.
-- Production changes require explicit user instruction and the production
-  container guide.
+- Laravel defines the contract; compatibility failures are fixed in ASP.NET,
+  not hidden by frontend backend-specific branches.
+- Both canonical frontends remain unchanged when switching backend. Web UK may
+  select an API origin/configuration, but must not fork templates, validation,
+  redirects, content, or workflows by backend.
+- All business data access preserves tenant isolation.
+- JWT auth, refresh tokens, database-backed privilege, CORS, and
+  FIDO2/WebAuthn rules are contract and security invariants.
+- PostgreSQL/EF migrations are the only ASP.NET schema-change path.
+- The ordinary local Laravel database is a confidential production-derived,
+  read-only snapshot. Mutation, upload, download, and destructive certification
+  require a separately provisioned, verified disposable Laravel environment.
+- Production changes require explicit user instruction and prior review of
+  `.claude/production-containers.md`.
 - AGPL and NOTICE attribution must be preserved in source, UI, and packaging.
-- `apps/react-frontend/` is frozen as a legacy React copy. Do not modify
-  frontend files unless explicitly approved.
-- ASP.NET backend routes must conform to the production Laravel React frontend
-  contract, including `/api/v2` aliases, request/response envelopes, auth,
-  tenant, upload, realtime config, and status-code behavior.
 
-## Parity Boundary
+## What Completion Means
 
-Full parity includes API behavior, workflows, frontend routes, admin and
-super-admin surfaces, accessible HTML behavior, integrations, queues/jobs,
-localization, tenant settings, and operational documentation. Previous module
-exclusions are now tracked gaps in `LARAVEL_PARITY_MAP.md`.
+Full completion requires all four frontend/backend combinations in the table to
+satisfy their declared gate. Static route equality alone is insufficient.
+Methods and paths, aliases, request bodies, multipart fields, response
+envelopes, pagination, validation/status behavior, auth and tenant behavior,
+feature flags, persistence and side effects, uploads/downloads, realtime
+configuration, jobs, providers, localization, security, and operational proof
+must be compatible and runtime-certified.
+
+The fixed scoring rules and exact acceptance evidence are maintained in
+`FULL_PARITY_REMEDIATION_RUNBOOK.md`; current scores are maintained only in the
+two workstream status documents above.

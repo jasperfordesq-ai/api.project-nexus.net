@@ -1,6 +1,16 @@
 # Frontend Route Parity Map
 
-Last reviewed: 2026-07-13
+Last reviewed: 2026-07-14
+
+Status: **Maintained reference — current policy with historical route snapshots**
+
+Evidence provenance: the current policy was reviewed on 2026-07-14 against
+Laravel `903d03d3db78bbf87129ad35728be3b72819acaf` and repository commit
+`9c5fb1a46c40e4986c8f973075164b1d74bd101d`. The legacy tables below did not
+record both input SHAs and are therefore historical and provenance-incomplete;
+they cannot support a current parity percentage. Use the generated Web UK
+artifacts only when their own metadata names the exact source commits and dirty
+state.
 
 Laravel source of truth:
 
@@ -26,7 +36,18 @@ forward path is to make the ASP.NET backend contract-compatible with the
 production Laravel React frontend. Do not modify frontend files unless the user
 explicitly approves that specific frontend change.
 
-## Current Route Counts
+## Two-Frontends-By-Two-Backends Target
+
+| Frontend | Laravel backend | ASP.NET backend |
+| --- | --- | --- |
+| Canonical React | Production source-of-truth baseline | Same unchanged frontend, contract-correct and runtime-certified |
+| Shared accessible Web UK | Laravel-first implementation and certification target | Same unchanged Web UK code, switched by configuration only after backend certification |
+
+Route declaration equality alone proves none of these four runtime combinations.
+Current workstream status lives in `CURRENT_ASPNET_CONTRACT_STATUS.md` and
+`../apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md`.
+
+## Historical Static Route Counts
 
 Generated with `scripts/compare-laravel-frontend-parity.ps1` on 2026-07-04.
 These historical accessible counts are superseded for current Web UK work by
@@ -54,13 +75,12 @@ Future compatibility reports should instead inventory API calls made by
 compatible routes, request shapes, response shapes, auth/tenant behavior,
 uploads, realtime config, and status codes.
 
-Current Web UK accessible route evidence after merge commit `f7c80d32` on
-2026-07-08 lives in `apps/web-uk/docs/generated/accessible-route-matrix.*`.
-That matrix reports 608 Laravel accessible declarations, 612 local Web UK route
-declarations, 608 exact matches, 0 missing Laravel routes, 2 extra local
-exchange workflow routes, and 3 ignored infrastructure/helper routes. It still
-does not prove rendered UI, workflow, tenant/auth, localization, API side
-effects, or live Laravel runtime behavior.
+The `608/612` Web UK matrix recorded after merge commit `f7c80d32` on
+2026-07-08 is also historical. For the current matrix and its exact source SHAs,
+read `apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md` and regenerate
+`apps/web-uk/docs/generated/accessible-route-matrix.*`. A current static matrix
+still does not prove rendered UI, workflow, tenant/auth, localization, API side
+effects, or Laravel/ASP.NET runtime behavior.
 
 ## Accessible Frontend Direction And Authority
 
@@ -89,10 +109,11 @@ passed route, workflow, tenant-domain, auth, localization, accessibility, and
 runtime smoke certification.
 
 The Laravel repository, schema, and ordinary local database are read-only from
-the Web UK workstream. Laravel mutations used for certification require a
-dedicated disposable environment or explicit user authorization with verified
-cleanup. Web UK work must not modify ASP.NET backend source, tests, migrations,
-schema, fixtures, or runtime data.
+the Web UK workstream. Mutation, upload, download, and destructive certification
+require a separately provisioned, verified disposable Laravel environment. The
+ordinary production-derived local database is never a test fixture;
+no cleanup plan creates an exception. Web UK work must not modify ASP.NET
+backend source, tests, migrations, schema, fixtures, or runtime data.
 
 ## Generated Artifacts
 
@@ -128,7 +149,10 @@ ASP.NET backend endpoints required by the canonical Laravel React frontend.
 | `courses/*` | 9 | Course frontend remains a module gap. |
 | `podcasts/*` | 4 | Podcast frontend remains a module gap. |
 
-## High-Risk Missing Accessible Families
+## Historical High-Risk Missing Accessible Families
+
+This table is retained only as the first static scan's history. It is not the
+current Web UK queue; use the Laravel-first status document.
 
 | Route family | Missing routes | Parity implication |
 | --- | ---: | --- |
@@ -159,3 +183,5 @@ ASP.NET backend endpoints required by the canonical Laravel React frontend.
   independently.
 - Compatibility is proven with a route/API matrix, ASP.NET regression tests, and
   runtime smoke tests using the Laravel React frontend against the ASP.NET API.
+- The same unchanged, Laravel-certified Web UK frontend passes equivalent
+  runtime workflows against ASP.NET by changing backend configuration only.

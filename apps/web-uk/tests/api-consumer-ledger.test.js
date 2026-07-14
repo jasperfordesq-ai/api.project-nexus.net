@@ -8,6 +8,7 @@ const os = require('os');
 const path = require('path');
 
 const {
+  displayPath,
   generateApiConsumerLedger,
   normalizePath,
   parseJavaScript,
@@ -136,8 +137,33 @@ describe('events contract', () => {
     expect(normalizePath('/api/v2/events/{eventId}?include=people')).toBe('/api/v2/events/{param}');
   });
 
+  it('normalizes display-only query placeholders without changing path matching', () => {
+    const opaqueQuery = '/api/v2/blog??{query}';
+    const arithmeticQuery = '/api/v2/federation/connections?status={statusFilter}&limit={perPage}1&offset={dynamic}';
+
+    expect(displayPath(opaqueQuery)).toBe('/api/v2/blog?{query}');
+    expect(displayPath(arithmeticQuery)).toBe('/api/v2/federation/connections?status={param}&limit={param}&offset={param}');
+    expect(normalizePath(opaqueQuery)).toBe('/api/v2/blog');
+    expect(normalizePath(arithmeticQuery)).toBe('/api/v2/federation/connections');
+  });
+
   it('matches direct and wrapper callsites to Laravel and records safety evidence', () => {
-    const report = generateApiConsumerLedger({ webUkRoot, laravelRoot, outDir });
+    const report = generateApiConsumerLedger({
+      webUkRoot,
+      laravelRoot,
+      outDir,
+      provenance: {
+        generatedAt: '2026-07-14T00:00:00.000Z',
+        laravelRepositoryRoot: laravelRoot,
+        laravelCommitSha: '3333333333333333333333333333333333333333',
+        laravelWorkingTreeDirty: false,
+        webUkRepositoryRoot: webUkRoot,
+        webUkPath: '.',
+        webUkRepositoryCommitSha: '4444444444444444444444444444444444444444',
+        webUkRepositoryWorkingTreeDirty: false,
+        caveat: 'Deterministic unit-test provenance.'
+      }
+    });
     const createRow = report.rows.find((row) => row.method === 'POST' && row.path === '/api/v2/events');
     const getRow = report.rows.find((row) => row.method === 'GET' && row.path === '/api/v2/events/{param}');
     const publishRow = report.rows.find((row) => row.method === 'POST' && row.path === '/api/v2/events/{param}/publish');
@@ -145,6 +171,13 @@ describe('events contract', () => {
     expect(report.summary.contracts).toBe(3);
     expect(report.summary.matchedOpenApi).toBe(3);
     expect(report.summary.dynamicUnresolved).toBe(0);
+    expect(report.generatedAt).toBe('2026-07-14T00:00:00.000Z');
+    expect(report.provenance).toEqual(expect.objectContaining({
+      laravelCommitSha: '3333333333333333333333333333333333333333',
+      webUkRepositoryCommitSha: '4444444444444444444444444444444444444444'
+    }));
+    expect(report.sources.apiSha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(report.sources.laravelOpenApiSha256).toMatch(/^[a-f0-9]{64}$/);
     expect(createRow.laravel).toEqual(expect.objectContaining({
       operationId: 'Events_store'
     }));
@@ -169,5 +202,13 @@ describe('events contract', () => {
     expect(publishRow.statusCodes).toEqual(['200', '422']);
     expect(fs.existsSync(path.join(outDir, 'frontend-api-consumer-ledger.json'))).toBe(true);
     expect(fs.existsSync(path.join(outDir, 'frontend-api-consumer-ledger.md'))).toBe(true);
+    const json = JSON.parse(fs.readFileSync(path.join(outDir, 'frontend-api-consumer-ledger.json'), 'utf8'));
+    const markdown = fs.readFileSync(path.join(outDir, 'frontend-api-consumer-ledger.md'), 'utf8');
+    expect(json.sources.apiSha256).toBe(report.sources.apiSha256);
+    expect(json.sources.laravelOpenApiSha256).toBe(report.sources.laravelOpenApiSha256);
+    expect(markdown).toContain('Status: **Generated snapshot — static consumer inventory, not certification**');
+    expect(markdown).toContain('Laravel commit SHA: `3333333333333333333333333333333333333333`');
+    expect(markdown).toContain('Web UK repository working tree dirty: no');
+    expect(markdown).toContain('Provenance caveat: Deterministic unit-test provenance.');
   });
 });

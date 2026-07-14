@@ -1,9 +1,30 @@
 # Web UK Tenant Routing Parity
 
-Last reviewed: 2026-07-13
+Last reviewed: 2026-07-14
+
+Status: **Maintained reference — tenant-routing evidence, not the current aggregate**
 
 This note records the Laravel tenant-routing contract that `apps/web-uk` must
 clone before it can be called tenant-domain parity complete.
+
+`CURRENT_LARAVEL_FIRST_PARITY_STATUS.md` is the sole current coordination and
+scoring source. Counts and smoke outcomes in the chronological body below are
+dated implementation checkpoints, not the current aggregate. This routing note
+intentionally does not mirror the live route inventory, score, blocker set, or
+test aggregate; read the canonical status and generated route artifact at
+reporting time.
+
+**Runtime safety:** every `smoke:laravel` command in this document includes or
+may include authentication and state writes. It may run only after
+`LARAVEL_BASE_URL` is explicitly pointed at a separately provisioned, verified
+disposable Laravel application/database/storage environment. Never run it
+against the ordinary `127.0.0.1:8088` production-derived Laravel snapshot;
+authorization, unique fixtures, cleanup, or restoration logic do not make that
+environment disposable.
+
+Any historical authenticated or stateful result below that used the ordinary
+Laravel environment is invalid as certification regardless of older “passed”
+or “current” wording. Retain it only as regression-discovery history.
 
 ## Laravel Source Of Truth
 

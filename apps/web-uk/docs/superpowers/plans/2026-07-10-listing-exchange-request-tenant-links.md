@@ -1,5 +1,8 @@
 # Listing Exchange Request Tenant Links Implementation Plan
 
+> **Historical plan:** Retained for implementation history only. Do not use it
+> as a current queue; read `../../CURRENT_LARAVEL_FIRST_PARITY_STATUS.md`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Keep the listing exchange-request page's back link and no-JS POST form tenant-aware at template source, matching Laravel's `/listings/{listingId}/exchange-request` route without relying on response rewriting.

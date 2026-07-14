@@ -1,5 +1,13 @@
 # Accessible Dual-Backend Preparation Design
 
+Status: **Historical checkpoint — superseded design, not current switching evidence**
+
+> This specification records the 2026-07-05 preparation slice. Do not use its
+> “candidate” or ASP.NET-path wording to choose current architecture or work.
+> Read `../../../apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md` and
+> `../../CURRENT_ASPNET_CONTRACT_STATUS.md` for the two current workstream
+> boundaries.
+
 Last reviewed: 2026-07-05
 
 ## Goal

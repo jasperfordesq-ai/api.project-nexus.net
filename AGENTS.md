@@ -1,7 +1,13 @@
 # Agent Instructions
 
 > 🚨 **Before deploying or touching any production container**, read [.claude/production-containers.md](./.claude/production-containers.md).
-> .NET Edition user-facing SPA = `nexus-react-frontend` container on port `5210`, image `nexus-react-frontend:prod`, built from `apps/react-frontend/Dockerfile.prod`. Raw `docker run` — **not** `docker compose`. Never touch the Laravel Edition (blue/green PHP) containers from this repo.
+> The currently deployed .NET Edition SPA is the `nexus-react-frontend`
+> container on port `5210`, image `nexus-react-frontend:prod`, built from
+> `apps/react-frontend/Dockerfile.prod`. That is an operational fact, not a
+> source-of-truth decision: `apps/react-frontend` is frozen and the canonical
+> React client lives in the Laravel repository. Any explicitly authorized
+> redeploy uses raw `docker run`, **not** `docker compose`. Never touch the
+> Laravel Edition (blue/green PHP) containers from this repo.
 
 This file exists for agentic tools (OpenAI Codex, etc.) that read `AGENTS.md` by convention.
 
@@ -51,3 +57,10 @@ history but stale live metrics.
 This pointer exists because keeping `AGENTS.md` and `CLAUDE.md` in sync as
 separate copies caused drift. Edit `CLAUDE.md` for authoritative project
 instructions. Keep only urgent first-read guardrails duplicated here.
+
+Current workstream status is intentionally split. Read
+[`docs/CURRENT_ASPNET_CONTRACT_STATUS.md`](./docs/CURRENT_ASPNET_CONTRACT_STATUS.md)
+for the backend banked score/evidence boundary and
+[`apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md`](./apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md)
+for Web UK. The older `CURRENT_*_HANDOFF.md` files are historical archives and
+must not supply a current score or resume queue.

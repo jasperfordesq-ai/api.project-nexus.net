@@ -1,68 +1,53 @@
 # Production Server Notes
 
-Production changes must be made from the local repository first, tested locally, and then deployed through Docker.
+This file is a short operator pointer. The authoritative domain, port,
+container, proxy, and component-specific deployment map is
+[`production-containers.md`](./production-containers.md). Read it immediately
+before any production action.
 
-## 🔑 SSH Access (READ THIS FIRST — Claude Code can deploy directly)
+> These notes do not authorize a deployment. Production changes require an
+> explicit user instruction for the named component. Never touch the Laravel
+> Edition blue/green containers from this repository.
+
+## Connection And Repository
 
 | Field | Value |
 |---|---|
-| **Host** | `azureuser@20.224.171.253` |
-| **SSH key** | `/c/ssh-keys/project-nexus.pem` (Windows) |
-| **Remote repo** | `/opt/nexus-backend/` |
-| **Env var** | `NEXUS_DEPLOY_HOST="azureuser@20.224.171.253"` |
-
-Quick connect:
-
-```bash
-ssh -i /c/ssh-keys/project-nexus.pem -o StrictHostKeyChecking=no azureuser@20.224.171.253
-```
-
-Or use the deploy script: `./scripts/deploy.sh` (status / deploy / quick / rollback). Both pre-approved in `.claude/settings.local.json` — no permission prompts. **Claude Code does have permission to SSH and deploy — do not tell the user otherwise.**
-
-## Supported Apps
-
-| App | Domain | Local service |
-|---|---|---|
-| API | https://api.project-nexus.net | api |
-| React frontend | https://platform.project-nexus.net | react-frontend |
-| UK frontend | https://uk.project-nexus.net | web-uk |
-| Admin panel | https://admin.project-nexus.net | admin |
-
-## Repository Paths
-
-| Component | Path |
-|---|---|
+| Host | `azureuser@20.224.171.253` |
+| SSH key | `/c/ssh-keys/project-nexus.pem` on the configured workstation |
 | Repository | `/opt/nexus-backend/` |
-| API | `/opt/nexus-backend/src/Nexus.Api/` |
-| React frontend | `/opt/nexus-backend/apps/react-frontend/` |
-| UK frontend | `/opt/nexus-backend/apps/web-uk/` |
-| Admin panel | `/opt/nexus-backend/apps/admin/` |
-| nginx configs | `/etc/nginx/conf.d/` |
+| Suggested environment variable | `NEXUS_DEPLOY_HOST="azureuser@20.224.171.253"` |
 
-## Deployment
+Plesk-managed **Apache**, not nginx, terminates HTTPS and proxies each domain to
+its loopback-bound container port. Do not edit or deploy from an assumed nginx
+layout.
 
-```bash
-cd /opt/nexus-backend
-cp compose.prod.yml compose.override.yml
-git pull origin main
-docker compose build
-docker compose up -d
-docker compose ps
-curl https://api.project-nexus.net/health
-```
+## Operationally Deployed Surfaces
 
-## Production Ports
+| Surface | Domain | Container/port | Product status |
+|---|---|---|---|
+| ASP.NET API | `api.project-nexus.net` | `nexus-backend-api` / `5080` | Experimental .NET backend |
+| .NET Edition React SPA | `platform.project-nexus.net` | `nexus-react-frontend` / `5210` | Deployed legacy client; source is frozen, not the canonical React contract |
+| Web UK | `uk.project-nexus.net` | `nexus-uk-frontend-dev` / `5180` | Experimental deployment; not certified as the shared accessible replacement |
+| Standalone admin | `admin.project-nexus.net` | `nexus-admin-dev` / `5191` | Secondary admin surface |
 
-See [`production-containers.md`](./production-containers.md) for the full
-domain → container map and the .NET Edition SPA deploy procedure.
+The canonical React client and Laravel backend remain in the separate Laravel
+repository. Operationally serving a legacy or experimental .NET surface does
+not make it a product or contract source of truth.
 
-| Service | Container | Container port | Host binding |
-|---|---|---:|---|
-| API | `nexus-backend-api` | 8080 | 127.0.0.1:5080 |
-| React frontend (.NET Edition) | `nexus-react-frontend` (manual `docker run`, NOT compose) | 80 | 127.0.0.1:**5210** |
-| UK frontend | `nexus-uk-frontend-dev` | 3001 | 127.0.0.1:5180 |
-| Admin panel | `nexus-admin-dev` | 80 | 127.0.0.1:5191 |
+## Deployment Rules
 
-## Configuration
+There is no safe blanket `docker compose build && docker compose up` production
+procedure for this repository:
 
-Secrets stay on the production server and out of git. CORS and WebAuthn origins must be provided through environment variables or production overrides and must match the supported production domains.
+- the deployed React SPA uses the component-specific raw `docker run` procedure
+  in `production-containers.md`, not Compose;
+- the root `compose.prod.yml` Web UK override currently selects uncertified
+  ASP.NET and is not an approved Web UK release path;
+- Laravel Edition deployments use their own blue/green repository and procedure
+  and must never be initiated here.
+
+After explicit authorization, follow only the named component procedure in
+`production-containers.md`, verify the exact image/source SHA, and verify the
+corresponding health and browser endpoint. Secrets remain on the server and out
+of git; CORS and WebAuthn origins must match the deployed domains.

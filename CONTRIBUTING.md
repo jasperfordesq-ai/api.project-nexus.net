@@ -1,10 +1,14 @@
 # Contributing to Project NEXUS .NET Edition
 
 Thank you for your interest in contributing to Project NEXUS .NET Edition — the
-experimental ASP.NET Core 8 backend (and the React/TypeScript front-ends under
-`apps/`) for the Project NEXUS community timebanking platform. The Laravel
-Edition remains the canonical, in-production platform; the .NET Edition is an
-experimental next-gen build that shares the same React frontend.
+experimental ASP.NET Core 8 backend for the Project NEXUS community timebanking
+platform. The Laravel Edition remains the canonical, in-production platform and
+defines the backend contract. The .NET objective is a contract-correct,
+switchable backend for the unchanged canonical React frontend and the unchanged
+shared accessible Web UK frontend. The React copy under `apps/react-frontend`
+is frozen historical reference; `apps/web-uk` is the approved accessible
+frontend implementation target and remains Laravel-first until separately
+certified against ASP.NET.
 
 Project NEXUS .NET Edition is released under **AGPL-3.0-or-later**. By contributing,
 you agree that your contributions will be licensed under the same terms.

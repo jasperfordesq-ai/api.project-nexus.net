@@ -1,5 +1,11 @@
 # Explore Active Club Card Implementation Plan
 
+> **Historical plan:** Do not execute this plan as a current queue. Read
+> `../../CURRENT_LARAVEL_FIRST_PARITY_STATUS.md` first. Any runtime smoke in
+> this file is stateful and may run only against a separately provisioned,
+> verified disposable Laravel environment, never the ordinary
+> production-derived environment.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Make the Web UK Explore page show the Clubs card only when Laravel-backed active-club evidence exists, matching `accessible-frontend/views/explore.blade.php`.

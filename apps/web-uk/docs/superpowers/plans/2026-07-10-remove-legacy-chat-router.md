@@ -1,5 +1,8 @@
 # Remove Legacy Chat Router Implementation Plan
 
+> **Historical plan:** Retained for implementation history only. Do not use it
+> as a current queue; read `../../CURRENT_LARAVEL_FIRST_PARITY_STATUS.md`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Remove the unmounted legacy `src/routes/chat.js` router so source audits only inspect the mounted Laravel-compatible `/chat` implementation in `src/routes/ai-chat.js`.

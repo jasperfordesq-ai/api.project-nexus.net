@@ -1,6 +1,15 @@
 # Production Container Map
 
-> **Single source of truth for what runs on the production server.** If you're about to deploy, redeploy, restart, or remove a container — read this first.
+> **Single source of truth for what currently runs on the production server.**
+> This is an inventory and component-specific operator reference, not standing
+> authorization to deploy, redeploy, restart, or remove anything. Obtain an
+> explicit production instruction before acting.
+
+Operational deployment does not define product authority. The React image
+currently serving the .NET Edition is built from the frozen legacy copy in this
+repository; the canonical React client and Laravel API contract live in
+`C:\platforms\htdocs\staging`. The deployed Web UK container remains an
+experimental surface and is not the certified replacement for Laravel Blade.
 
 **Server:** see `.claude/production-server.md` for the SSH host / key. Use `$NEXUS_DEPLOY_HOST` in scripts. Repo lives at `/opt/nexus-backend/`.
 **Reverse proxy:** Plesk-managed **Apache** (NOT nginx) on `:443`. Each vhost lives at `/var/www/vhosts/system/<domain>/conf/vhost_ssl.conf` and `ProxyPass /` targets a `127.0.0.1:<port>` container.
@@ -15,7 +24,7 @@
 | **`platform.project-nexus.net`** | **5210** | **`nexus-react-frontend`** | `apps/react-frontend/` | **Vite + React 18 + TS + HeroUI + Tailwind 4** — main .NET Edition SPA |
 | `admin.project-nexus.net` | 5191 | `nexus-admin-dev` | `apps/admin/` | Vite + Refine + Ant Design |
 | `api.project-nexus.net` | 5080 | `nexus-backend-api` | `src/Nexus.Api/` | ASP.NET Core 8 |
-| `uk.project-nexus.net` | 5180 | `nexus-uk-frontend-dev` | `apps/web-uk/` | Vite + GOV.UK Design System |
+| `uk.project-nexus.net` | 5180 | `nexus-uk-frontend-dev` | `apps/web-uk/` | Express + Nunjucks + GOV.UK Frontend; experimental and not certified as the shared accessible frontend |
 | `ie.project-nexus.net` | 5200 | `nexus-web-govie` | (deleted from repo; container is a frozen snapshot) | Vite SPA |
 
 ### 🚨 .NET Edition deploy rules
@@ -24,8 +33,21 @@
 2. The image is `nexus-react-frontend:prod`, built from **`apps/react-frontend/Dockerfile.prod`**.
 3. There is no `nexus-react-frontend-dev` anymore — the duplicate Vite container was deleted 2026-05-12. If you see one come back, something is wrong.
 4. `docker compose build react-frontend` rebuilds the **wrong image** (`nexus-backend-react-frontend:latest`) for an unrelated compose service that no longer has a vhost. **Do not use compose to deploy the prod SPA.**
+5. The deployed SPA's legacy status does not authorize feature work in
+   `apps/react-frontend`; ASP.NET must conform to the canonical Laravel React
+   contracts.
 
-### .NET Edition SPA deploy procedure (copy/paste)
+### Web UK deployment hold
+
+`compose.prod.yml` currently supplies Web UK with an explicit
+`API_BASE_URL=http://api:8080` override. The Web UK resolver treats that as an
+ASP.NET target, while ASP.NET is not yet certified for the unchanged accessible
+frontend. Therefore the root production Compose path is **not an approved Web UK
+release procedure**. Do not deploy or repoint Web UK from it until the backend
+switching gate is complete and the configuration has been explicitly reviewed.
+Laravel remains the current Web UK certification backend.
+
+### .NET Edition SPA deploy procedure (reference after explicit authorization)
 
 > SSH host + key path are in `.claude/production-server.md`. Set `NEXUS_DEPLOY_HOST` and use `$SSH_KEY` from that doc. All commands run *on the server* after `ssh`-ing in.
 

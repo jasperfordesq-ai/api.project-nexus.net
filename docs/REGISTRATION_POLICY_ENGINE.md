@@ -1,5 +1,15 @@
 # Registration Policy Engine — Architecture & Integration Guide
 
+Last reviewed: 2026-07-14
+
+Status: **Maintained reference — component architecture and integration guide**
+
+> **Scope:** This is a component guide, not the repository's global product
+> architecture or a completion claim. Laravel remains the contract source; use
+> `CURRENT_ASPNET_CONTRACT_STATUS.md` and `API_PARITY.md` for current parity and
+> certification status. “Frontend” diagrams below describe contract consumers,
+> not a shared implementation or permission to change the frozen React copy.
+
 ## Overview
 
 The Registration Policy Engine provides tenant-configurable identity-aware registration with pluggable verification providers. Each tenant independently chooses its registration method, verification requirements, and post-registration behavior.

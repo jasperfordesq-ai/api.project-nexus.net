@@ -2,6 +2,8 @@
 
 Last reviewed: 2026-07-13
 
+Status: **Maintained reference — generation method with a historical rollup**
+
 Canonical source: `C:\platforms\htdocs\staging` (read-only).
 
 This document summarizes the generated implementation backlog. The full row-level
@@ -9,7 +11,12 @@ backlog is intentionally ignored by git and regenerated under
 `artifacts/parity/backlog/` from the current API, schema, frontend, and
 localization parity artifacts.
 
-## Current Generated Rollup
+The committed rollup below is a historical planning snapshot, not the current
+completion queue or score. Use `CURRENT_ASPNET_CONTRACT_STATUS.md` for current
+status. Regenerate every source artifact and the exporter before using backlog
+counts for planning.
+
+## Historical Generated Rollup (2026-07-13)
 
 Generated with `scripts/export-laravel-parity-backlog.ps1` on 2026-07-13 after
 refreshing the API and schema artifacts and reusing the current frontend and
@@ -44,7 +51,7 @@ derived from static comparison artifacts.
 | Identity verification providers | 35 |
 | Regional Analytics | 6 |
 
-P0 currently contains 53 items, led by Verein/Clubs schema and accessible
+At that snapshot, P0 contained 53 items, led by Verein/Clubs schema and accessible
 route work, marketplace commerce, and Partner API. The P0 bucket means "implement or triage before admin
 polish"; it does not mean every item is ready for one-commit implementation.
 

@@ -1,6 +1,27 @@
 # Laravel Accessible Route Matrix
 
-Last reviewed: 2026-07-13
+Last reviewed: 2026-07-14
+
+Status: **Maintained reference — route evidence ledger, not the current score or queue**
+
+Current coordination, scoring, and next-job truth lives only in
+`CURRENT_LARAVEL_FIRST_PARITY_STATUS.md`. Counts in dated narrative sections
+below are historical checkpoints. The generated artifacts named in the current
+static-count section are the exhaustive declaration inventory.
+
+**Runtime safety:** every login or runtime-smoke command mentioned anywhere in
+this document is stateful unless its requests have been inspected and proved to
+be unauthenticated GET/HEAD operations with no server-side writes. Run a
+stateful smoke only after `LARAVEL_BASE_URL` points to a separately provisioned,
+verified disposable Laravel application/database/storage environment. Never
+run it against the ordinary production-derived Laravel environment at
+`127.0.0.1:8088`; authorization and cleanup do not make that environment
+disposable.
+
+Every historical stateful result below that used the ordinary Laravel
+environment is invalid as certification, even where the retained checkpoint
+wording says “passed”, “certified”, or “current”. It remains useful only for
+regression discovery.
 
 ## Purpose
 
@@ -25,13 +46,12 @@ frontend ASP.NET-specific):
 - `C:\platforms\htdocs\asp.net-backend\apps\web-uk\src\routes`
 - `C:\platforms\htdocs\asp.net-backend\apps\web-uk\src\views`
 
-## Current Static Count
+## Current Generated Inventory
 
 Generated artifacts live in:
 
 ```text
 docs/generated/accessible-route-matrix.md
-docs/generated/accessible-route-matrix.csv
 docs/generated/accessible-route-matrix.json
 ```
 
@@ -41,22 +61,16 @@ Refresh them with:
 npm run route:matrix
 ```
 
-| Surface | Static route declarations | Meaning |
-| --- | ---: | --- |
-| Laravel `govuk-alpha*` | 687 | Laravel Blade accessible source route declarations scanned from route files, including the tenant chooser/root route. |
-| Web UK `apps/web-uk` | 688 | Express app/router/static-page declarations scanned from local source; this includes route modules that may not be certified workflows yet. |
-| Exact method/path matches | 681 | Static matches only. This does not prove workflow, auth, tenant, API, localization, or visual parity. |
-| Missing Laravel routes | 6 | Five tenant-admin Event moderation declarations and the signed offline check-in-code POST remain unmatched because Laravel exposes no tenant-scoped API v2 contract for Web UK to call. Three missing GETs receive generated preparation pages only. |
-| Extra `apps/web-uk` routes | 5 | Four are deliberate legacy `404` tombstones (`GET /events/my`, `POST /events/{id}/rsvp/remove`, `GET /listings/{id}/delete`, and `POST /members/{id}/connect`); the fifth is the bearer-safe volunteering credential download proxy. None is a claim of an extra Laravel workflow. |
-| Ignored `apps/web-uk` infrastructure routes | 3 | Local infrastructure/helper routes that do not exist in Laravel's scanned GOV.UK accessible route set and are not page parity gaps: `GET /health`, `GET /service-unavailable`, and `POST /session/touch`. |
+The generated Markdown summary is the sole live declaration-count inventory and
+its JSON is the machine-readable source. It records generation time, exact
+Laravel and Web UK commits, dirty-state provenance, matched/missing/extra rows,
+and ignored infrastructure routes. This maintained ledger does not copy those
+totals. They are structural declarations, not a parity score; workflow, auth,
+tenant, localization, Laravel-runtime, and later ASP.NET switching certification
+remain separate gates.
 
-These are declaration counts, not a parity score. Laravel registers the route
-set in slug and custom-domain modes, and many route families still need visual,
-workflow, auth, tenant, localization, and Laravel-runtime certification. Later
-ASP.NET switching is a separate unchanged-frontend gate owned by the backend
-parity workstream.
-
-Runtime note, 2026-07-09: after this matrix was refreshed green, the full
+Historical runtime note, 2026-07-09 (invalidated as certification because it
+used the ordinary Laravel environment): after that matrix was refreshed green, the full
 default Laravel runtime-smoke scope was recertified against a dedicated
 tenant-correct Web UK process at `http://127.0.0.1:6510` with `TENANT_ID=2`.
 Module chunks `1/8` through `8/8` covered all `281` module checks, body chunks
@@ -67,9 +81,9 @@ checks. On 2026-07-10, the smoke defaults were corrected so the local
 `hour-timebank` no-active-club fixture checks `/clubs` as a signed gated `404`
 instead of a 2xx module/body-text page. The current default scope is therefore
 `633` checks: `280` module checks, `282` body-text checks, and `23`
-gated-status checks, with the other buckets unchanged. This is runtime
-evidence only; it does not prove visual/manual Blade parity or ASP.NET backend
-switching.
+gated-status checks, with the other buckets unchanged. This record is retained
+only as regression-discovery history. It is not current runtime certification
+and does not prove visual/manual Blade parity or ASP.NET backend switching.
 
 The Explore route has additional source-level parity coverage beyond static
 method/path matching: its shared card list now consumes tenant bootstrap
@@ -628,7 +642,9 @@ tested.
 
 ## Runtime Smoke Evidence
 
-Run the Laravel-backed runtime smoke with:
+The command below is stateful because it includes authentication. Run it only
+against a separately provisioned and verified disposable Laravel environment;
+never use the ordinary `127.0.0.1:8088` production-derived snapshot.
 
 ```bash
 npm run smoke:laravel
@@ -1339,21 +1355,23 @@ For each family, create a module matrix with:
 
 - Laravel route name and method/path.
 - Blade view file.
-- ASP.NET Express route and Nunjucks view.
+- Web UK Express route and Nunjucks view.
 - Backend API calls used by that page.
 - Request, response, redirect, validation, CSRF, auth, tenant, feature-gate, and
   localization behavior.
-- Runtime smoke result against ASP.NET.
+- Laravel-first runtime evidence from the verified disposable environment.
+- Separate later unchanged-Web-UK runtime switching result against ASP.NET,
+  after the backend workstream declares its contract gate ready.
 
-Use `docs/generated/accessible-route-matrix.csv` as the working backlog seed.
-It includes the Laravel handler, inferred Blade view, auth classification,
-feature/module gates, API/service hints, and current `apps/web-uk` target view
-where a static method/path match exists.
+Use `docs/generated/accessible-route-matrix.md` or its JSON companion as the
+working backlog seed. They include the Laravel handler, inferred Blade view,
+auth classification, feature/module gates, API/service hints, and current
+`apps/web-uk` implementation where a static method/path match exists.
 
 Missing Laravel GET routes are also served by
 `src/routes/laravel-prep-pages.js` after all real route modules only when the
-generated matrix marks those rows as `missing`. With the current 608/608 static
-matrix there are no missing rows, and the loader exports `0` runtime preparation
-pages. Any future generated prep page is a deliberate discoverability fallback
+generated matrix marks those rows as `missing`. Read the generated artifact for
+the live missing-method mix and preparation-page total. Any future generated
+prep page is a deliberate discoverability fallback
 only; it prevents a 404 while preserving the gap, but it does not certify page
 workflow parity.

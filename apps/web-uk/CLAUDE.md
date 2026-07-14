@@ -51,11 +51,14 @@ Route and backend preparation docs live beside this app:
 
 - `docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md` (read first; current blockers,
   ownership boundaries, and next-job order)
-- `docs/CURRENT_WEB_UK_HANDOFF.md`
+- `docs/CURRENT_WEB_UK_HANDOFF.md` (historical chronological archive only; not
+  a resume, queue, count, or scoring source)
 - `docs/LARAVEL_ACCESSIBLE_ROUTE_MATRIX.md`
 - `docs/BLADE_COMPONENT_PORT_AUDIT.md`
 - `docs/TENANT_ROUTING_PARITY.md`
 - `docs/BACKEND_SWITCHING_CONTRACT.md`
+- `../../docs/CURRENT_ASPNET_CONTRACT_STATUS.md` (separate backend-owned score
+  and unchanged-client switching gate; not a Web UK score source)
 
 If an agent is resuming this work after an interrupted session, start with
 `docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md`, then use
@@ -191,15 +194,19 @@ For Nunjucks templates:
 Do not use XAMPP, native Node.js, or any other local setup. The project directory may be located under `xampp/htdocs` for historical reasons - ignore this; XAMPP is not used.
 
 ```
-Local Development (Docker) → Test → Deploy to Production (Docker)
+Local Development (Docker) → Test → Local production-image verification
+
+Future deployment is a separate, explicitly authorized operation governed by
+the root production-container map; it is not a continuation of this local flow.
 ```
 
 ### Why Docker Only?
 
-1. **Consistency** - Same environment for all developers and production
+1. **Consistency** - Repeatable development and local verification environments
 2. **No dependency conflicts** - Node.js, Sass, etc. are containerized
 3. **Simple onboarding** - Just `docker compose up`
-4. **Matches production** - Production also uses Docker
+4. **Production-like image check** - validates the local image shape without
+   claiming production topology or deployment certification
 
 ### Development Commands
 
@@ -224,21 +231,18 @@ The app runs at **http://localhost:5180** (container port 3001 mapped to host 51
 
 ### Production Deployment
 
-```bash
-# 1. Upload changed files to server
-scp -i "<path-to-production-ssh-key>" -r src/ <production-user>@<production-host>:/opt/nexus-uk-frontend/
+Web UK is not production-certified, and this file does not authorize a
+production deployment. Do not copy files to a server, run production Compose
+commands, or touch a production container from this workstream. Before any
+future production operation, read the repository-root
+`.claude/production-containers.md` and obtain an explicitly approved deployment
+plan for the exact certified image and backend target.
 
-# 2. SSH to server
-ssh -i "<path-to-production-ssh-key>" <production-user>@<production-host>
-
-# 3. Rebuild and restart
-cd /opt/nexus-uk-frontend
-sudo docker compose down
-sudo docker compose build --no-cache
-sudo docker compose up -d
-```
-
-Production URL: <https://uk.project-nexus.net>
+The root `compose.prod.yml` currently overrides Web UK's backend with
+`API_BASE_URL=http://api:8080`, which resolves to the ASP.NET service. That is a
+legacy, uncertified configuration and is not an approved Web UK production
+path. Do not interpret its presence as ASP.NET switchability evidence or deploy
+it until unchanged-Web-UK ASP.NET certification is banked.
 
 ## CRITICAL: NOT A GOVERNMENT SERVICE (NON-NEGOTIABLE)
 

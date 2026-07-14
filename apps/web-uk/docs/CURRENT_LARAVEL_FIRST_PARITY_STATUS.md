@@ -2,10 +2,16 @@
 
 Last audited: 2026-07-14
 
-This is the short, current coordination document for `apps/web-uk`. Read it
-before starting or resuming accessible-frontend work. It overrides older route,
-test, localization, and readiness counts in narrative handoffs, while
-`BLADE_COMPONENT_PORT_AUDIT.md` remains the detailed evidence ledger.
+Status: **Canonical current — sole Web UK coordination and scoring source**
+
+<!-- doc-consistency: WEBUK_CURRENT_BANKED_SCORE=622/1000 -->
+
+This is the sole current coordination and scoring document for `apps/web-uk`.
+Read it before starting, resuming, or reporting accessible-frontend work. It
+overrides older route, test, localization, and readiness counts in every
+narrative handoff, while `BLADE_COMPONENT_PORT_AUDIT.md` remains the detailed
+evidence ledger. `CURRENT_WEB_UK_HANDOFF.md` is a historical archive and must
+never be used as a current resume, queue, count, or scoring source.
 
 ## Goal And Source Of Truth
 
@@ -81,7 +87,8 @@ did not run Laravel migrations or change Laravel source, and its tests attempted
 cleanup, but those facts do not make the writes acceptable or prove the snapshot
 was unchanged.
 
-On 2026-07-14 the later incident was repaired with owner authorization. Before
+On 2026-07-14 the later incident was repaired through an operator-approved
+recovery. Before
 repair, the local database was preserved outside both repositories as
 `C:\platforms\backups\nexus-laravel-incident-20260714\local-before-recovery_20260714_043458.sql.gz`
 and verified by gzip, dump-completion marker, and SHA-256. A new consistent,
@@ -151,7 +158,7 @@ blocker set, route-gap set, or certification state materially changes. Put
 detailed row evidence in `BLADE_COMPONENT_PORT_AUDIT.md` in the same scoped
 commit as the implementation it describes.
 
-## Audited Baseline
+## Current Working Snapshot And Frozen Score
 
 The frontend baseline for the current checkout includes the Event registration,
 account-hub reconciliation, Event Communications, lifecycle-history, recurrence-
@@ -163,6 +170,33 @@ authoritative.
 Refresh the Laravel Blade/API source and Web UK implementation before relying on
 these numbers after either source moves.
 
+At this documentation audit, the product-source baseline was
+`327984b02de82350b8f17b6cb885a3a27c7d95be`. The revoked-session confirmation,
+Laravel method-spoof reconciliation, group-message contract, and residual API-
+consumer correction slices are above the frozen bank and remain **published and
+unscored** once pushed. The documentation remediation and unrelated ASP.NET
+backend work are uncommitted and contribute zero banked points. The table below
+records the latest individually
+verified non-mutating gates; it is not a claim that every gate was rerun
+together from a clean published checkout.
+
+### Repository-State Boundary
+
+- **Banked baseline:** Laravel `903d03d3db78bbf87129ad35728be3b72819acaf`
+  with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
+  Only this fixed-rubric audit contributes to the current bank.
+- **Published but unscored:** Web UK commits after `a9487f0b` through product
+  baseline `327984b0`, including the later identity/session confirmation,
+  method-spoof reconciliation, group-message contract, and residual API-
+  consumer correction slices. Their chronological evidence is useful, but they
+  contribute zero points until one complete fixed-rubric re-audit explicitly
+  replaces the baseline.
+- **Dirty and uncommitted:** the current documentation/provenance remediation
+  and unrelated ASP.NET backend work are outside the bank. Recheck `git status`
+  before every report; no dirty file earns estimated points.
+
+### Latest Recorded Gates
+
 | Measure | Audited result | Meaning |
 |---|---:|---|
 | Laravel accessible HTML routes | 689 | Current source inventory |
@@ -171,15 +205,21 @@ these numbers after either source moves.
 | Missing Laravel routes | 1 | Event offline check-in code generation |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 49/49 suites, 1,653/1,653 tests | Fresh green code gate |
+| Jest | 50/50 suites, 1,663/1,663 tests | Latest recorded uninterrupted full gate after the frozen score; later improvements remain unscored until a complete rubric re-audit |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
 | Static locale usage | 7,341 references, 5,620 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
 | Blade marker check | Current 19/19 | Current-source public GET marker comparison; not screenshot or visual certification |
 | Automated accessibility | Not currently certified: 28 passed, login failed, 58 did not run | Full aggregate requires a disposable Laravel environment; manual AT review remains open |
-| Frontend API consumer ledger | 663 contracts: 444 OpenAPI matches, 219 unmatched, 0 dynamic | Static method/path and ownership evidence; unmatched rows are not parity claims |
+| Frontend API consumer ledger | 663 contracts: 448 OpenAPI matches, 215 unmatched, 0 dynamic | Static method/path and ownership evidence; unmatched rows are not parity claims; generated from dirty working trees and therefore unscored |
 
 ### Frozen Completion Baseline
+
+The score in this section is the only banked Web UK percentage. Later
+implementation checkpoints in this file record useful published or in-flight
+improvements, but they do not add points unless a complete fixed-rubric audit
+explicitly replaces this named baseline. Report them as "later improvements,
+unscored", never by silently estimating a higher percentage.
 
 This scoring baseline is frozen at `2026-07-14T09:37:38Z` against Laravel
 `903d03d3db78bbf87129ad35728be3b72819acaf` and published Web UK
@@ -197,9 +237,9 @@ database. No Web UK implementation regression caused that reset.
 
 | Fixed rubric | Earned | Exact deduction |
 |---|---:|---|
-| Route/inventory representation | 99/100 | -1: the online Event check-in code POST remains undeclared in Web UK because Laravel exposes no safe equivalent frontend contract. |
+| Route/inventory representation | 99/100 | -1: the offline signed Event check-in code POST remains undeclared in Web UK because Laravel exposes no safe equivalent frontend contract. |
 | Observable Blade/workflow implementation | 278/300 | -8: Event moderation membership/order/online state and check-in behavior are not contract-identical; -14: unresolved component-audit significant states still need finite default-English closure rather than declaration-only coverage. |
-| API contract/state coverage plus static/mock verification | 170/200 | -25: 219 ledger rows lack an exact OpenAPI match; -5: auth/role/status/side-effect assertions are not yet complete across every significant state. The generated ledger has zero dynamically unresolved method/path callsites. |
+| API contract/state coverage plus static/mock verification | 170/200 | -25: the frozen baseline had 219 ledger rows without an exact OpenAPI match; -5: auth/role/status/side-effect assertions were not complete across every significant state. The newer generated inventory improvement is unscored until a full rubric audit replaces this baseline. |
 | Disposable Laravel runtime certification | 0/200 | -200: no separately provisioned and verified disposable Laravel environment has been evidenced, so all live mutation/upload/download/destructive certification remains open. |
 | Screenshot/manual accessibility/WCAG certification | 35/150 | -40: no representative screenshot comparison set; -30: no actual screen-reader speech-output sign-off; -25: manual keyboard/no-JS/zoom/reflow/forced-colour coverage is incomplete; -20: the current full accessibility aggregate is not certified. |
 | Production hardening and reproducible docs | 40/50 | -4: persistent session production proof; -3: production secret/configuration proof; -3: request timeout/abort behavior remain open. |
@@ -238,10 +278,10 @@ when a concrete regression requires an independently publishable fix.
 7. **P0 - Event moderation boundary:** obtain a Laravel API projection with
    Blade-equivalent queue membership, submission order, and `is_online`, then
    consume it unchanged in Web UK. Owner: Laravel backend/API workstream.
-8. **P0 - Event check-in boundary:** obtain a safe Laravel online signed-code
+8. **P0 - Event check-in boundary:** obtain a safe Laravel offline signed-code
    contract or an explicit source-contract decision for
    `POST /events/{id}/check-in/code`. Owner: Laravel backend/API workstream.
-9. **P1 - API ledger closure:** reconcile all 219 unmatched consumer rows,
+9. **P1 - API ledger closure:** reconcile all 215 currently unmatched consumer rows,
    adding focused assertions for concrete gaps. Owner:
    Web UK; Laravel API owner for genuine source omissions.
 10. **P1 - Component-audit closure:** finish the remaining default-English
@@ -269,8 +309,8 @@ request-scoped tenant authority, auth/role boundary, request and response shape,
 status/error behavior, redirects, side effects, cleanup requirements, Laravel
 operation/controller metadata, frontend consumers, and detected tests.
 
-The current static inventory contains 663 consumed contracts. It matches 444
-method/path pairs to Laravel OpenAPI, leaves 219 without an exact OpenAPI match,
+The current static inventory contains 663 consumed contracts. It matches 448
+method/path pairs to Laravel OpenAPI, leaves 215 without an exact OpenAPI match,
 and has no dynamically unresolved method/path callsites. It also classifies 370
 rows as state-changing and therefore requiring disposable-
 environment runtime proof. An unmatched row may be an OpenAPI documentation
@@ -279,10 +319,11 @@ that Laravel lacks the endpoint. A detected test reference is not proof that
 the test asserts the full contract. These unresolved classifications are now a
 concrete reconciliation queue rather than hidden readiness debt.
 
-Focused generator proof passes 2/2 and the full Jest gate passes 49/49 suites,
-1,649/1,649 tests. Brand, lint, CSS, route matrix, ledger regeneration, locale
-sync/shape, static-key resolution, and the 322-template zero-match audit are
-green. A fresh current-checkout `visual:blade` run passed all 19/19
+Focused generator proof passes 2 suites and 7 tests. The latest complete Web UK
+gate is recorded in the top snapshot rather than duplicated here. Brand, lint,
+CSS, route matrix, ledger regeneration, locale sync/shape, static-key
+resolution, and the 322-template zero-match audit are green. A fresh
+current-checkout `visual:blade` run passed all 19/19
 unauthenticated GET comparisons at the canonical `/hour-timebank/accessible`
 mount. This remains a text-marker spotcheck, not screenshot or visual
 certification.
@@ -1144,7 +1185,7 @@ The only remaining undeclared Laravel browser route is:
 
 - `POST /events/{id}/check-in/code`
 
-Blade's online signed-code flow resolves the attendee and current attendance
+Blade's offline signed-code form resolves the attendee and current attendance
 version server-side. The existing offline-scan API instead requires a device
 secret, expected attendance version, and idempotency key. Exact parity needs a
 safe Laravel online-scan contract or an intentional source-contract change.
@@ -1218,3 +1259,25 @@ server-side state.
 Record the exact Laravel and Web UK SHAs, fixture identity, commands, pass/fail
 counts, retained failures, and cleanup result. Route equality, a focused test,
 or a stale listener is not certification.
+
+## 2026-07-14 API Consumer Contract Correction
+
+Frozen evidence at 2026-07-14 14:50 +01:00: Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf`; published Web UK parent and
+`origin/main` `27c6f2fe04471e095f2568f31829d8ccb0072370`. This slice corrects three
+concrete Laravel-contract regressions: invalid ideation campaign linking no
+longer calls the synthetic `/ideation-campaigns/0/challenges` endpoint and now
+uses Blade's detail-page redirects; the current-member activity dashboard uses
+`/api/v2/users/me/activity/dashboard`; and application-history caption lookup
+uses `/api/v2/jobs/my-applications?per_page=100` instead of the undeclared jobs
+applications collection.
+
+The complete non-mutating gate passes 50/50 suites and 1,663/1,663 tests, plus
+green brand, lint, CSS, route-matrix, locale-structure, template-localization,
+19/19 Blade marker, and diff checks. The API ledger remains 663 contracts but
+improves to 448 OpenAPI matches, 215 unmatched, and zero dynamic unresolved.
+Five inspected residual anomalies are static path-builder opacity around valid
+Laravel routes, not demonstrated runtime defects. No Laravel source, database,
+migration, mutation, upload, download, cleanup, or production operation was
+performed. This published slice remains unscored: the fixed bank is 622/1,000
+until a complete rubric re-audit explicitly replaces that baseline.

@@ -7,6 +7,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const espree = require('espree');
+const { collectGeneratorProvenance } = require('./generator-provenance');
 
 const HTTP_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']);
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
@@ -212,7 +213,23 @@ function normalizePath(value) {
 
 function displayPath(value) {
   let result = String(value || '/').trim().replace(/\\/g, '/');
-  result = result.replace(/\{([^}]+)\}/g, (match, name) => name === 'dynamic' ? '{dynamic}' : '{param}');
+  result = result.replace(/\?+\{query\}/g, '?{query}');
+  result = result.replace(/\{([^}]+)\}/g, (match, name) => {
+    if (name === 'query') return '{query}';
+    return name === 'dynamic' ? '{dynamic}' : '{param}';
+  });
+
+  const queryIndex = result.indexOf('?');
+  if (queryIndex !== -1) {
+    const pathname = result.slice(0, queryIndex);
+    const query = result
+      .slice(queryIndex + 1)
+      .replace(/^\?+/, '')
+      .replace(/\{dynamic\}/g, '{param}')
+      .replace(/\{param\}\d+(?:\.\d+)?/g, '{param}');
+    result = `${pathname}?${query}`;
+  }
+
   result = result.replace(/\/+/g, '/');
   if (!result.startsWith('/')) result = `/${result}`;
   return result;
@@ -589,9 +606,17 @@ function renderMarkdown(report) {
   const lines = [
     '# Web UK Frontend-Consumer API Ledger',
     '',
+    'Status: **Generated snapshot — static consumer inventory, not certification**',
+    '',
     'Generated from `src/lib/api.js`, routed Web UK consumers, tests, and Laravel `openapi.json`.',
     'This is static evidence: an OpenAPI match or test reference does not prove runtime behavior, role policy, side effects, cleanup, or frontend parity.',
     '',
+    `- Generated: ${report.generatedAt}`,
+    `- Laravel commit SHA: \`${report.provenance.laravelCommitSha}\``,
+    `- Web UK repository commit SHA: \`${report.provenance.webUkRepositoryCommitSha}\``,
+    `- Laravel working tree dirty: ${report.provenance.laravelWorkingTreeDirty ? 'yes' : 'no'}`,
+    `- Web UK repository working tree dirty: ${report.provenance.webUkRepositoryWorkingTreeDirty ? 'yes' : 'no'}`,
+    `- Provenance caveat: ${report.provenance.caveat}`,
     `- Contracts: ${report.summary.contracts}`,
     `- Laravel OpenAPI matches: ${report.summary.matchedOpenApi}`,
     `- Missing OpenAPI matches: ${report.summary.missingOpenApi}`,
@@ -622,6 +647,11 @@ function generateApiConsumerLedger(options = {}) {
   const outDir = options.outDir || path.join(webUkRoot, 'docs', 'generated');
   const apiPath = options.apiPath || path.join(webUkRoot, 'src', 'lib', 'api.js');
   const openApiPath = options.openApiPath || path.join(laravelRoot, 'openapi.json');
+  const provenance = options.provenance || collectGeneratorProvenance({
+    laravelRoot,
+    webUkRoot,
+    generatedAt: options.generatedAt
+  });
   const apiSource = readText(apiPath);
   const openApiSource = readText(openApiPath);
   const apiAst = parseJavaScript(apiSource, apiPath);
@@ -639,6 +669,8 @@ function generateApiConsumerLedger(options = {}) {
   });
   const report = {
     schemaVersion: 1,
+    generatedAt: provenance.generatedAt,
+    provenance,
     sources: {
       api: path.relative(webUkRoot, apiPath).replace(/\\/g, '/'),
       apiSha256: sha256(apiSource),
@@ -674,6 +706,7 @@ module.exports = {
   WRAPPERS,
   collectDirectContracts,
   collectWrapperContracts,
+  displayPath,
   generateApiConsumerLedger,
   normalizePath,
   parseJavaScript,

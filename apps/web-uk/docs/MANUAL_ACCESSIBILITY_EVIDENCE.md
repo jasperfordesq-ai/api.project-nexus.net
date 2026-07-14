@@ -1,6 +1,17 @@
 # Web UK manual accessibility evidence
 
+Status: **Maintained reference — evidence register, not a conformance claim**
+
 This register records directed browser and assistive-technology checks separately from the automated accessibility gate. An entry is evidence only for the exact page, browser, input method, viewport, and state listed. It is not a claim of WCAG conformance.
+
+`CURRENT_LARAVEL_FIRST_PARITY_STATUS.md` is the current safety and scoring
+source. Any historical entry below that authenticated, submitted a form, or
+otherwise wrote state while using the ordinary Laravel environment at
+`127.0.0.1:8088` is invalid as runtime certification. It is retained only as
+UI-regression discovery. Future stateful manual evidence requires a separately
+provisioned and verified disposable Laravel application/database/storage
+environment; authorization and cleanup never permit writes to the ordinary
+production-derived snapshot.
 
 ## 2026-07-12 - English sign-in error recovery
 
