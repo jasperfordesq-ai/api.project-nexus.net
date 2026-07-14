@@ -17937,6 +17937,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Mentoring');
     expect(response.text).toContain('Derry');
     expect(response.text).toContain('Last active 2 July 2099');
+    expect(response.text).toContain('&middot; Last active 2 July 2099');
     expect(response.text).toContain('Show more candidates');
     expect(response.text).toContain('offset=40');
     expect(response.text).not.toContain('Laravel Blade route');
