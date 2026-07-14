@@ -171,7 +171,7 @@ Refresh the Laravel Blade/API source and Web UK implementation before relying on
 these numbers after either source moves.
 
 At this documentation audit, the product-source baseline was
-`8cad6728d74643c4786c46c052516af122adcebd`. The revoked-session confirmation,
+`7fae732dd52b94964e1d3d60b430450405ddd80b`. The revoked-session confirmation,
 Laravel method-spoof reconciliation, group-message contract, residual API-
 consumer correction, and backend-request timeout slices are above the frozen
 bank and remain **published and unscored**. The documentation remediation is
@@ -186,7 +186,7 @@ together from a clean published checkout.
   with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
   Only this fixed-rubric audit contributes to the current bank.
 - **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `8cad6728`, including the later identity/session confirmation,
+  baseline `7fae732d`, including the later identity/session confirmation,
   method-spoof reconciliation, group-message contract, residual API-consumer
   correction, and backend-request timeout slices. Their evidence is useful, but they
   contribute zero points until one complete fixed-rubric re-audit explicitly
@@ -1426,3 +1426,20 @@ operations-owned certification item. No Laravel source, database, migration,
 mutation, cleanup, or production operation was performed. This published
 implementation remains unscored; the frozen bank remains 622/1,000 pending a
 complete fixed-rubric re-audit.
+
+## 2026-07-14 Session-Store Readiness
+
+Frozen evidence at `2026-07-14T16:38:58.4751822+01:00` against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and Web UK product commit
+`7fae732dd52b94964e1d3d60b430450405ddd80b`. The readiness endpoint now returns
+`503 NOT READY` whenever the required production Redis client is not ready,
+instead of reporting a healthy container after session persistence is lost.
+Development and test environments retain their existing in-memory readiness.
+
+Focused readiness proof passes 73/73 tests with green lint. The uninterrupted
+complete non-mutating gate remains green at 52/52 suites and 1,672/1,672 tests.
+No live Redis, deployed environment, Laravel source, database, migration,
+mutation, cleanup, container, or production operation was used. Deployed
+session persistence and failure/recovery proof remain operations-owned, so this
+published hardening improvement is unscored and the frozen bank remains
+622/1,000 pending a complete fixed-rubric re-audit.
