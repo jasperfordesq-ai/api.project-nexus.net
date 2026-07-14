@@ -29961,6 +29961,10 @@ describe('shared accessible frontend shell', () => {
     expect(detail.text).toContain('Intro to community support');
     expect(detail.text).toContain('Download your certificate');
     expect(detail.text).toContain('Leave a review');
+    expect(detail.text).toContain('<span aria-hidden="true">★★★★★</span>');
+    expect(detail.text).toContain('<strong>4.5</strong> out of 5');
+    expect(detail.text).toContain('<strong>Ada Learner</strong> · 2 January 2026');
+    expect(detail.text).not.toContain('*****');
     expect(detail.text).not.toContain('Continue learning');
 
     const enrolRequired = await request(app)

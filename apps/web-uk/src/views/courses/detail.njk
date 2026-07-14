@@ -82,8 +82,8 @@
   <h2 class="govuk-heading-l govuk-!-margin-top-6" id="reviews">Ratings and reviews</h2>
   {% if course.ratingCount > 0 %}
     <p class="govuk-body-l govuk-!-margin-bottom-1">
-      <span aria-hidden="true">{{ course.ratingAvg }}</span>
-      <strong>{{ course.ratingAvg }}</strong> out of 5
+      <span aria-hidden="true">{{ course.ratingStars }}</span>
+      <strong>{{ course.ratingAvgLabel }}</strong> out of 5
     </p>
     <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-4">Based on {{ course.ratingCount }} review{% if course.ratingCount != 1 %}s{% endif %}</p>
   {% endif %}
@@ -95,7 +95,7 @@
           <p class="govuk-body-s govuk-!-margin-bottom-1">
             <span aria-hidden="true">{{ review.stars }}</span>
             <span class="govuk-visually-hidden">Rated {{ review.rating }} out of 5</span>
-            <strong>{{ review.name }}</strong>{% if review.createdAt %} - {{ review.createdAt | date }}{% endif %}
+            <strong>{{ review.name }}</strong>{% if review.createdAtLabel %} · {{ review.createdAtLabel }}{% endif %}
           </p>
           {% if review.body %}
             <p class="govuk-body govuk-!-margin-bottom-0">{{ review.body }}</p>

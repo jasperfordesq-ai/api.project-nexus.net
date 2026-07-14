@@ -6,6 +6,7 @@
 const express = require('express');
 const { ApiError, ApiOfflineError, callCourseApi, getMyCourses } = require('../lib/api');
 const { sanitizeCmsHtml } = require('../lib/html-sanitizer');
+const { getRequestIntlLocale } = require('../lib/request-intl-locale');
 const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
@@ -274,6 +275,8 @@ function normalizeCourse(course) {
     authorName: trimmed(course.author && course.author.name) || trimmed(course.author_name),
     isEnrolled: !!course.is_enrolled,
     ratingAvg: Number(course.rating_avg || 0),
+    ratingAvgLabel: Number(course.rating_avg || 0).toFixed(1),
+    ratingStars: stars(course.rating_avg),
     ratingCount: Number(course.rating_count || 0),
     status: trimmed(course.status) || 'draft',
     moderationStatus: trimmed(course.moderation_status) || 'pending'
@@ -383,7 +386,17 @@ function firstAvailableLesson(sections, requestedLessonId = null) {
 
 function stars(rating) {
   const count = Math.max(0, Math.min(5, Math.round(Number(rating || 0))));
-  return `${'*'.repeat(count)}${'-'.repeat(5 - count)}`;
+  return `${'★'.repeat(count)}${'☆'.repeat(5 - count)}`;
+}
+
+function reviewDateLabel(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat(getRequestIntlLocale(), {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  }).format(date);
 }
 
 function normalizeReview(review) {
@@ -393,7 +406,8 @@ function normalizeReview(review) {
     stars: stars(review.rating),
     body: trimmed(review.body),
     name: trimmed(review.name) || trimmed(user.name) || 'A learner',
-    createdAt: trimmed(review.created_at)
+    createdAt: trimmed(review.created_at),
+    createdAtLabel: reviewDateLabel(review.created_at)
   };
 }
 
