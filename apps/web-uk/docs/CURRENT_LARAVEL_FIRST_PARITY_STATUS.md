@@ -171,7 +171,7 @@ Refresh the Laravel Blade/API source and Web UK implementation before relying on
 these numbers after either source moves.
 
 At this documentation audit, the product-source baseline was
-`2b9ba620dc08a422040c7039d4c5138437b28b91`. The revoked-session confirmation,
+`8cad6728d74643c4786c46c052516af122adcebd`. The revoked-session confirmation,
 Laravel method-spoof reconciliation, group-message contract, residual API-
 consumer correction, and backend-request timeout slices are above the frozen
 bank and remain **published and unscored**. The documentation remediation is
@@ -186,7 +186,7 @@ together from a clean published checkout.
   with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
   Only this fixed-rubric audit contributes to the current bank.
 - **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `2b9ba620`, including the later identity/session confirmation,
+  baseline `8cad6728`, including the later identity/session confirmation,
   method-spoof reconciliation, group-message contract, residual API-consumer
   correction, and backend-request timeout slices. Their evidence is useful, but they
   contribute zero points until one complete fixed-rubric re-audit explicitly
@@ -205,7 +205,7 @@ together from a clean published checkout.
 | Missing Laravel routes | 1 | Event offline check-in code generation |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 51/51 suites, 1,668/1,668 tests | Latest recorded uninterrupted full gate after the frozen score; later improvements remain unscored until a complete rubric re-audit |
+| Jest | 52/52 suites, 1,672/1,672 tests | Latest recorded uninterrupted full gate after the frozen score; later improvements remain unscored until a complete rubric re-audit |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
 | Static locale usage | 7,341 references, 5,620 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
@@ -292,9 +292,10 @@ when a concrete regression requires an independently publishable fix.
     screenshot set and complete keyboard, no-JS, zoom/reflow, forced-colour,
     focus/error, and screen-reader sign-off. Owner: accessibility reviewer with
     Web UK support.
-12. **P1 - Production hardening:** prove persistent sessions, production
-    secrets/configuration, timeout/abort handling, and a reproducible release
-    runbook. Owner: Web UK/operations.
+12. **P1 - Production hardening:** persistent Redis session configuration,
+    fail-closed production secrets, and request timeout/abort implementation are
+    published. Prove those controls in a deployed environment and complete the
+    reproducible release runbook. Owner: operations with Web UK support.
 
 The generated route matrix was refreshed against the same route inventories
 and reports the counts above. It remains declaration evidence, not runtime or
@@ -1220,8 +1221,8 @@ After the localization P0, the remaining priority order is:
    obtain an API-owner publication decision. Web UK now has zero consumers
    without a direct Laravel declaration. Do not count declaration
    classification or a test-file reference as behavioral certification.
-7. Harden production concerns separately: persistent sessions,
-   production-only secrets/configuration, and deployed timeout proof.
+7. Obtain deployed proof for the published persistent Redis session,
+   production-only secret/configuration, and request-timeout controls.
 
 ASP.NET proof is a separate later gate, not remaining frontend implementation
 work. First certify the frontend against Laravel. When the separate backend
@@ -1404,3 +1405,24 @@ remains 51/51 suites and 1,668/1,668 tests. No Laravel source, database,
 migration, mutation, upload, download, cleanup, or production operation was
 performed. This is an unscored component-audit improvement; the frozen bank
 remains 622/1,000 pending a complete fixed-rubric re-audit.
+
+## 2026-07-14 Persistent Production Session Hardening
+
+Frozen evidence at `2026-07-14T16:29:56.5110142+01:00` against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and Web UK product commit
+`8cad6728d74643c4786c46c052516af122adcebd`. Production now fails closed when
+cookie or session secrets are missing, short, placeholder values, or identical;
+it requires a Redis or Redis-TLS session store and does not start the HTTP
+listener until the Redis connection succeeds. Test and development environments
+explicitly retain the in-memory store.
+
+The focused production-session proof passes 5/5. The uninterrupted complete
+non-mutating gate passes 52/52 suites and 1,672/1,672 tests, plus green lint,
+brand, CSS, route matrix, API ledger, locale structure/static keys/templates,
+and 19/19 Blade marker comparisons. The dependency audit reports zero known
+vulnerabilities. No live Redis or deployed environment was used, so deployed
+session persistence, secret/configuration, and request-timeout proof remain an
+operations-owned certification item. No Laravel source, database, migration,
+mutation, cleanup, or production operation was performed. This published
+implementation remains unscored; the frozen bank remains 622/1,000 pending a
+complete fixed-rubric re-audit.

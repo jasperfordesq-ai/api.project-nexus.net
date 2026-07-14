@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-14T15:16:39.085Z",
+  "generatedAt": "2026-07-14T15:29:51.106Z",
   "provenance": {
-    "generatedAt": "2026-07-14T15:16:39.085Z",
+    "generatedAt": "2026-07-14T15:29:51.106Z",
     "laravelRepositoryRoot": "C:\\platforms\\htdocs\\staging",
     "laravelCommitSha": "903d03d3db78bbf87129ad35728be3b72819acaf",
     "laravelWorkingTreeDirty": true,
     "webUkRepositoryRoot": "C:\\platforms\\htdocs\\asp.net-backend",
     "webUkPath": "apps/web-uk",
-    "webUkRepositoryCommitSha": "2b9ba620dc08a422040c7039d4c5138437b28b91",
+    "webUkRepositoryCommitSha": "8cad6728d74643c4786c46c052516af122adcebd",
     "webUkRepositoryWorkingTreeDirty": true,
     "caveat": "Laravel and Web UK repository working trees were dirty when generated. Commit SHAs identify HEAD only; generated content may include uncommitted changes from the dirty working trees."
   },
@@ -21943,7 +21943,7 @@
       "method": "GET",
       "path": "/api/v2/volunteering/community-projects?public=true&limit=12",
       "apiHelper": "callVolunteeringApi",
-      "source": "src/server.js:826",
+      "source": "src/server.js:831",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
       "requestShape": "query/path parameters; no request body expected",
