@@ -1263,6 +1263,7 @@ function decorateReviewStats(result, reviews) {
     dimensionRows: Object.entries(dimensions).map(([key, value]) => ({
       key,
       label: JOB_REVIEW_DIMENSION_LABELS[key] || statusTitle(key),
+      labelKey: `govuk_alpha_jobs.employer.dimension_${key}`,
       score: finiteNumber(value, 0)
     })).filter((row) => row.label)
   };

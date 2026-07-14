@@ -18126,7 +18126,7 @@ describe('shared accessible frontend shell', () => {
     expect(api.callJobApi).toHaveBeenCalledWith('test-token', 'GET', '/employer-reviews/88');
     expect(response.status).toBe(200);
     expect(response.text).toContain('Morgan Patel');
-    expect(response.text).toContain('Open opportunities and reviews for this employer.');
+    expect(response.text).not.toContain('Open opportunities and reviews for this employer.');
     expect(response.text).toContain('Community garden coordinator');
     expect(response.text).toContain('Runs inclusive neighbourhood garden projects.');
     expect(response.text).toContain('Belfast');
@@ -18137,6 +18137,9 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Employer reviews');
     expect(response.text).toContain('Average rating');
     expect(response.text).toContain('4.5');
+    expect(response.text).toContain('aria-label="Rated 4.5 out of 5"');
+    expect(response.text).toContain('aria-label="Respect rated 5 out of 5"');
+    expect(response.text).toContain('aria-label="This review gave 5 out of 5"');
     expect(response.text).toContain('Clear communication and kind support.');
     expect(response.text).not.toContain('Laravel Blade route');
   });
