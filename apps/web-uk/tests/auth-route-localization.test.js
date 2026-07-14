@@ -92,6 +92,7 @@ describe('request-scoped auth route localization', () => {
 
     const expired = await request(app).get('/login?status=two-factor-expired');
     expect(expired.body.locals.error).toBe(t('auth.two_factor_expired'));
+    expect(expired.body.locals.loginStatus).toBe('two-factor-expired');
 
     api.login.mockRejectedValueOnce(new api.ApiError('Suspended', 403, {
       errors: [{ code: 'AUTH_ACCOUNT_SUSPENDED' }]
@@ -102,6 +103,7 @@ describe('request-scoped auth route localization', () => {
       .send({ email: 'member@example.test', password: 'secret', tenant_slug: 'acme' });
 
     expect(suspended.body.locals.error).toBe(t('auth.account_suspended'));
+    expect(suspended.body.locals.loginStatus).toBe('account-suspended');
   });
 
   it('localizes two-factor required and invalid errors in Arabic', async () => {

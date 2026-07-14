@@ -222,6 +222,7 @@ router.get('/login', (req, res) => {
   const status = String(req.query.status || flashedStatus || '');
   res.render('login', {
     title: translate(req, 'auth.login_title'),
+    loginStatus: status,
     csrfToken: req.csrfToken ? req.csrfToken() : '',
     successMessage: statusMessage(req, status, LOGIN_SUCCESS_STATUS_KEYS)
       || legacySuccessMessage
@@ -286,23 +287,29 @@ router.post('/login', asyncRoute(async (req, res) => {
       return res.status(503).render('errors/503', { title: 'Service unavailable' });
     }
 
+    let loginStatus = 'login-failed';
     let errorMessage = translate(req, 'auth.login_failed');
 
     if (error instanceof ApiError) {
       const code = errorCode(error);
       if (error.status === 429 || ['RATE_LIMIT_EXCEEDED', 'RATE_LIMITED'].includes(code)) {
+        loginStatus = 'rate-limited';
         errorMessage = translate(req, 'auth.rate_limited');
       } else if (code === 'AUTH_EMAIL_NOT_VERIFIED') {
+        loginStatus = 'email-not-verified';
         errorMessage = translate(req, 'auth.email_not_verified');
       } else if (code === 'AUTH_PENDING_VERIFICATION') {
+        loginStatus = 'pending-verification';
         errorMessage = translate(req, 'auth.pending_verification');
       } else if (code === 'AUTH_ACCOUNT_SUSPENDED') {
+        loginStatus = 'account-suspended';
         errorMessage = translate(req, 'auth.account_suspended');
       }
     }
 
     res.render('login', {
       title: translate(req, 'auth.login_title'),
+      loginStatus,
       error: errorMessage,
       values: { email, tenant_slug: tenantSlug },
       csrfToken: req.csrfToken ? req.csrfToken() : '',

@@ -22,12 +22,18 @@
       {% endif %}
 
       {% if error %}
+        {% set loginErrorHref = "#email" %}
+        {% if not show2fa and loginStatus in ["email-not-verified", "pending-verification"] %}
+          {% set loginErrorHref = "#resend_email" %}
+        {% elseif not show2fa and loginStatus and loginStatus != "login-failed" %}
+          {% set loginErrorHref = "#main-content" %}
+        {% endif %}
         {{ govukErrorSummary({
           titleText: t("states.error_title"),
           errorList: [
             {
               text: error,
-              href: "#code" if show2fa else "#email"
+              href: "#code" if show2fa else loginErrorHref
             }
           ]
         }) }}
@@ -92,6 +98,18 @@
         <h1 class="govuk-heading-xl">{{ t("auth.login_title") }}</h1>
         <p class="govuk-body-l">{{ t("auth.login_description", { community: tenantName or serviceName }) }}</p>
 
+        {% if loginStatus in ["email-not-verified", "pending-verification"] %}
+          <form method="post" action="{{ urlFor('/login/resend-verification') }}" class="govuk-!-margin-bottom-6" novalidate>
+            <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+            <div class="govuk-form-group">
+              <label class="govuk-label" for="resend_email">{{ t("auth.resend_email_label") }}</label>
+              <div id="resend-email-hint" class="govuk-hint">{{ t("auth.resend_verification_hint") }}</div>
+              <input class="govuk-input govuk-!-width-two-thirds" id="resend_email" name="email" type="email" autocomplete="email" value="{{ values.email if values else '' }}" aria-describedby="resend-email-hint" required>
+            </div>
+            <button class="govuk-button govuk-button--secondary" data-module="govuk-button">{{ t("auth.resend_verification_button") }}</button>
+          </form>
+        {% endif %}
+
         <form
           method="post"
           action="{{ urlFor('/login') }}"
@@ -113,6 +131,7 @@
             autocomplete: "email",
             spellcheck: false,
             value: values.email if values else "",
+            errorMessage: { text: error } if loginStatus == "login-failed" else undefined,
             attributes: {
               "required": "required",
               "data-validate": "required email",

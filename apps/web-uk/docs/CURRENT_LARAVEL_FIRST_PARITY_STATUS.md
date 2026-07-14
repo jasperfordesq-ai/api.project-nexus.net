@@ -438,6 +438,27 @@ concrete default-English authentication substate but does not remove the full
 14-point component-state deduction without a complete rubric re-audit, so the
 banked score remains `622/1000`.
 
+## Login Error And Verification-Resend State Parity
+
+Checkpoint frozen at `2026-07-14T13:08:25.2667233+01:00` against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and published Web UK base
+`76d758a8982b08258026b9ba04e5a662c4d5d95d`; both matched `origin/main`
+before this Web UK-only slice.
+
+The default-English login page now preserves Blade's significant error-state
+structure, not only its translated messages. Failed credentials link the error
+summary to the email input and render the matching inline error/ARIA
+description. Unverified and pending accounts link to and render Blade's
+resend-verification email form with the submitted address preserved. Two-factor
+required/expired, rate-limited, and suspended states link to main content and do
+not falsely mark the email field invalid. Direct Laravel error codes now carry
+the same explicit state into rendering. Focused verification passed `3/3`
+suites and `801/801` tests; the complete gate passed `49/49` suites and
+`1,655/1,655` tests with green brand, lint, CSS, and localization audits. No
+Laravel request, mutation, database, or migration operation ran. This closes
+another concrete authentication substate but does not independently remove the
+complete component-state deduction, so the banked score remains `622/1000`.
+
 ## Podcast Episode Visibility Labels
 
 Podcast studio episode visibility selects now follow Blade's exact catalog

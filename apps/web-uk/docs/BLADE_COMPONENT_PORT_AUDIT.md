@@ -122,6 +122,22 @@ legacy `404` tombstones; the remaining credential-download proxy safely carries
 the signed bearer for a binary response. Declaration counts remain preparation
 evidence only.
 
+## 2026-07-14 Authentication Significant-State Checkpoint
+
+Against Laravel `903d03d3db78bbf87129ad35728be3b72819acaf`, Web UK now
+matches the Blade login family's default-English significant states rather than
+only its message strings. Two-factor login accepts backup codes, conditionally
+offers Laravel-configured trusted devices, submits both Boolean choices, and
+uses Blade's focus/error structure. The ordinary login page links failed
+credentials to an inline email error; unverified and pending accounts render
+the mounted resend-verification form with the submitted email preserved; and
+two-factor, rate-limit, and suspension errors target main content without
+falsely invalidating the email field. The complete non-mutating gate after both
+slices passed `49/49` suites and `1,655/1,655` tests with green static and
+localization audits plus the prior refreshed 19/19 canonical marker comparison.
+No Laravel authentication, mutation, database, or migration operation ran;
+disposable runtime and manual assistive-technology certification remain open.
+
 ## 2026-07-13 Member Authentication Runtime Checkpoint
 
 The second quarter of the exhaustive Laravel runtime smoke reached a terminal

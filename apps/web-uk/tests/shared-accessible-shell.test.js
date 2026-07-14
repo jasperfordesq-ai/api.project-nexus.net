@@ -6395,6 +6395,32 @@ describe('shared accessible frontend shell', () => {
     expect(api.resendVerification).toHaveBeenCalledWith('ada@example.org', '');
   });
 
+  it('matches Blade login error targets and verification resend states', async () => {
+    const failed = await request(app).get('/login?status=login-failed');
+    expect(failed.status).toBe(200);
+    expect(failed.text).toContain('href="#email"');
+    expect(failed.text).toContain('id="email-error"');
+    expect(failed.text).toContain('aria-describedby="email-error"');
+    expect(failed.text).not.toContain('id="resend_email"');
+
+    for (const status of ['email-not-verified', 'pending-verification']) {
+      const response = await request(app).get(`/login?status=${status}`);
+      expect(response.status).toBe(200);
+      expect(response.text).toContain('href="#resend_email"');
+      expect(response.text).toContain('id="resend_email"');
+      expect(response.text).toContain('aria-describedby="resend-email-hint"');
+      expect(response.text).toContain('action="/login/resend-verification"');
+    }
+
+    for (const status of ['two-factor-required', 'two-factor-expired', 'rate-limited', 'account-suspended']) {
+      const response = await request(app).get(`/login?status=${status}`);
+      expect(response.status).toBe(200);
+      expect(response.text).toContain('href="#main-content"');
+      expect(response.text).not.toContain('id="email-error"');
+      expect(response.text).not.toContain('id="resend_email"');
+    }
+  });
+
   it('renders Laravel passkey-removal confirmation on the signed-out login page', async () => {
     const response = await request(app).get('/login?status=passkey-removed');
 
