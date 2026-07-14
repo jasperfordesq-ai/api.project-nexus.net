@@ -15558,7 +15558,12 @@ describe('shared accessible frontend shell', () => {
     });
     expect(api.getNotifications).not.toHaveBeenCalled();
     expect(api.getNotificationUnreadCount).toHaveBeenCalledWith('test-token');
-    expect(response.text).toContain('4 unread');
+    expect(response.text).not.toContain('4 unread');
+    expect(response.text).toContain('Unread (4)');
+    expect(response.text).toContain('<h1 class="govuk-heading-xl">Notifications</h1>');
+    expect(response.text).toContain('class="nexus-alpha-card govuk-!-margin-bottom-3"');
+    expect(response.text).toContain('&middot;');
+    expect(response.text).not.toContain('app-notification-icon');
     expect(response.text).toContain('Avery and two others liked your post');
     expect(response.text).toContain('From Avery, Morgan and 1 others');
     expect(response.text).toContain('href="/feed/posts/7"');
@@ -15591,6 +15596,15 @@ describe('shared accessible frontend shell', () => {
           is_grouped: false,
           is_read: true,
           read_at: null
+        },
+        {
+          id: 23,
+          type: 'system',
+          message: 'account.sign_out',
+          is_grouped: true,
+          group_key: 'system:23',
+          group_count: 1,
+          all_read: false
         }
       ],
       meta: { cursor: null, has_more: false, per_page: 30 }
@@ -15603,8 +15617,11 @@ describe('shared accessible frontend shell', () => {
 
     expect(response.status).toBe(200);
     expect(response.text).toContain('govuk-tag--blue">Message</strong>');
-    expect(response.text).toContain('govuk-tag--green">Credits</strong>');
+    expect(response.text).toContain('govuk-tag--grey">Update</strong>');
+    expect(response.text).toContain('Sign out');
     expect(response.text).not.toContain('name="group_key" value="message:21"');
+    expect(response.text).toContain('name="group_key" value="system:23"');
+    expect(response.text).not.toContain('action="/notifications/23/delete"');
     expect(response.text).not.toContain('action="/notifications/22/read"');
     expect(response.text).not.toContain('app-notification-badge">New</span>');
   });

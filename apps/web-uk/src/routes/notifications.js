@@ -61,7 +61,7 @@ function categoryFromType(value) {
   if (type.includes('message')) return 'messages';
   if (type.includes('connection') || type.includes('friend')) return 'connections';
   if (type.includes('review')) return 'reviews';
-  if (type.includes('transaction') || type.includes('payment') || type.includes('credit') || type.includes('transfer')) return 'transactions';
+  if (type.includes('transaction') || type.includes('payment') || type.includes('credit')) return 'transactions';
   if (type.includes('event')) return 'events';
   if (type.includes('group')) return 'groups';
   if (type.includes('listing') || type.includes('match')) return 'listings';
@@ -76,7 +76,7 @@ function categoryFromType(value) {
 
 function normalizeNotifications(rows, t, formatRelativeTime) {
   return rows.map((notification) => {
-    const grouped = boolFrom(notification.is_grouped) && Number(notification.group_count || 0) > 1;
+    const grouped = boolFrom(notification.is_grouped);
     const read = grouped
       ? boolFrom(notification.all_read)
       : (Object.prototype.hasOwnProperty.call(notification, 'is_read')
@@ -84,13 +84,16 @@ function normalizeNotifications(rows, t, formatRelativeTime) {
         : Boolean(notification.read_at));
     const category = categoryFromType(notification.type);
 
+    const rawText = String(notification.message || notification.body || notification.title || '').trim();
+    const translatedText = /^[a-z0-9_]+\.[a-z0-9_.]+$/.test(rawText) ? t(rawText) : rawText;
+
     return {
       ...notification,
       isGrouped: grouped,
       unread: !read,
       categoryLabel: t(`notifications.types.${category}`),
       categoryColour: CATEGORY_COLOURS[category] || CATEGORY_COLOURS.other,
-      displayText: notification.message || notification.body || notification.title || '',
+      displayText: translatedText !== rawText ? translatedText : rawText,
       displayWhen: notification.created_at ? formatRelativeTime(notification.created_at) : ''
     };
   });
