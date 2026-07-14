@@ -349,12 +349,12 @@ function conversationOtherUser(conversation, fallbackId, t = null) {
   };
 }
 
-function conversationApiPath(conversationId, query) {
+function conversationQuery(query) {
   const search = new URLSearchParams();
   search.set('per_page', '50');
   search.set('direction', 'older');
   if (query.cursor) search.set('cursor', String(query.cursor));
-  return `/${conversationId}/messages?${search.toString()}`;
+  return search.toString();
 }
 
 function directConversationApiPath(userId, query) {
@@ -886,7 +886,7 @@ router.get('/groups/new', requireAuth, asyncRoute(async (req, res) => {
 router.get('/groups/:conversationId(\\d+)', requireAuth, asyncRoute(async (req, res) => {
   const conversationId = Number(req.params.conversationId);
   const [messagesResult, participantsResult, profileResult, restriction] = await Promise.all([
-    callConversation(req.token, 'GET', conversationApiPath(conversationId, req.query)),
+    callConversation(req.token, 'GET', `/${conversationId}/messages?${conversationQuery(req.query)}`),
     callConversation(req.token, 'GET', `/${conversationId}/participants`),
     getRequestProfile(req, req.token).catch(() => null),
     messageRestriction(req)

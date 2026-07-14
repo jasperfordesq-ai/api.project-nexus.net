@@ -538,6 +538,24 @@ the complete component-state deduction, so the banked score remains
 `622/1000`. The uninterrupted complete gate passes `49/49` suites and
 `1,661/1,661` tests, and lint is green.
 
+## Group Conversation Ledger Path Reconciliation
+
+Checkpoint frozen at `2026-07-14T14:32:02.9843843+01:00` against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and published Web UK base
+`bba2afad65cee2b91996b7e6cc1c0774582ea7ba`; both matched `origin/main`
+before this Web UK-only slice.
+
+The group-conversation message read now keeps its method/path template static
+at the API callsite while a helper builds only the query string. Runtime output
+is unchanged at
+`GET /api/v2/conversations/{id}/messages?per_page=50&direction=older...`, and
+focused rendered-contract proof passes `1/1`. The ledger now records that real
+path instead of the false `/api/v2/conversations/{param}` path. Laravel declares
+the real route in `routes/api.php`, but its OpenAPI file omits it, so the honest
+aggregate remains `663/445/218/0`; this is a reconciled OpenAPI-documentation gap,
+not a frontend path defect. No Laravel request, mutation, database, migration,
+upload, or download operation ran, and the banked score remains `622/1000`.
+
 ## Podcast Method-Spoof Ledger Reconciliation
 
 Checkpoint frozen at `2026-07-14T14:13:51.7066412+01:00` against Laravel

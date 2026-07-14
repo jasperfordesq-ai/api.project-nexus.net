@@ -1829,9 +1829,9 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/conversations/{param} [callConversationApi]",
+      "id": "GET /api/v2/conversations/{param}/messages?{query} [callConversationApi]",
       "method": "GET",
-      "path": "/api/v2/conversations/{param}",
+      "path": "/api/v2/conversations/{param}/messages?{query}",
       "apiHelper": "callConversationApi",
       "source": "src/routes/messages.js:889",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
