@@ -9,16 +9,15 @@ function nunjucksFilesUnder(directory) {
   });
 }
 
-describe('read-only star rating accessibility', () => {
-  it('gives labelled star graphics an image role', () => {
-    for (const templatePath of [path.join('members', 'profile.njk')]) {
-      const template = fs.readFileSync(
-        path.join(__dirname, '..', 'src', 'views', templatePath),
-        'utf8'
-      );
-      expect(template).not.toMatch(/class="app-star-display" aria-label=/);
-      expect(template).toMatch(/class="app-star-display" role="img" aria-label=/);
-    }
+describe('read-only member rating accessibility', () => {
+  it('keeps Blade rating tags paired with assistive copy', () => {
+    const template = fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', 'members', 'profile.njk'),
+      'utf8'
+    );
+    expect(template).not.toContain('app-star-display');
+    expect(template).toContain('class="govuk-tag govuk-tag--blue">{{ t("ux.rating_out_of"');
+    expect(template).toContain('class="govuk-visually-hidden">{{ t("polish_members.rating_accessible"');
   });
 });
 
