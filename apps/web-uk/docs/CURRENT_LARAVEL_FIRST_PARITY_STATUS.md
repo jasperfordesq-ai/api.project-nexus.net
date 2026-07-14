@@ -171,7 +171,7 @@ Refresh the Laravel Blade/API source and Web UK implementation before relying on
 these numbers after either source moves.
 
 At this documentation audit, the product-source baseline was
-`95baf23fe0551c440b0c4be843a598c0c5a129ba`. The revoked-session confirmation,
+`db1bd3a3a520a126ffa9f10f037c8a1741bb9e48`. The revoked-session confirmation,
 Laravel method-spoof reconciliation, group-message contract, residual API-
 consumer correction, and backend-request timeout slices are above the frozen
 bank and remain **published and unscored**. The documentation remediation is
@@ -186,7 +186,7 @@ together from a clean published checkout.
   with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
   Only this fixed-rubric audit contributes to the current bank.
 - **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `95baf23f`, including the later identity/session confirmation,
+  baseline `db1bd3a3`, including the later identity/session confirmation,
   method-spoof reconciliation, group-message contract, residual API-consumer
   correction, and backend-request timeout slices. Their evidence is useful, but they
   contribute zero points until one complete fixed-rubric re-audit explicitly
@@ -1524,6 +1524,23 @@ review form now starts with Blade's disabled `Choose a rating` option instead
 of preselecting a score.
 
 Focused rendered/source proof passes 3/3 with green lint, the 322-template
+zero-match localization audit, and diff checks. The immediately preceding
+complete gate is green at 52/52 suites and 1,672/1,672 tests. No Laravel source,
+database, migration, mutation, container, or production operation was
+performed. This published component-audit improvement remains unscored, so the
+frozen bank remains 622/1,000 pending a complete fixed-rubric re-audit.
+
+## 2026-07-14 Poll Deletion Confirmation Parity
+
+Frozen evidence at `2026-07-14T17:14:07.7319045+01:00` against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and Web UK product commit
+`db1bd3a3a520a126ffa9f10f037c8a1741bb9e48`. Owner delete actions on open,
+ranked, and closed poll cards now follow Blade's no-JavaScript destructive
+pattern: a closed details disclosure, irreversible-action warning, and an
+explicit final delete button. The former direct open-poll delete form is gone,
+and closed owner polls now expose the source action.
+
+The focused seven-page poll journey passes 1/1 with green lint, the 322-template
 zero-match localization audit, and diff checks. The immediately preceding
 complete gate is green at 52/52 suites and 1,672/1,672 tests. No Laravel source,
 database, migration, mutation, container, or production operation was
