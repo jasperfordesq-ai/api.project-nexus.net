@@ -121,7 +121,7 @@ commit as the implementation it describes.
 
 The frontend baseline for the current checkout includes the Event registration,
 account-hub reconciliation, Event Communications, lifecycle-history, and recurrence-
-history slices; its published parent is repository commit `1b78ce51`; the current
+history slices; its published parent is repository commit `8314c48a`; the current
 checkout also contains the Marketplace listing-form parity slice. The Laravel source
 baseline is `903d03d3`. The first SHA names the
 repository snapshot containing Web UK; it does not make ASP.NET authoritative.
@@ -136,9 +136,9 @@ these numbers after either source moves.
 | Missing Laravel routes | 6 | All are Event workflows |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 48/48 suites, 1,632/1,632 tests | Fresh green code gate |
+| Jest | 48/48 suites, 1,633/1,633 tests | Fresh green code gate |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
-| Static locale usage | 7,046 references, 5,364 unique keys, 0 unresolved | Current complete-reference audit |
+| Static locale usage | 7,063 references, 5,379 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 320 templates, 0 conservative matches | Current hard-coded-copy audit |
 | Blade marker check | 19/19 | Text-marker spotcheck, not visual certification |
 | Automated accessibility | Latest recorded 87/87 | Manual AT review remains open |
@@ -162,6 +162,24 @@ Focused Marketplace proof passes, and the full non-mutating gate remains
 48/48 suites and 1,632/1,632 tests. Lint, brand, 7,046 static references / 5,364
 unique keys / zero unresolved keys, and the 320-template zero-match audit are
 green. No Laravel runtime or database mutation was run.
+
+## Generic Listings Form Refresh
+
+Generic listing create/edit now follows current Blade form behaviour instead of
+tenant flags that Blade does not use to hide offer/request choices or skill
+tags. The form omits service type and category when Blade omits them, uses the
+exact catalog hints and primary validation messages, includes Blade's no-JS AI
+description helper and edit-page delete warning/action, and removes invented
+minimum-length, image-size, and layout copy.
+
+The AI helper now preserves bounded form values in one-use session state,
+places Laravel's returned suggestion into the description field, and returns
+to the mounted create/edit URL with the exact status banner. Core persistence,
+skill-tag synchronization, upload, and delete boundaries remain mocked contract
+coverage only. The full local gate is green at 48/48 suites and 1,633/1,633
+tests, with lint, branding, CSS, locale, template, and route-matrix checks also
+green. No Laravel runtime request, database write, migration, upload, download,
+or destructive action was run for this slice.
 
 ## Rotating Authentication Session Refresh
 

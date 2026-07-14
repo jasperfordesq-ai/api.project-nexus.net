@@ -165,17 +165,11 @@ async function listingFormSupport(req) {
   const categories = collectionFrom(categoriesResult)
     .map(listingCategoryFrom)
     .filter(Boolean);
-  const allowedTypes = [];
-  if (config.allowOffers) allowedTypes.push('offer');
-  if (config.allowRequests) allowedTypes.push('request');
   if (!setupErrorMessage && config.requireCategory && categories.length === 0) {
     setupErrorMessage = 'No listing categories are currently available. Contact your community administrator.';
   }
-  if (!setupErrorMessage && allowedTypes.length === 0) {
-    setupErrorMessage = 'This community is not currently accepting offers or requests.';
-  }
 
-  return { config, categories, allowedTypes, setupErrorMessage };
+  return { config, categories, setupErrorMessage };
 }
 
 function uploadedFile(req, fieldName) {
@@ -236,9 +230,38 @@ function listingFormValues(source = {}, listing = null) {
       : (base.hours_estimate ?? base.estimated_hours ?? ''),
     service_type: values.service_type !== undefined ? values.service_type : (base.service_type || 'physical_only'),
     location: values.location !== undefined ? values.location : (base.location || ''),
-    skill_tags: skillTags,
-    has_existing_image: values.has_existing_image === '1' || values.has_existing_image === true || Boolean(base.image_url)
+    skill_tags: skillTags
   };
+}
+
+function boundedListingFormValues(source = {}) {
+  const values = listingFormValues(source);
+  return {
+    title: trimmed(values.title, 255),
+    description: trimmed(values.description, 10000),
+    type: trimmed(values.type, 32),
+    category_id: trimmed(values.category_id, 32),
+    hours_estimate: trimmed(values.hours_estimate, 32),
+    service_type: trimmed(values.service_type, 64),
+    location: trimmed(values.location, 255),
+    skill_tags: trimmed(values.skill_tags, 600)
+  };
+}
+
+function storeListingFormReplay(req, listingId, values) {
+  if (!req.session) return;
+  req.session.listingFormReplay = {
+    listingId: listingId === null ? null : positiveInteger(listingId),
+    values: boundedListingFormValues(values)
+  };
+}
+
+function consumeListingFormReplay(req, listingId) {
+  if (!req.session || !req.session.listingFormReplay) return null;
+  const replay = req.session.listingFormReplay;
+  delete req.session.listingFormReplay;
+  const expectedId = listingId === null ? null : positiveInteger(listingId);
+  return replay.listingId === expectedId ? boundedListingFormValues(replay.values) : null;
 }
 
 function listingPayloadFrom(values) {
@@ -256,7 +279,7 @@ function listingPayloadFrom(values) {
   };
 }
 
-function validateListingValues(values, config, allowedTypes, image = null, hasExistingImage = false) {
+function validateListingValues(values, config, allowedTypes, image = null, t = key => key) {
   const errors = [];
   const fieldErrors = {};
   const add = (field, text) => {
@@ -274,33 +297,31 @@ function validateListingValues(values, config, allowedTypes, image = null, hasEx
   const descriptionLength = characterLength(description);
   const locationLength = characterLength(location);
 
-  if (!title) add('title', 'Enter a title');
-  else if (titleLength < config.minTitleLength) add('title', `Title must be at least ${config.minTitleLength} characters`);
-  else if (titleLength > 255) add('title', 'Title must be 255 characters or fewer');
+  if (!title) add('title', t('listings.create.errors.title_required'));
+  else if (titleLength < config.minTitleLength) add('title', t('listings.create.errors.title_min', { min: config.minTitleLength }));
+  else if (titleLength > 255) add('title', t('listings.create.errors.title_max'));
 
-  if (!description) add('description', 'Enter a description');
-  else if (descriptionLength < config.minDescriptionLength) add('description', `Description must be at least ${config.minDescriptionLength} characters`);
-  else if (descriptionLength > 10000) add('description', 'Description must be 10,000 characters or fewer');
+  if (!description) add('description', t('listings.create.errors.description_required'));
+  else if (descriptionLength < config.minDescriptionLength) add('description', t('listings.create.errors.description_min', { min: config.minDescriptionLength }));
+  else if (descriptionLength > 10000) add('description', t('listings.create.errors.description_max'));
 
-  if (!allowedTypes.includes(type)) add('type', 'Select an available listing type');
-  if (config.requireCategory && !categoryText) add('category_id', 'Select a category');
-  else if (categoryText && positiveInteger(categoryText) === null) add('category_id', 'Select a valid category');
+  if (!allowedTypes.includes(type)) add('type', t('listings.create.errors.type_required'));
+  if (config.requireCategory && !categoryText) add('category_id', t('listings.create.errors.category_required'));
 
-  if (config.requireHours && !hoursText) add('hours_estimate', 'Enter the estimated hours');
+  if (config.requireHours && !hoursText) add('hours_estimate', t('listings.create.errors.hours_required'));
   if (hoursText) {
     const hours = Number(hoursText);
     if (!Number.isFinite(hours) || hours < 0.5 || hours > 2000) {
-      add('hours_estimate', 'Estimated hours must be between 0.5 and 2,000');
+      add('hours_estimate', t('listings.create.errors.hours_range'));
     }
   }
 
-  if (config.requireLocation && !location) add('location', 'Enter a location');
+  if (config.requireLocation && !location) add('location', t('listings.create.errors.location_required'));
   else if (locationLength > 255) add('location', 'Location must be 255 characters or fewer');
 
   if (config.enableServiceType && !LISTING_SERVICE_TYPES.has(trimmed(values.service_type))) {
     add('service_type', 'Select how the service will be delivered');
   }
-  if (config.requireImage && !image && !hasExistingImage) add('image', 'Choose an image');
   if (image) {
     const allowedMimes = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
     if (!allowedMimes.has(trimmed(image.mimetype).toLowerCase())) {
@@ -375,6 +396,7 @@ async function listingFormViewData(req, options) {
     values: options.values || null,
     errors: options.errors || null,
     fieldErrors: options.fieldErrors || {},
+    status: trimmed(req.query.status),
     ...support,
     setupErrorMessage: options.setupErrorMessage || support.setupErrorMessage,
     csrfToken: req.csrfToken ? req.csrfToken() : ''
@@ -828,16 +850,18 @@ router.post('/generate-description', asyncRoute(async (req, res) => {
   if (!token) return redirectTo(res, loginRedirect());
 
   const listingId = positiveInteger(req.body.listing_id);
-  const title = trimmed(req.body.title, 255);
+  const values = boundedListingFormValues(req.body);
+  const title = values.title;
+  storeListingFormReplay(req, listingId, values);
   if (title === '') {
     return redirectTo(res, generateDescriptionRedirect(listingId, 'ai-title-required'));
   }
 
   const payload = {
     title,
-    type: listingType(req.body.type),
+    type: listingType(values.type),
     category: trimmed(req.body.category || req.body.category_name || req.body.category_id),
-    notes: trimmed(req.body.notes || req.body.description, 5000)
+    notes: trimmed(req.body.notes || values.description, 5000)
   };
 
   if (payload.category === '') delete payload.category;
@@ -845,7 +869,14 @@ router.post('/generate-description', asyncRoute(async (req, res) => {
 
   let status = 'ai-generated';
   try {
-    await callListing(token, 'POST', '/generate-description', payload);
+    const result = await callListing(token, 'POST', '/generate-description', payload);
+    const description = trimmed(dataFrom(result)?.description, 5000);
+    if (!description) {
+      status = 'ai-failed';
+    } else {
+      values.description = description;
+      storeListingFormReplay(req, listingId, values);
+    }
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
     status = error instanceof ApiError && error.status === 403 ? 'ai-disabled' : 'ai-failed';
@@ -1253,10 +1284,11 @@ router.get('/', asyncRoute(async (req, res) => {
 
 // New listing form
 router.get('/new', requireAuth, asyncRoute(async (req, res) => {
+  const replay = consumeListingFormReplay(req, null);
   res.render('listings/form', await listingFormViewData(req, {
     title: 'Create listing',
     listing: null,
-    values: null,
+    values: replay,
     errors: null,
     fieldErrors: {}
   }));
@@ -1266,12 +1298,9 @@ router.get('/new', requireAuth, asyncRoute(async (req, res) => {
 router.post('/new', requireAuth, audit.listingCreate(), asyncRoute(async (req, res) => {
   const image = uploadedFile(req, 'image');
   const config = listingConfigFrom(req);
-  const allowedTypes = [
-    ...(config.allowOffers ? ['offer'] : []),
-    ...(config.allowRequests ? ['request'] : [])
-  ];
+  const allowedTypes = ['offer', 'request'];
   const values = listingFormValues(req.body);
-  const validation = validateListingValues(values, config, allowedTypes, image);
+  const validation = validateListingValues(values, config, allowedTypes, image, res.locals.t);
 
   if (validation.errors.length > 0) {
     await removeUploadedFile(image);
@@ -1294,12 +1323,10 @@ router.post('/new', requireAuth, audit.listingCreate(), asyncRoute(async (req, r
     }
 
     const secondaryFailures = [];
-    if (config.enableSkillTags) {
-      try {
-        await setListingSkillTags(req.token, listingId, skillTagsFrom(values.skill_tags));
-      } catch (error) {
-        secondaryFailures.push(error.message || 'skill tags could not be saved');
-      }
+    try {
+      await setListingSkillTags(req.token, listingId, skillTagsFrom(values.skill_tags));
+    } catch (error) {
+      secondaryFailures.push(error.message || 'skill tags could not be saved');
     }
     if (image) {
       try {
@@ -1414,10 +1441,11 @@ router.get('/:id(\\d+)/edit', requireAuth, asyncRoute(async (req, res) => {
     return renderForbidden(res);
   }
 
+  const replay = consumeListingFormReplay(req, req.params.id);
   res.render('listings/form', await listingFormViewData(req, {
     title: 'Edit listing',
     listing,
-    values: listingFormValues({}, listing),
+    values: replay || listingFormValues({}, listing),
     errors: null,
     fieldErrors: {}
   }));
@@ -1428,12 +1456,9 @@ router.post('/:id(\\d+)/edit', requireAuth, audit.listingUpdate(), asyncRoute(as
   const { id } = req.params;
   const image = uploadedFile(req, 'image');
   const config = listingConfigFrom(req);
-  const allowedTypes = [
-    ...(config.allowOffers ? ['offer'] : []),
-    ...(config.allowRequests ? ['request'] : [])
-  ];
+  const allowedTypes = ['offer', 'request'];
   const values = listingFormValues(req.body);
-  const validation = validateListingValues(values, config, allowedTypes, image, values.has_existing_image);
+  const validation = validateListingValues(values, config, allowedTypes, image, res.locals.t);
 
   if (validation.errors.length > 0) {
     await removeUploadedFile(image);
@@ -1448,12 +1473,10 @@ router.post('/:id(\\d+)/edit', requireAuth, audit.listingUpdate(), asyncRoute(as
   try {
     await updateListing(req.token, id, listingPayloadFrom(values));
     const secondaryFailures = [];
-    if (config.enableSkillTags) {
-      try {
-        await setListingSkillTags(req.token, id, skillTagsFrom(values.skill_tags));
-      } catch (error) {
-        secondaryFailures.push(error.message || 'skill tags could not be saved');
-      }
+    try {
+      await setListingSkillTags(req.token, id, skillTagsFrom(values.skill_tags));
+    } catch (error) {
+      secondaryFailures.push(error.message || 'skill tags could not be saved');
     }
     if (image) {
       try {

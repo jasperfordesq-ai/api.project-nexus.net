@@ -26018,7 +26018,7 @@ describe('shared accessible frontend shell', () => {
 
       expect(form.status).toBe(200);
       expect(form.text).toContain('Configured Timebank');
-      expect(form.text).not.toContain('name="type" type="radio" value="offer"');
+      expect(form.text).toContain('name="type" type="radio" value="offer"');
       expect(form.text).toContain('name="type" type="radio" value="request"');
       expect(form.text).toContain('Practical help');
       expect(form.text).toContain('Category (optional)');
@@ -26026,11 +26026,71 @@ describe('shared accessible frontend shell', () => {
       expect(form.text).not.toContain('Estimated hours (optional)');
       expect(form.text).toContain('Location');
       expect(form.text).not.toContain('Location (optional)');
-      expect(form.text).toContain('At least 12 characters.');
-      expect(form.text).toContain('At least 50 characters.');
-      expect(form.text).toContain('up to 2 MB');
-      expect(form.text).not.toContain('id="skill_tags"');
-      expect(form.text).toContain('type="hidden" name="service_type" value="physical_only"');
+      expect(form.text).not.toContain('At least 12 characters.');
+      expect(form.text).not.toContain('At least 50 characters.');
+      expect(form.text).toContain('up to 8MB');
+      expect(form.text).toContain('id="skill_tags"');
+      expect(form.text).not.toContain('name="service_type"');
+      expect(form.text).toContain('formaction="/listing-config-test/accessible/listings/generate-description"');
+    });
+
+    it('round-trips the no-JS AI suggestion and every safe form value through one-use session state', async () => {
+      const api = require('../src/lib/api');
+      const agent = request.agent(app);
+      api.getListingCategories.mockResolvedValue({ data: [{ id: 3, name: 'Gardening' }] });
+      api.callListingApi.mockResolvedValueOnce({
+        data: { description: 'A warm generated description for neighbours.' }
+      });
+
+      const form = await agent
+        .get('/listings/new')
+        .set('Cookie', signedCookieHeader());
+      const csrfMatch = form.text.match(/name="_csrf" value="([^"]+)"/);
+      expect(form.text).toContain('Add a title first, then generate a suggested description you can edit before saving.');
+      expect(form.text).toContain('formaction="/listings/generate-description"');
+
+      const generated = await agent
+        .post('/listings/generate-description')
+        .set('Cookie', signedCookieHeader())
+        .type('form')
+        .send({
+          _csrf: csrfMatch[1],
+          title: 'Garden help',
+          description: 'Keep this context',
+          type: 'request',
+          category_id: '3',
+          hours_estimate: '2.5',
+          service_type: 'hybrid',
+          location: 'Community garden',
+          skill_tags: 'gardening, tools'
+        });
+
+      expect(generated.status).toBe(302);
+      expect(generated.headers.location).toBe('/listings/new?status=ai-generated#description');
+      expect(api.callListingApi).toHaveBeenCalledWith('test-token', 'POST', '/generate-description', {
+        title: 'Garden help',
+        type: 'request',
+        category: '3',
+        notes: 'Keep this context'
+      });
+
+      const replay = await agent
+        .get(generated.headers.location)
+        .set('Cookie', signedCookieHeader());
+      expect(replay.status).toBe(200);
+      expect(replay.text).toContain('We have suggested a description below. Review and edit it before you save.');
+      expect(replay.text).toContain('A warm generated description for neighbours.');
+      expect(replay.text).toContain('value="request" checked');
+      expect(replay.text).toContain('value="3" selected');
+      expect(replay.text).toContain('value="2.5"');
+      expect(replay.text).toContain('value="hybrid" checked');
+      expect(replay.text).toContain('value="Community garden"');
+      expect(replay.text).toContain('value="gardening, tools"');
+
+      const consumed = await agent
+        .get('/listings/new')
+        .set('Cookie', signedCookieHeader());
+      expect(consumed.text).not.toContain('A warm generated description for neighbours.');
     });
 
     it('renders tenant-configured fields and creates through the exact core, tag, and image boundaries', async () => {
@@ -26171,6 +26231,8 @@ describe('shared accessible frontend shell', () => {
       expect(edit.text).toContain('value="hybrid" checked');
       expect(edit.text).not.toContain('src="/uploads/listings/cover.webp"');
       expect(edit.text).toContain('/uploads/listings/cover.webp');
+      expect(edit.text).toContain('This permanently removes your listing. You cannot undo this.');
+      expect(edit.text).toContain('action="/listings/42/delete"');
       expect(edit.text).not.toContain('name="status"');
       expect(edit.text).not.toContain('value="inactive"');
 
@@ -26415,6 +26477,7 @@ describe('shared accessible frontend shell', () => {
       details: 'Duplicate spam'
     });
 
+    api.callListingApi.mockResolvedValueOnce({ data: { description: 'Generated garden help.' } });
     const generateResponse = await post('/listings/generate-description', {
       listing_id: '42',
       title: ' Garden help ',
