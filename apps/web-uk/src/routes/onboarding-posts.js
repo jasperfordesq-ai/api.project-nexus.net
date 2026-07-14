@@ -18,6 +18,7 @@ const {
 } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
 const { getRequestProfile } = require('../lib/request-profile');
+const { resolveBackendAssetUrl } = require('../lib/accessible-shell');
 
 const router = express.Router();
 const SESSION_KEY = 'alphaOnboarding';
@@ -247,7 +248,11 @@ router.get('/:step([a-z]+)', asyncRoute(async (req, res) => {
     }
 
     if (['profile', 'confirm'].includes(step)) {
-      onboardingUser = asObject(dataFrom(await getRequestProfile(req, token)));
+      const profile = asObject(dataFrom(await getRequestProfile(req, token)));
+      onboardingUser = {
+        ...profile,
+        avatar_url: resolveBackendAssetUrl(profile.avatar_url || profile.avatarUrl)
+      };
     }
 
     const stepIndex = slugs.indexOf(step);

@@ -2344,6 +2344,7 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('Your availability');
     expect(signed.text).toContain('Profile photo');
     expect(signed.text).toContain('Upload a new photo');
+    expect(signed.text).toContain(`src="${getApiBaseUrl()}/avatars/ada.jpg"`);
     expect(signed.text).toContain('id="avatar" name="avatar"');
     expect(signed.text).toContain('aria-describedby="avatar-hint"');
     expect(signed.text).toContain('Personal details');
@@ -5772,7 +5773,7 @@ describe('shared accessible frontend shell', () => {
     expect(profile.text).toContain('Profile photo');
     expect(profile.text).toContain('About you');
     expect(profile.text).toContain('Current photo');
-    expect(profile.text).toContain('/avatars/member.jpg');
+    expect(profile.text).toContain(`src="${getApiBaseUrl()}/avatars/member.jpg"`);
     expect(profile.text).toContain('A sentence or two about yourself.');
     expect(profile.text).toContain('Please add a short bio before continuing.');
     expect(profile.text).toContain('method="post" action="/onboarding/avatar"');

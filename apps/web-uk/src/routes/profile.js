@@ -861,7 +861,7 @@ function buildProfileSettingsViewModel(req, data) {
       tagline: profileValue(profile, 'tagline'),
       bio: profileValue(profile, 'bio'),
       location: profileValue(profile, 'location'),
-      avatar_url: profileValue(profile, 'avatar_url'),
+      avatar_url: resolveBackendAssetUrl(profileValue(profile, 'avatar_url')),
       privacy_profile: privacyProfile,
       privacy_search: boolValue(profileValue(profile, 'privacy_search'), true),
       privacy_contact: boolValue(account.privacy_contact, profileValue(profile, 'privacy_contact'), true),
