@@ -1614,10 +1614,15 @@ router.post('/delete-account', asyncRoute(async (req, res) => {
   }
 
   try {
-    await requestAccountDeletion(token, {
+    const result = await requestAccountDeletion(token, {
       password,
       reason: trimmed(req.body.reason) || null
     });
+    if (payloadFrom(result).logout_required !== true) {
+      throw new ApiError('Laravel did not confirm account-deletion session revocation', 502, {
+        errors: [{ code: 'ACCOUNT_DELETION_REVOCATION_UNCONFIRMED' }]
+      });
+    }
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
     const status = error instanceof ApiError && error.status === 400

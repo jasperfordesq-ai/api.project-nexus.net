@@ -120,6 +120,26 @@ describe('Laravel pending account-erasure contract', () => {
     expect(destroySession).not.toHaveBeenCalled();
   });
 
+  it.each([
+    {},
+    { data: { request_id: 123 } },
+    { data: { request_id: 123, logout_required: false } }
+  ])('fails closed when Laravel omits mandatory session-revocation evidence', async (result) => {
+    api.requestAccountDeletion.mockResolvedValueOnce(result);
+    const { app, destroySession } = createApp();
+
+    const response = await request(app)
+      .post('/profile/delete-account')
+      .type('form')
+      .send({ password: 'current-password', confirm: 'on' });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/profile/delete-account?status=delete-failed');
+    expect(api.invalidateUserCache).not.toHaveBeenCalled();
+    expect(destroySession).not.toHaveBeenCalled();
+    expect(response.headers['set-cookie']).toBeUndefined();
+  });
+
   it('submits a pending erasure request then clears cache, session, and auth cookies', async () => {
     const { app, destroySession } = createApp({ prefix: '/acme/accessible' });
     const reason = ` ${'x'.repeat(1005)} `;

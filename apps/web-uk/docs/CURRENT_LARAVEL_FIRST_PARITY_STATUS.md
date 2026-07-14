@@ -500,6 +500,24 @@ green lint and branding. This closes one default-English authentication state
 but does not independently remove the complete component-state deduction, so
 the banked score remains `622/1000`.
 
+## Account-Deletion Revocation Evidence
+
+Checkpoint frozen at `2026-07-14T13:29:33.0546716+01:00` against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and published Web UK base
+`183c8e7b2750c5a4e9d0dbc3b191e69ae92b5bb2`; both matched `origin/main`
+before this Web UK-only slice.
+
+Laravel's hardened erasure contract revokes every active session before
+returning `logout_required: true`. Web UK now requires that exact evidence
+before clearing its own cache, Express session, and auth cookies. Missing or
+false evidence fails closed to the deletion form and preserves the signed-in
+session rather than presenting a false successful sign-out. Focused coverage
+passes `12/12` across missing, false, success, error, mounted, and cookie
+states. No Laravel request, erasure, database, or migration operation ran.
+The uninterrupted full rerun passes `49/49` suites and `1,659/1,659` tests.
+This strengthens a destructive identity boundary but does not change the
+banked `622/1000` score without a complete rubric re-audit.
+
 ## Podcast Episode Visibility Labels
 
 Podcast studio episode visibility selects now follow Blade's exact catalog
