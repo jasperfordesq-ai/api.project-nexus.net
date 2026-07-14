@@ -210,22 +210,10 @@ function withTokenRefresh(handler) {
 
         if (refreshTokenValue) {
           try {
-            const result = await refreshTokenApi(refreshTokenValue, tenantSlugForRequest(req));
-            const envelope = sessionEnvelope(result);
-            if (!envelope) {
-              throw new ApiError('Laravel returned an incomplete rotating-session envelope', 502, {
-                errors: [{ code: 'AUTH_REFRESH_RESPONSE_INVALID' }]
-              });
-            }
-
-            setAuthCookies(res, envelope.accessToken, envelope.refreshToken, {
-              expiresIn: envelope.expiresIn,
-              refreshExpiresIn: envelope.refreshExpiresIn,
-              tenantSlug: tenantSlugForRequest(req)
-            });
-            req.token = envelope.accessToken;
-            req.signedCookies.token = envelope.accessToken;
-            req.signedCookies.refresh_token = envelope.refreshToken;
+            // Laravel refresh credentials are single-use. Share the same
+            // digest-keyed rotation used by the pre-route session check so
+            // parallel 401 retries cannot spend one credential twice.
+            await rotateSession(req, res, refreshTokenValue);
             return handler(req, res, next);
           } catch (refreshError) {
             delete req.token;

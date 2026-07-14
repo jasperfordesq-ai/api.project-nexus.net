@@ -148,6 +148,62 @@ describe('Laravel rotating accessible session contract', () => {
     expect(res.redirect).toHaveBeenCalledWith('/login?status=auth-required');
   });
 
+  it('shares one single-use Laravel rotation across parallel route retries', async () => {
+    let releaseRefresh;
+    const refreshResult = new Promise((resolve) => {
+      releaseRefresh = resolve;
+    });
+    api.refreshToken.mockReturnValue(refreshResult);
+
+    const makeRequest = () => ({
+      signedCookies: {
+        token: 'rejected-access',
+        refresh_token: 'single-use-refresh',
+        tenant_slug: 'acme'
+      },
+      accessibleRouting: { tenantSlug: 'acme' }
+    });
+    const firstRequest = makeRequest();
+    const secondRequest = makeRequest();
+    const firstResponse = responseDouble();
+    const secondResponse = responseDouble();
+    const firstHandler = jest.fn()
+      .mockRejectedValueOnce(new api.ApiError('Expired', 401))
+      .mockResolvedValueOnce(undefined);
+    const secondHandler = jest.fn()
+      .mockRejectedValueOnce(new api.ApiError('Expired', 401))
+      .mockResolvedValueOnce(undefined);
+
+    const firstRetry = withTokenRefresh(firstHandler)(firstRequest, firstResponse, jest.fn());
+    const secondRetry = withTokenRefresh(secondHandler)(secondRequest, secondResponse, jest.fn());
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(api.refreshToken).toHaveBeenCalledTimes(1);
+    expect(api.refreshToken).toHaveBeenCalledWith('single-use-refresh', 'acme');
+
+    releaseRefresh({
+      access_token: 'fresh-access',
+      refresh_token: 'rotated-refresh',
+      expires_in: 900,
+      refresh_expires_in: 3600
+    });
+    await Promise.all([firstRetry, secondRetry]);
+
+    expect(firstHandler).toHaveBeenCalledTimes(2);
+    expect(secondHandler).toHaveBeenCalledTimes(2);
+    expect(firstRequest.signedCookies).toEqual(expect.objectContaining({
+      token: 'fresh-access',
+      refresh_token: 'rotated-refresh'
+    }));
+    expect(secondRequest.signedCookies).toEqual(expect.objectContaining({
+      token: 'fresh-access',
+      refresh_token: 'rotated-refresh'
+    }));
+    expect(firstResponse.redirect).not.toHaveBeenCalled();
+    expect(secondResponse.redirect).not.toHaveBeenCalled();
+  });
+
   it('recognizes only real JWT expiry evidence', () => {
     expect(jwtExpiresSoon('test-token')).toBe(false);
     expect(jwtExpiresSoon(jwtWithExpiry(Math.floor(Date.now() / 1000) - 1))).toBe(true);

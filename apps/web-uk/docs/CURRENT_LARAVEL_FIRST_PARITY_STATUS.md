@@ -199,7 +199,7 @@ database. No Web UK implementation regression caused that reset.
 |---|---:|---|
 | Route/inventory representation | 99/100 | -1: the online Event check-in code POST remains undeclared in Web UK because Laravel exposes no safe equivalent frontend contract. |
 | Observable Blade/workflow implementation | 278/300 | -8: Event moderation membership/order/online state and check-in behavior are not contract-identical; -14: unresolved component-audit significant states still need finite default-English closure rather than declaration-only coverage. |
-| API contract/state coverage plus static/mock verification | 170/200 | -20: 202 ledger rows lack an exact OpenAPI match; -5: 17 callsites remain dynamically unresolved; -5: auth/role/status/side-effect assertions are not yet complete across every significant state. |
+| API contract/state coverage plus static/mock verification | 170/200 | -25: 219 ledger rows lack an exact OpenAPI match; -5: auth/role/status/side-effect assertions are not yet complete across every significant state. The generated ledger has zero dynamically unresolved method/path callsites. |
 | Disposable Laravel runtime certification | 0/200 | -200: no separately provisioned and verified disposable Laravel environment has been evidenced, so all live mutation/upload/download/destructive certification remains open. |
 | Screenshot/manual accessibility/WCAG certification | 35/150 | -40: no representative screenshot comparison set; -30: no actual screen-reader speech-output sign-off; -25: manual keyboard/no-JS/zoom/reflow/forced-colour coverage is incomplete; -20: the current full accessibility aggregate is not certified. |
 | Production hardening and reproducible docs | 40/50 | -4: persistent session production proof; -3: production secret/configuration proof; -3: request timeout/abort behavior remain open. |
@@ -458,6 +458,28 @@ suites and `801/801` tests; the complete gate passed `49/49` suites and
 Laravel request, mutation, database, or migration operation ran. This closes
 another concrete authentication substate but does not independently remove the
 complete component-state deduction, so the banked score remains `622/1000`.
+
+## Parallel Session-Rotation Retry Parity
+
+Checkpoint frozen at `2026-07-14T13:18:32.5468960+01:00` against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and published Web UK base
+`8193cd3870432688e397c6a5681d190fa2e1f58f`; both matched `origin/main`
+before this Web UK-only slice.
+
+Laravel refresh credentials are single-use. Web UK's retry-on-401 path now
+uses the same tenant-scoped, digest-keyed in-process rotation lock as its
+pre-route expiry path, so parallel requests cannot independently spend the
+same refresh credential. Focused concurrency proof launches two simultaneous
+401 retries and verifies one Laravel refresh call, two successful handler
+retries, and the complete rotated access/refresh cookie state on both
+responses. The focused session gate passes `8/8`. No Laravel request,
+mutation, database, or migration operation ran. The complete non-mutating gate
+passes `49/49` suites and `1,656/1,656` tests with green brand, lint, CSS,
+route inventory `688/689`, API ledger `663/444/219/0`, 11-locale catalog
+sync/shape, `7,347` static references with zero unresolved keys, and the
+322-template zero-match audit. This fixes a concrete session-hardening
+regression risk but does not change the banked `622/1000` score without a
+complete rubric re-audit.
 
 ## Podcast Episode Visibility Labels
 
