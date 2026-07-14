@@ -50,14 +50,15 @@ paid separate-charge payouts reverse only the seller share under stable
 idempotency. `20260714165402_MarketplaceRefundReconciliationParity` adds the
 durable refund ledger and refund-aware economic constraints and applies cleanly
 to disposable upgraded PostgreSQL. Signed external-refund/charge-dispute event
-reconciliation, refund notifications, and live-provider proof remain open.
+reconciliation and evidence-backed refund notifications are implemented; live-
+provider proof remains open.
 
 Signed `charge.refunded` events now bind provider charge/intent identity, require
 destination-charge transfer and application-fee reversal evidence, reverse paid
 separate-charge transfers idempotently, and enter each expanded provider refund
 in the durable ledger once. Incomplete provider detail fails closed. Charge-
-dispute win/loss reconciliation, refund notifications, and live-provider proof
-remain open.
+dispute win/loss reconciliation and evidence-backed refund notifications are
+implemented; live-provider proof remains open.
 
 Signed charge-dispute events now freeze held escrow and restore it on a provider
 win or convert a provider loss into the durable refund ledger. Paid/scheduled
@@ -67,7 +68,8 @@ evidence is implemented.
 Paid separate-charge disputes now reverse and durably record the proportional
 seller share, then reimburse that exact share on a provider win. Destination-
 charge losses retrieve the charge transfer when needed and reverse it under a
-stable key. Refund notification evidence and live-provider proof remain open.
+stable key. Refund notification evidence is implemented with durable per-channel
+replay suppression; live-provider proof remains open.
 
 The seven apparent document-era vetting gaps are retired OpenAPI-only artifacts:
 Laravel live routes omit them, the controller prohibits them, feature tests assert

@@ -332,6 +332,29 @@ route, 288/350 semantic, 124/150 schema, 90/100 security/localization, 45/100
 build/test/CI, 10/125 unchanged-frontends, and 23/75 providers/ops/docs. Exact
 remaining deductions are 0, 62, 26, 10, 55, 115, and 52 points.
 
+### 2026-07-14 Marketplace Refund Notification Evidence (Published)
+
+Evidence snapshot: Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf`, ASP.NET implementation
+`b37a3cc5ed903394b67813a3e34304213b9e150d`, captured 2026-07-14
+20:35:12 +01:00. Manual and signed-webhook refunds now deliver Laravel-compatible
+buyer and seller bells plus recipient-locale emails after financial state commits.
+The existing durable delivery ledger suppresses an evidenced refund email per
+recipient/order, creates a new bell only for a distinct partial/full amount
+message, retries failed channels without repeating provider money movement, and
+collapses multi-refund Stripe webhook payloads into one cumulative notification.
+
+The Release API build passes with zero errors and three known unrelated warnings;
+the Release test assembly builds with zero warnings and the complete marketplace
+payment/dispute gate passes 30/30. Live Stripe/Connect proof, full-suite/CI, and
+unchanged-client runtime certification remain open.
+
+Published implementation `b37a3cc5ed903394b67813a3e34304213b9e150d`
+banks 3 semantic and 1 provider/operations point for **684/1000**: 100/100
+route, 291/350 semantic, 124/150 schema, 90/100 security/localization, 45/100
+build/test/CI, 10/125 unchanged-frontends, and 24/75 providers/ops/docs. Exact
+remaining deductions are 0, 59, 26, 10, 55, 115, and 51 points.
+
 ## Historical Checkpoints
 
 Everything in this section is dated implementation evidence. Its older
