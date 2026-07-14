@@ -1030,6 +1030,10 @@ rewriting.
   one-decimal average, middle-dot separator, and request-localized full-month
   date. Focused course-family proof passes `1/1`; broader learner-side-effect
   and manual certification remain open.
+- Podcast show/episode summaries and Group discussion opener/reply content now
+  strip source markup before preserving line breaks, matching Blade's
+  plain-text boundary instead of showing escaped tags. Focused populated-state
+  proof passes `3/3`; broader runtime and manual certification remain open.
 - The post-slice complete non-mutating checkpoint passes `52/52` suites and
   `1,674/1,674` tests after replacing the stale member star-display guard with
   a current rating-tag/assistive-copy guard. Route, API-ledger, locale,

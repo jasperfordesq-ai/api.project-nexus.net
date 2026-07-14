@@ -171,7 +171,7 @@ Refresh the Laravel Blade/API source and Web UK implementation before relying on
 these numbers after either source moves.
 
 At this documentation audit, the product-source baseline was
-`8fdffac18e8a7177842dc0b1fca3ff27d494eb28`. The revoked-session confirmation,
+`b9319e97e25ac9fd4ef2507302549b5e77ebbbd4`. The revoked-session confirmation,
 Laravel method-spoof reconciliation, group-message contract, residual API-
 consumer correction, and backend-request timeout slices are above the frozen
 bank and remain **published and unscored**. The documentation remediation is
@@ -186,7 +186,7 @@ together from a clean published checkout.
   with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
   Only this fixed-rubric audit contributes to the current bank.
 - **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `8fdffac1`, including the later identity/session confirmation,
+  baseline `b9319e97`, including the later identity/session confirmation,
   method-spoof reconciliation, group-message contract, residual API-consumer
   correction, and backend-request timeout slices. Their evidence is useful, but they
   contribute zero points until one complete fixed-rubric re-audit explicitly
@@ -1329,6 +1329,23 @@ checks. No Laravel source, database, migration, mutation, upload, download,
 cleanup, or production operation was performed. This improves evidence
 classification only; the frozen bank remains 622/1,000 pending a complete
 rubric re-audit.
+
+## 2026-07-14 Plain-Text Source-Markup Parity
+
+Frozen evidence at `2026-07-14T19:01:53.3409172+01:00` against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and published Web UK product commit
+`b9319e97e25ac9fd4ef2507302549b5e77ebbbd4`. Podcast summaries, episode
+summaries, Group discussion openers, and discussion replies now follow Blade's
+plain-text boundary: source markup is removed before line-break rendering
+instead of appearing as escaped tags to members.
+
+Focused populated-state rendering passes 3/3, and the complete non-mutating
+gate passes 52/52 suites and 1,674/1,674 tests. Brand, lint, CSS, route, API-
+ledger, locale, 322-template zero-match, 19/19 canonical Blade-marker, and diff
+checks are green. No Laravel request, database, migration, mutation, container,
+or production operation was performed. This published component-audit
+improvement remains unscored, so the frozen bank remains 622/1,000 pending a
+complete fixed-rubric re-audit.
 
 ## 2026-07-14 Course Review Metadata Parity
 
