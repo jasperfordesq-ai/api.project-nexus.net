@@ -1059,6 +1059,13 @@ rewriting.
 
 ### Jobs member-page evidence
 
+- `views/jobs-talent-search.blade.php` now maps to the mounted talent-search
+  page with Blade's exact request-locale navigation, heading, description,
+  filters, actions, prompt/empty/result states, last-active metadata, middot
+  separator, and continuation link. Focused rendering passes `1/1`; the
+  complete non-mutating gate passes `52/52` suites and `1,679/1,679` tests,
+  with 7,543 references, 5,769 unique keys, and zero unresolved/template
+  matches.
 - `views/jobs-applicants.blade.php` now maps to an owner Applicants page with
   Blade's request-locale headings, analytics labels, applicant/stage fallbacks,
   applied-date and multiline cover-letter presentation, and update action. A
