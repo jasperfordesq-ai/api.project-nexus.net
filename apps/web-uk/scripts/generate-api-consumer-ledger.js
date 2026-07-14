@@ -333,6 +333,17 @@ function collectWrapperContracts(parsedConsumers) {
     function aliasArgument(alias, wrapperIndex, callNode) {
       if (wrapperIndex === null) return null;
       const wrapperArgument = alias.argumentNodes[wrapperIndex];
+      if (wrapperArgument?.type === 'MemberExpression' && wrapperArgument.object.type === 'Identifier') {
+        const parameterIndex = alias.functionNode.params.findIndex(
+          (parameter) => parameter.type === 'Identifier' && parameter.name === wrapperArgument.object.name
+        );
+        const parameterValue = parameterIndex === -1 ? null : callNode.arguments[parameterIndex];
+        const propertyName = wrapperArgument.computed
+          ? staticValue(wrapperArgument.property)
+          : wrapperArgument.property.name;
+        const propertyValue = objectProperty(parameterValue, propertyName);
+        if (propertyValue) return propertyValue;
+      }
       if (wrapperArgument?.type !== 'Identifier') return wrapperArgument;
       const parameterIndex = alias.functionNode.params.findIndex(
         (parameter) => parameter.type === 'Identifier' && parameter.name === wrapperArgument.name

@@ -59,8 +59,15 @@ async function eventApi(token, method, path, data = undefined) {
 async function runEventAction(token, method, path, data = undefined) {
   return eventApi(token, method, path, data);
 }
+async function runConfiguredEvent(token, options) {
+  return eventApi(token, options.method, options.path, options.data);
+}
 async function publish(token, id) {
-  return runEventAction(token, 'POST', \`/\${id}/publish\`, { confirmation: 'publish' });
+  return runConfiguredEvent(token, {
+    method: 'POST',
+    path: \`/\${id}/publish\`,
+    data: { confirmation: 'publish' }
+  });
 }
 async function create(token) {
   return runEventAction(token, 'POST', '', { title: 'Test event' });

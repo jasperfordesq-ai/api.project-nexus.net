@@ -7,11 +7,11 @@
     "laravelOpenApiSha256": "0f62bf532901e6925b630d6a8ed0add7cd2c2bd9395b773c6a1a6581c0d38722"
   },
   "summary": {
-    "contracts": 645,
-    "matchedOpenApi": 419,
+    "contracts": 647,
+    "matchedOpenApi": 422,
     "missingOpenApi": 223,
-    "dynamicUnresolved": 3,
-    "stateChanging": 349,
+    "dynamicUnresolved": 2,
+    "stateChanging": 352,
     "withoutTests": 0
   },
   "rows": [
@@ -20709,40 +20709,6 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "DYNAMIC /api/v2/volunteering/{param} [callVolunteeringApi]",
-      "method": "DYNAMIC",
-      "path": "/api/v2/volunteering/{param}",
-      "apiHelper": "callVolunteeringApi",
-      "source": "src/routes/volunteering-actions.js:2576",
-      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
-      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
-      "requestShape": "JSON caller payload; validate against Laravel operation",
-      "responseShape": "JSON/text response via ApiError-aware request",
-      "statusCodes": [],
-      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
-      "redirects": "consumer-controlled: src/routes/volunteering-actions.js",
-      "sideEffects": "method dynamic; classify every callsite before runtime",
-      "cleanup": "unresolved until method is concrete",
-      "laravel": {
-        "status": "dynamic-unresolved",
-        "path": "",
-        "operationId": "",
-        "controllerAction": "",
-        "tags": []
-      },
-      "frontendConsumers": [
-        "src/routes/volunteering-actions.js"
-      ],
-      "tests": [
-        "tests/api-locale-context.test.js",
-        "tests/api.test.js",
-        "tests/runtime/volunteering-accessibility-mutation.spec.js",
-        "tests/runtime/volunteering-credentials-mutation.spec.js",
-        "tests/shared-accessible-shell.test.js"
-      ],
-      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
-    },
-    {
       "id": "GET /api/v2/volunteering/{param} [callVolunteeringApi]",
       "method": "GET",
       "path": "/api/v2/volunteering/{param}",
@@ -22113,6 +22079,44 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
+      "id": "POST /api/v2/volunteering/opportunities/{param}/apply [callVolunteeringApi]",
+      "method": "POST",
+      "path": "/api/v2/volunteering/opportunities/{param}/apply",
+      "apiHelper": "callVolunteeringApi",
+      "source": "src/routes/volunteering-actions.js:2576",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "path:id",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/volunteering-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/volunteering/opportunities/{id}/apply",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Volunteering"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/volunteering-actions.js"
+      ],
+      "tests": [
+        "tests/api-locale-context.test.js",
+        "tests/api.test.js",
+        "tests/runtime/volunteering-accessibility-mutation.spec.js",
+        "tests/runtime/volunteering-credentials-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
       "id": "POST /api/v2/volunteering/organisations [createVolunteerOrganisation]",
       "method": "POST",
       "path": "/api/v2/volunteering/organisations",
@@ -22629,6 +22633,82 @@
       "laravel": {
         "status": "matched-openapi",
         "path": "/api/v2/volunteering/shifts",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Volunteering"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/volunteering-actions.js"
+      ],
+      "tests": [
+        "tests/api-locale-context.test.js",
+        "tests/api.test.js",
+        "tests/runtime/volunteering-accessibility-mutation.spec.js",
+        "tests/runtime/volunteering-credentials-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "DELETE /api/v2/volunteering/shifts/{param}/signup [callVolunteeringApi]",
+      "method": "DELETE",
+      "path": "/api/v2/volunteering/shifts/{param}/signup",
+      "apiHelper": "callVolunteeringApi",
+      "source": "src/routes/volunteering-actions.js:2607",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "path:id",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/volunteering-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/volunteering/shifts/{id}/signup",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Volunteering"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/volunteering-actions.js"
+      ],
+      "tests": [
+        "tests/api-locale-context.test.js",
+        "tests/api.test.js",
+        "tests/runtime/volunteering-accessibility-mutation.spec.js",
+        "tests/runtime/volunteering-credentials-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "POST /api/v2/volunteering/shifts/{param}/signup [callVolunteeringApi]",
+      "method": "POST",
+      "path": "/api/v2/volunteering/shifts/{param}/signup",
+      "apiHelper": "callVolunteeringApi",
+      "source": "src/routes/volunteering-actions.js:2592",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "path:id",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/volunteering-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/volunteering/shifts/{id}/signup",
         "operationId": "",
         "controllerAction": "",
         "tags": [
