@@ -23210,13 +23210,21 @@ describe('shared accessible frontend shell', () => {
       .mockResolvedValueOnce({ data: [{
         lifecycle_version: 4, created_at: '2026-07-13T12:00:00Z', reason: 'Approved after review',
         publication: { from: 'submitted', to: 'published' }, operational: { from: 'scheduled', to: 'scheduled' },
-        actor: { id: 7, display_name: 'Tenant administrator' }, evidence: { axes_changed: ['publication'], cascade: {}, notifications_suppressed: false }
+        actor: { id: 7, display_name: 'Tenant administrator' }, evidence: { axes_changed: ['publication'], cascade: { reminders_cancelled: 3, registrations_cancelled: 2 }, series: { member_type: 'occurrence', root_event_id: 41 }, notifications_suppressed: true }
       }], meta: { has_more: true, next_cursor: 'opaque+cursor/2=', per_page: 20 } });
     const response = await request(app).get('/events/42/lifecycle-history').set('Cookie', signedCookieHeader());
     expect(response.status).toBe(200);
     expect(response.headers['cache-control']).toBe('private, no-store');
     expect(response.text).toContain('Community garden day');
     expect(response.text).toContain('Tenant administrator');
+    expect(response.text).toContain('<time datetime="2026-07-13T12:00:00Z">13 July 2026 at 12:00</time>');
+    expect(response.text).toContain('Operational evidence');
+    expect(response.text).toContain('Reminder schedules cancelled: 3');
+    expect(response.text).toContain('Registrations cancelled: 2');
+    expect(response.text).toContain('Occurrence of recurring template 41');
+    expect(response.text).toContain('Duplicate notifications were suppressed');
+    expect(response.text).toContain('aria-label="Lifecycle history pages"');
+    expect(response.text).toContain('<span class="govuk-pagination__link-title">View older history</span>');
     expect(response.text).toContain('opaque%2Bcursor%2F2%3D');
     expect(api.callEventApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/42/lifecycle-history?per_page=20');
   });

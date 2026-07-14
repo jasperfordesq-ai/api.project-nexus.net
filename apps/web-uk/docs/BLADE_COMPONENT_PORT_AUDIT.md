@@ -241,14 +241,17 @@ download-header, one-shot-secret, and destructive-confirmation proof passes.
 Live calendar-client imports, disposable token effects, manual assistive-
 technology review, and unchanged ASP.NET runtime proof remain open.
 
-## 2026-07-13 Event Lifecycle History Checkpoint
+## 2026-07-14 Event Lifecycle History Checkpoint
 
 Event managers now have Laravel's private immutable lifecycle ledger with
 publication/operational transitions, actor and reason evidence, no-store
-responses, bounded page sizes, and opaque cursor pagination. Focused transition
-rendering and encoded-cursor proof passes. Live series/cascade evidence,
-manual assistive-technology review, and unchanged ASP.NET runtime proof remain
-open.
+responses, bounded page sizes, and opaque cursor pagination. The page now
+formats recorded times instead of exposing raw ISO values, renders positive
+cascade counts, recurrence-series membership and notification-suppression
+evidence, and uses Blade's labelled block-pagination structure. Focused
+transition, complete evidence, and encoded-cursor proof passes. Live
+series/cascade fixtures, manual assistive-technology review, and unchanged
+ASP.NET runtime proof remain open.
 
 ## 2026-07-13 Event Registration Settings and Forms Checkpoint
 

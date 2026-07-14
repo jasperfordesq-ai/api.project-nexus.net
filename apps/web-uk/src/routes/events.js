@@ -2041,11 +2041,41 @@ router.get('/:id(\\d+)/lifecycle-history', requireAuth, asyncRoute(async (req, r
     callApi(token, 'GET', `/${id}`), callApi(token, 'GET', `/${id}/lifecycle-history?${query.toString()}`)
   ]);
   const event = eventFrom(eventResult);
+  const formatDate = typeof res.locals.formatLocaleDate === 'function'
+    ? res.locals.formatLocaleDate
+    : (value) => trimmed(value);
+  const formatNumber = typeof res.locals.formatLocaleNumber === 'function'
+    ? res.locals.formatLocaleNumber
+    : (value) => String(Number(value) || 0);
+  const entries = collectionFrom(historyResult).map((entry) => {
+    const recordedAt = new Date(entry?.created_at);
+    const recordedAtLabel = entry?.created_at && !Number.isNaN(recordedAt.getTime())
+      ? formatDate(recordedAt, {
+        day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'UTC'
+      })
+      : res.locals.t('event_lifecycle_history.timestamp_unknown');
+    const cascade = entry?.evidence?.cascade || {};
+    const evidenceItems = ['reminders_cancelled', 'waitlist_cancelled', 'registrations_cancelled']
+      .filter((key) => Number.isInteger(cascade[key]) && cascade[key] > 0)
+      .map((key) => res.locals.t(`event_lifecycle_history.cascade.${key}`, {
+        count: formatNumber(cascade[key])
+      }));
+    const series = entry?.evidence?.series;
+    if (series && ['template', 'occurrence'].includes(series.member_type) && positiveInteger(series.root_event_id)) {
+      evidenceItems.push(res.locals.t(`event_lifecycle_history.series.${series.member_type}`, {
+        id: formatNumber(series.root_event_id)
+      }));
+    }
+    if (entry?.evidence?.notifications_suppressed === true) {
+      evidenceItems.push(res.locals.t('event_lifecycle_history.notifications_suppressed'));
+    }
+    return { ...entry, recordedAtLabel, evidenceItems };
+  });
   res.set('Cache-Control', 'private, no-store');
   res.set('Pragma', 'no-cache');
   return res.render('events/lifecycle-history', {
     title: res.locals.t('event_lifecycle_history.title'), activeNav: 'events', event: { id, title: trimmed(event.title) },
-    entries: collectionFrom(historyResult), pagination: historyResult?.meta || {}, perPage
+    entries, pagination: historyResult?.meta || {}, perPage
   });
 }, { notFoundTitle: 'Event not found' }));
 
