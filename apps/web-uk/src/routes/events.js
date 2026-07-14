@@ -3118,6 +3118,9 @@ router.get('/', asyncRoute(async (req, res) => {
   const categories = collectionFrom(categoriesResult);
   const meta = result?.meta || {};
   const loadError = result?.loadError === true;
+  const eventStatus = ['event-archived', 'event-deleted', 'event-archive-failed'].includes(trimmed(req.query.status))
+    ? trimmed(req.query.status)
+    : '';
 
   res.render('events/index', {
     title: 'Events',
@@ -3133,14 +3136,15 @@ router.get('/', asyncRoute(async (req, res) => {
     stepFree,
     nearNoLocation,
     moduleDisabled: false,
+    eventStatus,
     pagination: {
       hasMore: Boolean(meta.has_more),
       cursor: trimmed(meta.cursor || meta.next_cursor)
     },
     isAuthenticated: Boolean(token),
     canModerateEvents: moderationProbe !== null,
-    successMessage: req.flash ? req.flash('success')[0] : null,
-    errorMessage: req.flash ? req.flash('error')[0] : null
+    successMessage: eventStatus ? null : (req.flash ? req.flash('success')[0] : null),
+    errorMessage: eventStatus ? null : (req.flash ? req.flash('error')[0] : null)
   });
 }));
 

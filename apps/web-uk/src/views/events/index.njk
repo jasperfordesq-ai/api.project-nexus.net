@@ -22,6 +22,24 @@
     </p>
   {% endif %}
 
+  {% if eventStatus == 'event-archived' or eventStatus == 'event-deleted' %}
+    <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="event-archived-title">
+      <div class="govuk-notification-banner__header">
+        <h2 class="govuk-notification-banner__title" id="event-archived-title">{{ t("states.success_title") }}</h2>
+      </div>
+      <div class="govuk-notification-banner__content">
+        <p class="govuk-notification-banner__heading">{{ t("events.archived") }}</p>
+      </div>
+    </div>
+  {% elif eventStatus == 'event-archive-failed' %}
+    <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+      <div role="alert">
+        <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
+        <div class="govuk-error-summary__body"><p>{{ t("events.archive_failed") }}</p></div>
+      </div>
+    </div>
+  {% endif %}
+
   {% if successMessage %}
     {% set notificationMessage = successMessage %}
     {% set notificationType = "success" %}

@@ -25430,6 +25430,29 @@ describe('shared accessible frontend shell', () => {
     expect(filtered.text).toContain('href="/events">Clear filters</a>');
   });
 
+  it('matches Blade Event archive success and failure states without duplicate generic banners', async () => {
+    const api = require('../src/lib/api');
+    api.getEvents.mockResolvedValue({ data: [], meta: { has_more: false } });
+
+    const archived = await request(app)
+      .get('/events?status=event-archived')
+      .set('Cookie', signedCookieHeader());
+
+    expect(archived.status).toBe(200);
+    expect(archived.text).toContain('id="event-archived-title"');
+    expect(archived.text).toContain('Your event has been archived.');
+    expect((archived.text.match(/Your event has been archived\./g) || [])).toHaveLength(1);
+
+    const failed = await request(app)
+      .get('/events?status=event-archive-failed')
+      .set('Cookie', signedCookieHeader());
+
+    expect(failed.status).toBe(200);
+    expect(failed.text).toContain('class="govuk-error-summary"');
+    expect(failed.text).toContain('Your event could not be archived. Try again.');
+    expect(failed.text).not.toContain('id="event-archived-title"');
+  });
+
   it('returns to login when Laravel rejects the signed Event collection token', async () => {
     const api = require('../src/lib/api');
     api.getEvents.mockRejectedValueOnce(new api.ApiError('Authentication required', 401, {
