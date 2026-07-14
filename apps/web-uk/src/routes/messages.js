@@ -49,6 +49,12 @@ function trimmed(value, limit = null) {
   return limit === null ? text : text.slice(0, limit);
 }
 
+function bladeLimit(value, limit = 180) {
+  const characters = Array.from(trimmed(value));
+  if (characters.length <= limit) return characters.join('');
+  return `${characters.slice(0, Math.max(0, limit - 3)).join('')}...`;
+}
+
 function checked(value) {
   return value === true || ['1', 'true', 'on', 'yes'].includes(String(value || '').toLowerCase());
 }
@@ -422,11 +428,11 @@ function normalizeInboxConversation(conversation, currentUserId, t) {
     otherUser,
     displayName,
     unreadCount: Number(source.unread_count ?? source.unreadCount ?? 0) || 0,
-    lastMessageText,
+    lastMessageText: bladeLimit(lastMessageText),
     lastMessageSenderLabel: lastMessageSenderId !== null && lastMessageSenderId === currentUserId
       ? t('govuk_alpha.messages.sent_by_you')
       : displayName,
-    lastMessageAt: lastMessage.created_at || lastMessage.createdAt || source.last_message_at || source.lastMessageAt || null
+    lastMessageAt: lastMessage.created_at || lastMessage.createdAt || source.created_at || source.createdAt || null
   };
 }
 

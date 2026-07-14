@@ -6668,6 +6668,7 @@ describe('shared accessible frontend shell', () => {
 
   it('renders nested Laravel conversation summaries, unread counts, archive state, and cursor links', async () => {
     const api = require('../src/lib/api');
+    const longMessage = `Can we confirm Saturday? ${'x'.repeat(200)}`;
     api.getConversations.mockResolvedValueOnce({
       data: [
         {
@@ -6680,7 +6681,7 @@ describe('shared accessible frontend shell', () => {
           },
           last_message: {
             id: 91,
-            body: 'Can we confirm Saturday?',
+            body: longMessage,
             sender_id: 101,
             created_at: '2026-07-09T10:00:00'
           }
@@ -6709,6 +6710,8 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Avery Stone');
     expect(response.text).toContain('/uploads/avery.jpg');
     expect(response.text).toContain('Can we confirm Saturday?');
+    expect(response.text).toContain(`${longMessage.slice(0, 177)}...`);
+    expect(response.text).not.toContain(longMessage);
     expect(response.text).toContain('Conversation with Avery Stone');
     expect(response.text).toContain('<strong>Last message:</strong>');
     expect(response.text).toContain('You:');
@@ -6718,6 +6721,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('2 unread messages');
     expect(response.text).toContain('The conversation has been restored.');
     expect(response.text).toContain('action="/messages/77/restore"');
+    expect(response.text).toContain('class="govuk-link govuk-link--no-visited-state" href="/messages?archived=1" aria-current="page"');
     expect(response.text).toContain('href="/messages?archived=1&amp;filter=Avery&amp;cursor=next-page"');
     expect(response.text).toContain('Load more');
     expect(response.text).toContain('More conversations');
@@ -6730,7 +6734,8 @@ describe('shared accessible frontend shell', () => {
         id: 78,
         unread_count: 0,
         other_user: { id: 78, name: '   ' },
-        last_message: null
+        last_message: null,
+        created_at: '2026-07-08T09:15:00'
       }],
       meta: { cursor: null, has_more: false, per_page: 20 }
     });
@@ -6743,6 +6748,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(200);
     expect(response.text).toContain('Community member');
     expect(response.text).toContain('<strong>Last message:</strong>');
+    expect(response.text).toContain('8 July 2026, 9:15am');
     expect(response.text).not.toContain('No messages yet');
     expect(response.text).toContain('href="/messages/78"');
   });

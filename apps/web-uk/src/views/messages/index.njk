@@ -64,8 +64,8 @@
 
       <nav class="govuk-!-margin-bottom-4" aria-label="{{ t('messages.tabs_title') }}">
         <ul class="govuk-list" style="display:flex;gap:1rem;list-style:none;padding:0;margin:0 0 1rem">
-          <li><a class="govuk-link" href="{{ urlFor('/messages') }}"{% if not showArchived %} aria-current="page"{% endif %}>{{ t("messages.inbox") }}</a></li>
-          <li><a class="govuk-link" href="{{ urlFor('/messages?archived=1') }}"{% if showArchived %} aria-current="page"{% endif %}>{{ t("messages.archived") }}</a></li>
+          <li><a class="govuk-link{% if not showArchived %} govuk-link--no-visited-state{% endif %}" href="{{ urlFor('/messages') }}"{% if not showArchived %} aria-current="page"{% endif %}>{{ t("messages.inbox") }}</a></li>
+          <li><a class="govuk-link{% if showArchived %} govuk-link--no-visited-state{% endif %}" href="{{ urlFor('/messages?archived=1') }}"{% if showArchived %} aria-current="page"{% endif %}>{{ t("messages.archived") }}</a></li>
         </ul>
       </nav>
 
@@ -78,7 +78,8 @@
             value: filter,
             label: { text: t("polish_members.messages_filter_label") },
             hint: { text: t("polish_members.messages_filter_hint") },
-            classes: "govuk-!-width-two-thirds"
+            classes: "govuk-!-width-two-thirds",
+            formGroup: { classes: "govuk-!-margin-bottom-2" }
           }) }}
           <div class="govuk-button-group">
             {{ govukButton({ text: t("polish_members.messages_filter_submit"), classes: "govuk-button--secondary" }) }}
@@ -118,7 +119,7 @@
                 <p class="govuk-hint">{{ t("govuk_alpha.messages.sent_label") }} {{ conversation.lastMessageAt | formatBladeDateTime }}</p>
               {% endif %}
               {% if showArchived %}
-                <form method="post" action="{{ urlFor('/messages/' + (conversation.id | string) + '/restore') }}" class="govuk-!-margin-top-2">
+                <form method="post" action="{{ urlFor('/messages/' + (conversation.id | string) + '/restore') }}">
                   <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                   {{ govukButton({ text: t("actions.restore_conversation"), classes: "govuk-button--secondary" }) }}
                 </form>
