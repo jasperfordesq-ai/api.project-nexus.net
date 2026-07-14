@@ -1502,7 +1502,11 @@ router.post('/:id(\\d+)/recurrence-definition-blueprints/commit', requireAuth, a
 async function transitionEventPublication(req, res, action) {
   const id = Number(req.params.id);
   try {
-    await callApi(tokenFrom(req), 'POST', `/${id}/${action === 'submit' ? 'submit' : 'publish'}`);
+    if (action === 'submit') {
+      await callApi(tokenFrom(req), 'POST', `/${id}/submit`);
+    } else {
+      await callApi(tokenFrom(req), 'POST', `/${id}/publish`);
+    }
     return redirectTo(res, eventPath(id, `?status=${action === 'submit' ? 'event-submitted' : 'event-published'}`));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;

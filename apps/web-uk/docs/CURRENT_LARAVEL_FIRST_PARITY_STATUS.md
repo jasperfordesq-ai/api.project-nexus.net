@@ -177,7 +177,7 @@ these numbers after either source moves.
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
 | Blade marker check | Current 19/19 | Current-source public GET marker comparison; not screenshot or visual certification |
 | Automated accessibility | Not currently certified: 28 passed, login failed, 58 did not run | Full aggregate requires a disposable Laravel environment; manual AT review remains open |
-| Frontend API consumer ledger | 591 contracts: 377 OpenAPI matches, 205 unmatched, 9 dynamic | Static method/path and ownership evidence; unresolved rows are not parity claims |
+| Frontend API consumer ledger | 593 contracts: 381 OpenAPI matches, 205 unmatched, 7 dynamic | Static method/path and ownership evidence; unresolved rows are not parity claims |
 
 ### Frozen Completion Baseline
 
@@ -241,7 +241,7 @@ when a concrete regression requires an independently publishable fix.
 8. **P0 - Event check-in boundary:** obtain a safe Laravel online signed-code
    contract or an explicit source-contract decision for
    `POST /events/{id}/check-in/code`. Owner: Laravel backend/API workstream.
-9. **P1 - API ledger closure:** classify and reconcile all 205 unmatched and 9
+9. **P1 - API ledger closure:** classify and reconcile all 205 unmatched and 7
    dynamic consumer rows, adding focused assertions for concrete gaps. Owner:
    Web UK; Laravel API owner for genuine source omissions.
 10. **P1 - Component-audit closure:** finish the remaining default-English
@@ -269,10 +269,10 @@ request-scoped tenant authority, auth/role boundary, request and response shape,
 status/error behavior, redirects, side effects, cleanup requirements, Laravel
 operation/controller metadata, frontend consumers, and detected tests.
 
-The current static inventory contains 591 consumed contracts. It matches 377
+The current static inventory contains 593 consumed contracts. It matches 381
 method/path pairs to Laravel OpenAPI, leaves 205 without an exact OpenAPI match,
-and marks 9 variable method/path callsites as dynamically unresolved. It also
-classifies 284 rows as state-changing and therefore requiring disposable-
+and marks 7 variable method/path callsites as dynamically unresolved. It also
+classifies 285 rows as state-changing and therefore requiring disposable-
 environment runtime proof. An unmatched row may be an OpenAPI documentation
 gap, a frontend contract gap, or a generator-normalization gap; it is not proof
 that Laravel lacks the endpoint. A detected test reference is not proof that
@@ -301,6 +301,13 @@ collapsed contract, producing 591 total contracts, 377 exact OpenAPI matches,
 tests. It improves evidence accuracy but earns no completion points by itself:
 the fixed banked score remains 622/1000 until a real contract, workflow, or
 certification gap closes.
+
+A follow-up makes the finite Feed hashtag search/trending reads and Event
+submit/publish transitions explicit at their callsites. Existing four-case
+hashtag and two-transition behavior proof remains green. The current inventory
+therefore separates 593 contracts, matches 381 to OpenAPI, and leaves 205
+unmatched plus 7 genuinely dynamic rows. This is still classification accuracy,
+not a new product capability, so the banked score does not move.
 
 ## Podcast Episode Visibility Labels
 
@@ -901,7 +908,7 @@ After the localization P0, the remaining priority order is:
 5. Complete manual keyboard, screen-reader, focus-order, error-summary, no-JS,
    zoom/reflow, forced-colour, and disabled-user evidence.
 6. Maintain the generated frontend-consumer API ledger and reconcile its 205
-   unmatched and 9 dynamic rows against Laravel routes/controllers and real
+   unmatched and 7 dynamic rows against Laravel routes/controllers and real
    consumers. Do not count an OpenAPI match or test-file reference as behavioral
    certification.
 7. Harden production concerns separately: persistent sessions, production-only

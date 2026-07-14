@@ -2670,9 +2670,6 @@ async function getFeedItemV2(token = '', type, id) {
 async function getFeedHashtags(token = '', params = {}) {
   const query = new URLSearchParams();
   const searchQuery = params.q !== undefined && params.q !== null ? String(params.q).trim() : '';
-  const endpoint = searchQuery
-    ? '/api/v2/feed/hashtags/search'
-    : '/api/v2/feed/hashtags/trending';
 
   if (searchQuery) query.set('q', searchQuery);
   if (params.limit) query.set('limit', params.limit);
@@ -2681,7 +2678,10 @@ async function getFeedHashtags(token = '', params = {}) {
   const queryString = query.toString();
   const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-  return request(`${endpoint}${queryString ? `?${queryString}` : ''}`, { headers });
+  if (searchQuery) {
+    return request(`/api/v2/feed/hashtags/search${queryString ? `?${queryString}` : ''}`, { headers });
+  }
+  return request(`/api/v2/feed/hashtags/trending${queryString ? `?${queryString}` : ''}`, { headers });
 }
 
 async function getFeedHashtagPosts(token = '', tag, params = {}) {
