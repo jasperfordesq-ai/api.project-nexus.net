@@ -376,7 +376,12 @@ function collectWrapperContracts(parsedConsumers) {
         : staticValue(argumentAt(config.methodIndex));
       const method = normalizeMethod(methodValue, config.defaultMethod || 'GET');
       const childPath = staticValue(argumentAt(config.pathIndex));
-      const joinedPath = displayPath(`${config.prefix}${childPath && childPath !== '{dynamic}' ? (childPath.startsWith('/') || childPath.startsWith('?') ? childPath : `/${childPath}`) : '/{dynamic}'}`);
+      const childSuffix = childPath === ''
+        ? ''
+        : (childPath !== '{dynamic}'
+          ? (childPath.startsWith('/') || childPath.startsWith('?') ? childPath : `/${childPath}`)
+          : '/{dynamic}');
+      const joinedPath = displayPath(`${config.prefix}${childSuffix}`);
       contracts.push({
         helper: wrapperName,
         method,

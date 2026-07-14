@@ -59,7 +59,10 @@ async function eventApi(token, method, path, data = undefined) {
 async function publish(token, id) {
   return eventApi(token, 'POST', \`/\${id}/publish\`, { confirmation: 'publish' });
 }
-module.exports = { show, publish };
+async function create(token) {
+  return eventApi(token, 'POST', '', { title: 'Test event' });
+}
+module.exports = { show, publish, create };
 `);
 
     writeFile(path.join(webUkRoot, 'tests', 'events.test.js'), `
@@ -73,6 +76,19 @@ describe('events contract', () => {
     writeFile(path.join(laravelRoot, 'openapi.json'), JSON.stringify({
       openapi: '3.0.3',
       paths: {
+        '/api/v2/events': {
+          post: {
+            operationId: 'Events_store',
+            'x-controller-action': 'App\\Http\\Controllers\\Api\\EventsController@store',
+            security: [{ bearerAuth: [] }],
+            requestBody: {
+              content: {
+                'application/json': { schema: { $ref: '#/components/schemas/EventStoreRequest' } }
+              }
+            },
+            responses: { 201: { description: 'created' }, 422: { description: 'invalid' } }
+          }
+        },
         '/api/v2/events/{id}': {
           get: {
             operationId: 'Events_show',
@@ -112,11 +128,16 @@ describe('events contract', () => {
 
   it('matches direct and wrapper callsites to Laravel and records safety evidence', () => {
     const report = generateApiConsumerLedger({ webUkRoot, laravelRoot, outDir });
+    const createRow = report.rows.find((row) => row.method === 'POST' && row.path === '/api/v2/events');
     const getRow = report.rows.find((row) => row.method === 'GET' && row.path === '/api/v2/events/{param}');
     const publishRow = report.rows.find((row) => row.method === 'POST' && row.path === '/api/v2/events/{param}/publish');
 
-    expect(report.summary.contracts).toBe(2);
-    expect(report.summary.matchedOpenApi).toBe(2);
+    expect(report.summary.contracts).toBe(3);
+    expect(report.summary.matchedOpenApi).toBe(3);
+    expect(report.summary.dynamicUnresolved).toBe(0);
+    expect(createRow.laravel).toEqual(expect.objectContaining({
+      operationId: 'Events_store'
+    }));
     expect(getRow).toEqual(expect.objectContaining({
       apiHelper: 'getEvent',
       sideEffects: 'read-only by HTTP method',
