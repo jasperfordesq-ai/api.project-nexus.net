@@ -2634,7 +2634,7 @@ describe('shared accessible frontend shell', () => {
     expect(mountedUnsigned.headers.location).toBe('/acme/accessible/login?status=auth-required');
 
     expect(signed.status).toBe(200);
-    expect(api.callProfileApi).toHaveBeenCalledWith('test-token', 'GET', '/activity/dashboard');
+    expect(api.callProfileApi).toHaveBeenCalledWith('test-token', 'GET', '/users/me/activity/dashboard');
     expect(signed.text).toContain('My activity');
     expect(signed.text).toContain('A summary of your contribution to the community.');
     expect(signed.text).toContain('View detailed insights');
@@ -2750,7 +2750,7 @@ describe('shared accessible frontend shell', () => {
     expect(mountedUnsigned.headers.location).toBe('/acme/accessible/login?status=auth-required');
 
     expect(signed.status).toBe(200);
-    expect(api.callProfileApi).toHaveBeenCalledWith('test-token', 'GET', '/activity/dashboard');
+    expect(api.callProfileApi).toHaveBeenCalledWith('test-token', 'GET', '/users/me/activity/dashboard');
     expect(signed.text).toContain('Back to activity');
     expect(signed.text).toContain('Your activity');
     expect(signed.text).toContain('Activity insights');
@@ -18138,7 +18138,8 @@ describe('shared accessible frontend shell', () => {
       .get('/jobs/applications/91/history')
       .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
 
-    expect(api.callJobApi).toHaveBeenCalledWith('test-token', 'GET', '/applications/91/history');
+    expect(api.callJobApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/applications/91/history');
+    expect(api.callJobApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/my-applications?per_page=100');
     expect(response.status).toBe(200);
     expect(response.text).toContain('Back to my applications');
     expect(response.text).toContain('Application timeline');
@@ -19420,11 +19421,18 @@ describe('shared accessible frontend shell', () => {
       campaign_id: '5',
       sort_order: '2'
     });
-    expect(linkCampaignResponse.headers.location).toBe('/ideation/7/manage?status=campaign-linked');
+    expect(linkCampaignResponse.headers.location).toBe('/ideation/7?status=campaign-linked');
     expect(api.callIdeationApi).toHaveBeenLastCalledWith('test-token', 'POST', '/ideation-campaigns/5/challenges', {
       challenge_id: 7,
       sort_order: 2
     });
+
+    const callCountBeforeInvalidCampaign = api.callIdeationApi.mock.calls.length;
+    const invalidCampaignResponse = await post('/ideation/7/link-campaign', {
+      campaign_id: ''
+    });
+    expect(invalidCampaignResponse.headers.location).toBe('/ideation/7?status=campaign-link-failed');
+    expect(api.callIdeationApi).toHaveBeenCalledTimes(callCountBeforeInvalidCampaign);
 
     const outcomeResponse = await post('/ideation/7/outcome', {
       winning_idea_id: '12',

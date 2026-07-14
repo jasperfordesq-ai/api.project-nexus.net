@@ -136,7 +136,7 @@ describe('request-scoped jobs status localization', () => {
           }]
         });
       }
-      if (apiPath === '/applications?limit=200') {
+      if (apiPath === '/my-applications?per_page=100') {
         return Promise.resolve({
           data: [{ id: 91, vacancy: { id: 7, title: 'Community coordinator' } }]
         });

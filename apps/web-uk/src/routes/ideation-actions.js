@@ -391,6 +391,10 @@ router.post('/:id(\\d+)/delete', asyncRoute(async (req, res) => {
 router.post('/:id(\\d+)/link-campaign', asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const campaignId = positiveInteger(req.body.campaign_id);
+  if (campaignId === null) {
+    return redirectTo(res, challengeRedirect(id, 'campaign-link-failed'));
+  }
+
   const sortOrder = positiveInteger(req.body.sort_order);
   const payload = { challenge_id: id };
   if (sortOrder !== null) {
@@ -401,10 +405,10 @@ router.post('/:id(\\d+)/link-campaign', asyncRoute(async (req, res) => {
     req,
     res,
     'POST',
-    `/ideation-campaigns/${campaignId || 0}/challenges`,
+    `/ideation-campaigns/${campaignId}/challenges`,
     payload,
-    challengeManageRedirect(id, 'campaign-linked'),
-    challengeManageRedirect(id, 'campaign-link-failed')
+    challengeRedirect(id, 'campaign-linked'),
+    challengeRedirect(id, 'campaign-link-failed')
   );
 }));
 

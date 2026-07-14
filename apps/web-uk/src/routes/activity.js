@@ -260,7 +260,7 @@ async function activityContext(req, res, title) {
 
   let payload = {};
   try {
-    payload = await callProfileApi(token, 'GET', '/activity/dashboard');
+    payload = await callProfileApi(token, 'GET', '/users/me/activity/dashboard');
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
       redirectTo(res, loginRedirect());

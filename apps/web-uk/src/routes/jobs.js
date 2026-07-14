@@ -1748,7 +1748,7 @@ router.get('/applications/:appId(\\d+)/history', asyncRoute(async (req, res) => 
   }
 
   try {
-    applicationsResult = await callJob(token, 'GET', '/applications?limit=200');
+    applicationsResult = await callJob(token, 'GET', '/my-applications?per_page=100');
   } catch {
     // History is still renderable with the tenant-name caption when the
     // secondary vacancy-title lookup is unavailable.
