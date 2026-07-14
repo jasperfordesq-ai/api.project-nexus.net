@@ -171,7 +171,7 @@ Refresh the Laravel Blade/API source and Web UK implementation before relying on
 these numbers after either source moves.
 
 At this documentation audit, the product-source baseline was
-`f3771c6719faaf7de52aa067490946e71c2ec80d`. The post-bank implementation,
+`751cc24cc190c145994a9307d5405e833503f171`. The post-bank implementation,
 contract, resilience, component-audit, attached Event-poll, and Listing-
 analytics slices are above the frozen bank and remain **published and
 unscored**. The documentation remediation is
@@ -186,7 +186,7 @@ together from a clean published checkout.
   with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
   Only this fixed-rubric audit contributes to the current bank.
 - **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `f3771c67`, including the later implementation, contract,
+  baseline `751cc24c`, including the later implementation, contract,
   resilience, and component-audit slices. Their evidence is useful, but they
   contribute zero points until one complete fixed-rubric re-audit explicitly
   replaces the baseline.
@@ -205,9 +205,9 @@ together from a clean published checkout.
 | Missing Laravel routes | 1 | Event offline check-in code generation |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 52/52 suites, 1,679/1,679 tests | Latest uninterrupted complete non-mutating gate at product baseline `f3771c67` |
+| Jest | 52/52 suites, 1,679/1,679 tests | Latest uninterrupted complete non-mutating gate at product baseline `751cc24c` |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
-| Static locale usage | 7,543 references, 5,769 unique keys, 0 unresolved | Current complete-reference audit |
+| Static locale usage | 7,556 references, 5,780 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
 | Blade marker check | Current 19/19 | Current-source public GET marker comparison; not screenshot or visual certification |
 | Automated accessibility | Not currently certified: 28 passed, login failed, 58 did not run | Full aggregate requires a disposable Laravel environment; manual AT review remains open |
@@ -1496,6 +1496,25 @@ green. No Laravel request, database, migration, mutation, container, or
 production operation was performed. This published component-audit improvement
 remains unscored, so the frozen bank remains 622/1,000 pending a complete
 fixed-rubric re-audit.
+
+## 2026-07-14 Job Employer-Brand Blade Parity
+
+Frozen evidence at `2026-07-14T21:11:39.7536590+01:00` against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and published Web UK product commit
+`751cc24cc190c145994a9307d5405e833503f171`. The mounted employer-brand page
+now matches Blade's catalog navigation/headings/counts, member metadata,
+opportunity cards, inset empty states, and employer-review hierarchy. It
+removes the invented intro and load warning, and restores accessible average,
+dimension, and per-review progress indicators with source ARIA labels. API
+methods and paths are unchanged.
+
+Focused rendered proof passes 1/1. The uninterrupted complete non-mutating gate
+passes 52/52 suites and 1,679/1,679 tests. Lint, branding, CSS, the 7,556-
+reference / 5,780-unique-key zero-unresolved locale audit, the 322-template
+zero-match audit, and diff checks are green. No Laravel request, database,
+migration, mutation, container, or production operation was performed. This
+published component-audit improvement remains unscored, so the frozen bank
+remains 622/1,000 pending a complete fixed-rubric re-audit.
 
 ## 2026-07-14 Job Talent-Search Catalog Parity
 

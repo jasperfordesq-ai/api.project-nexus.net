@@ -1059,6 +1059,13 @@ rewriting.
 
 ### Jobs member-page evidence
 
+- `views/jobs-employer-brand.blade.php` now maps to the mounted employer page
+  with Blade's catalog navigation/headings/counts, member metadata, opportunity
+  cards, inset empty states, and review hierarchy. The invented intro/load
+  warning is removed; average, dimension, and per-review progress indicators
+  use source ARIA labels. Focused rendering passes `1/1`; the complete non-
+  mutating gate passes `52/52` suites and `1,679/1,679` tests, with 7,556
+  references, 5,780 unique keys, and zero unresolved/template matches.
 - `views/jobs-talent-search.blade.php` now maps to the mounted talent-search
   page with Blade's exact request-locale navigation, heading, description,
   filters, actions, prompt/empty/result states, last-active metadata, middot
