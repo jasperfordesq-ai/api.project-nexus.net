@@ -2005,6 +2005,7 @@ describe('shared accessible frontend shell', () => {
     expect(unsigned.headers.location).toBe('/login?status=auth-required');
 
     expect(signed.status).toBe(200);
+    expect(signed.text.indexOf('class="govuk-error-summary"')).toBeLessThan(signed.text.indexOf('<h1 class="govuk-heading-xl">Delete your account</h1>'));
     expect(signed.text).toContain('Back to profile');
     expect(signed.text).toContain('Delete your account');
     expect(signed.text).toContain('This will permanently remove your account and personal data');
