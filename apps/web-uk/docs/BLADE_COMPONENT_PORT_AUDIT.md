@@ -1059,6 +1059,13 @@ rewriting.
 
 ### Jobs member-page evidence
 
+- `views/jobs-pipeline.blade.php` now maps to a mounted owner pipeline with the
+  source applicants back destination, request-locale catalog, full-list link,
+  labelled stage sections, plural counts, empty states, localized stage
+  controls, candidate-card nesting, and CV presentation. Focused rendering
+  passes `1/1`; the complete non-mutating gate passes `52/52` suites and
+  `1,678/1,678` tests, with 7,524 static references, 5,753 unique keys, zero
+  unresolved keys, and zero conservative matches across 322 templates.
 - `views/jobs-analytics.blade.php` now maps to the mounted owner analytics page
   with Blade's request-locale catalog, link-list hierarchy, conditional metric
   and referral rows, table/progress semantics, localized stages/percentages,
