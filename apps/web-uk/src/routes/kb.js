@@ -80,7 +80,7 @@ function normalizeArticle(result, fallbackId, t) {
     id: positiveInteger(row.id) || fallbackId,
     title: trimmed(row.title) || t('kb.title'),
     content: String(row.content || ''),
-    updatedAt: row.updated_at ?? row.updatedAt ?? row.created_at ?? row.createdAt ?? '',
+    updatedAt: trimmed(row.updated_at ?? row.updatedAt ?? row.created_at ?? row.createdAt).split('T')[0],
     authorName: trimmed(author.name),
     children: children
       .map((child) => ({

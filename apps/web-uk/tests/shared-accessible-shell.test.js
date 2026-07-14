@@ -1517,7 +1517,8 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Using the repair library');
     expect(response.text).toContain('Written by Morgan Lee');
     expect(response.text).toContain('Last updated:');
-    expect(response.text).not.toContain('Last updated: 2026-07-06');
+    expect(response.text).toContain('Last updated: 2026-07-06');
+    expect(response.text).not.toContain('Last updated: 6 July 2026');
     expect(response.text).toContain('<p>Keep your tools labelled.</p>');
     expect(response.text).toContain('Related articles');
     expect(response.text).toContain('href="/kb/43"');
