@@ -25276,6 +25276,55 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Photo for Community garden day');
   });
 
+  it('renders the current canonical Event list projection and all-day range like Blade', async () => {
+    const api = require('../src/lib/api');
+
+    api.getEvents.mockResolvedValueOnce({
+      data: [{
+        id: 42,
+        contract_version: '2',
+        title: 'Accessible weekend',
+        description: '<strong>Two days</strong> of community activity',
+        schedule: {
+          start_at: '2026-08-01T00:00:00Z',
+          end_at: '2026-08-03T00:00:00Z',
+          timezone: 'UTC',
+          all_day: true
+        },
+        location: { label: 'Community hall' },
+        category: { id: 4, name: 'Community' },
+        metrics: { confirmed_count: 0, interested_count: 2 },
+        relationship: {
+          engagement: { state: 'interested' },
+          registration: { state: 'confirmed' },
+          attendance: { state: 'not_checked_in' }
+        },
+        primary_image: { url: '/uploads/events/weekend.webp' }
+      }],
+      meta: { has_more: false, cursor: null }
+    });
+
+    const response = await request(app)
+      .get('/events')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('data-events-contract-version="2"');
+    expect(response.text).toContain('data-event-timezone="UTC"');
+    expect(response.text).toContain('data-event-engagement-state="interested"');
+    expect(response.text).toContain('data-event-registration-state="confirmed"');
+    expect(response.text).toContain('data-event-attendance-state="not_checked_in"');
+    expect(response.text).toContain('1 August 2026 · All day');
+    expect(response.text).toContain('2 August 2026');
+    expect(response.text).toContain('<dd>Community hall</dd>');
+    expect(response.text).toContain('No one going yet');
+    expect(response.text).toContain('2 people interested');
+    expect(response.text).toContain(`src="${getApiBaseUrl()}/uploads/events/weekend.webp"`);
+    expect(response.text).toContain('Two days of community activity');
+    expect(response.text).not.toContain('&lt;strong&gt;');
+    expect(response.text).not.toContain('[object Object]');
+  });
+
   it('renders the events list without the legacy my-events link', async () => {
     const api = require('../src/lib/api');
 

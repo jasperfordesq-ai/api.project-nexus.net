@@ -3106,7 +3106,15 @@ router.get('/', asyncRoute(async (req, res) => {
       : null
   ]);
 
-  const events = collectionFrom(result).map(eventWithAssetUrls);
+  const events = collectionFrom(result).map((row) => {
+    const event = currentEventDetail(eventWithAssetUrls(row));
+    const scheduleLabels = eventScheduleLabels(event, res.locals.formatLocaleDate);
+    return {
+      ...event,
+      start_label: scheduleLabels.startLabel,
+      end_label: scheduleLabels.endLabel
+    };
+  });
   const categories = collectionFrom(categoriesResult);
   const meta = result?.meta || {};
   const loadError = result?.loadError === true;
