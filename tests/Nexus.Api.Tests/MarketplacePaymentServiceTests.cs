@@ -352,6 +352,83 @@ public sealed class MarketplacePaymentServiceTests
     }
 
     [Fact]
+    public async Task ChargeDispute_PaidSeparateChargeWon_ReversesThenReimbursesExactSellerShare()
+    {
+        await using var db = CreateDb();
+        var gateway = new FakeGateway { Configured = true };
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Marketplace:PlatformFeePercent"] = "5",
+            ["Marketplace:EscrowEnabled"] = "true"
+        }).Build();
+        var service = new MarketplacePaymentService(
+            db, gateway, configuration, NullLogger<MarketplacePaymentService>.Instance);
+        var order = SeedPayableOrder(db);
+        (await service.CreateIntentAsync(42, 11, order.Id, CancellationToken.None)).Succeeded.Should().BeTrue();
+        gateway.Retrieved = gateway.Created! with
+        {
+            Status = "succeeded", AmountReceivedMinor = 2599, LatestChargeId = "ch_paid_dispute_won"
+        };
+        (await service.ConfirmAsync(42, 11, gateway.Created.Id, CancellationToken.None)).Succeeded.Should().BeTrue();
+        var escrow = await db.MarketplaceEscrows.SingleAsync();
+        escrow.ReleaseAfter = DateTime.UtcNow.AddMinutes(-1);
+        order.Status = "delivered";
+        order.AutoCompleteAt = DateTime.UtcNow.AddMinutes(-1);
+        await db.SaveChangesAsync();
+        (await service.ReleaseEscrowAsync(42, escrow.Id, "auto_timeout", CancellationToken.None)).Succeeded.Should().BeTrue();
+
+        (await service.ReconcileChargeDisputeAsync(
+            "charge.dispute.created", "dp_paid_won", "ch_paid_dispute_won", "needs_response", 2599,
+            "evt_paid_dp_created", CancellationToken.None)).Succeeded.Should().BeTrue();
+        gateway.TransferReversalCalls.Should().Be(1);
+        gateway.TransferReversalAmountMinor.Should().Be(2469);
+        var payment = await db.MarketplacePayments.SingleAsync();
+        payment.SellerPayout.Should().Be(0);
+
+        (await service.ReconcileChargeDisputeAsync(
+            "charge.dispute.closed", "dp_paid_won", "ch_paid_dispute_won", "won", 2599,
+            "evt_paid_dp_won", CancellationToken.None)).Succeeded.Should().BeTrue();
+        gateway.TransferCalls.Should().Be(2, "the second transfer reimburses the reversed seller share");
+        payment.SellerPayout.Should().Be(24.69m);
+        payment.PayoutStatus.Should().Be("paid");
+        (await db.MarketplacePaymentRefunds.SingleAsync()).Reason.Should().Be("stripe_dispute_won");
+    }
+
+    [Fact]
+    public async Task ChargeDispute_DestinationChargeLost_RetrievesAndReversesProviderTransfer()
+    {
+        await using var db = CreateDb();
+        var gateway = new FakeGateway { Configured = true, ChargeTransferId = "tr_destination_charge" };
+        var service = CreateService(db, gateway);
+        var order = SeedPayableOrder(db);
+        (await service.CreateIntentAsync(42, 11, order.Id, CancellationToken.None)).Succeeded.Should().BeTrue();
+        gateway.Retrieved = gateway.Created! with
+        {
+            Status = "succeeded", AmountReceivedMinor = 2599, LatestChargeId = "ch_destination_dispute"
+        };
+        (await service.ConfirmAsync(42, 11, gateway.Created.Id, CancellationToken.None)).Succeeded.Should().BeTrue();
+        (await service.ReconcileChargeDisputeAsync(
+            "charge.dispute.created", "dp_destination_lost", "ch_destination_dispute", "needs_response", 2599,
+            "evt_destination_created", CancellationToken.None)).Succeeded.Should().BeTrue();
+        gateway.TransferReversalCalls.Should().Be(0, "destination transfer reversal waits for a provider loss");
+
+        (await service.ReconcileChargeDisputeAsync(
+            "charge.dispute.closed", "dp_destination_lost", "ch_destination_dispute", "lost", 2599,
+            "evt_destination_lost", CancellationToken.None)).Succeeded.Should().BeTrue();
+
+        gateway.ChargeRetrieveCalls.Should().Be(1);
+        gateway.TransferReversalCalls.Should().Be(1);
+        gateway.TransferReversalAmountMinor.Should().Be(2469);
+        var payment = await db.MarketplacePayments.SingleAsync();
+        payment.Status.Should().Be("refunded");
+        payment.SellerPayout.Should().Be(0);
+        order.Status.Should().Be("refunded");
+        var ledger = await db.MarketplacePaymentRefunds.SingleAsync();
+        ledger.Reason.Should().Be("stripe_dispute_lost");
+        ledger.SellerPayoutReversal.Should().Be(24.69m);
+    }
+
+    [Fact]
     public async Task StripeGateway_SeparateChargeOmitsDestinationAndApplicationFee()
     {
         var handler = new RecordingHandler();
@@ -997,6 +1074,8 @@ public sealed class MarketplacePaymentServiceTests
         public bool RefundReverseTransfer { get; private set; }
         public bool RefundApplicationFee { get; private set; }
         public long TransferReversalAmountMinor { get; private set; }
+        public string? ChargeTransferId { get; set; }
+        public int ChargeRetrieveCalls { get; private set; }
 
         public Task<MarketplaceStripeIntent> CreateIntentAsync(long amountMinor, string currency, string connectedAccountId,
             long platformFeeMinor, string fundsFlow, IReadOnlyDictionary<string, string> metadata, string idempotencyKey, CancellationToken ct)
@@ -1052,6 +1131,12 @@ public sealed class MarketplacePaymentServiceTests
             TransferReversalCalls++;
             TransferReversalAmountMinor = amountMinor;
             return Task.CompletedTask;
+        }
+
+        public Task<string?> RetrieveChargeTransferIdAsync(string chargeId, CancellationToken ct)
+        {
+            ChargeRetrieveCalls++;
+            return Task.FromResult(ChargeTransferId);
         }
 
         public Task<MarketplaceStripeAccount> CreateExpressAccountAsync(

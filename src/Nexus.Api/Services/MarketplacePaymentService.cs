@@ -122,6 +122,7 @@ public interface IMarketplaceStripeGateway
         string idempotencyKey,
         CancellationToken ct);
     Task ReverseTransferAsync(string transferId, long amountMinor, string idempotencyKey, CancellationToken ct);
+    Task<string?> RetrieveChargeTransferIdAsync(string chargeId, CancellationToken ct);
     Task<MarketplaceStripeAccount> CreateExpressAccountAsync(
         string email,
         int tenantId,
@@ -254,6 +255,18 @@ public sealed class MarketplaceStripeGateway(
             ct);
         if (string.IsNullOrWhiteSpace(Text(document.RootElement, "id")))
             throw new InvalidOperationException("Stripe returned an incomplete Transfer Reversal.");
+    }
+
+    public async Task<string?> RetrieveChargeTransferIdAsync(string chargeId, CancellationToken ct)
+    {
+        using var document = await SendDocumentAsync(
+            HttpMethod.Get, $"/v1/charges/{Uri.EscapeDataString(chargeId)}", null, null, ct);
+        if (!document.RootElement.TryGetProperty("transfer", out var transfer) || transfer.ValueKind == JsonValueKind.Null)
+            return null;
+        if (transfer.ValueKind == JsonValueKind.String) return transfer.GetString();
+        if (transfer.ValueKind == JsonValueKind.Object && transfer.TryGetProperty("id", out var id) &&
+            id.ValueKind == JsonValueKind.String) return id.GetString();
+        return null;
     }
 
     public async Task<MarketplaceStripeAccount> CreateExpressAccountAsync(
@@ -1451,8 +1464,8 @@ public sealed class MarketplacePaymentService(
             .SingleOrDefaultAsync(x => x.TenantId == payment.TenantId && x.MarketplaceOrderId == order.Id, ct);
         var currency = NormalizeCurrency(payment.Currency);
         if (currency is null) return Error("RESOLUTION_FAILED", "Marketplace payment currency is invalid.", 409);
-        if (payment.PayoutStatus is "paid" or "scheduled")
-            return Error("RESOLUTION_FAILED", "Paid marketplace dispute recovery requires transfer evidence.", 409);
+        if (payment.PayoutStatus == "scheduled")
+            return Error("RESOLUTION_FAILED", "Marketplace payout is still processing.", 409);
 
         payment.StripeDisputeId = disputeId;
         payment.StripeDisputeStatus = status;
@@ -1460,6 +1473,113 @@ public sealed class MarketplacePaymentService(
             payment.DisputePreviousOrderStatus = order.Status;
         var isWon = status == "won";
         var isLost = status == "lost";
+        var remaining = RoundMajor(payment.Amount - (payment.RefundAmount ?? 0), currency);
+        var disputedAmount = Math.Min(remaining, Math.Max(0, FromMinor(amountMinor, currency)));
+        if (disputedAmount <= 0)
+            return Error("RESOLUTION_FAILED", "Stripe dispute amount is invalid.", 409);
+        var feeExposure = remaining > 0
+            ? Math.Min(payment.PlatformFee, RoundMajor(payment.PlatformFee * (disputedAmount / remaining), currency))
+            : 0;
+        var calculatedSellerExposure = Math.Min(payment.SellerPayout,
+            Math.Max(0, RoundMajor(disputedAmount - feeExposure, currency)));
+        var ledgerId = $"dispute:{disputeId}";
+        var disputeLedger = await db.MarketplacePaymentRefunds.IgnoreQueryFilters()
+            .SingleOrDefaultAsync(x => x.StripeRefundId == ledgerId, ct);
+        var recordedSellerReversal = disputeLedger?.SellerPayoutReversal ?? 0;
+
+        if (isWon && disputeLedger is { Reason: "stripe_dispute_hold", SellerPayoutReversal: > 0 })
+        {
+            var seller = await db.MarketplaceSellerProfiles.IgnoreQueryFilters().AsNoTracking()
+                .SingleOrDefaultAsync(x => x.TenantId == payment.TenantId && x.UserId == order.SellerUserId, ct);
+            if (seller is null || string.IsNullOrWhiteSpace(seller.StripeAccountId) ||
+                string.IsNullOrWhiteSpace(payment.StripeChargeId) ||
+                !TryToMinor(disputeLedger.SellerPayoutReversal, currency, out var reimbursementMinor))
+                return Error("RESOLUTION_FAILED", "Marketplace dispute reimbursement evidence is unavailable.", 409);
+            try
+            {
+                await stripe.CreateTransferAsync(
+                    reimbursementMinor,
+                    currency,
+                    seller.StripeAccountId,
+                    payment.StripeChargeId,
+                    $"marketplace_order_{order.Id}",
+                    new Dictionary<string, string>
+                    {
+                        ["nexus_tenant_id"] = payment.TenantId.ToString(CultureInfo.InvariantCulture),
+                        ["nexus_order_id"] = order.Id.ToString(CultureInfo.InvariantCulture),
+                        ["nexus_payment_id"] = payment.Id.ToString(CultureInfo.InvariantCulture),
+                        ["nexus_type"] = "marketplace_dispute_reimbursement"
+                    },
+                    $"marketplace-dispute-transfer-reimbursement-{StableHash(disputeId)}",
+                    ct);
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException || !ct.IsCancellationRequested)
+            {
+                logger.LogCritical(exception, "Marketplace dispute {DisputeId} reimbursement failed.", disputeId);
+                return Error("RESOLUTION_FAILED", "Marketplace dispute reimbursement failed.", 409);
+            }
+            payment.SellerPayout = RoundMajor(payment.SellerPayout + disputeLedger.SellerPayoutReversal, currency);
+            payment.PayoutStatus = "paid";
+            disputeLedger.Reason = "stripe_dispute_won";
+            disputeLedger.UpdatedAt = DateTime.UtcNow;
+        }
+        else if (!isWon && payment.PayoutStatus == "paid" && recordedSellerReversal <= 0 &&
+                 (payment.FundsFlow == "separate_charge_transfer" || isLost))
+        {
+            var transferId = payment.PayoutId;
+            try
+            {
+                if (string.IsNullOrWhiteSpace(transferId))
+                    transferId = await stripe.RetrieveChargeTransferIdAsync(chargeId, ct);
+                if (string.IsNullOrWhiteSpace(transferId) ||
+                    !TryToMinor(calculatedSellerExposure, currency, out var reversalMinor))
+                    return Error("RESOLUTION_FAILED", "Marketplace dispute transfer evidence is unavailable.", 409);
+                await stripe.ReverseTransferAsync(transferId, reversalMinor,
+                    $"marketplace-dispute-transfer-reversal-{StableHash(disputeId)}", ct);
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException || !ct.IsCancellationRequested)
+            {
+                logger.LogCritical(exception, "Marketplace dispute {DisputeId} transfer reversal failed.", disputeId);
+                return Error("RESOLUTION_FAILED", "Marketplace dispute transfer reversal failed.", 409);
+            }
+            recordedSellerReversal = calculatedSellerExposure;
+            payment.SellerPayout = Math.Max(0, RoundMajor(payment.SellerPayout - recordedSellerReversal, currency));
+            payment.PayoutStatus = payment.SellerPayout > 0 ? "paid" : "failed";
+            if (disputeLedger is null)
+            {
+                disputeLedger = new MarketplacePaymentRefund
+                {
+                    TenantId = payment.TenantId,
+                    MarketplacePaymentId = payment.Id,
+                    StripeRefundId = ledgerId,
+                    Amount = disputedAmount,
+                    PlatformFeeReversal = 0,
+                    SellerPayoutReversal = recordedSellerReversal,
+                    Reason = "stripe_dispute_hold"
+                };
+                db.MarketplacePaymentRefunds.Add(disputeLedger);
+            }
+            else
+            {
+                disputeLedger.SellerPayoutReversal = recordedSellerReversal;
+                disputeLedger.UpdatedAt = DateTime.UtcNow;
+            }
+        }
+        else if (!isWon && disputeLedger is null && payment.PayoutStatus == "paid")
+        {
+            disputeLedger = new MarketplacePaymentRefund
+            {
+                TenantId = payment.TenantId,
+                MarketplacePaymentId = payment.Id,
+                StripeRefundId = ledgerId,
+                Amount = disputedAmount,
+                PlatformFeeReversal = 0,
+                SellerPayoutReversal = 0,
+                Reason = "stripe_dispute_hold"
+            };
+            db.MarketplacePaymentRefunds.Add(disputeLedger);
+        }
+
         if (isWon)
         {
             if (order.Status == "disputed")
@@ -1473,17 +1593,44 @@ public sealed class MarketplacePaymentService(
         }
         else if (isLost)
         {
-            var remaining = RoundMajor(payment.Amount - (payment.RefundAmount ?? 0), currency);
-            var disputedAmount = Math.Min(remaining, Math.Max(0, FromMinor(amountMinor, currency)));
-            if (disputedAmount <= 0)
-                return Error("RESOLUTION_FAILED", "Stripe dispute amount is invalid.", 409);
-            var feeExposure = remaining > 0
-                ? Math.Min(payment.PlatformFee, RoundMajor(payment.PlatformFee * (disputedAmount / remaining), currency))
-                : 0;
-            var sellerExposure = Math.Min(payment.SellerPayout,
-                Math.Max(0, RoundMajor(disputedAmount - feeExposure, currency)));
-            await ApplyRefundLedgerAsync(payment, order, $"dispute:{disputeId}", disputedAmount,
-                feeExposure, sellerExposure, "stripe_dispute_lost", currency, ct);
+            if (disputeLedger is { Reason: "stripe_dispute_hold" })
+            {
+                disputeLedger.Amount = disputedAmount;
+                disputeLedger.PlatformFeeReversal = feeExposure;
+                disputeLedger.Reason = "stripe_dispute_lost";
+                disputeLedger.UpdatedAt = DateTime.UtcNow;
+                var cumulative = Math.Min(payment.Amount,
+                    RoundMajor((payment.RefundAmount ?? 0) + disputedAmount, currency));
+                var full = cumulative >= payment.Amount - 0.005m;
+                payment.RefundAmount = cumulative;
+                payment.PlatformFee = Math.Max(0, RoundMajor(payment.PlatformFee - feeExposure, currency));
+                if (recordedSellerReversal <= 0)
+                    payment.SellerPayout = Math.Max(0, RoundMajor(payment.SellerPayout - calculatedSellerExposure, currency));
+                payment.RefundReason = "stripe_dispute_lost";
+                payment.RefundedAt = DateTime.UtcNow;
+                payment.Status = full ? "refunded" : "partially_refunded";
+                payment.PayoutStatus = full ? "failed" : (payment.PaidOutAt is not null ? "paid" : "pending");
+                if (escrow is not null)
+                {
+                    escrow.Amount = payment.SellerPayout;
+                    if (full)
+                    {
+                        escrow.Status = "refunded";
+                        escrow.ReleasedAt = DateTime.UtcNow;
+                        escrow.ReleaseTrigger = null;
+                    }
+                }
+                if (full && order.Status != "refunded")
+                {
+                    order.Status = "refunded";
+                    await RestoreInventoryForRefundAsync(order, ct);
+                }
+            }
+            else
+            {
+                await ApplyRefundLedgerAsync(payment, order, ledgerId, disputedAmount,
+                    feeExposure, calculatedSellerExposure, "stripe_dispute_lost", currency, ct);
+            }
             if (payment.Status != "refunded" && order.Status == "disputed")
                 order.Status = payment.DisputePreviousOrderStatus ?? "paid";
             if (payment.Status != "refunded" && escrow is { Status: "disputed" })
