@@ -30320,6 +30320,7 @@ describe('shared accessible frontend shell', () => {
 
   it('renders the Laravel-backed marketplace report form', async () => {
     const api = require('../src/lib/api');
+    const agent = request.agent(app);
     api.callMarketplaceApi.mockResolvedValueOnce({
       data: {
         id: 42,
@@ -30327,20 +30328,82 @@ describe('shared accessible frontend shell', () => {
       }
     });
 
-    const response = await request(app)
-      .get('/marketplace/42/report?status=report-validation')
-      .set('Cookie', signedCookieHeader());
+    const response = await agent
+      .get('/marketplace/42/report')
+      .set('Cookie', signedAuthCookieHeader());
 
     expect(response.status).toBe(200);
     expect(api.callMarketplaceApi).toHaveBeenCalledWith('test-token', 'GET', '/listings/42');
     expect(response.text).toContain('Report a listing');
-    expect(response.text).toContain('Select a reason for reporting');
     expect(response.text).toContain('Community bike');
     expect(response.text).toContain('Why are you reporting this listing?');
     expect(response.text).toContain('Unsafe or dangerous');
     expect(response.text).toContain('Tell us more');
     expect(response.text).toContain('Send report');
+    expect(response.text).toContain('Back to listing');
+    expect(response.text).not.toContain('govuk-error-summary');
     expect(response.text).not.toContain('Laravel Blade route');
+
+    const csrf = response.text.match(/name="_csrf" value="([^"]+)"/)[1];
+    const invalid = await agent
+      .post('/marketplace/42/report')
+      .set('Cookie', signedAuthCookieHeader())
+      .type('form')
+      .send({ _csrf: csrf, description: ' Preserve this explanation ' });
+    expect(invalid.status).toBe(302);
+    expect(invalid.headers.location).toBe('/marketplace/42/report');
+    expect(api.callMarketplaceApi).toHaveBeenCalledTimes(1);
+
+    api.callMarketplaceApi.mockResolvedValueOnce({
+      data: { id: 42, title: 'Community bike' }
+    });
+    const replay = await agent
+      .get(invalid.headers.location)
+      .set('Cookie', signedAuthCookieHeader());
+    expect(replay.text).toContain('<a href="#reason">Select a reason for reporting</a>');
+    expect(replay.text).toContain('id="reason-error"');
+    expect(replay.text).toContain('> Preserve this explanation </textarea>');
+    expect(replay.text).not.toContain('id="description-error"');
+  });
+
+  it('replays rejected marketplace reports and sends generic failures back to listing detail', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    api.callMarketplaceApi.mockResolvedValueOnce({ data: { id: 42, title: 'Community bike' } });
+    const first = await agent
+      .get('/marketplace/42/report')
+      .set('Cookie', signedAuthCookieHeader());
+    const csrf = first.text.match(/name="_csrf" value="([^"]+)"/)[1];
+
+    api.callMarketplaceApi.mockRejectedValueOnce(
+      new api.ApiError('This report has already been submitted.', 422, {})
+    );
+    const rejected = await agent
+      .post('/marketplace/42/report')
+      .set('Cookie', signedAuthCookieHeader())
+      .type('form')
+      .send({ _csrf: csrf, reason: 'unsafe', description: ' Unsafe wiring ' });
+    expect(rejected.headers.location).toBe('/marketplace/42/report');
+    expect(api.callMarketplaceApi).toHaveBeenLastCalledWith('test-token', 'POST', '/listings/42/report', {
+      reason: 'unsafe',
+      description: 'Unsafe wiring'
+    });
+
+    api.callMarketplaceApi.mockResolvedValueOnce({ data: { id: 42, title: 'Community bike' } });
+    const replay = await agent
+      .get(rejected.headers.location)
+      .set('Cookie', signedAuthCookieHeader());
+    expect(replay.text).toContain('<a href="#description">This report has already been submitted.</a>');
+    expect(replay.text).toContain('value="unsafe" checked');
+    expect(replay.text).toContain('> Unsafe wiring </textarea>');
+
+    api.callMarketplaceApi.mockRejectedValueOnce(new api.ApiError('Service unavailable', 503, {}));
+    const failed = await agent
+      .post('/marketplace/42/report')
+      .set('Cookie', signedAuthCookieHeader())
+      .type('form')
+      .send({ _csrf: csrf, reason: 'unsafe', description: 'Unsafe wiring' });
+    expect(failed.headers.location).toBe('/marketplace/42?status=report-failed');
   });
 
   it('renders the Laravel-backed marketplace my listings dashboard', async () => {

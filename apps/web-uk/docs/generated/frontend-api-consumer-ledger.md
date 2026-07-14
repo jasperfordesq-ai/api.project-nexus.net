@@ -3,11 +3,11 @@
 Generated from `src/lib/api.js`, routed Web UK consumers, tests, and Laravel `openapi.json`.
 This is static evidence: an OpenAPI match or test reference does not prove runtime behavior, role policy, side effects, cleanup, or frontend parity.
 
-- Contracts: 589
+- Contracts: 590
 - Laravel OpenAPI matches: 371
-- Missing OpenAPI matches: 201
+- Missing OpenAPI matches: 202
 - Dynamic unresolved contracts: 17
-- State-changing contracts: 283
+- State-changing contracts: 284
 - Rows without detected tests: 0
 - API source SHA-256: `27557bd52b9c1f53e34ec458412da7253b8c5a71d40a91da5f242b3cbeea5f6d`
 - Laravel OpenAPI SHA-256: `0f62bf532901e6925b630d6a8ed0add7cd2c2bd9395b773c6a1a6581c0d38722`
@@ -378,6 +378,7 @@ The JSON companion contains the full request/response, status/error, redirect, s
 | PUT | `/api/v2/marketplace/listings/{param}` | `callMarketplaceApi` | missing-openapi-match | state-changing; disposable-environment runtime proof required<br>fixture-specific cleanup and final absence/equality proof required | src/routes/marketplace-actions.js | tests/api.test.js<br>tests/marketplace-payment-contract.test.js<br>tests/marketplace-status-localization.test.js<br>tests/marketplace-title-localization.test.js<br>tests/runtime/marketplace-mutation.spec.js<br>tests/shared-accessible-shell.test.js |
 | POST | `/api/v2/marketplace/listings/{param}/offers` | `callMarketplaceApi` | missing-openapi-match | state-changing; disposable-environment runtime proof required<br>fixture-specific cleanup and final absence/equality proof required | src/routes/marketplace-actions.js | tests/api.test.js<br>tests/marketplace-payment-contract.test.js<br>tests/marketplace-status-localization.test.js<br>tests/marketplace-title-localization.test.js<br>tests/runtime/marketplace-mutation.spec.js<br>tests/shared-accessible-shell.test.js |
 | GET | `/api/v2/marketplace/listings/{param}/pickup-slots` | `callMarketplaceApi` | missing-openapi-match | read-only by HTTP method<br>not applicable | src/routes/marketplace-actions.js<br>src/routes/marketplace.js | tests/api.test.js<br>tests/marketplace-payment-contract.test.js<br>tests/marketplace-status-localization.test.js<br>tests/marketplace-title-localization.test.js<br>tests/runtime/marketplace-mutation.spec.js<br>tests/shared-accessible-shell.test.js |
+| POST | `/api/v2/marketplace/listings/{param}/report` | `callMarketplaceApi` | missing-openapi-match | state-changing; disposable-environment runtime proof required<br>fixture-specific cleanup and final absence/equality proof required | src/routes/marketplace-actions.js | tests/api.test.js<br>tests/marketplace-payment-contract.test.js<br>tests/marketplace-status-localization.test.js<br>tests/marketplace-title-localization.test.js<br>tests/runtime/marketplace-mutation.spec.js<br>tests/shared-accessible-shell.test.js |
 | GET | `/api/v2/marketplace/me/pickups` | `callMarketplaceApi` | missing-openapi-match | read-only by HTTP method<br>not applicable | src/routes/marketplace.js | tests/api.test.js<br>tests/marketplace-payment-contract.test.js<br>tests/marketplace-status-localization.test.js<br>tests/marketplace-title-localization.test.js<br>tests/runtime/marketplace-mutation.spec.js<br>tests/shared-accessible-shell.test.js |
 | GET | `/api/v2/marketplace/my-offers/sent?per_page=50` | `callMarketplaceApi` | missing-openapi-match | read-only by HTTP method<br>not applicable | src/routes/marketplace-actions.js | tests/api.test.js<br>tests/marketplace-payment-contract.test.js<br>tests/marketplace-status-localization.test.js<br>tests/marketplace-title-localization.test.js<br>tests/runtime/marketplace-mutation.spec.js<br>tests/shared-accessible-shell.test.js |
 | POST | `/api/v2/marketplace/orders` | `callMarketplaceApi` | createMarketplaceOrder | state-changing; disposable-environment runtime proof required<br>fixture-specific cleanup and final absence/equality proof required | src/routes/marketplace-actions.js | tests/api.test.js<br>tests/laravel-runtime-smoke.test.js<br>tests/marketplace-payment-contract.test.js<br>tests/marketplace-status-localization.test.js<br>tests/marketplace-template-localization.test.js<br>tests/marketplace-title-localization.test.js<br>tests/runtime/marketplace-mutation.spec.js<br>tests/shared-accessible-shell.test.js |

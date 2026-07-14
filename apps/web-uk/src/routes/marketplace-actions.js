@@ -417,6 +417,37 @@ function rememberOnboardingForm(req, state, errorKeys = []) {
   req.session[onboardingFormSessionKey(req)] = { ...state, errorKeys };
 }
 
+function reportFormSessionKey(req, id) {
+  const tenantSlug = trimmed(
+    req.accessibleRouting?.tenant?.slug
+      || req.accessibleRouting?.tenantSlug
+      || 'default'
+  );
+  return `marketplaceReportForm:${tenantSlug}:${id}`;
+}
+
+function reportFormValues(body) {
+  return {
+    reason: allowed(body.reason, REPORT_REASONS, ''),
+    description: String(body.description || '').slice(0, 5000)
+  };
+}
+
+function rememberReportForm(req, id, values, errors) {
+  if (!req.session) return;
+  req.session[reportFormSessionKey(req, id)] = { values, errors };
+}
+
+function apiReportError(error) {
+  if (error instanceof ApiError && error.status === 422) {
+    const message = trimmed(error.message, 2000);
+    if (message && message !== 'API request failed') {
+      return { field: 'description', text: message };
+    }
+  }
+  return null;
+}
+
 router.post('/create', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) return redirectTo(res, loginRedirect());
@@ -749,23 +780,38 @@ router.post('/:id(\\d+)/offer', asyncRoute(async (req, res) => {
 }));
 
 router.post('/:id(\\d+)/report', asyncRoute(async (req, res) => {
-  if (!tokenFrom(req)) return redirectTo(res, loginRedirect());
+  const token = tokenFrom(req);
+  if (!token) return redirectTo(res, loginRedirect());
   const id = Number(req.params.id);
-  const reason = allowed(req.body.reason, REPORT_REASONS, '');
-  const description = trimmed(req.body.description, 5000);
-  if (reason === '' || description === '') {
-    return redirectTo(res, `/marketplace/${id}/report?status=report-validation`);
+  const values = reportFormValues(req.body);
+  const errors = [];
+  if (values.reason === '') {
+    errors.push({ field: 'reason', key: 'govuk_alpha_commerce.report.error_reason' });
+  }
+  if (trimmed(values.description) === '') {
+    errors.push({ field: 'description', key: 'govuk_alpha_commerce.report.error_description' });
+  }
+  if (errors.length > 0) {
+    rememberReportForm(req, id, values, errors);
+    return redirectTo(res, `/marketplace/${id}/report`);
   }
 
-  return runAction(
-    req,
-    res,
-    'POST',
-    `/listings/${id}/report`,
-    { reason, description },
-    listingRedirect(id, 'reported'),
-    `/marketplace/${id}/report?status=report-failed`
-  );
+  try {
+    await callMarketplaceApi(token, 'POST', `/listings/${id}/report`, {
+      reason: values.reason,
+      description: trimmed(values.description, 5000)
+    });
+    delete req.session[reportFormSessionKey(req, id)];
+    return redirectTo(res, listingRedirect(id, 'reported'));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    const validationError = apiReportError(error);
+    if (validationError) {
+      rememberReportForm(req, id, values, [validationError]);
+      return redirectTo(res, `/marketplace/${id}/report`);
+    }
+    return redirectTo(res, listingRedirect(id, 'report-failed'));
+  }
 }));
 
 router.post('/offers/:id(\\d+)/accept', asyncRoute(async (req, res) => {

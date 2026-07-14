@@ -127,7 +127,6 @@ const MARKETPLACE_ERROR_MESSAGES = {
   'order-failed': 'Sorry, your order could not be placed. Please try again.',
   'offer-amount-invalid': 'Enter an offer amount greater than zero',
   'offer-failed': 'Sorry, your offer could not be sent. Please try again.',
-  'report-validation': 'Select a reason for reporting',
   'report-failed': 'Sorry, your report could not be sent.',
   'accept-failed': 'Sorry, that action could not be completed.',
   'decline-failed': 'Sorry, that action could not be completed.',
@@ -163,7 +162,6 @@ const MARKETPLACE_ERROR_MESSAGE_KEYS = {
   'order-failed': 'govuk_alpha_commerce.buy.error_generic',
   'offer-amount-invalid': 'govuk_alpha_commerce.offer.error_amount',
   'offer-failed': 'govuk_alpha_commerce.offer.error_generic',
-  'report-validation': 'govuk_alpha_commerce.report.error_reason',
   'report-failed': 'govuk_alpha_commerce.report.status_report_failed',
   'accept-failed': 'govuk_alpha_commerce.offers.status_action_failed',
   'decline-failed': 'govuk_alpha_commerce.offers.status_action_failed',
@@ -1076,8 +1074,15 @@ function formOptions() {
   };
 }
 
-function reportReasons() {
-  return REPORT_REASONS.map((value) => ({ value, label: REPORT_REASON_LABELS[value] }));
+function reportReasons(req) {
+  return REPORT_REASONS.map((value) => ({
+    value,
+    label: translateMarketplaceMessage(
+      req,
+      `govuk_alpha_commerce.report.reason_${value}`,
+      REPORT_REASON_LABELS[value]
+    )
+  }));
 }
 
 async function loadCategories(token) {
@@ -1254,6 +1259,30 @@ function onboardingFormErrors(req, state) {
   return state.errorKeys
     .map((key) => translateMarketplaceMessage(req, key, key))
     .filter(Boolean);
+}
+
+function reportFormSessionKey(req, id) {
+  const tenantSlug = trimmed(
+    req.accessibleRouting?.tenant?.slug
+      || req.accessibleRouting?.tenantSlug
+      || 'default'
+  );
+  return `marketplaceReportForm:${tenantSlug}:${id}`;
+}
+
+function consumeReportFormState(req, id) {
+  const sessionKey = reportFormSessionKey(req, id);
+  const state = req.session?.[sessionKey];
+  if (state && req.session) delete req.session[sessionKey];
+  return state && typeof state === 'object' ? state : null;
+}
+
+function reportFormErrors(req, state) {
+  if (!Array.isArray(state?.errors)) return [];
+  return state.errors.map((error) => ({
+    field: error.field === 'reason' ? 'reason' : 'description',
+    message: error.text || translateMarketplaceMessage(req, error.key, error.key)
+  }));
 }
 
 function listingFormErrors(req, state, status) {
@@ -1835,13 +1864,18 @@ router.get('/:id(\\d+)/report', asyncRoute(async (req, res) => {
 
   try {
     const listing = await loadListing(token, req.params.id);
+    const formState = consumeReportFormState(req, listing.id);
+    const errors = reportFormErrors(req, formState);
     return res.render('marketplace/report', {
       title: 'Report a listing',
       titleKey: 'govuk_alpha_commerce.report.title',
       activeNav: 'explore',
       item: listing,
-      status: statusEntry(req, req.query.status),
-      reasons: reportReasons()
+      reasons: reportReasons(req),
+      oldInput: formState?.values || {},
+      reportErrors: errors,
+      reasonError: errors.find((error) => error.field === 'reason') || null,
+      descriptionError: errors.find((error) => error.field === 'description') || null
     });
   } catch (error) {
     return renderMarketplaceError(error, res, 'Report a listing');
