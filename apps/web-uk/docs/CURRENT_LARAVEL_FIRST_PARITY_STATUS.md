@@ -171,7 +171,7 @@ Refresh the Laravel Blade/API source and Web UK implementation before relying on
 these numbers after either source moves.
 
 At this documentation audit, the product-source baseline was
-`d05a3caff85981d1da9bf4883a64dbc2a25143cb`. The revoked-session confirmation,
+`ea7b5bb6cf96db923593d5a29c20c176a0fa169b`. The revoked-session confirmation,
 Laravel method-spoof reconciliation, group-message contract, residual API-
 consumer correction, and backend-request timeout slices are above the frozen
 bank and remain **published and unscored**. The documentation remediation is
@@ -186,7 +186,7 @@ together from a clean published checkout.
   with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
   Only this fixed-rubric audit contributes to the current bank.
 - **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `d05a3caf`, including the later identity/session confirmation,
+  baseline `ea7b5bb6`, including the later identity/session confirmation,
   method-spoof reconciliation, group-message contract, residual API-consumer
   correction, and backend-request timeout slices. Their evidence is useful, but they
   contribute zero points until one complete fixed-rubric re-audit explicitly
@@ -1649,5 +1649,23 @@ Focused signed/unsigned rendering passes 1/1 with green lint, the 322-template
 zero-match localization audit, and diff checks. The immediately preceding
 complete gate is green at 52/52 suites and 1,672/1,672 tests. No Laravel source,
 database, migration, mutation, container, or production operation was
+performed. This published component-audit improvement remains unscored, so the
+frozen bank remains 622/1,000 pending a complete fixed-rubric re-audit.
+
+## 2026-07-14 Help Centre CMS HTML Sanitization
+
+Frozen evidence at `2026-07-14T18:07:31.0510456+01:00` against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and published Web UK product commit
+`ea7b5bb6cf96db923593d5a29c20c176a0fa169b`. Help Centre FAQ answers now pass
+through a Laravel-aligned CMS HTML allowlist before trusted rendering. Supported
+formatting and safe links remain available; scripts, inline event handlers,
+unsafe URL schemes, and unsupported attributes are removed, and new-window
+links receive `noopener noreferrer`.
+
+The focused Help Centre render passes 1/1, `npm audit` reports zero known
+vulnerabilities, and the complete non-mutating gate passes 52/52 suites and
+1,674/1,674 tests. Brand, lint, CSS, route, API-ledger, locale, 322-template
+zero-match, 19/19 canonical Blade-marker, and diff checks are green. No Laravel
+request, database, migration, mutation, container, or production operation was
 performed. This published component-audit improvement remains unscored, so the
 frozen bank remains 622/1,000 pending a complete fixed-rubric re-audit.
