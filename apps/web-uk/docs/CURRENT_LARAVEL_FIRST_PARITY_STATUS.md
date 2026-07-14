@@ -186,7 +186,7 @@ together from a clean published checkout.
   with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
   Only this fixed-rubric audit contributes to the current bank.
 - **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `0dbc4a47`, including the later implementation, contract,
+  baseline `87a7903e`, including the later implementation, contract,
   resilience, and component-audit slices. Their evidence is useful, but they
   contribute zero points until one complete fixed-rubric re-audit explicitly
   replaces the baseline.
@@ -205,7 +205,7 @@ together from a clean published checkout.
 | Missing Laravel routes | 1 | Event offline check-in code generation |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 52/52 suites, 1,693/1,693 tests | Latest uninterrupted complete non-mutating gate at product baseline `0dbc4a47` |
+| Jest | 52/52 suites, 1,694/1,694 tests | Latest uninterrupted complete non-mutating gate at product baseline `87a7903e` |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
 | Static locale usage | 7,580 references, 5,784 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
@@ -1632,6 +1632,23 @@ No Laravel database, migration, mutation, upload, download, container, or
 production operation was performed. This published component-audit improvement
 remains unscored, so the frozen bank remains `622/1,000` pending a complete
 fixed-rubric re-audit.
+
+## 2026-07-14 Group Conversation Create Feature Gate
+
+Frozen evidence refreshed at `2026-07-14T23:56:48.4201878+01:00` against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and Web UK product commit
+`87a7903e`. Group-conversation creation now applies Laravel's `connections`
+feature gate before authentication and API access. Both GET
+`/messages/groups/new` and a CSRF-valid POST `/messages/groups` fail closed with
+403 when disabled; no member search, resolution, or create call runs.
+
+Focused normal and feature-disabled GET/POST proof passes `2/2`; the
+uninterrupted complete non-mutating gate passes `52/52` suites and
+`1,694/1,694` tests. Lint, route matrix, and API ledger are green. No Laravel
+database, migration, mutation, upload, download, container, or production
+operation was performed. This published authorization improvement remains
+unscored, so the frozen bank remains `622/1,000` pending a complete fixed-rubric
+re-audit.
 
 ## 2026-07-14 Listing Report Validation Replay
 

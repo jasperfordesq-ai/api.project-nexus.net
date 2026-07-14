@@ -604,6 +604,10 @@ active name filter while retaining the localized accessible display fallback;
 named non-matches remain excluded. Focused archived/paginated, fallback, and
 filtered-identity proof passes `3/3`; the complete non-mutating gate passes
 `52/52` suites and `1,693/1,693` tests.
+Group-conversation creation now enforces Laravel's `connections` feature gate
+before authentication and API access on both its GET form and POST action.
+Focused normal and disabled-feature proof passes `2/2`; the complete non-
+mutating gate passes `52/52` suites and `1,694/1,694` tests.
 Simple Search now mirrors Blade's selected-title trimming and positive numeric
 ID boundary: whitespace-only titles do not create empty result cards, a null
 title may use the source name fallback, and invalid IDs render text without an
