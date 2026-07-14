@@ -69,7 +69,7 @@ and 15/75 providers/operations/docs. Exact deductions are respectively 0,
 100, 40, 10, 55, 115, and 60 points. New Laravel drift creates a separately
 named baseline and scope-added delta; it does not silently rewrite this score.
 
-## 2026-07-14 Marketplace Payment Settlement Candidate (Locally Verified)
+## 2026-07-14 Marketplace Payment Settlement (Published)
 
 Evidence snapshot: Laravel
 `903d03d3db78bbf87129ad35728be3b72819acaf`, ASP.NET parent
@@ -94,12 +94,49 @@ moderation field. Full-suite/CI, live Stripe/Connect, escrow/refunds/disputes,
 notifications, feature gating, localization depth, and unchanged-frontend
 runtime proof remain open.
 
-Before publication, the banked score remains **620/1000** and this verified
-candidate is **+12 in flight**. Once committed and pushed without evidence
-regression, it banks 8 semantic and 4 schema points for **632/1000**:
+Published commit `768801f129747ebcb8ae2f52dd9d34f851f20df9` banks 8 semantic
+and 4 schema points for **632/1000**:
 100/100 route, 258/350 semantic, 114/150 schema, 90/100 security/localization,
 45/100 build/test/CI, 10/125 unchanged-frontends, and 15/75 providers/ops/docs.
 Exact remaining deductions are 0, 92, 36, 10, 55, 115, and 60 points.
+
+## 2026-07-14 Marketplace Connect Onboarding Candidate (Locally Verified)
+
+Evidence snapshot: Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf`, ASP.NET parent
+`8193cd3870432688e397c6a5681d190fa2e1f58f`, captured 2026-07-14
+13:17:30 +01. Seller onboarding now creates or reuses a real Stripe Express
+account under a stable tenant/user idempotency key and PostgreSQL advisory
+lock, requests card-payment and transfer capabilities, and generates tenant-
+correct single-use account links. The response preserves Laravel's
+`account_id`/`onboarding_url` fields and also supplies the unchanged canonical
+React consumer's current `url` alias.
+
+Status reads retrieve live provider state and only mark onboarding complete
+when details, charges, and payouts are all enabled. Signed `account.updated`
+webhooks share the same locked transition, support disablement, persist
+sanitized replay evidence, and emit exactly one recipient-locale in-app bell
+plus best-effort push on the incomplete-to-complete transition. Migration
+`20260714115746_MarketplaceConnectOnboardingParity` aligns the Laravel
+100-character account ID, adds global provider-account uniqueness, and blocks
+overlong or duplicate legacy values for operator reconciliation rather than
+truncating or choosing a financial identity.
+
+Release builds pass with zero errors. Focused payment/Connect/provider/webhook
+proof passes 13/13, the existing onboarding contract plus route-ownership gate
+passes 115/115, both marketplace migrations apply to disposable upgraded
+PostgreSQL, generated SQL contains the preflight guards, and EF model drift is
+clear. No live Stripe credentials were used, so live-provider certification,
+escrow/refunds/disputes, payment-confirmation notifications, feature gating,
+full-suite/CI, and unchanged-frontend runtime proof remain open.
+
+Before publication, the banked score remains **632/1000** and this verified
+candidate is **+6 in flight**. Once committed and pushed without evidence
+regression, it banks 4 semantic, 1 schema, and 1 provider/operations point for
+**638/1000**: 100/100 route, 262/350 semantic, 115/150 schema, 90/100
+security/localization, 45/100 build/test/CI, 10/125 unchanged-frontends, and
+16/75 providers/ops/docs. Exact remaining deductions are 0, 88, 35, 10, 55,
+115, and 59 points.
 
 ## 2026-07-14 Retired Vetting OpenAPI Reconciliation (Locally Verified)
 

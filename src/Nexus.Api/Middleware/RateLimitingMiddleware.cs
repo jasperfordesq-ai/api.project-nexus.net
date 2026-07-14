@@ -109,6 +109,7 @@ public static class RateLimitingExtensions
     public const string MarketplacePaymentCreatePolicy = "marketplace-payment-create";
     public const string MarketplacePaymentConfirmPolicy = "marketplace-payment-confirm";
     public const string MarketplacePaymentReadPolicy = "marketplace-payment-read";
+    public const string MarketplaceSellerOnboardPolicy = "marketplace-seller-onboard";
 
     public static IReadOnlyList<SafeguardingVettingRateLimitContract> SafeguardingVettingRateLimitContracts { get; } =
     [
@@ -255,6 +256,9 @@ public static class RateLimitingExtensions
             AddAuthenticatedFixedWindowPolicy(
                 options, MarketplacePaymentReadPolicy, config, trustedProxies,
                 "RateLimiting:Marketplace:PaymentReadPermitLimit", 30);
+            AddAuthenticatedFixedWindowPolicy(
+                options, MarketplaceSellerOnboardPolicy, config, trustedProxies,
+                "RateLimiting:Marketplace:SellerOnboardPermitLimit", 5);
             AddAuthenticatedFixedWindowPolicy(
                 options, EventRecurrencePreviewPolicy, config, trustedProxies,
                 "RateLimiting:Events:RecurrencePreviewPermitLimit", 30);

@@ -12,6 +12,22 @@ The legacy ASP.NET React copy at `apps/react-frontend/` is no longer the target
 for API design. ASP.NET API parity means the ASP.NET backend can satisfy the API
 calls made by the production Laravel React frontend.
 
+## 2026-07-14 Marketplace Connect Onboarding Refresh
+
+`POST /api/v2/marketplace/seller/onboard` now creates/reuses a Stripe Express
+account with stable tenant/user idempotency, requested card/transfers
+capabilities, distributed serialization, tenant-correct refresh/return URLs,
+and both Laravel `onboarding_url` and canonical-React `url` aliases. The status
+read polls Stripe and persists completion only when details, charges, and
+payouts are enabled. The signed marketplace webhook now handles replay-safe
+`account.updated` completion and disablement, writes sanitized event evidence,
+and emits an exactly-once localized bell with best-effort push. Migration
+`20260714115746_MarketplaceConnectOnboardingParity` aligns Laravel's 100-character
+field, enforces unique provider identity, and fails safely on unreconciled
+legacy conflicts. Focused proof passes 13/13, onboarding plus route ownership
+passes 115/115, upgraded PostgreSQL and model drift are green, and Release
+builds have zero errors. Live Stripe credentials/runtime proof remain external.
+
 ## 2026-07-14 Marketplace Payment Settlement Refresh
 
 Marketplace fiat checkout now uses a provider-bound Stripe destination charge
@@ -23,8 +39,8 @@ marketplace webhook share provider-revalidated, exactly-once local settlement.
 Seller payout and balance reads use the durable tenant-scoped payment ledger.
 Migration `20260714105831_MarketplacePaymentSettlementParity` applies on
 disposable PostgreSQL and model drift is clear. Release builds have zero errors,
-payment service proof passes 9/9, and the BuyNow controller case passes. Connect
-onboarding, escrow, refunds/disputes, payment notifications, live-provider proof,
+payment service proof passes 9/9, and the BuyNow controller case passes. Escrow,
+refunds/disputes, payment-confirmation notifications, live-provider proof,
 full-suite/CI, and unchanged-frontend runtime certification remain open.
 
 ## 2026-07-14 Retired Vetting OpenAPI Reconciliation

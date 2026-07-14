@@ -66,6 +66,12 @@ public sealed record MarketplaceStripeIntent(
     long? ApplicationFeeMinor = null,
     string? DestinationAccountId = null);
 
+public sealed record MarketplaceStripeAccount(
+    string Id,
+    bool DetailsSubmitted,
+    bool ChargesEnabled,
+    bool PayoutsEnabled);
+
 public interface IMarketplaceStripeGateway
 {
     bool IsConfigured { get; }
@@ -79,6 +85,18 @@ public interface IMarketplaceStripeGateway
         CancellationToken ct);
     Task<MarketplaceStripeIntent> RetrieveIntentAsync(string paymentIntentId, CancellationToken ct);
     Task CancelIntentAsync(string paymentIntentId, string idempotencyKey, CancellationToken ct);
+    Task<MarketplaceStripeAccount> CreateExpressAccountAsync(
+        string email,
+        int tenantId,
+        int userId,
+        string idempotencyKey,
+        CancellationToken ct);
+    Task<MarketplaceStripeAccount> RetrieveAccountAsync(string accountId, CancellationToken ct);
+    Task<string> CreateAccountLinkAsync(
+        string accountId,
+        string refreshUrl,
+        string returnUrl,
+        CancellationToken ct);
 }
 
 public sealed class MarketplaceStripeGateway(
@@ -118,6 +136,52 @@ public sealed class MarketplaceStripeGateway(
         _ = await SendAsync(HttpMethod.Post, $"/v1/payment_intents/{Uri.EscapeDataString(paymentIntentId)}/cancel",
             Array.Empty<KeyValuePair<string, string>>(), idempotencyKey, ct);
 
+    public async Task<MarketplaceStripeAccount> CreateExpressAccountAsync(
+        string email,
+        int tenantId,
+        int userId,
+        string idempotencyKey,
+        CancellationToken ct)
+    {
+        var form = new[]
+        {
+            new KeyValuePair<string, string>("type", "express"),
+            new("email", email),
+            new("metadata[nexus_user_id]", userId.ToString(CultureInfo.InvariantCulture)),
+            new("metadata[nexus_tenant_id]", tenantId.ToString(CultureInfo.InvariantCulture)),
+            new("capabilities[card_payments][requested]", "true"),
+            new("capabilities[transfers][requested]", "true")
+        };
+        using var document = await SendDocumentAsync(HttpMethod.Post, "/v1/accounts", form, idempotencyKey, ct);
+        return ParseAccount(document.RootElement);
+    }
+
+    public async Task<MarketplaceStripeAccount> RetrieveAccountAsync(string accountId, CancellationToken ct)
+    {
+        using var document = await SendDocumentAsync(
+            HttpMethod.Get, $"/v1/accounts/{Uri.EscapeDataString(accountId)}", null, null, ct);
+        return ParseAccount(document.RootElement);
+    }
+
+    public async Task<string> CreateAccountLinkAsync(
+        string accountId,
+        string refreshUrl,
+        string returnUrl,
+        CancellationToken ct)
+    {
+        var form = new[]
+        {
+            new KeyValuePair<string, string>("account", accountId),
+            new("refresh_url", refreshUrl),
+            new("return_url", returnUrl),
+            new("type", "account_onboarding")
+        };
+        using var document = await SendDocumentAsync(HttpMethod.Post, "/v1/account_links", form, null, ct);
+        var url = Text(document.RootElement, "url");
+        if (string.IsNullOrWhiteSpace(url)) throw new InvalidOperationException("Stripe returned an incomplete Account Link.");
+        return url;
+    }
+
     private async Task<MarketplaceStripeIntent> SendAsync(
         HttpMethod method,
         string path,
@@ -125,22 +189,7 @@ public sealed class MarketplaceStripeGateway(
         string? idempotencyKey,
         CancellationToken ct)
     {
-        if (!IsConfigured) throw new InvalidOperationException("Stripe is not configured.");
-        var client = httpClientFactory.CreateClient("NexusStripe");
-        var apiBase = configuration["Stripe:ApiBaseUrl"]?.TrimEnd('/') ?? DefaultApiBase;
-        using var request = new HttpRequestMessage(method, apiBase + path);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", SecretKey);
-        if (!string.IsNullOrWhiteSpace(idempotencyKey)) request.Headers.TryAddWithoutValidation("Idempotency-Key", idempotencyKey);
-        if (form is not null) request.Content = new FormUrlEncodedContent(form);
-        using var response = await client.SendAsync(request, ct);
-        var body = await response.Content.ReadAsStringAsync(ct);
-        if (!response.IsSuccessStatusCode)
-        {
-            logger.LogWarning("Stripe marketplace request failed with HTTP {StatusCode}.", (int)response.StatusCode);
-            throw new InvalidOperationException("Stripe rejected the marketplace payment request.");
-        }
-
-        using var document = JsonDocument.Parse(body);
+        using var document = await SendDocumentAsync(method, path, form, idempotencyKey, ct);
         var root = document.RootElement;
         var id = Text(root, "id");
         var status = Text(root, "status");
@@ -178,17 +227,56 @@ public sealed class MarketplaceStripeGateway(
             destination);
     }
 
+    private async Task<JsonDocument> SendDocumentAsync(
+        HttpMethod method,
+        string path,
+        IReadOnlyCollection<KeyValuePair<string, string>>? form,
+        string? idempotencyKey,
+        CancellationToken ct)
+    {
+        if (!IsConfigured) throw new InvalidOperationException("Stripe is not configured.");
+        var client = httpClientFactory.CreateClient("NexusStripe");
+        var apiBase = configuration["Stripe:ApiBaseUrl"]?.TrimEnd('/') ?? DefaultApiBase;
+        using var request = new HttpRequestMessage(method, apiBase + path);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", SecretKey);
+        if (!string.IsNullOrWhiteSpace(idempotencyKey)) request.Headers.TryAddWithoutValidation("Idempotency-Key", idempotencyKey);
+        if (form is not null) request.Content = new FormUrlEncodedContent(form);
+        using var response = await client.SendAsync(request, ct);
+        var body = await response.Content.ReadAsStringAsync(ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            logger.LogWarning("Stripe marketplace request failed with HTTP {StatusCode}.", (int)response.StatusCode);
+            throw new InvalidOperationException("Stripe rejected the marketplace payment request.");
+        }
+
+        return JsonDocument.Parse(body);
+    }
+
+    private static MarketplaceStripeAccount ParseAccount(JsonElement root)
+    {
+        var id = Text(root, "id");
+        if (string.IsNullOrWhiteSpace(id)) throw new InvalidOperationException("Stripe returned an incomplete Connect account.");
+        return new(
+            id,
+            Boolean(root, "details_submitted"),
+            Boolean(root, "charges_enabled"),
+            Boolean(root, "payouts_enabled"));
+    }
+
     private static string? Text(JsonElement root, string name) =>
         root.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
     private static long Integer(JsonElement root, string name) =>
         root.TryGetProperty(name, out var value) && value.TryGetInt64(out var parsed) ? parsed : 0;
+    private static bool Boolean(JsonElement root, string name) =>
+        root.TryGetProperty(name, out var value) && value.ValueKind is JsonValueKind.True;
 }
 
 public sealed class MarketplacePaymentService(
     NexusDbContext db,
     IMarketplaceStripeGateway stripe,
     IConfiguration configuration,
-    ILogger<MarketplacePaymentService> logger)
+    ILogger<MarketplacePaymentService> logger,
+    PushNotificationService? pushNotifications = null)
 {
     private static readonly HashSet<string> SupportedCurrencies = new(StringComparer.Ordinal)
     {
@@ -213,6 +301,155 @@ public sealed class MarketplacePaymentService(
         "BIF", "CLP", "DJF", "GNF", "JPY", "KMF", "KRW", "MGA", "PYG",
         "RWF", "VND", "VUV", "XAF", "XOF", "XPF"
     };
+
+    private static readonly IReadOnlyDictionary<string, string> OnboardingCompleteMessages =
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["ar"] = "تم إعداد حساب البائع بالكامل — يمكنك الآن استلام مدفوعات السوق.",
+            ["de"] = "Dein Verkäuferkonto ist vollständig eingerichtet — du kannst jetzt Marktplatz-Auszahlungen erhalten.",
+            ["en"] = "Your seller account is fully set up — you can now receive marketplace payouts.",
+            ["es"] = "Tu cuenta de vendedor está totalmente configurada: ya puedes recibir pagos del mercado.",
+            ["fr"] = "Votre compte vendeur est entièrement configuré — vous pouvez désormais recevoir les versements de la place de marché.",
+            ["ga"] = "Tá do chuntas díoltóra socraithe go hiomlán — is féidir leat íocaíochtaí margaidh a fháil anois.",
+            ["it"] = "Il tuo account venditore è completamente configurato: ora puoi ricevere i pagamenti del marketplace.",
+            ["ja"] = "出品者アカウントの設定が完了しました。マーケットプレイスの支払いを受け取れます。",
+            ["nl"] = "Je verkopersaccount is volledig ingesteld — je kunt nu marktplaatsuitbetalingen ontvangen.",
+            ["pl"] = "Twoje konto sprzedawcy jest w pełni skonfigurowane — możesz teraz otrzymywać wypłaty z targowiska.",
+            ["pt"] = "A tua conta de vendedor está totalmente configurada — já podes receber pagamentos do mercado."
+        };
+
+    public async Task<MarketplacePaymentResult> StartConnectOnboardingAsync(int tenantId, int userId, CancellationToken ct)
+    {
+        if (!stripe.IsConfigured) return Error("FEATURE_DISABLED", "Stripe marketplace payments are disabled.", 403);
+
+        MarketplaceSellerProfile? profile;
+        User? user;
+        Tenant? tenant;
+        await using (var transaction = db.Database.IsRelational()
+            ? await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted, ct)
+            : null)
+        {
+            if (transaction is not null)
+                await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock({tenantId}, {userId})", ct);
+
+            profile = await db.MarketplaceSellerProfiles.IgnoreQueryFilters()
+                .SingleOrDefaultAsync(x => x.TenantId == tenantId && x.UserId == userId, ct);
+            user = await db.Users.IgnoreQueryFilters().AsNoTracking()
+                .SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Id == userId, ct);
+            tenant = await db.Tenants.AsNoTracking().SingleOrDefaultAsync(x => x.Id == tenantId, ct);
+            if (profile is null) return Error("ONBOARDING_ERROR", "A marketplace seller profile is required.", 400);
+            if (user is null || tenant is null) return Error("ONBOARDING_ERROR", "Marketplace seller account was not found.", 400);
+
+            if (string.IsNullOrWhiteSpace(profile.StripeAccountId))
+            {
+                MarketplaceStripeAccount account;
+                try
+                {
+                    account = await stripe.CreateExpressAccountAsync(
+                        user.Email,
+                        tenantId,
+                        userId,
+                        $"marketplace-connect-account-{tenantId}-{userId}",
+                        ct);
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception exception)
+                {
+                    logger.LogWarning(exception, "Stripe Connect account creation failed for tenant {TenantId}, user {UserId}.", tenantId, userId);
+                    return Error("ONBOARDING_ERROR", "Unable to create the Stripe Connect account.", 400);
+                }
+
+                if (string.IsNullOrWhiteSpace(account.Id) || account.Id.Length > 100)
+                    return Error("ONBOARDING_ERROR", "Stripe returned an invalid Connect account.", 400);
+                profile.StripeAccountId = account.Id;
+                profile.StripeOnboardingComplete = account.DetailsSubmitted && account.ChargesEnabled && account.PayoutsEnabled;
+                profile.UpdatedAt = DateTime.UtcNow;
+                await db.SaveChangesAsync(ct);
+            }
+
+            if (transaction is not null) await transaction.CommitAsync(ct);
+        }
+
+        string? onboardingUrl = null;
+        if (!profile.StripeOnboardingComplete)
+        {
+            var frontendBase = BuildTenantFrontendBase(tenant);
+            try
+            {
+                onboardingUrl = await stripe.CreateAccountLinkAsync(
+                    profile.StripeAccountId!,
+                    $"{frontendBase}/marketplace/seller/onboard?refresh=1",
+                    $"{frontendBase}/marketplace/seller/onboard?complete=1",
+                    ct);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception exception)
+            {
+                logger.LogWarning(exception, "Stripe Connect account-link creation failed for account {AccountId}.", profile.StripeAccountId);
+                return Error("ONBOARDING_ERROR", "Unable to create the Stripe onboarding link.", 400);
+            }
+        }
+
+        return new(new
+        {
+            account_id = profile.StripeAccountId,
+            onboarding_url = onboardingUrl,
+            url = onboardingUrl
+        });
+    }
+
+    public async Task<MarketplacePaymentResult> ConnectOnboardingStatusAsync(int tenantId, int userId, CancellationToken ct)
+    {
+        var profile = await db.MarketplaceSellerProfiles.IgnoreQueryFilters().AsNoTracking()
+            .SingleOrDefaultAsync(x => x.TenantId == tenantId && x.UserId == userId, ct);
+        if (profile is null || string.IsNullOrWhiteSpace(profile.StripeAccountId))
+            return ConnectStatus(null, false, false, false, false);
+
+        if (!stripe.IsConfigured)
+            return ConnectStatus(profile.StripeAccountId, profile.StripeOnboardingComplete, false, false, false);
+
+        MarketplaceStripeAccount account;
+        try
+        {
+            account = await stripe.RetrieveAccountAsync(profile.StripeAccountId, ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Stripe Connect status retrieval failed for account {AccountId}.", profile.StripeAccountId);
+            return ConnectStatus(profile.StripeAccountId, profile.StripeOnboardingComplete, false, false, false);
+        }
+        if (!string.Equals(account.Id, profile.StripeAccountId, StringComparison.Ordinal))
+            return Error("ONBOARDING_ERROR", "Stripe returned a different Connect account.", 400);
+        await ApplyConnectStatusAsync(account, externalEventId: null, ct);
+        return ConnectStatus(
+            profile.StripeAccountId,
+            account.DetailsSubmitted && account.ChargesEnabled && account.PayoutsEnabled,
+            account.DetailsSubmitted,
+            account.ChargesEnabled,
+            account.PayoutsEnabled);
+    }
+
+    public async Task<MarketplacePaymentResult> ReconcileConnectAccountAsync(
+        MarketplaceStripeAccount account,
+        string? externalEventId,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(account.Id) || account.Id.Length > 100)
+            return Error("VALIDATION_ERROR", "Stripe Connect account id is required.", 422, "account_id");
+        if (string.IsNullOrWhiteSpace(externalEventId) || externalEventId.Length > 200)
+            return Error("VALIDATION_ERROR", "Stripe event id is required.", 422, "event_id");
+        return await ApplyConnectStatusAsync(account, externalEventId, ct);
+    }
 
     public async Task<MarketplacePaymentResult> CreateIntentAsync(int tenantId, int buyerId, int orderId, CancellationToken ct)
     {
@@ -575,6 +812,164 @@ public sealed class MarketplacePaymentService(
             .ToList();
         var single = balances.Count <= 1 ? balances.SingleOrDefault() : null;
         return new(single?.Pending, single?.Available, single?.Currency, single?.TotalEarned, balances);
+    }
+
+    private async Task<MarketplacePaymentResult> ApplyConnectStatusAsync(
+        MarketplaceStripeAccount account,
+        string? externalEventId,
+        CancellationToken ct)
+    {
+        var profileIdentity = await db.MarketplaceSellerProfiles.IgnoreQueryFilters().AsNoTracking()
+            .Where(x => x.StripeAccountId == account.Id)
+            .Select(x => new { x.TenantId, x.UserId })
+            .SingleOrDefaultAsync(ct);
+        if (profileIdentity is null) return new(new { received = true, applied = false });
+
+        var completed = account.DetailsSubmitted && account.ChargesEnabled && account.PayoutsEnabled;
+        var notify = false;
+        string? notificationMessage = null;
+        await using var transaction = db.Database.IsRelational()
+            ? await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted, ct)
+            : null;
+        if (transaction is not null)
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT pg_advisory_xact_lock({profileIdentity.TenantId}, {profileIdentity.UserId})", ct);
+
+        var profile = await db.MarketplaceSellerProfiles.IgnoreQueryFilters()
+            .SingleOrDefaultAsync(x => x.TenantId == profileIdentity.TenantId &&
+                                       x.UserId == profileIdentity.UserId &&
+                                       x.StripeAccountId == account.Id, ct);
+        if (profile is null) return new(new { received = true, applied = false });
+
+        if (!string.IsNullOrWhiteSpace(externalEventId))
+        {
+            var replay = await db.WebhookEvents.IgnoreQueryFilters().AsNoTracking()
+                .SingleOrDefaultAsync(x => x.TenantId == profile.TenantId &&
+                                           x.Provider == "stripe-marketplace" &&
+                                           x.ExternalEventId == externalEventId, ct);
+            if (replay is not null) return new(new { received = true, applied = replay.Status == "processed" });
+        }
+
+        if (profile.StripeOnboardingComplete != completed)
+        {
+            var wasComplete = profile.StripeOnboardingComplete;
+            profile.StripeOnboardingComplete = completed;
+            profile.UpdatedAt = DateTime.UtcNow;
+            if (completed && !wasComplete)
+            {
+                var user = await db.Users.IgnoreQueryFilters().AsNoTracking()
+                    .SingleOrDefaultAsync(x => x.TenantId == profile.TenantId && x.Id == profile.UserId, ct);
+                if (user is not null)
+                {
+                    notificationMessage = LocalizedOnboardingComplete(user.PreferredLanguage);
+                    db.Notifications.Add(new Notification
+                    {
+                        TenantId = profile.TenantId,
+                        UserId = profile.UserId,
+                        Type = "marketplace_payout",
+                        Title = notificationMessage,
+                        Link = "/marketplace/seller/dashboard",
+                        Data = JsonSerializer.Serialize(new { account_id = account.Id }),
+                        CreatedAt = DateTime.UtcNow
+                    });
+                    notify = true;
+                }
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(externalEventId))
+        {
+            db.WebhookEvents.Add(new WebhookEvent
+            {
+                TenantId = profile.TenantId,
+                EventType = "account.updated",
+                Source = "stripe",
+                Provider = "stripe-marketplace",
+                ExternalEventId = externalEventId,
+                PayloadJson = JsonSerializer.Serialize(new
+                {
+                    account_id = account.Id,
+                    details_submitted = account.DetailsSubmitted,
+                    charges_enabled = account.ChargesEnabled,
+                    payouts_enabled = account.PayoutsEnabled
+                }),
+                Status = "processed",
+                ReceivedAt = DateTime.UtcNow
+            });
+        }
+
+        try
+        {
+            await db.SaveChangesAsync(ct);
+            if (transaction is not null) await transaction.CommitAsync(ct);
+        }
+        catch (DbUpdateException) when (!string.IsNullOrWhiteSpace(externalEventId))
+        {
+            if (transaction is not null) await transaction.RollbackAsync(CancellationToken.None);
+            db.ChangeTracker.Clear();
+            var replayWon = await db.WebhookEvents.IgnoreQueryFilters().AsNoTracking()
+                .AnyAsync(x => x.TenantId == profile.TenantId &&
+                               x.Provider == "stripe-marketplace" &&
+                               x.ExternalEventId == externalEventId, CancellationToken.None);
+            if (replayWon) return new(new { received = true, applied = true });
+            throw;
+        }
+
+        if (notify && pushNotifications is not null && notificationMessage is not null)
+        {
+            try
+            {
+                await pushNotifications.SendPushAsync(
+                    profile.UserId,
+                    notificationMessage,
+                    notificationMessage,
+                    JsonSerializer.Serialize(new { link = "/marketplace/seller/dashboard", type = "marketplace_payout" }),
+                    profile.TenantId);
+            }
+            catch (Exception exception)
+            {
+                logger.LogWarning(exception, "Marketplace onboarding push notification failed for user {UserId}.", profile.UserId);
+            }
+        }
+
+        return new(new { received = true, applied = true });
+    }
+
+    private string BuildTenantFrontendBase(Tenant tenant)
+    {
+        var customDomain = tenant.Id > 1 && !string.IsNullOrWhiteSpace(tenant.Domain);
+        var origin = customDomain
+            ? $"https://{tenant.Domain!.Trim().TrimEnd('/')}"
+            : (configuration["App:FrontendUrl"] ?? "https://app.project-nexus.ie").Trim().TrimEnd('/');
+        if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https"))
+            origin = "https://app.project-nexus.ie";
+        if (!customDomain && !string.IsNullOrWhiteSpace(tenant.Slug))
+            origin += "/" + Uri.EscapeDataString(tenant.Slug.Trim('/'));
+        return origin;
+    }
+
+    private static MarketplacePaymentResult ConnectStatus(
+        string? accountId,
+        bool onboarded,
+        bool detailsSubmitted,
+        bool chargesEnabled,
+        bool payoutsEnabled) => new(new
+        {
+            stripe_account_id = accountId,
+            stripe_onboarding_complete = onboarded,
+            details_submitted = detailsSubmitted,
+            charges_enabled = chargesEnabled,
+            payouts_enabled = payoutsEnabled
+        });
+
+    private static string LocalizedOnboardingComplete(string? locale)
+    {
+        var normalized = string.IsNullOrWhiteSpace(locale)
+            ? "en"
+            : locale.Trim().Split('-', '_')[0].ToLowerInvariant();
+        return OnboardingCompleteMessages.TryGetValue(normalized, out var message)
+            ? message
+            : OnboardingCompleteMessages["en"];
     }
 
     private static object Projection(MarketplacePayment payment, bool detailed = false) => detailed

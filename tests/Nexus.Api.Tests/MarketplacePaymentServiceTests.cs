@@ -4,12 +4,17 @@
 // See NOTICE file for attribution and acknowledgements.
 
 using System.Net;
+using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using FluentAssertions;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Nexus.Api.Data;
+using Nexus.Api.Controllers;
 using Nexus.Api.Entities;
 using Nexus.Api.Services;
 using Xunit;
@@ -100,6 +105,38 @@ public sealed class MarketplacePaymentServiceTests
         handler.Body.Should().Contain("application_fee_amount=130");
         handler.Body.Should().Contain("transfer_data%5Bdestination%5D=acct_123");
         handler.Body.Should().Contain("metadata%5Bnexus_order_id%5D=77");
+    }
+
+    [Fact]
+    public async Task StripeGateway_CreatesRetrievesAndLinksExpressAccountWithCanonicalFields()
+    {
+        var handler = new ConnectRecordingHandler();
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Stripe:SecretKey"] = "sk_test_redacted",
+            ["Stripe:ApiBaseUrl"] = "https://stripe.test"
+        }).Build();
+        var gateway = new MarketplaceStripeGateway(new SingleClientFactory(new HttpClient(handler)), configuration,
+            NullLogger<MarketplaceStripeGateway>.Instance);
+
+        var created = await gateway.CreateExpressAccountAsync(
+            "seller@example.test", 42, 11, "marketplace-connect-account-42-11", CancellationToken.None);
+        var retrieved = await gateway.RetrieveAccountAsync(created.Id, CancellationToken.None);
+        var link = await gateway.CreateAccountLinkAsync(
+            created.Id,
+            "https://app.test/acme/marketplace/seller/onboard?refresh=1",
+            "https://app.test/acme/marketplace/seller/onboard?complete=1",
+            CancellationToken.None);
+
+        created.Id.Should().Be("acct_connect_42");
+        retrieved.Should().Be(new MarketplaceStripeAccount("acct_connect_42", true, true, true));
+        link.Should().Be("https://connect.stripe.test/setup/acct_connect_42");
+        handler.Requests[0].IdempotencyKey.Should().Be("marketplace-connect-account-42-11");
+        handler.Requests[0].Body.Should().Contain("type=express");
+        handler.Requests[0].Body.Should().Contain("metadata%5Bnexus_user_id%5D=11");
+        handler.Requests[0].Body.Should().Contain("capabilities%5Bcard_payments%5D%5Brequested%5D=true");
+        handler.Requests[2].Body.Should().Contain("type=account_onboarding");
+        handler.Requests[2].Body.Should().Contain("refresh_url=https%3A%2F%2Fapp.test%2Facme%2Fmarketplace%2Fseller%2Fonboard%3Frefresh%3D1");
     }
 
     [Fact]
@@ -213,6 +250,114 @@ public sealed class MarketplacePaymentServiceTests
         order.PaymentIntentId.Should().BeNull();
     }
 
+    [Fact]
+    public async Task ConnectOnboarding_CreatesOnceReusesAccountAndReturnsBothUrlAliases()
+    {
+        await using var db = CreateDb();
+        SeedConnectIdentity(db);
+        var gateway = new FakeGateway
+        {
+            Configured = true,
+            ConnectCreated = new("acct_connect_42", false, false, false),
+            AccountLink = "https://connect.stripe.test/setup/acct_connect_42"
+        };
+        var service = CreateService(db, gateway);
+
+        var first = await service.StartConnectOnboardingAsync(42, 11, CancellationToken.None);
+        var second = await service.StartConnectOnboardingAsync(42, 11, CancellationToken.None);
+
+        first.Succeeded.Should().BeTrue();
+        second.Succeeded.Should().BeTrue();
+        gateway.ConnectCreateCalls.Should().Be(1);
+        gateway.AccountLinkCalls.Should().Be(2);
+        gateway.ConnectIdempotencyKey.Should().Be("marketplace-connect-account-42-11");
+        gateway.RefreshUrl.Should().Be("http://localhost:5173/acme/marketplace/seller/onboard?refresh=1");
+        gateway.ReturnUrl.Should().Be("http://localhost:5173/acme/marketplace/seller/onboard?complete=1");
+        var data = JsonSerializer.SerializeToElement(first.Data);
+        data.GetProperty("account_id").GetString().Should().Be("acct_connect_42");
+        data.GetProperty("onboarding_url").GetString().Should().Be(gateway.AccountLink);
+        data.GetProperty("url").GetString().Should().Be(gateway.AccountLink);
+        (await db.MarketplaceSellerProfiles.SingleAsync()).StripeAccountId.Should().Be("acct_connect_42");
+    }
+
+    [Fact]
+    public async Task ConnectStatusAndWebhook_TransitionExactlyOnceAndLocalizeBell()
+    {
+        await using var db = CreateDb();
+        SeedConnectIdentity(db, "acct_connect_42");
+        var gateway = new FakeGateway
+        {
+            Configured = true,
+            ConnectRetrieved = new("acct_connect_42", true, true, true)
+        };
+        var service = CreateService(db, gateway);
+
+        var status = await service.ConnectOnboardingStatusAsync(42, 11, CancellationToken.None);
+        var replay = await service.ReconcileConnectAccountAsync(
+            new("acct_connect_42", true, true, true), "evt_account_1", CancellationToken.None);
+        var duplicate = await service.ReconcileConnectAccountAsync(
+            new("acct_connect_42", true, true, true), "evt_account_1", CancellationToken.None);
+
+        status.Succeeded.Should().BeTrue();
+        JsonSerializer.SerializeToElement(status.Data).GetProperty("stripe_onboarding_complete").GetBoolean().Should().BeTrue();
+        replay.Succeeded.Should().BeTrue();
+        duplicate.Succeeded.Should().BeTrue();
+        (await db.MarketplaceSellerProfiles.SingleAsync()).StripeOnboardingComplete.Should().BeTrue();
+        var notification = await db.Notifications.SingleAsync();
+        notification.Type.Should().Be("marketplace_payout");
+        notification.Title.Should().Contain("Verkäuferkonto");
+        (await db.WebhookEvents.CountAsync()).Should().Be(1);
+
+        await service.ReconcileConnectAccountAsync(
+            new("acct_connect_42", true, false, true), "evt_account_2", CancellationToken.None);
+        (await db.MarketplaceSellerProfiles.SingleAsync()).StripeOnboardingComplete.Should().BeFalse();
+        (await db.Notifications.CountAsync()).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task MarketplaceWebhook_VerifiesSignatureAndAppliesAccountUpdatedOnce()
+    {
+        await using var db = CreateDb();
+        SeedConnectIdentity(db, "acct_connect_42");
+        const string secret = "whsec_marketplace_connect_test";
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Stripe:WebhookSecret_Marketplace"] = secret,
+            ["Marketplace:PlatformFeePercent"] = "5"
+        }).Build();
+        var paymentService = new MarketplacePaymentService(
+            db,
+            new FakeGateway { Configured = true },
+            configuration,
+            NullLogger<MarketplacePaymentService>.Instance);
+        var controller = new MarketplaceController(
+            new MarketplaceService(db, NullLogger<MarketplaceService>.Instance),
+            db,
+            paymentService: paymentService,
+            configuration: configuration);
+        const string body = """
+            {"id":"evt_connect_signed_1","type":"account.updated","data":{"object":{"id":"acct_connect_42","details_submitted":true,"charges_enabled":true,"payouts_enabled":true}}}
+            """;
+        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secret));
+        var signature = Convert.ToHexString(hmac.ComputeHash(Encoding.UTF8.GetBytes($"{timestamp}.{body}"))).ToLowerInvariant();
+        var http = new DefaultHttpContext();
+        http.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(body));
+        http.Request.ContentLength = Encoding.UTF8.GetByteCount(body);
+        http.Request.Headers["Stripe-Signature"] = $"t={timestamp},v1={signature}";
+        controller.ControllerContext = new ControllerContext { HttpContext = http };
+
+        var result = await controller.StripeWebhook(CancellationToken.None);
+        http.Request.Body.Position = 0;
+        var replay = await controller.StripeWebhook(CancellationToken.None);
+
+        result.Should().BeOfType<OkObjectResult>();
+        replay.Should().BeOfType<OkObjectResult>();
+        (await db.MarketplaceSellerProfiles.SingleAsync()).StripeOnboardingComplete.Should().BeTrue();
+        (await db.Notifications.CountAsync()).Should().Be(1);
+        (await db.WebhookEvents.CountAsync()).Should().Be(1);
+    }
+
     private static NexusDbContext CreateDb()
     {
         var tenant = new TenantContext();
@@ -250,8 +395,31 @@ public sealed class MarketplacePaymentServiceTests
         return order;
     }
 
+    private static void SeedConnectIdentity(NexusDbContext db, string? accountId = null)
+    {
+        db.Tenants.Add(new Tenant { Id = 42, Slug = "acme", Name = "Acme" });
+        db.Users.Add(new User
+        {
+            Id = 11,
+            TenantId = 42,
+            Email = "seller@example.test",
+            FirstName = "Seller",
+            LastName = "Example",
+            PreferredLanguage = "de"
+        });
+        db.MarketplaceSellerProfiles.Add(new MarketplaceSellerProfile
+        {
+            TenantId = 42,
+            UserId = 11,
+            DisplayName = "Seller Example",
+            StripeAccountId = accountId
+        });
+        db.SaveChanges();
+    }
+
     private static IConfiguration Configuration() => new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
     {
+        ["App:FrontendUrl"] = "http://localhost:5173",
         ["Marketplace:PlatformFeePercent"] = "5",
         ["Marketplace:EscrowEnabled"] = "false"
     }).Build();
@@ -273,6 +441,14 @@ public sealed class MarketplacePaymentServiceTests
         public IReadOnlyDictionary<string, string> Metadata { get; private set; } = new Dictionary<string, string>();
         public MarketplaceStripeIntent? Created { get; private set; }
         public MarketplaceStripeIntent? Retrieved { get; set; }
+        public MarketplaceStripeAccount? ConnectCreated { get; init; }
+        public MarketplaceStripeAccount? ConnectRetrieved { get; set; }
+        public string AccountLink { get; init; } = "https://connect.stripe.test/setup/default";
+        public int ConnectCreateCalls { get; private set; }
+        public int AccountLinkCalls { get; private set; }
+        public string? ConnectIdempotencyKey { get; private set; }
+        public string? RefreshUrl { get; private set; }
+        public string? ReturnUrl { get; private set; }
 
         public Task<MarketplaceStripeIntent> CreateIntentAsync(long amountMinor, string currency, string connectedAccountId,
             long platformFeeMinor, IReadOnlyDictionary<string, string> metadata, string idempotencyKey, CancellationToken ct)
@@ -296,6 +472,26 @@ public sealed class MarketplacePaymentServiceTests
         }
 
         public Task CancelIntentAsync(string paymentIntentId, string idempotencyKey, CancellationToken ct) => Task.CompletedTask;
+
+        public Task<MarketplaceStripeAccount> CreateExpressAccountAsync(
+            string email, int tenantId, int userId, string idempotencyKey, CancellationToken ct)
+        {
+            ConnectCreateCalls++;
+            ConnectIdempotencyKey = idempotencyKey;
+            return Task.FromResult(ConnectCreated ?? throw new InvalidOperationException("No Connect account configured."));
+        }
+
+        public Task<MarketplaceStripeAccount> RetrieveAccountAsync(string accountId, CancellationToken ct) =>
+            Task.FromResult(ConnectRetrieved ?? throw new InvalidOperationException("No Connect account status configured."));
+
+        public Task<string> CreateAccountLinkAsync(
+            string accountId, string refreshUrl, string returnUrl, CancellationToken ct)
+        {
+            AccountLinkCalls++;
+            RefreshUrl = refreshUrl;
+            ReturnUrl = returnUrl;
+            return Task.FromResult(AccountLink);
+        }
     }
 
     private sealed class SingleClientFactory(HttpClient client) : IHttpClientFactory
@@ -333,6 +529,32 @@ public sealed class MarketplacePaymentServiceTests
                   "metadata":{"nexus_order_id":"77","nexus_tenant_id":"42"}
                 }
                 """;
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(json, Encoding.UTF8, "application/json")
+            };
+        }
+    }
+
+    private sealed class ConnectRecordingHandler : HttpMessageHandler
+    {
+        public List<(HttpMethod Method, string Uri, string? IdempotencyKey, string Body)> Requests { get; } = [];
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var body = request.Content is null ? string.Empty : await request.Content.ReadAsStringAsync(cancellationToken);
+            Requests.Add((
+                request.Method,
+                request.RequestUri?.ToString() ?? string.Empty,
+                request.Headers.TryGetValues("Idempotency-Key", out var values) ? values.Single() : null,
+                body));
+            var json = request.RequestUri?.AbsolutePath switch
+            {
+                "/v1/accounts" => """{"id":"acct_connect_42","details_submitted":false,"charges_enabled":false,"payouts_enabled":false}""",
+                "/v1/accounts/acct_connect_42" => """{"id":"acct_connect_42","details_submitted":true,"charges_enabled":true,"payouts_enabled":true}""",
+                "/v1/account_links" => """{"url":"https://connect.stripe.test/setup/acct_connect_42"}""",
+                _ => throw new InvalidOperationException("Unexpected Stripe test path.")
+            };
             return new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(json, Encoding.UTF8, "application/json")

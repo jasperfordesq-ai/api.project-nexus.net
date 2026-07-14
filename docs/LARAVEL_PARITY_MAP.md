@@ -6,15 +6,17 @@ Canonical source: `C:\platforms\htdocs\staging` (read-only).
 
 ## Latest Verified Backend Slice
 
-Marketplace card settlement now has a real Stripe destination-charge boundary,
-durable tenant/order payment ledger, exact provider economics and identity
-validation, signed succeeded-intent webhook reconciliation, race-safe checkout
-claim/binding, provider-revalidated replay, and seller payout/balance reads.
-Migration `20260714105831_MarketplacePaymentSettlementParity` applies on
-disposable PostgreSQL with no pending model changes; focused payment proof is
-9/9 and the payment-facing controller case passes. Real Connect onboarding,
-escrow/refunds/disputes, notifications, live-provider and unchanged-frontend
-runtime certification remain open.
+Marketplace card settlement and Connect onboarding now have real Stripe HTTP
+boundaries. Destination-charge payments retain durable provider-bound economics,
+while seller onboarding creates/reuses Express accounts, generates tenant-correct
+links, polls all three completion capabilities, reconciles signed replay-safe
+`account.updated` events, and emits one localized completion bell. Migrations
+`20260714105831_MarketplacePaymentSettlementParity` and
+`20260714115746_MarketplaceConnectOnboardingParity` apply on disposable upgraded
+PostgreSQL with no pending model changes. Focused payment/Connect proof passes
+13/13 and onboarding plus route ownership passes 115/115. Escrow/refunds/
+disputes, payment-confirmation notifications, live-provider and unchanged-
+frontend runtime certification remain open.
 
 The seven apparent document-era vetting gaps are retired OpenAPI-only artifacts:
 Laravel live routes omit them, the controller prohibits them, feature tests assert

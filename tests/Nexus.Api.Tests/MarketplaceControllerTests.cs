@@ -177,10 +177,10 @@ public class MarketplaceControllerTests : IntegrationTestBase
 
         var start = await Client.PostAsync("/api/v2/marketplace/seller/onboard", null);
 
-        start.StatusCode.Should().Be(HttpStatusCode.NotImplemented);
+        start.StatusCode.Should().Be(HttpStatusCode.Forbidden);
         var startJson = await start.Content.ReadFromJsonAsync<JsonElement>();
         startJson.GetProperty("success").GetBoolean().Should().BeFalse();
-        startJson.GetProperty("errors")[0].GetProperty("code").GetString().Should().Be("PAYMENT_ERROR");
+        startJson.GetProperty("errors")[0].GetProperty("code").GetString().Should().Be("FEATURE_DISABLED");
         (await start.Content.ReadAsStringAsync()).Should().NotContain("acct_local_");
 
         var afterStart = await Client.GetAsync("/api/v2/marketplace/seller/onboard/status");

@@ -544,23 +544,15 @@ public class MarketplaceController : ControllerBase
 
     [HttpGet("seller/onboard/status")]
     [Authorize]
-    public async Task<IActionResult> SellerOnboardStatus()
+    [EnableRateLimiting(RateLimitingExtensions.MarketplacePaymentReadPolicy)]
+    public async Task<IActionResult> SellerOnboardStatus(CancellationToken ct)
     {
-        var profile = await _marketplace.GetOrCreateSellerProfileAsync(RequireUserId());
-        var onboardingComplete = !string.IsNullOrWhiteSpace(profile.StripeAccountId) && profile.StripeOnboardingComplete;
-
-        return Ok(new
-        {
-            success = true,
-            data = new
-            {
-                stripe_account_id = profile.StripeAccountId,
-                stripe_onboarding_complete = onboardingComplete,
-                details_submitted = onboardingComplete,
-                charges_enabled = onboardingComplete,
-                payouts_enabled = onboardingComplete
-            }
-        });
+        var userId = RequireUserId();
+        await _marketplace.GetOrCreateSellerProfileAsync(userId);
+        if (_paymentService is null)
+            return StatusCode(503, new { success = false, errors = new[] { new { code = "ONBOARDING_ERROR", message = "Marketplace payment service is unavailable.", field = (string?)null } } });
+        return PaymentResult(await _paymentService.ConnectOnboardingStatusAsync(
+            User.GetTenantId() ?? throw new UnauthorizedAccessException(), userId, ct));
     }
 
     [HttpPost("orders")]
@@ -776,22 +768,17 @@ public class MarketplaceController : ControllerBase
 
     [HttpPost("seller/onboard")]
     [Authorize]
-    public async Task<IActionResult> SellerOnboard([FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] SellerProfileRequest? request = null)
+    [EnableRateLimiting(RateLimitingExtensions.MarketplaceSellerOnboardPolicy)]
+    public async Task<IActionResult> SellerOnboard(
+        [FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] SellerProfileRequest? request = null,
+        CancellationToken ct = default)
     {
-        await _marketplace.GetOrCreateSellerProfileAsync(RequireUserId(), request?.DisplayName);
-        return StatusCode(StatusCodes.Status501NotImplemented, new
-        {
-            success = false,
-            errors = new[]
-            {
-                new
-                {
-                    code = "PAYMENT_ERROR",
-                    message = "Stripe Connect onboarding is not yet available.",
-                    field = (string?)null
-                }
-            }
-        });
+        var userId = RequireUserId();
+        await _marketplace.GetOrCreateSellerProfileAsync(userId, request?.DisplayName);
+        if (_paymentService is null)
+            return StatusCode(503, new { success = false, errors = new[] { new { code = "ONBOARDING_ERROR", message = "Marketplace payment service is unavailable.", field = (string?)null } } });
+        return PaymentResult(await _paymentService.StartConnectOnboardingAsync(
+            User.GetTenantId() ?? throw new UnauthorizedAccessException(), userId, ct));
     }
 
     [HttpGet("saved-searches")]
@@ -1768,11 +1755,33 @@ public class MarketplaceController : ControllerBase
             var root = document.RootElement;
             var eventId = root.TryGetProperty("id", out var idElement) ? idElement.GetString() : null;
             var eventType = root.TryGetProperty("type", out var typeElement) ? typeElement.GetString() : null;
-            if (eventType != "payment_intent.succeeded") return Ok(new { received = true, applied = false });
             if (!root.TryGetProperty("data", out var data) || !data.TryGetProperty("object", out var stripeObject) ||
                 !stripeObject.TryGetProperty("id", out var intentIdElement) || intentIdElement.ValueKind != JsonValueKind.String)
                 return BadRequest(new { error = "missing_data_object" });
-            var result = await _paymentService.ReconcileSucceededIntentAsync(intentIdElement.GetString()!, eventId, ct);
+            MarketplacePaymentResult result;
+            if (eventType == "payment_intent.succeeded")
+            {
+                result = await _paymentService.ReconcileSucceededIntentAsync(intentIdElement.GetString()!, eventId, ct);
+            }
+            else if (eventType == "account.updated")
+            {
+                if (!TryStripeBoolean(stripeObject, "details_submitted", out var detailsSubmitted) ||
+                    !TryStripeBoolean(stripeObject, "charges_enabled", out var chargesEnabled) ||
+                    !TryStripeBoolean(stripeObject, "payouts_enabled", out var payoutsEnabled))
+                    return BadRequest(new { error = "missing_account_status" });
+                result = await _paymentService.ReconcileConnectAccountAsync(
+                    new MarketplaceStripeAccount(
+                        intentIdElement.GetString()!,
+                        detailsSubmitted,
+                        chargesEnabled,
+                        payoutsEnabled),
+                    eventId,
+                    ct);
+            }
+            else
+            {
+                return Ok(new { received = true, applied = false });
+            }
             if (result.Succeeded) return Ok(result.Data);
             var error = result.Error!;
             return StatusCode(error.Status, new { error = error.Code, message = error.Message });
@@ -1781,6 +1790,16 @@ public class MarketplaceController : ControllerBase
         {
             return BadRequest(new { error = "invalid_json" });
         }
+    }
+
+    private static bool TryStripeBoolean(JsonElement value, string propertyName, out bool result)
+    {
+        result = false;
+        if (!value.TryGetProperty(propertyName, out var property) ||
+            property.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
+            return false;
+        result = property.GetBoolean();
+        return true;
     }
 
     private static PromotionProduct? ResolvePromotionProduct(string? type)
@@ -2506,14 +2525,6 @@ public class MarketplaceController : ControllerBase
                 field
             }
         });
-    }
-
-    private string BuildLocalSellerOnboardingUrl(string? accountId)
-    {
-        var host = Request.Host.HasValue ? Request.Host.Value : "localhost";
-        var scheme = string.IsNullOrWhiteSpace(Request.Scheme) ? "http" : Request.Scheme;
-        var encodedAccountId = Uri.EscapeDataString(accountId ?? string.Empty);
-        return $"{scheme}://{host}/marketplace/seller/onboarding?return=1&account_id={encodedAccountId}";
     }
 
     private static int? DecodeListingCursor(string? cursor)

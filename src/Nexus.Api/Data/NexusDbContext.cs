@@ -835,6 +835,8 @@ public class NexusDbContext : DbContext
         {
             entity.ToTable("marketplace_seller_profiles");
             entity.HasIndex(e => new { e.TenantId, e.UserId }).IsUnique();
+            entity.Property(e => e.StripeAccountId).HasMaxLength(100);
+            entity.HasIndex(e => e.StripeAccountId).IsUnique().HasFilter("\"StripeAccountId\" IS NOT NULL");
             entity.HasIndex(e => new { e.TenantId, e.MarketplaceSuspensionReportId });
         });
         modelBuilder.Entity<MarketplaceSavedListing>(entity =>
