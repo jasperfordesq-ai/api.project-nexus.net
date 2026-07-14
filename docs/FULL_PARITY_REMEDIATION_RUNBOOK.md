@@ -194,6 +194,42 @@ security/localization, 45/100 build/test/CI, 10/125 unchanged-frontends, and
 17/75 providers/ops/docs. Exact remaining deductions are 0, 84, 33, 10, 55,
 115, and 58 points.
 
+### 2026-07-14 Marketplace Escrow Settlement And Delayed Payout (Published)
+
+Evidence snapshot: Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf`, ASP.NET implementation
+`93417bd17e886e8d05e054ec2f679a4851c6ae26`, captured 2026-07-14
+17:08:02 +01:00. Escrow-enabled checkout now creates a Stripe separate charge
+under a stable transfer group instead of returning a placeholder conflict.
+Provider-verified capture atomically records a tenant-bound escrow hold; buyer
+delivery confirmation starts the Laravel-compatible dispute window without
+prematurely completing the order or paying the seller.
+
+Eligible releases run hourly and create a source-charge-bound Connect transfer
+under a stable idempotency key. The service locks and rechecks tenant, order,
+payment, dispute, deadline, and provider evidence before transfer; persists
+scheduled, paid, failed, and ambiguous states; finalizes the order only after
+provider success; and emits one idempotent seller payout bell in the recipient's
+locale. Migration `20260714150317_MarketplaceEscrowSettlementParity` adds the
+escrow ledger, composite tenant integrity, lifecycle timestamps, economic/status
+checks, unique order/payment identities, and release indexes.
+
+The migration applies to disposable upgraded PostgreSQL and EF reports no model
+drift. The Release API build passes with zero errors and three known unrelated
+warnings. The combined payment-service/controller proof passes 20/20 twice,
+the comparator fixture passes, and the live inventory remains 2,601/2,601 active
+operations matched with zero missing. No live Stripe credentials were used;
+refund execution, provider-backed dispute resolution, refund/dispute webhook
+reconciliation, full-suite/CI, and unchanged-client runtime certification remain
+open.
+
+Published implementation `93417bd17e886e8d05e054ec2f679a4851c6ae26`
+banks 8 semantic, 4 schema, and 2 provider/operations points for **659/1000**:
+100/100 route, 274/350 semantic, 121/150 schema, 90/100
+security/localization, 45/100 build/test/CI, 10/125 unchanged-frontends, and
+19/75 providers/ops/docs. Exact remaining deductions are 0, 76, 29, 10, 55,
+115, and 56 points.
+
 ## Historical Checkpoints
 
 Everything in this section is dated implementation evidence. Its older

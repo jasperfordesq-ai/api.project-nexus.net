@@ -7,7 +7,7 @@ Status: **Maintained reference — detailed evidence and gap map, not a current 
 Evidence provenance: the latest published-backend summary was reviewed on
 2026-07-14 against Laravel
 `903d03d3db78bbf87129ad35728be3b72819acaf` and ASP.NET implementation
-`f562c49796b81ac2ea47a4699dc22f9f0e57f9c0`; dirty backend work is excluded.
+`93417bd17e886e8d05e054ec2f679a4851c6ae26`; dirty backend work is excluded.
 Every older inventory lacking its own exact source pair is historical and
 provenance-incomplete, regardless of words such as “latest” retained inside a
 checkpoint.
@@ -22,7 +22,8 @@ regenerated before it is described as current.
 
 ## Latest Verified Backend Slice
 
-Marketplace card settlement, Connect onboarding, and paid-transition delivery now
+Marketplace card settlement, Connect onboarding, paid-transition delivery, and
+escrow settlement now
 have durable provider boundaries. Destination-charge payments retain provider-bound
 economics, while seller onboarding creates/reuses Express accounts, generates
 tenant-correct links, polls all three completion capabilities, reconciles signed
@@ -33,11 +34,15 @@ stale claims, and preserves payment state when a notification channel fails. Ord
 now persist non-enumerable `MKT-{ULID}` identities. Migrations
 `20260714105831_MarketplacePaymentSettlementParity` and
 `20260714115746_MarketplaceConnectOnboardingParity`, plus
-`20260714132232_MarketplacePaidNotificationParity`, apply on disposable upgraded
+`20260714132232_MarketplacePaidNotificationParity` and
+`20260714150317_MarketplaceEscrowSettlementParity`, apply on disposable upgraded
 PostgreSQL with no pending model changes. The final focused payment/Connect/
-notification proof passes 16/16. Escrow separate-charge/transfer lifecycle,
-refunds/disputes, live-provider, full-suite/CI, and unchanged-frontend runtime
-certification remain open.
+notification/escrow proof passes 20/20. Escrow checkout now uses a separate
+charge and durable hold; buyer delivery confirmation starts the dispute window;
+an hourly job creates a source-charge-bound Connect transfer only after all
+release gates pass and emits one localized seller payout bell. Refund execution,
+provider-backed dispute resolution and webhook reconciliation, live-provider,
+full-suite/CI, and unchanged-frontend runtime certification remain open.
 
 The seven apparent document-era vetting gaps are retired OpenAPI-only artifacts:
 Laravel live routes omit them, the controller prohibits them, feature tests assert
