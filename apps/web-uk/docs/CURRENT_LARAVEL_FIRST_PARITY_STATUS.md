@@ -171,9 +171,9 @@ these numbers after either source moves.
 | Missing Laravel routes | 1 | Event offline check-in code generation |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 49/49 suites, 1,640/1,640 tests | Fresh green code gate |
+| Jest | 49/49 suites, 1,641/1,641 tests | Fresh green code gate |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
-| Static locale usage | 7,234 references, 5,523 unique keys, 0 unresolved | Current complete-reference audit |
+| Static locale usage | 7,239 references, 5,530 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
 | Blade marker check | Retained 19/19; current rerun unavailable | Current public-GET rerun timed out against Laravel HTTP; retained result is not visual certification |
 | Automated accessibility | Not currently certified: 28 passed, login failed, 58 did not run | Full aggregate requires a disposable Laravel environment; manual AT review remains open |
@@ -204,7 +204,7 @@ the test asserts the full contract. These unresolved classifications are now a
 concrete reconciliation queue rather than hidden readiness debt.
 
 Focused generator proof passes 2/2 and the full Jest gate passes 49/49 suites,
-1,640/1,640 tests. Brand, lint, CSS, route matrix, ledger regeneration, locale
+1,641/1,641 tests. Brand, lint, CSS, route matrix, ledger regeneration, locale
 sync/shape, static-key resolution, and the 322-template zero-match audit are
 green. A fresh current-checkout `visual:blade` attempt used only unauthenticated
 GET requests but reached its ten-minute wrapper timeout because the restored
@@ -270,6 +270,20 @@ the complete Jest gate passes 49/49 suites and 1,640/1,640 tests. Lint, CSS,
 brand, route, ledger, 7,234-reference / 5,523-unique-key zero-unresolved locale,
 and 322-template zero-match gates are green. No Laravel request, mutation,
 upload, download, or database access ran.
+
+## Marketplace Seller Profile Refresh
+
+Seller profiles now follow Blade's exact back link, caption, summary labels,
+localized rating and sales text, month-and-year membership date, listing
+heading, and empty state. Sales totals follow Blade by appearing only when the
+profile also has ratings. Web UK no longer treats Laravel's email-verification
+field as Blade's identity-verification badge; because the current seller API
+does not expose Blade's `id_verified` evidence, that trust tag fails closed and
+remains an upstream contract gap. Focused seller-state proof passes 2/2, and the
+complete Jest gate passes 49/49 suites and 1,641/1,641 tests. Lint, CSS, brand,
+route, ledger, 7,239-reference / 5,530-unique-key zero-unresolved locale, and
+322-template zero-match gates are green. No Laravel request or database access
+ran.
 
 ## Marketplace Offer Workflow Refresh
 

@@ -30483,7 +30483,7 @@ describe('shared accessible frontend shell', () => {
           avg_rating: 4.7,
           total_ratings: 9,
           total_sales: 14,
-          created_at: '2026-01-15T12:00:00Z',
+          member_since: '2026-01-15T12:00:00Z',
           is_verified: true
         }
       })
@@ -30500,10 +30500,13 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(200);
     expect(api.callMarketplaceApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/sellers/77');
     expect(api.callMarketplaceApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/sellers/77/listings?per_page=50');
-    expect(response.text).toContain('Seller profile');
+    expect(response.text).toContain('Seller at Project NEXUS Accessible');
     expect(response.text).toContain('Aisha Khan');
     expect(response.text).toContain('Average rating: 4.7 out of 5 from 9 reviews');
     expect(response.text).toContain('14 completed sales');
+    expect(response.text).toContain('Member since January 2026');
+    expect(response.text).toContain('Items for sale');
+    expect(response.text).not.toContain('>Verified<');
     expect(response.text).toContain('Seller bike');
     expect(response.text).not.toContain('Laravel Blade route');
   });
@@ -30540,6 +30543,34 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Accept');
     expect(response.text).toContain('action="/marketplace/offers/12/decline"');
     expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('fails closed on email-only seller verification and unrated sales metadata', async () => {
+    const api = require('../src/lib/api');
+    api.callMarketplaceApi
+      .mockResolvedValueOnce({
+        data: {
+          id: 78,
+          user_id: 78,
+          display_name: 'Sam Seller',
+          total_ratings: 0,
+          total_sales: 12,
+          member_since: 'not-a-date',
+          is_verified: true
+        }
+      })
+      .mockResolvedValueOnce({ data: [] });
+
+    const response = await request(app)
+      .get('/marketplace/seller/78')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('No reviews yet');
+    expect(response.text).toContain('This seller has no active listings.');
+    expect(response.text).not.toContain('12 completed sales');
+    expect(response.text).not.toContain('>Verified member<');
+    expect(response.text).not.toContain('Member since');
   });
 
   it('uses Blade notification-banner semantics for failed marketplace offer actions', async () => {

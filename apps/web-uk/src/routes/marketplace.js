@@ -473,6 +473,18 @@ function priceLabel(row) {
   return 'Free';
 }
 
+function formatMonthYearLabel(value) {
+  const text = trimmed(value);
+  if (!text) return '';
+  const date = new Date(text);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat(getRequestIntlLocale(), {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC'
+  }).format(date);
+}
+
 function priceTagClass(row) {
   const credits = decimalNumber(row.time_credit_price);
   const money = decimalNumber(row.price);
@@ -561,15 +573,17 @@ function decorateListing(listing) {
   };
 }
 
-function decorateSeller(seller) {
+function decorateSeller(seller, translate = fallbackTranslator) {
   const row = seller && typeof seller === 'object' ? seller : {};
   const user = row.user && typeof row.user === 'object' ? row.user : {};
-  const name = trimmed(row.display_name || row.name || user.name || row.seller_name) || 'Seller profile';
+  const name = trimmed(row.display_name || row.name || user.name || row.seller_name)
+    || translate('govuk_alpha_commerce.seller.title');
   const ratings = positiveInteger(row.total_ratings) || positiveInteger(row.rating_count) || 0;
   const averageRating = Number(row.avg_rating ?? row.average_rating ?? 0);
   const totalSales = positiveInteger(row.total_sales) || 0;
-  const createdAt = trimmed(row.created_at || row.member_since || user.created_at);
-  const verified = booleanValue(row.is_verified || row.identity_verified || row.verified);
+  const createdAt = formatMonthYearLabel(row.member_since || row.created_at || user.created_at);
+  const verified = booleanValue(row.identity_verified || row.id_verified);
+  const averageRatingLabel = Number.isFinite(averageRating) ? averageRating.toFixed(1) : '0.0';
 
   return {
     ...row,
@@ -579,13 +593,16 @@ function decorateSeller(seller) {
     verified,
     createdAt,
     averageRating: Number.isFinite(averageRating) ? averageRating : 0,
-    averageRatingLabel: Number.isFinite(averageRating) ? averageRating.toFixed(1) : '0.0',
+    averageRatingLabel,
     totalRatings: ratings,
     totalSales,
     ratingText: ratings > 0
-      ? `Average rating: ${(Number.isFinite(averageRating) ? averageRating : 0).toFixed(1)} out of 5 from ${ratings} reviews`
-      : 'No reviews yet',
-    totalSalesText: `${totalSales} completed sales`
+      ? translate('govuk_alpha_commerce.seller.rating', { rating: averageRatingLabel, count: ratings })
+      : translate('govuk_alpha_commerce.seller.no_ratings'),
+    memberSinceText: createdAt
+      ? translate('govuk_alpha_commerce.seller.member_since', { date: createdAt })
+      : '',
+    totalSalesText: translate('govuk_alpha_commerce.seller.total_sales', { count: totalSales })
   };
 }
 
@@ -1337,7 +1354,8 @@ router.get('/seller/:sellerId(\\d+)', asyncRoute(async (req, res) => {
       callMarketplace(token, 'GET', `/sellers/${req.params.sellerId}`),
       loadListingRows(token, `/sellers/${req.params.sellerId}/listings?per_page=50`)
     ]);
-    const seller = decorateSeller(objectFrom(sellerResult));
+    const translate = typeof res.locals.t === 'function' ? res.locals.t : fallbackTranslator;
+    const seller = decorateSeller(objectFrom(sellerResult), translate);
     return res.render('marketplace/seller', {
       title: seller.name,
       activeNav: 'explore',
