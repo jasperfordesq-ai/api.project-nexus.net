@@ -10490,6 +10490,9 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('href="/members/77"');
     expect(signed.text).toContain('action="/connections/30/remove"');
     expect(signed.text).toContain('Disconnect');
+    expect(signed.text).toContain('<details class="govuk-details govuk-!-margin-bottom-0" data-module="govuk-details">');
+    expect(signed.text).toContain('This action is permanent and cannot be undone.');
+    expect(signed.text).toContain('govuk-button govuk-button--warning govuk-!-margin-bottom-0');
     expect(signed.text).not.toContain('accepted-next');
     expect(signed.text).toContain('Morgan Lee');
     expect(signed.text).toContain('Wants to connect with you');
@@ -10589,6 +10592,9 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Your connections');
     expect(response.text).toContain('Requests you have sent');
     expect(response.text).toContain('action="/acme/accessible/connections/44/remove"');
+    expect(response.text).toContain('<span class="govuk-details__summary-text">Remove</span>');
+    expect(response.text).toContain('This action is permanent and cannot be undone.');
+    expect(response.text).toContain('govuk-button govuk-button--warning govuk-!-margin-bottom-0');
     expect(response.text).toContain('href="/acme/accessible/members/77"');
     expect(response.text).toContain('href="/acme/accessible/connections/network"');
     expect(response.text).not.toContain('govuk-tabs');

@@ -87,10 +87,19 @@
           <div class="govuk-button-group">
             {% if connection.profileHref %}<a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor(connection.profileHref) }}">{{ t("connections.view_profile") }}</a>{% endif %}
             {% if connection.removeAction %}
-              <form method="post" action="{{ urlFor(connection.removeAction) }}">
-                <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-                <button class="govuk-button govuk-button--secondary" data-module="govuk-button">{{ t("connections.remove_button") }}</button>
-              </form>
+              <details class="govuk-details govuk-!-margin-bottom-0" data-module="govuk-details">
+                <summary class="govuk-details__summary"><span class="govuk-details__summary-text">{{ t("connections.remove_button") }}</span></summary>
+                <div class="govuk-details__text">
+                  <div class="govuk-warning-text">
+                    <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
+                    <strong class="govuk-warning-text__text"><span class="govuk-visually-hidden">{{ t("states.warning_prefix") }}</span>{{ t("ux.confirm_irreversible") }}</strong>
+                  </div>
+                  <form method="post" action="{{ urlFor(connection.removeAction) }}">
+                    <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                    <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">{{ t("connections.remove_button") }}</button>
+                  </form>
+                </div>
+              </details>
             {% endif %}
           </div>
         </article>
@@ -111,10 +120,19 @@
           <div class="govuk-button-group">
             {% if connection.profileHref %}<a class="govuk-link govuk-link--no-visited-state" href="{{ urlFor(connection.profileHref) }}">{{ t("connections.view_profile") }}</a>{% endif %}
             {% if connection.removeAction %}
-              <form method="post" action="{{ urlFor(connection.removeAction) }}">
-                <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-                <button class="govuk-button govuk-button--secondary" data-module="govuk-button">{{ t("connections.cancel_button") }}</button>
-              </form>
+              <details class="govuk-details govuk-!-margin-bottom-0" data-module="govuk-details">
+                <summary class="govuk-details__summary"><span class="govuk-details__summary-text">{{ t("connections.cancel_button") }}</span></summary>
+                <div class="govuk-details__text">
+                  <div class="govuk-warning-text">
+                    <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
+                    <strong class="govuk-warning-text__text"><span class="govuk-visually-hidden">{{ t("states.warning_prefix") }}</span>{{ t("ux.confirm_irreversible") }}</strong>
+                  </div>
+                  <form method="post" action="{{ urlFor(connection.removeAction) }}">
+                    <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                    <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">{{ t("connections.cancel_button") }}</button>
+                  </form>
+                </div>
+              </details>
             {% endif %}
           </div>
         </article>
