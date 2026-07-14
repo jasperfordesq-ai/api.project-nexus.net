@@ -4,7 +4,7 @@ Last verified: 2026-07-14
 
 Status: **canonical current ASP.NET score and certification source**
 
-<!-- doc-consistency: ASPNET_CURRENT_BANKED_SCORE=684/1000 -->
+<!-- doc-consistency: ASPNET_CURRENT_BANKED_SCORE=698/1000 -->
 
 Use this document for the current ASP.NET completion score. Use
 [`FULL_PARITY_REMEDIATION_RUNBOOK.md`](FULL_PARITY_REMEDIATION_RUNBOOK.md) for
@@ -35,7 +35,7 @@ ASP.NET-specific page branches do not satisfy the goal.
 
 ## Current Scored Position
 
-The **current banked score is 684/1000 (68.4%)** under Fixed Rubric Baseline 1.
+The **current banked score is 698/1000 (69.8%)** under Fixed Rubric Baseline 1.
 The denominator is fixed; newly discovered work is recorded as a deduction or
 a separately named Laravel-drift baseline, never as a silent denominator
 change.
@@ -43,13 +43,13 @@ change.
 | Category | Banked | Maximum | Open |
 | --- | ---: | ---: | ---: |
 | Active Laravel API route representation | 100 | 100 | 0 |
-| Semantic workflow and canonical-consumer contract parity | 291 | 350 | 59 |
-| Schema, migrations, data integrity, and upgrade safety | 124 | 150 | 26 |
-| Auth, tenant isolation, security, and localization | 90 | 100 | 10 |
+| Semantic workflow and canonical-consumer contract parity | 299 | 350 | 51 |
+| Schema, migrations, data integrity, and upgrade safety | 127 | 150 | 23 |
+| Auth, tenant isolation, security, and localization | 93 | 100 | 7 |
 | Full build/test/CI evidence | 45 | 100 | 55 |
 | Unchanged canonical React plus unchanged Web UK dual-backend runtime proof | 10 | 125 | 115 |
 | Providers, jobs, integrations, operational proof, and reproducible docs | 24 | 75 | 51 |
-| **Total** | **684** | **1000** | **316** |
+| **Total** | **698** | **1000** | **302** |
 
 Active route representation is **2,601/2,601 matched with 0 missing**. Seven
 retired OpenAPI-only operations are reported separately and return to the
@@ -84,16 +84,17 @@ published:
 | Signed held-escrow charge-dispute reconciliation | Implementation `027f35e6189eee13eb05396050a2995706597cad` | +3 semantic, +1 providers/operations = **676/1000** |
 | Paid-transfer charge-dispute recovery | Implementation `9875fb5dd33e3ab5c33ea77a83fcfb0b8c6c0b00` | +3 semantic, +1 providers/operations = **680/1000** |
 | Marketplace refund notification evidence | Implementation `b37a3cc5ed903394b67813a3e34304213b9e150d` | +3 semantic, +1 providers/operations = **684/1000** |
+| Secure SSO/OIDC authentication flow | Implementation `c20d064efc3028e0c95a8ee6f5214ed434e22e21` | +8 semantic, +3 schema, +3 security = **698/1000** |
 
 These named values form an audit trail. They are not competing current scores.
 
 ## Repository State At This Verification
 
 The product-source HEAD inspected for this page was
-`5fbcf36dedf320c0ca81ac77f8b4771d891f7331`, with the last banked ASP.NET
-implementation remaining `b37a3cc5ed903394b67813a3e34304213b9e150d` and
+`c20d064efc3028e0c95a8ee6f5214ed434e22e21`, which is also the last banked
+ASP.NET implementation, with
 Laravel frozen at `903d03d3db78bbf87129ad35728be3b72819acaf` on
-2026-07-14 22:57:32 +01:00. Web UK-only commits do not add ASP.NET points and
+2026-07-14 23:50:46 +01:00. Web UK-only commits do not add ASP.NET points and
 belong in the Web UK status report.
 
 ### Published But Not Rescored
@@ -125,7 +126,8 @@ corrected four-test bootstrap set and containing public-compatibility suite pass
 
 ### Dirty And In Flight
 
-The refund-notification marketplace slice is committed and banked. Tenant
+The refund-notification marketplace and secure SSO/OIDC slices are committed
+and banked. Tenant
 bootstrap commit `5fbcf36dedf320c0ca81ac77f8b4771d891f7331` is published
 but remains a **+3 provisional / +0 banked** slice pending the runtime proof
 described above. The separate dirty event-safety migration remains outside this
@@ -138,7 +140,7 @@ count, elapsed effort, or an agent's estimate.
 
 ## Open Certification Gates
 
-The remaining 316 points are not a single implementation queue. They include
+The remaining 302 points are not a single implementation queue. They include
 independent proof gates that must remain visible in status reports:
 
 - semantic completion for remaining marketplace, federation, jobs, providers,

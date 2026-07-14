@@ -355,6 +355,31 @@ route, 291/350 semantic, 124/150 schema, 90/100 security/localization, 45/100
 build/test/CI, 10/125 unchanged-frontends, and 24/75 providers/ops/docs. Exact
 remaining deductions are 0, 59, 26, 10, 55, 115, and 51 points.
 
+### 2026-07-14 Secure SSO/OIDC Authentication Parity (Published)
+
+Evidence snapshot: Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf`, ASP.NET implementation
+`c20d064efc3028e0c95a8ee6f5214ed434e22e21`, captured 2026-07-14
+23:50:46 +01:00. The former unsigned state and non-functional exchange stub are
+replaced by durable signed state, browser PKCE, server PKCE, OIDC nonce and JWKS
+validation, public-HTTPS endpoint pinning, tenant-qualified identity linking,
+domain and account-policy gates, one-time browser-bound exchange codes, and
+refresh-token issuance. The migration adds the durable flow, callback-grant,
+identity, and authentication-invalidation state required by those contracts.
+
+Release API and test-assembly builds pass. The focused fake-IdP authentication
+suite passes 4/4, the broader focused SSO controller/service set passes 10/10,
+and migration SQL generation from the prior published migration contains only
+the intended authentication tables, indexes, and user invalidation column. The
+container-backed public-controller fixture timed out during database provisioning,
+so full-suite/CI and unchanged-client runtime points remain open.
+
+Published implementation `c20d064efc3028e0c95a8ee6f5214ed434e22e21`
+banks 8 semantic, 3 schema, and 3 security points for **698/1000**: 100/100
+route, 299/350 semantic, 127/150 schema, 93/100 security/localization, 45/100
+build/test/CI, 10/125 unchanged-frontends, and 24/75 providers/ops/docs. Exact
+remaining deductions are 0, 51, 23, 7, 55, 115, and 51 points.
+
 ## Historical Checkpoints
 
 Everything in this section is dated implementation evidence. Its older
