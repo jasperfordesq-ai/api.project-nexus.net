@@ -100,7 +100,7 @@ and 4 schema points for **632/1000**:
 45/100 build/test/CI, 10/125 unchanged-frontends, and 15/75 providers/ops/docs.
 Exact remaining deductions are 0, 92, 36, 10, 55, 115, and 60 points.
 
-## 2026-07-14 Marketplace Connect Onboarding Candidate (Locally Verified)
+## 2026-07-14 Marketplace Connect Onboarding (Published)
 
 Evidence snapshot: Laravel
 `903d03d3db78bbf87129ad35728be3b72819acaf`, ASP.NET parent
@@ -130,10 +130,9 @@ clear. No live Stripe credentials were used, so live-provider certification,
 escrow/refunds/disputes, payment-confirmation notifications, feature gating,
 full-suite/CI, and unchanged-frontend runtime proof remain open.
 
-Before publication, the banked score remains **632/1000** and this verified
-candidate is **+6 in flight**. Once committed and pushed without evidence
-regression, it banks 4 semantic, 1 schema, and 1 provider/operations point for
-**638/1000**: 100/100 route, 262/350 semantic, 115/150 schema, 90/100
+Published commit `25110d7fb98dfed4e2eabbea016924cee93f9b9d` banks 4 semantic,
+1 schema, and 1 provider/operations point for **638/1000**: 100/100 route,
+262/350 semantic, 115/150 schema, 90/100
 security/localization, 45/100 build/test/CI, 10/125 unchanged-frontends, and
 16/75 providers/ops/docs. Exact remaining deductions are 0, 88, 35, 10, 55,
 115, and 59 points.
