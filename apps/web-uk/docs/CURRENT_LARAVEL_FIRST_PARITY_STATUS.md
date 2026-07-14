@@ -171,7 +171,7 @@ Refresh the Laravel Blade/API source and Web UK implementation before relying on
 these numbers after either source moves.
 
 At this documentation audit, the product-source baseline was
-`7fae732dd52b94964e1d3d60b430450405ddd80b`. The revoked-session confirmation,
+`99a754d24e0c93272743ce495f39772dff191dd2`. The revoked-session confirmation,
 Laravel method-spoof reconciliation, group-message contract, residual API-
 consumer correction, and backend-request timeout slices are above the frozen
 bank and remain **published and unscored**. The documentation remediation is
@@ -186,7 +186,7 @@ together from a clean published checkout.
   with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
   Only this fixed-rubric audit contributes to the current bank.
 - **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `7fae732d`, including the later identity/session confirmation,
+  baseline `99a754d2`, including the later identity/session confirmation,
   method-spoof reconciliation, group-message contract, residual API-consumer
   correction, and backend-request timeout slices. Their evidence is useful, but they
   contribute zero points until one complete fixed-rubric re-audit explicitly
@@ -293,9 +293,10 @@ when a concrete regression requires an independently publishable fix.
     focus/error, and screen-reader sign-off. Owner: accessibility reviewer with
     Web UK support.
 12. **P1 - Production hardening:** persistent Redis session configuration,
-    fail-closed production secrets, and request timeout/abort implementation are
-    published. Prove those controls in a deployed environment and complete the
-    reproducible release runbook. Owner: operations with Web UK support.
+    fail-closed production secrets, request timeout/abort implementation, Redis-
+    aware readiness, and the fail-closed release runbook are published. Lift
+    the documented deployment hold explicitly and prove those controls in a
+    deployed environment. Owner: operations with Web UK support.
 
 The generated route matrix was refreshed against the same route inventories
 and reports the counts above. It remains declaration evidence, not runtime or
@@ -1221,8 +1222,9 @@ After the localization P0, the remaining priority order is:
    obtain an API-owner publication decision. Web UK now has zero consumers
    without a direct Laravel declaration. Do not count declaration
    classification or a test-file reference as behavioral certification.
-7. Obtain deployed proof for the published persistent Redis session,
-   production-only secret/configuration, and request-timeout controls.
+7. Obtain explicit release authorization and deployed proof for the published
+   persistent Redis session/readiness, production-only secret/configuration,
+   and request-timeout controls using the fail-closed release runbook.
 
 ASP.NET proof is a separate later gate, not remaining frontend implementation
 work. First certify the frontend against Laravel. When the separate backend
@@ -1443,3 +1445,23 @@ mutation, cleanup, container, or production operation was used. Deployed
 session persistence and failure/recovery proof remain operations-owned, so this
 published hardening improvement is unscored and the frozen bank remains
 622/1,000 pending a complete fixed-rubric re-audit.
+
+## 2026-07-14 Production Release Runbook
+
+Frozen evidence at `2026-07-14T16:40:53.8240977+01:00` against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and Web UK product commit
+`99a754d24e0c93272743ce495f39772dff191dd2`. The published fail-closed runbook
+now defines immutable SHA/digest capture, complete release gates, the disposable
+Laravel boundary, production secrets and Redis requirements, two-replica
+session/restart/failure-recovery proof, explicit approval, rollback triggers,
+and exact-SHA post-release evidence.
+
+The runbook explicitly preserves the current Web UK deployment hold, rejects
+the root ASP.NET production override as an approved path, and grants no
+production or Laravel authority. Markdown link and diff checks pass. The root
+documentation-consistency checker still contains stale ledger expectations and
+reports 4 issues against the current generated 667/451/216 inventory; that
+root-owned checker was not changed. No Laravel source, database, migration,
+mutation, container, or production operation was performed. Deployed proof
+remains operations-owned, so the frozen bank remains 622/1,000 pending a
+complete fixed-rubric re-audit.
