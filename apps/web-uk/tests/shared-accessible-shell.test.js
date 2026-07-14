@@ -30708,7 +30708,6 @@ describe('shared accessible frontend shell', () => {
       title: 'Updated bike',
       description: 'Updated description',
       price_type: 'free',
-      status: 'active',
       price: null,
       time_credit_price: null,
       delivery_method: 'pickup'
@@ -30779,54 +30778,65 @@ describe('shared accessible frontend shell', () => {
     });
   });
 
-  it('renders and submits Laravel marketplace listing images with multipart data', async () => {
+  it('matches the Blade marketplace form currency, fields, and safe validation replay', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');
     const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
     const agent = request.agent(app);
 
-    api.callMarketplaceApi
-      .mockResolvedValueOnce({ data: [{ id: 9, name: 'Home' }] })
-      .mockResolvedValueOnce({ data: { id: 42 } });
+    api.getTenantBootstrap.mockResolvedValue({
+      data: {
+        id: 2,
+        name: 'Acme Timebank',
+        slug: 'acme',
+        settings: { default_currency: 'gbp' },
+        modules: { feed: true, listings: true, wallet: true },
+        features: { marketplace: true }
+      }
+    });
+    api.callMarketplaceApi.mockResolvedValue({ data: [{ id: 9, name: 'Home' }] });
 
     const page = await agent
-      .get('/marketplace/create')
+      .get('/acme/accessible/marketplace/create')
       .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
     const csrfMatch = page.text.match(/name="_csrf" value="([^"]+)"/);
 
     expect(page.status).toBe(200);
-    expect(page.text).toContain('action="/marketplace/create"');
-    expect(page.text).toContain('enctype="multipart/form-data"');
-    expect(page.text).toContain('name="image"');
+    expect(page.text).toContain('action="/acme/accessible/marketplace/create"');
+    expect(page.text).toContain('name="price_currency" type="text" maxlength="3" value="GBP"');
+    expect(page.text).not.toContain('enctype="multipart/form-data"');
+    expect(page.text).not.toContain('name="image"');
     expect(csrfMatch).not.toBeNull();
 
     const response = await agent
-      .post('/marketplace/create')
+      .post('/acme/accessible/marketplace/create')
       .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
-      .field('_csrf', csrfMatch[1])
-      .field('title', ' Community lamp ')
-      .field('description', ' Warm table lamp ')
-      .field('price_type', 'fixed')
-      .field('price', '12')
-      .field('delivery_method', 'pickup')
-      .attach('image', Buffer.from('fake marketplace image', 'utf8'), {
-        filename: 'lamp.webp',
-        contentType: 'image/webp'
+      .type('form')
+      .send({
+        _csrf: csrfMatch[1],
+        title: 'Community lamp',
+        tagline: 'Safe replay value',
+        description: '',
+        price_type: 'fixed',
+        price: '',
+        price_currency: '',
+        delivery_method: 'pickup'
       });
 
     expect(response.status).toBe(302);
-    expect(response.headers.location).toBe('/marketplace/42?status=listing-created');
-    expect(api.callMarketplaceApi).toHaveBeenLastCalledWith('test-token', 'POST', '/listings', expect.objectContaining({
-      title: 'Community lamp',
-      description: 'Warm table lamp'
-    }));
-    expect(api.uploadMarketplaceListingImages).toHaveBeenCalledWith('test-token', 42, {
-      file: expect.objectContaining({
-        filename: 'lamp.webp',
-        contentType: 'image/webp',
-        buffer: Buffer.from('fake marketplace image', 'utf8')
-      })
-    });
+    expect(response.headers.location).toBe('/acme/accessible/marketplace/create?status=listing-validation');
+    expect(api.callMarketplaceApi).not.toHaveBeenCalledWith('test-token', 'POST', '/listings', expect.anything());
+
+    const replay = await agent
+      .get(response.headers.location)
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(replay.status).toBe(200);
+    expect(replay.text).toContain('value="Community lamp"');
+    expect(replay.text).toContain('value="Safe replay value"');
+    expect(replay.text).toContain('value="GBP"');
+    expect(replay.text).toContain('Enter a description');
+    expect(replay.text).toContain('Enter a money price or a time credit price');
   });
 
   it('submits Laravel marketplace offer and order action aliases', async () => {

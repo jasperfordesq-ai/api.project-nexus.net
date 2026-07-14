@@ -113,8 +113,8 @@ commit as the implementation it describes.
 
 The frontend baseline for the current checkout includes the Event registration,
 account-hub reconciliation, Event Communications, lifecycle-history, and recurrence-
-history slices; its published parent is repository commit `ac527d41`; the current
-checkout also contains the Messages inbox presentation parity slice. The Laravel source
+history slices; its published parent is repository commit `1b78ce51`; the current
+checkout also contains the Marketplace listing-form parity slice. The Laravel source
 baseline is `903d03d3`. The first SHA names the
 repository snapshot containing Web UK; it does not make ASP.NET authoritative.
 Refresh the Laravel Blade/API source and Web UK implementation before relying on
@@ -130,7 +130,7 @@ these numbers after either source moves.
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
 | Jest | 48/48 suites, 1,632/1,632 tests | Fresh green code gate |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
-| Static locale usage | 7,018 references, 5,338 unique keys, 0 unresolved | Current complete-reference audit |
+| Static locale usage | 7,046 references, 5,364 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 320 templates, 0 conservative matches | Current hard-coded-copy audit |
 | Blade marker check | 19/19 | Text-marker spotcheck, not visual certification |
 | Automated accessibility | Latest recorded 87/87 | Manual AT review remains open |
@@ -138,6 +138,22 @@ these numbers after either source moves.
 The generated route matrix was refreshed against the same route inventories
 and reports the counts above. It remains declaration evidence, not runtime or
 workflow certification.
+
+## Marketplace Listing Form Refresh
+
+Marketplace create/edit now mirrors Blade's default-English form hierarchy and
+exact commerce catalog instead of using invented copy and unrelated translation
+keys. The create default uses the tenant bootstrap currency rather than fixed
+EUR, safe input and Blade's three local validation errors survive the no-JavaScript
+redirect, and edit no longer sends `status=active`, which could otherwise
+reactivate a sold or expired listing. The extra multipart image control and parser
+were removed because current Blade exposes no image field on this form; historical
+image-upload proof remains API evidence, not current accessible-UI parity.
+
+Focused Marketplace proof passes, and the full non-mutating gate remains
+48/48 suites and 1,632/1,632 tests. Lint, brand, 7,046 static references / 5,364
+unique keys / zero unresolved keys, and the 320-template zero-match audit are
+green. No Laravel runtime or database mutation was run.
 
 ## Rotating Authentication Session Refresh
 

@@ -5,8 +5,7 @@
 
 const express = require('express');
 const { timingSafeEqual } = require('node:crypto');
-const fs = require('fs/promises');
-const { ApiError, callMarketplaceApi, uploadMarketplaceListingImages } = require('../lib/api');
+const { ApiError, callMarketplaceApi } = require('../lib/api');
 const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
@@ -28,35 +27,47 @@ function trimmed(value, limit = null) {
   return limit === null ? text : text.slice(0, limit);
 }
 
+function tenantCurrency(req) {
+  const configuredCurrency = trimmed(req.accessibleRouting?.tenant?.settings?.default_currency).toUpperCase();
+  return /^[A-Z]{3}$/.test(configuredCurrency) ? configuredCurrency : 'EUR';
+}
+
+function listingFormValues(body, defaultCurrency) {
+  return {
+    title: String(body.title || '').slice(0, 200),
+    tagline: String(body.tagline || '').slice(0, 300),
+    description: String(body.description || '').slice(0, 10000),
+    priceType: allowed(body.price_type, PRICE_TYPES, 'fixed'),
+    price: String(body.price || ''),
+    priceCurrency: trimmed(body.price_currency || defaultCurrency, 3).toUpperCase() || defaultCurrency,
+    timeCreditPrice: String(body.time_credit_price || ''),
+    condition: allowed(body.condition, CONDITIONS, ''),
+    categoryId: positiveInteger(body.category_id),
+    deliveryMethod: allowed(body.delivery_method, DELIVERY_METHODS, 'pickup'),
+    location: String(body.location || '').slice(0, 255),
+    quantity: positiveInteger(body.quantity) || 1
+  };
+}
+
+function listingValidationErrorKeys(payload) {
+  const errorKeys = [];
+  if (payload.title === '') errorKeys.push('govuk_alpha_commerce.listing_form.error_title');
+  if (payload.description === '') errorKeys.push('govuk_alpha_commerce.listing_form.error_description');
+  if (payload.price_type === 'fixed' && !(Number(payload.price) > 0) && !(Number(payload.time_credit_price) > 0)) {
+    errorKeys.push('govuk_alpha_commerce.listing_form.error_price');
+  }
+  return errorKeys;
+}
+
+function rememberListingForm(req, key, values, errorKeys) {
+  if (!req.session) return;
+  req.session.marketplaceListingForms ||= {};
+  req.session.marketplaceListingForms[key] = { values, errorKeys };
+}
+
 function positiveInteger(value) {
   const number = Number(value);
   return Number.isInteger(number) && number > 0 ? number : null;
-}
-
-function uploadedFile(req, fieldName) {
-  const file = req.files && req.files[fieldName];
-  return file && typeof file === 'object' ? file : null;
-}
-
-async function removeUploadedFile(file) {
-  if (!file || !file.filepath) return;
-  try {
-    await fs.unlink(file.filepath);
-  } catch {
-    // Temporary upload cleanup is best-effort only.
-  }
-}
-
-async function uploadListingImage(token, listingId, image) {
-  if (!image || !listingId) return;
-  await uploadMarketplaceListingImages(token, listingId, {
-    file: {
-      buffer: await fs.readFile(image.filepath),
-      filename: trimmed(image.originalFilename) || 'marketplace-image',
-      contentType: trimmed(image.mimetype) || 'application/octet-stream',
-      size: image.size
-    }
-  });
 }
 
 function decimalNumber(value) {
@@ -186,16 +197,16 @@ function ordersRedirect(req, status) {
   return `${target}?status=${encodeURIComponent(status)}`;
 }
 
-function listingPayload(body) {
+function listingPayload(body, defaultCurrency = 'EUR', { includeStatus = true } = {}) {
   const title = trimmed(body.title, 200);
   const description = trimmed(body.description, 10000);
   const priceType = allowed(body.price_type, PRICE_TYPES, 'fixed');
   const payload = {
     title,
     description,
-    price_type: priceType,
-    status: 'active'
+    price_type: priceType
   };
+  if (includeStatus) payload.status = 'active';
 
   const tagline = trimmed(body.tagline, 300);
   if (tagline !== '') {
@@ -209,7 +220,7 @@ function listingPayload(body) {
     const price = decimalNumber(body.price);
     if (String(body.price || '').trim() !== '' && price >= 0) {
       payload.price = price;
-      payload.price_currency = trimmed(body.price_currency || 'EUR', 3).toUpperCase() || 'EUR';
+      payload.price_currency = trimmed(body.price_currency || defaultCurrency, 3).toUpperCase() || defaultCurrency;
     }
 
     const timeCreditPrice = decimalNumber(body.time_credit_price);
@@ -292,23 +303,23 @@ function couponPayload(body) {
 router.post('/create', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) return redirectTo(res, loginRedirect());
-  const payload = listingPayload(req.body);
-  const image = uploadedFile(req, 'image');
-  if (payload.title === '' || payload.description === '') {
-    await removeUploadedFile(image);
+  const defaultCurrency = tenantCurrency(req);
+  const payload = listingPayload(req.body, defaultCurrency);
+  const values = listingFormValues(req.body, defaultCurrency);
+  const validationErrors = listingValidationErrorKeys(payload);
+  if (validationErrors.length > 0) {
+    rememberListingForm(req, 'create', values, validationErrors);
     return redirectTo(res, '/marketplace/create?status=listing-validation');
   }
 
   try {
     const result = await callApi(token, 'POST', '/listings', payload);
     const id = resultId(result);
-    await uploadListingImage(token, id, image);
     return redirectTo(res, listingRedirect(id || 'mine', 'listing-created'));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
+    rememberListingForm(req, 'create', values, ['govuk_alpha_commerce.listing_form.error_create']);
     return redirectTo(res, '/marketplace/create?status=listing-create-failed');
-  } finally {
-    await removeUploadedFile(image);
   }
 }));
 
@@ -316,22 +327,22 @@ router.post('/:id(\\d+)/update', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) return redirectTo(res, loginRedirect());
   const id = Number(req.params.id);
-  const payload = listingPayload(req.body);
-  const image = uploadedFile(req, 'image');
-  if (payload.title === '' || payload.description === '') {
-    await removeUploadedFile(image);
+  const defaultCurrency = tenantCurrency(req);
+  const payload = listingPayload(req.body, defaultCurrency, { includeStatus: false });
+  const values = listingFormValues(req.body, defaultCurrency);
+  const validationErrors = listingValidationErrorKeys(payload);
+  if (validationErrors.length > 0) {
+    rememberListingForm(req, `edit:${id}`, values, validationErrors);
     return redirectTo(res, `/marketplace/${id}/edit?status=listing-validation`);
   }
 
   try {
     await callApi(token, 'PUT', `/listings/${id}`, payload);
-    await uploadListingImage(token, id, image);
     return redirectTo(res, listingRedirect(id, 'listing-saved'));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
+    rememberListingForm(req, `edit:${id}`, values, ['govuk_alpha_commerce.listing_form.error_update']);
     return redirectTo(res, `/marketplace/${id}/edit?status=listing-save-failed`);
-  } finally {
-    await removeUploadedFile(image);
   }
 }));
 

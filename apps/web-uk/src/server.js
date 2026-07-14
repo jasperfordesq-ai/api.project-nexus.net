@@ -1590,8 +1590,6 @@ app.use(
   safeguardingEmptyMultipartErrorRedirect
 );
 app.use('/feed/posts', parseMultipartForm({ maxFileSize: 5 * 1024 * 1024 }));
-app.use('/marketplace/create', parseMultipartForm({ maxFileSize: 5 * 1024 * 1024 }));
-app.use(/^\/marketplace\/\d+\/update$/, parseMultipartForm({ maxFileSize: 5 * 1024 * 1024 }));
 app.use('/events/new', parseMultipartForm({ maxFileSize: 5 * 1024 * 1024 }));
 app.use(/^\/events\/\d+\/edit$/, parseMultipartForm({ maxFileSize: 5 * 1024 * 1024 }));
 app.use('/groups/new', parseMultipartForm({ maxFileSize: 8 * 1024 * 1024 }));

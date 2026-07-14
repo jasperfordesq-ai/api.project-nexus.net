@@ -149,7 +149,38 @@ describe('Laravel-first Marketplace template localization', () => {
   });
 
   it('uses the shared Marketplace navigation on the listing form and exact Blade success headings', () => {
-    expect(templateSource('marketplace/form.njk')).toContain('{% include "marketplace/_nav.njk" %}');
+    const formSource = templateSource('marketplace/form.njk');
+    expect(formSource).toContain('{% include "marketplace/_nav.njk" %}');
+    for (const translationKey of [
+      'govuk_alpha_commerce.common.back_to_my_listings',
+      'govuk_alpha_commerce.common.error_title',
+      'govuk_alpha_commerce.listing_form.caption',
+      'govuk_alpha_commerce.listing_form.description',
+      'govuk_alpha_commerce.listing_form.section_about',
+      'govuk_alpha_commerce.listing_form.title_label',
+      'govuk_alpha_commerce.listing_form.tagline_label',
+      'govuk_alpha_commerce.listing_form.description_label',
+      'govuk_alpha_commerce.listing_form.section_price',
+      'govuk_alpha_commerce.listing_form.price_type_label',
+      'govuk_alpha_commerce.listing_form.price_label',
+      'govuk_alpha_commerce.listing_form.currency_label',
+      'govuk_alpha_commerce.listing_form.time_credit_label',
+      'govuk_alpha_commerce.listing_form.section_details',
+      'govuk_alpha_commerce.listing_form.condition_label',
+      'govuk_alpha_commerce.listing_form.category_label',
+      'govuk_alpha_commerce.listing_form.delivery_label',
+      'govuk_alpha_commerce.listing_form.location_label',
+      'govuk_alpha_commerce.listing_form.quantity_label',
+      'govuk_alpha_commerce.common.cancel'
+    ]) {
+      expect(formSource).toContain(`t("${translationKey}"`);
+    }
+    expect(formSource).not.toContain('enctype="multipart/form-data"');
+    expect(formSource).not.toContain('name="image"');
+    expect(formSource).not.toContain('group_exchanges.form_title_label');
+    expect(formSource).not.toContain('jobs_t3.salary_type_none');
+    expect(formSource).not.toContain('events.no_category');
+    expect(formSource).not.toContain('polish_federation.transfer_cancel');
 
     for (const templateName of [
       'marketplace/onboarding.njk',

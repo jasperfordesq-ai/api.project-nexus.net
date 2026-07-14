@@ -10,11 +10,6 @@ const { callMarketplaceApi, login } = require('../../src/lib/api');
 
 const smoke = resolveOptions({}, process.env);
 const mountPath = `/${encodeURIComponent(smoke.tenant)}/accessible`;
-const png = Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
-  'base64'
-);
-
 function rowsFrom(result) {
   if (Array.isArray(result)) return result;
   if (Array.isArray(result?.data)) return result.data;
@@ -78,7 +73,7 @@ async function expectAccessibleReflow(page) {
   expect(results.violations.filter(({ impact }) => impact === 'serious' || impact === 'critical')).toEqual([]);
 }
 
-test('creates, uploads, edits, and deletes a disposable marketplace listing', async ({ page }) => {
+test('creates, edits, and deletes a disposable marketplace listing', async ({ page }) => {
   const runId = `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
   const title = `Codex disposable marketplace listing ${runId}`;
   const updatedTitle = `${title} updated`;
@@ -98,36 +93,23 @@ test('creates, uploads, edits, and deletes a disposable marketplace listing', as
     });
     await page.locator('#title').fill(title);
     await page.locator('#tagline').fill('Disposable marketplace lifecycle fixture.');
-    await page.locator('#description').fill('A disposable listing used to certify create, image upload, edit, and delete behavior.');
+    await page.locator('#description').fill('A disposable listing used to certify create, edit, and delete behavior.');
     await page.locator('#price_type-free').check();
     await page.locator('#condition').selectOption('good');
     await page.locator('#delivery_method').check();
     await page.locator('#location').fill('Disposable fixture');
     await page.locator('#quantity').fill('1');
-    await page.locator('#image').setInputFiles({
-      name: `codex-marketplace-${runId}.png`,
-      mimeType: 'image/png',
-      buffer: png
-    });
-
     await submitPost(page, page.getByRole('button', { name: 'Publish listing', exact: true }), '/marketplace/create');
     let created = await findByTitle(token, title);
     expect(created).toBeTruthy();
     listingId = Number(created.id);
     expect(listingId).toBeGreaterThan(0);
 
-    const detail = dataFrom(await callMarketplaceApi(token, 'GET', `/listings/${listingId}`));
-    const imageRows = Array.isArray(detail?.images) ? detail.images : [];
-    expect(imageRows.length).toBeGreaterThan(0);
-    const imageUrl = imageRows[0]?.url || imageRows[0]?.thumbnail_url || imageRows[0];
-    expect(String(imageUrl)).toBeTruthy();
-
     await page.goto(`${mountPath}/marketplace/${listingId}`, {
       waitUntil: 'domcontentloaded',
       timeout: 300_000
     });
     await expect(page.locator('h1')).toContainText(title);
-    await expect(page.locator(`img[src="${String(imageUrl)}"]`).first()).toBeVisible();
 
     await page.goto(`${mountPath}/marketplace/${listingId}/edit`, {
       waitUntil: 'domcontentloaded',

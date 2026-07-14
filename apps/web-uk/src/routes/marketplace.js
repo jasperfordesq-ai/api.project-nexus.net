@@ -1000,9 +1000,21 @@ function statusEntry(req, status) {
 
 function formOptions() {
   return {
-    priceTypes: PRICE_TYPES.map((value) => ({ value, label: PRICE_TYPE_LABELS[value] })),
-    conditions: CONDITIONS.map((value) => ({ value, label: CONDITION_LABELS[value] })),
-    deliveryMethods: DELIVERY_METHODS.map((value) => ({ value, label: DELIVERY_METHOD_LABELS[value] }))
+    priceTypes: PRICE_TYPES.map((value) => ({
+      value,
+      label: PRICE_TYPE_LABELS[value],
+      labelKey: `govuk_alpha_commerce.listing_form.price_type_${value}`
+    })),
+    conditions: CONDITIONS.map((value) => ({
+      value,
+      label: CONDITION_LABELS[value],
+      labelKey: `govuk_alpha_commerce.listing_form.condition_${value}`
+    })),
+    deliveryMethods: DELIVERY_METHODS.map((value) => ({
+      value,
+      label: DELIVERY_METHOD_LABELS[value],
+      labelKey: `govuk_alpha_commerce.listing_form.delivery_${value}`
+    }))
   };
 }
 
@@ -1092,13 +1104,34 @@ function advancedSearchOptions() {
   };
 }
 
-function blankListing() {
+function tenantCurrency(req) {
+  const configuredCurrency = trimmed(req.accessibleRouting?.tenant?.settings?.default_currency).toUpperCase();
+  return /^[A-Z]{3}$/.test(configuredCurrency) ? configuredCurrency : 'EUR';
+}
+
+function blankListing(defaultCurrency = 'EUR') {
   return decorateListing({
     price_type: 'fixed',
-    price_currency: 'EUR',
+    price_currency: defaultCurrency,
     delivery_method: 'pickup',
     quantity: 1
   });
+}
+
+function consumeListingFormState(req, key) {
+  const state = req.session?.marketplaceListingForms?.[key];
+  if (state && req.session?.marketplaceListingForms) {
+    delete req.session.marketplaceListingForms[key];
+  }
+  return state && typeof state === 'object' ? state : null;
+}
+
+function listingFormErrors(req, state, status) {
+  if (Array.isArray(state?.errorKeys) && state.errorKeys.length > 0) {
+    return state.errorKeys.map((key) => translateMarketplaceMessage(req, key, key));
+  }
+  const entry = statusEntry(req, status);
+  return entry?.type === 'error' ? [entry.message] : [];
 }
 
 router.get('/', asyncRoute(async (req, res) => {
@@ -1132,6 +1165,8 @@ router.get('/create', asyncRoute(async (req, res) => {
 
   try {
     const categories = await loadCategories(token);
+    const defaultCurrency = tenantCurrency(req);
+    const formState = consumeListingFormState(req, 'create');
     return res.render('marketplace/form', {
       title: 'Create a listing',
       titleKey: 'govuk_alpha_commerce.listing_form.title_create',
@@ -1139,11 +1174,10 @@ router.get('/create', asyncRoute(async (req, res) => {
       activeTab: 'mine',
       mode: 'create',
       isEdit: false,
-      listing: blankListing(),
+      listing: { ...blankListing(defaultCurrency), ...(formState?.values || {}) },
       categories,
       action: '/marketplace/create',
-      submitLabel: 'Publish listing',
-      status: statusEntry(req, req.query.status),
+      formErrors: listingFormErrors(req, formState, req.query.status),
       ...formOptions()
     });
   } catch (error) {
@@ -1571,6 +1605,7 @@ router.get('/:id(\\d+)/edit', asyncRoute(async (req, res) => {
       loadListing(token, req.params.id),
       loadCategories(token)
     ]);
+    const formState = consumeListingFormState(req, `edit:${listing.id}`);
     return res.render('marketplace/form', {
       title: 'Edit your listing',
       titleKey: 'govuk_alpha_commerce.listing_form.title_edit',
@@ -1578,11 +1613,10 @@ router.get('/:id(\\d+)/edit', asyncRoute(async (req, res) => {
       activeTab: 'mine',
       mode: 'edit',
       isEdit: true,
-      listing,
+      listing: { ...listing, ...(formState?.values || {}) },
       categories,
       action: `/marketplace/${listing.id}/update`,
-      submitLabel: 'Save changes',
-      status: statusEntry(req, req.query.status),
+      formErrors: listingFormErrors(req, formState, req.query.status),
       ...formOptions()
     });
   } catch (error) {
