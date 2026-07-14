@@ -72,7 +72,7 @@ session owns backend work, including `src/Nexus.Api/**`,
 
 ## Local Laravel Boundary Incident
 
-This workstream violated the read-only boundary twice. The first incident
+This workstream violated the read-only boundary three times. The first incident
 applied existing Laravel migrations and left mutation residue in the ordinary
 local MariaDB database. After the 2026-07-13 recovery, the long-running frontend
 session again used that restored production-derived snapshot for authenticated
@@ -116,6 +116,25 @@ the ordinary local snapshot also returned zero `Codex` matches. Because the
 ordinary local database already matches this fresh production inventory, it was
 not dropped or reimported again during the independent refresh.
 
+The third incident occurred later on 2026-07-14 when the complete
+`test:accessibility` aggregate was incorrectly treated as read-only. Its login
+journey submitted invalid credentials to ordinary local Laravel; Laravel's
+failed-login limiter inserted two email-keyed attempt rows plus IP-keyed attempt
+records. Frontend verification stopped immediately. Before repair, the affected
+local database was preserved outside both repositories at
+`C:\platforms\backups\nexus-laravel-incident-20260714\local-before-accessibility-recovery-20260714T050657Z.sql.gz`.
+That forensic dump passed gzip and completion-marker checks and has SHA-256
+`2c84cdf0c3842f72150c36a2f5e487abda026d15c8f54b76ea214fe4b859d070`.
+The local `nexus` database was then dropped, recreated, and restored wholesale
+from the independently verified production safety dump above; no individual row
+cleanup was attempted. Post-restore read-only verification reports 723 base
+tables, 286 legacy migration rows, 385 Laravel migration rows, 11 tenants, 360
+users, zero matching failed-login email rows, both questioned migrations in
+batch 96, the event scheduler off, and healthy database/application containers.
+A fresh scan of 3,028 text-like columns reports zero `Codex` matches. The HTTP
+health probe was inconclusive, so container health is recorded without claiming
+a successful HTTP health response.
+
 Consequences for this workstream:
 
 - do not apply or roll back any Laravel migration;
@@ -154,10 +173,10 @@ these numbers after either source moves.
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
 | Jest | 48/48 suites, 1,635/1,635 tests | Fresh green code gate |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
-| Static locale usage | 7,104 references, 5,409 unique keys, 0 unresolved | Current complete-reference audit |
+| Static locale usage | 7,123 references, 5,423 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
 | Blade marker check | 19/19 | Text-marker spotcheck, not visual certification |
-| Automated accessibility | Latest recorded 87/87 | Manual AT review remains open |
+| Automated accessibility | Not currently certified: 28 passed, login failed, 58 did not run | Full aggregate requires a disposable Laravel environment; manual AT review remains open |
 
 The generated route matrix was refreshed against the same route inventories
 and reports the counts above. It remains declaration evidence, not runtime or
@@ -370,6 +389,27 @@ does not join the pending moderation queue and orders by Event creation time
 rather than queue submission time. Its projection also omits Blade's
 `is_online` field. Queue membership/order and online-only location therefore
 remain upstream contract gaps; Web UK does not synthesize either value.
+
+## Event Agenda Presentation Refresh
+
+Event Agenda now follows Blade's full default-English running-order and editing
+presentation rather than a reduced session form. Display and input times use the
+agenda timezone; new-session start/end values follow the event start and
+one-hour-or-event-end default. Scheduled sessions show track, room, capacity,
+speakers, resources, registration/full states, boundary-aware move controls,
+edit/cancel details, and cancelled history.
+
+The editor retains linked-member speaker IDs and sends Laravel's exact
+`user_id`/`display_name` plus `role_label` contract, preventing an edit from
+silently converting a linked member into an external speaker. It exposes
+Blade's minimum five speaker and three resource rows while preserving larger
+API projections. Focused mocked render, timezone/default, boundary-control,
+linked-speaker, exact-payload, withdrawal, and failure-summary proof passes 3/3.
+The static gate passes 48/48 suites and 1,635/1,635 tests; brand, lint, CSS,
+route-matrix, locale, template-localization, and scoped diff checks are green.
+The later complete accessibility aggregate was not safe: its login journey made
+the failed-login writes recorded in the incident section. It is not Agenda
+failure evidence and is not a green certification result.
 
 ## Event Detail Attendee Roster Refresh
 

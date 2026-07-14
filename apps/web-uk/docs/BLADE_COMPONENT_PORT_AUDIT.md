@@ -196,9 +196,21 @@ private agenda projection and all six session mutations: create, update, cancel,
 reorder, register, and confirmed withdrawal. Version and agenda-version checks,
 `Idempotency-Key`, capacity, visibility, speakers, HTTPS resources, cancelled
 history, and server-declared manager/attendee actions follow the canonical API.
-Focused render/payload/fail-closed proof passes. Disposable live session effects,
-timezone variants, manual assistive-technology review, and unchanged ASP.NET
-runtime proof remain open.
+The presentation refresh now also matches Blade's agenda timezone for displayed
+and editable times, derives Blade's event-bound create defaults, shows track,
+room, speakers, resources, capacity and registration states, limits move controls
+at the list boundaries, and restores the edit/cancel details and cancelled
+history. Edit forms retain linked-member speaker IDs instead of silently
+converting them to external names; create/update payloads use Laravel's exact
+`user_id`/`display_name` and `role_label` speaker contract. The form exposes at
+least five speaker and three resource rows while preserving larger projections.
+Focused render, default-time, boundary-control, linked-speaker, exact-payload,
+withdrawal, and fail-closed proof passes 3/3. The static aggregate passes 48/48
+suites and 1,635/1,635 tests. The complete browser accessibility aggregate is
+not certified because its login journey is state-changing against Laravel and
+requires a disposable environment; it is not Agenda regression evidence.
+Disposable live session effects, manual assistive-technology review, and
+unchanged ASP.NET runtime proof remain open.
 
 ## 2026-07-13 Event Reminders Checkpoint
 

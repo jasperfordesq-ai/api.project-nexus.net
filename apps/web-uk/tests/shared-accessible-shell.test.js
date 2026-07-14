@@ -23041,7 +23041,7 @@ describe('shared accessible frontend shell', () => {
   it('renders the Laravel Event Agenda with manager and attendee actions', async () => {
     const api = require('../src/lib/api');
     api.callEventApi
-      .mockResolvedValueOnce({ data: { id: 42, title: 'Community garden day' } })
+      .mockResolvedValueOnce({ data: { id: 42, title: 'Community garden day', start_at: '2026-08-10T09:00:00Z', end_at: '2026-08-10T11:30:00Z' } })
       .mockResolvedValueOnce({ data: {
         agenda_version: 4,
         timezone: 'Europe/Dublin',
@@ -23050,16 +23050,43 @@ describe('shared accessible frontend shell', () => {
           id: 71, version: 3, title: 'Opening workshop', description: 'Welcome and practical briefing.',
           type: 'workshop', visibility: 'registered', status: 'scheduled',
           start_at: '2026-08-10T09:00:00Z', end_at: '2026-08-10T10:00:00Z',
+          track: 'Practical skills', room: 'Workshop room',
           capacity: { limit: 20, registered: 7, remaining: 13, is_full: false },
           registration: { state: 'not_registered', version: 0, can_register: true, can_withdraw: false },
-          speakers: [{ display_name: 'Sam Lee', role: 'Facilitator' }], resources: []
+          speakers: [{ member_id: 55, display_name: 'Sam Lee', role: 'Facilitator' }],
+          resources: [{ type: 'slides', title: 'Workshop slides', url: 'https://example.org/slides', visibility: 'registered' }]
+        }, {
+          id: 72, version: 2, title: 'Closing session', type: 'session', visibility: 'public', status: 'scheduled',
+          start_at: '2026-08-10T11:00:00Z', end_at: '2026-08-10T12:00:00Z',
+          capacity: { limit: 10, registered: 10, remaining: 0, is_full: true },
+          registration: { state: 'not_registered', version: 0, can_register: false, can_withdraw: false },
+          speakers: [], resources: []
+        }, {
+          id: 73, version: 1, title: 'Old briefing', type: 'session', visibility: 'staff', status: 'cancelled',
+          cancellation_reason: 'Replaced by the workshop.', speakers: [], resources: []
         }]
       } });
-    const response = await request(app).get('/events/42/agenda').set('Cookie', signedCookieHeader());
+    const response = await request(app).get('/events/42/agenda?status=agenda-failed').set('Cookie', signedCookieHeader());
     expect(response.status).toBe(200);
     expect(response.headers['cache-control']).toBe('private, no-store');
+    expect(response.text).toContain('The agenda could not be updated. Please try again.');
     expect(response.text).toContain('Opening workshop');
     expect(response.text).toContain('Welcome and practical briefing.');
+    expect(response.text).toContain('Practical skills');
+    expect(response.text).toContain('Workshop room');
+    expect(response.text).toContain('Sam Lee');
+    expect(response.text).toContain('Facilitator');
+    expect(response.text).toContain('href="https://example.org/slides"');
+    expect(response.text).toContain('This session is full.');
+    expect(response.text).toContain('Replaced by the workshop.');
+    expect(response.text).toContain('name="speaker_member_id[]" value="55"');
+    expect(response.text).toContain('readonly');
+    expect(response.text).not.toContain('Move Opening workshop earlier');
+    expect(response.text).not.toContain('Move Closing session later');
+    expect(response.text).toContain('Move Opening workshop later');
+    expect(response.text).toContain('Move Closing session earlier');
+    expect(response.text.match(/id="agenda-create-start"[^>]*value="([^"]*)"/)[1]).toBe('2026-08-10T10:00');
+    expect(response.text.match(/id="agenda-create-end"[^>]*value="([^"]*)"/)[1]).toBe('2026-08-10T11:00');
     expect(response.text).toContain('name="action" value="create"');
     expect(response.text).toContain('name="action" value="update"');
     expect(response.text).toContain('name="action" value="cancel"');
@@ -23077,13 +23104,13 @@ describe('shared accessible frontend shell', () => {
       _csrf: csrf, action: 'create', idempotency_key: 'agenda-create-key', title: 'Opening workshop',
       description: 'Welcome', session_type: 'workshop', visibility: 'registered',
       start_at: '2026-08-10T09:00', end_at: '2026-08-10T10:00', timezone: 'Europe/Dublin', capacity: '20',
-      'speaker_name[]': 'Sam Lee', 'speaker_role[]': 'Facilitator',
+      'speaker_member_id[]': ['', '55'], 'speaker_name[]': ['Guest speaker', 'Sam Lee'], 'speaker_role[]': ['Guest', 'Facilitator'],
       'resource_type[]': 'slides', 'resource_title[]': 'Slides', 'resource_url[]': 'https://example.org/slides', 'resource_visibility[]': 'registered'
     });
     expect(response.headers.location).toBe('/events/42/agenda?status=agenda-created');
     expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/agenda/sessions', expect.objectContaining({
       title: 'Opening workshop', capacity: 20,
-      speakers: [{ display_name: 'Sam Lee', role: 'Facilitator' }],
+      speakers: [{ display_name: 'Guest speaker', role_label: 'Guest' }, { user_id: 55, role_label: 'Facilitator' }],
       resources: [{ type: 'slides', title: 'Slides', url: 'https://example.org/slides', visibility: 'registered' }]
     }), { headers: { 'Idempotency-Key': 'agenda-create-key' } });
   });

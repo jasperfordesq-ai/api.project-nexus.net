@@ -99,19 +99,21 @@ npm --prefix apps/web-uk run build:css
 npm --prefix apps/web-uk run route:matrix
 npm --prefix apps/web-uk run locales:audit
 npm --prefix apps/web-uk run locales:audit-templates -- --summary
-npm --prefix apps/web-uk run test:accessibility
 npm --prefix apps/web-uk run visual:blade
 
 git diff --check -- apps/web-uk
 ```
 
-`test:accessibility` starts the current Web UK checkout on an ephemeral local
-port. `smoke:laravel:local`, every `*:mutation:*` command, authenticated
-settings journey, upload/download check, and `smoke:federation:local` are excluded
-from the ordinary gate because it can authenticate or mutate Laravel state.
-Run those commands only when `LARAVEL_BASE_URL` points to a separately
-provisioned, verified disposable Laravel environment, never the ordinary
-production-derived local database.
+The complete `test:accessibility` aggregate includes an authenticated login
+journey. A failed login writes Laravel rate-limit/audit state, so the aggregate
+is not an ordinary read-only gate even when its credentials are invalid. Treat
+it like `smoke:laravel:local`, every `*:mutation:*` command, authenticated
+settings journeys, upload/download checks, and `smoke:federation:local`: run it
+only when `LARAVEL_BASE_URL` points to a separately provisioned, verified
+disposable Laravel environment, never the ordinary production-derived local
+database. A browser subset may run against the ordinary environment only after
+its requests have been inspected and proved to be unauthenticated GET/HEAD
+operations with no server-side state changes.
 `visual:blade` compares Laravel with `WEB_UK_BASE_URL` (default port `5180`), so
 restart that development container/process from current source before treating
 its marker result as evidence. Record exact outcomes; a focused test, stale

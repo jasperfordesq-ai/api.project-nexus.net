@@ -639,12 +639,17 @@ function arrayValues(value) {
 }
 
 function agendaSessionPayload(body) {
+  const speakerMemberIds = arrayValues(body.speaker_member_id);
   const speakerNames = arrayValues(body.speaker_name);
   const speakerRoles = arrayValues(body.speaker_role);
-  const speakers = speakerNames.map((name, index) => ({
-    display_name: trimmed(name, 160),
-    role: trimmed(speakerRoles[index], 120) || null
-  })).filter((speaker) => speaker.display_name);
+  const speakerCount = Math.max(speakerMemberIds.length, speakerNames.length, speakerRoles.length);
+  const speakers = Array.from({ length: speakerCount }, (_, index) => {
+    const userId = positiveInteger(speakerMemberIds[index]);
+    const displayName = trimmed(speakerNames[index], 160);
+    const roleLabel = trimmed(speakerRoles[index], 120) || null;
+    if (userId !== null) return { user_id: userId, role_label: roleLabel };
+    return displayName ? { display_name: displayName, role_label: roleLabel } : null;
+  }).filter(Boolean);
   const resourceTypes = arrayValues(body.resource_type);
   const resourceTitles = arrayValues(body.resource_title);
   const resourceUrls = arrayValues(body.resource_url);
@@ -669,6 +674,26 @@ function agendaSessionPayload(body) {
     speakers,
     resources
   };
+}
+
+function safeTimeZone(value) {
+  const timezone = trimmed(value, 64) || 'UTC';
+  try {
+    new Intl.DateTimeFormat('en', { timeZone: timezone }).format(new Date(0));
+    return timezone;
+  } catch {
+    return 'UTC';
+  }
+}
+
+function agendaDateLabel(value, timezone, formatDate) {
+  const date = new Date(value);
+  if (!value || Number.isNaN(date.getTime())) return '';
+  return formatDate(date, {
+    day: 'numeric', month: 'long', year: 'numeric',
+    hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
+    timeZone: safeTimeZone(timezone)
+  });
 }
 
 async function renderOfflineCredential(req, res, id, options = {}) {
@@ -1691,11 +1716,46 @@ router.get('/:id(\\d+)/agenda', requireAuth, asyncRoute(async (req, res) => {
   ]);
   const event = eventFrom(eventResult);
   const agenda = dataFrom(agendaResult) || {};
-  const sessions = (Array.isArray(agenda.sessions) ? agenda.sessions : []).map((session) => ({
-    ...session,
-    start_at_local: trimmed(session.start_at).slice(0, 16),
-    end_at_local: trimmed(session.end_at).slice(0, 16)
-  }));
+  const timezone = safeTimeZone(agenda.timezone);
+  const formatDate = typeof res.locals.formatLocaleDate === 'function'
+    ? res.locals.formatLocaleDate
+    : (value) => trimmed(value);
+  const sessions = (Array.isArray(agenda.sessions) ? agenda.sessions : []).map((session) => {
+    const speakers = Array.isArray(session.speakers) ? session.speakers : [];
+    const resources = Array.isArray(session.resources) ? session.resources : [];
+    return {
+      ...session,
+      speakers,
+      resources,
+      speakerRows: [...speakers, ...Array.from({ length: Math.max(0, 5 - speakers.length) }, () => ({}))],
+      resourceRows: [...resources, ...Array.from({ length: Math.max(0, 3 - resources.length) }, () => ({}))],
+      start_at_local: dateTimeLocalInZone(session.start_at, timezone),
+      end_at_local: dateTimeLocalInZone(session.end_at, timezone),
+      startLabel: agendaDateLabel(session.start_at, timezone, formatDate),
+      endLabel: agendaDateLabel(session.end_at, timezone, formatDate)
+    };
+  });
+  const eventStart = event.start_at || event.start_time || event.start_date;
+  const eventEnd = event.end_at || event.end_time || event.end_date;
+  const startDate = new Date(eventStart);
+  const endDate = new Date(eventEnd);
+  const defaultEnd = !Number.isNaN(startDate.getTime())
+    ? new Date(Math.min(
+      startDate.getTime() + (60 * 60 * 1000),
+      Number.isNaN(endDate.getTime()) ? Number.POSITIVE_INFINITY : endDate.getTime()
+    ))
+    : null;
+  const createSessionDefaults = {
+    type: 'session',
+    visibility: 'public',
+    start_at_local: dateTimeLocalInZone(startDate, timezone),
+    end_at_local: defaultEnd ? dateTimeLocalInZone(defaultEnd, timezone) : '',
+    speakers: [],
+    resources: [],
+    speakerRows: Array.from({ length: 5 }, () => ({})),
+    resourceRows: Array.from({ length: 3 }, () => ({}))
+  };
+  agenda.timezone = timezone;
   agenda.sessions = sessions;
   res.set('Cache-Control', 'private, no-store');
   res.set('Pragma', 'no-cache');
@@ -1704,6 +1764,7 @@ router.get('/:id(\\d+)/agenda', requireAuth, asyncRoute(async (req, res) => {
     activeNav: 'events',
     event: { id, title: trimmed(event.title) },
     agenda,
+    createSessionDefaults,
     scheduledSessions: sessions.filter((session) => session.status === 'scheduled'),
     cancelledSessions: sessions.filter((session) => session.status === 'cancelled'),
     status: trimmed(req.query.status),
