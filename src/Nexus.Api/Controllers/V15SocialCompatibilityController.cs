@@ -9,13 +9,16 @@ using System.Text.Json.Serialization;
 using System.Text;
 using System.Security.Cryptography;
 using System.Globalization;
+using System.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
+using Nexus.Api.Middleware;
 using Nexus.Api.Services;
 
 namespace Nexus.Api.Controllers;
@@ -1543,6 +1546,57 @@ public class V15SocialCompatibilityController : ControllerBase
         await _db.SaveChangesAsync();
 
         return Ok(new { success = true, data = new { message = "Notification preferences updated" } });
+    }
+
+    [HttpPut("/api/v2/users/me/notification-settings")]
+    [EnableRateLimiting(RateLimitingExtensions.AtomicNotificationSettingsPolicy)]
+    public async Task<IActionResult> UpdateAtomicNotificationSettings([FromBody] JsonElement body, CancellationToken ct)
+    {
+        if (!TryGet(body, "notifications", out var notifications) || notifications.ValueKind != JsonValueKind.Object)
+            return NotificationValidation("notifications");
+        var normalized = new Dictionary<string, bool>(StringComparer.Ordinal);
+        foreach (var key in LaravelNotificationPreferenceDefaults.Keys)
+        {
+            if (!TryFlexibleBoolean(notifications, key, out var value)) return NotificationValidation($"notifications.{key}");
+            normalized[key] = value;
+        }
+        if (!TryGet(body, "match_preferences", out var matches) || matches.ValueKind != JsonValueKind.Object)
+            return NotificationValidation("match_preferences");
+        var matchFrequency = NormalizeMatchNotificationFrequency(ReadString(matches, "notification_frequency"));
+        if (matchFrequency is null) return NotificationValidation("match_preferences.notification_frequency");
+        if (!TryFlexibleBoolean(matches, "notify_hot_matches", out var hot)) return NotificationValidation("match_preferences.notify_hot_matches");
+        if (!TryFlexibleBoolean(matches, "notify_mutual_matches", out var mutual)) return NotificationValidation("match_preferences.notify_mutual_matches");
+        var digest = NormalizeNotificationFrequency(ReadString(body, "digest_frequency"));
+        if (digest is null) return NotificationValidation("digest_frequency");
+
+        var tenantId = TenantId(); var userId = RequireUserId(); var now = DateTime.UtcNow;
+        await using var tx = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+        await _db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock({tenantId}, {userId})", ct);
+        var user = await _db.Users.IgnoreQueryFilters().SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Id == userId, ct);
+        if (user is null) return Unauthorized(new { success = false, errors = new[] { new { code = "UNAUTHORIZED", message = "Unauthorized", field = (string?)null } } });
+        var bag = ParseNotificationPreferenceBag(user.NotificationPreferences);
+        foreach (var (key, value) in normalized) bag[key] = value;
+        bag["match_notification_frequency"] = matchFrequency;
+        bag["match_notify_hot_matches"] = hot;
+        bag["match_notify_mutual_matches"] = mutual;
+        user.NotificationPreferences = bag.ToJsonString(StoreJsonOptions);
+        user.FederationNotificationsEnabled = normalized["federation_notifications_enabled"];
+        user.UpdatedAt = now;
+
+        var match = await _db.MatchPreferences.IgnoreQueryFilters().SingleOrDefaultAsync(x => x.TenantId == tenantId && x.UserId == userId, ct);
+        if (match is null)
+        {
+            match = new MatchPreference { TenantId = tenantId, UserId = userId, CreatedAt = now };
+            _db.MatchPreferences.Add(match);
+        }
+        match.NotificationFrequency = matchFrequency; match.NotifyHotMatches = hot; match.NotifyMutualMatches = mutual; match.UpdatedAt = now;
+        var digestKey = $"{NotificationSettingPrefix(userId)}global.0";
+        var digestRow = await _db.TenantConfigs.IgnoreQueryFilters().SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Key == digestKey, ct);
+        if (digestRow is null) _db.TenantConfigs.Add(new TenantConfig { TenantId = tenantId, Key = digestKey, Value = digest, CreatedAt = now, UpdatedAt = now });
+        else { digestRow.Value = digest; digestRow.UpdatedAt = now; }
+        await _db.SaveChangesAsync(ct); await tx.CommitAsync(ct);
+
+        return Ok(new { success = true, data = new { notifications = normalized, match_preferences = new { notification_frequency = matchFrequency, notify_hot_matches = hot, notify_mutual_matches = mutual }, digest_frequency = digest } });
     }
 
     [HttpGet("/api/v2/users/me/notifications")]
@@ -3627,6 +3681,28 @@ public class V15SocialCompatibilityController : ControllerBase
             _ => null
         };
     }
+
+    private static string? NormalizeMatchNotificationFrequency(string? frequency) => frequency?.Trim().ToLowerInvariant() switch
+    {
+        "daily" => "daily", "weekly" => "monthly", "monthly" => "monthly", "fortnightly" => "fortnightly", "never" => "never", _ => null
+    };
+
+    private static bool TryFlexibleBoolean(JsonElement body, string name, out bool value)
+    {
+        value = false;
+        if (!TryGet(body, name, out var element)) return false;
+        if (element.ValueKind is JsonValueKind.True or JsonValueKind.False) { value = element.GetBoolean(); return true; }
+        if (element.ValueKind == JsonValueKind.Number && element.TryGetInt32(out var number) && number is 0 or 1) { value = number == 1; return true; }
+        if (element.ValueKind == JsonValueKind.String)
+        {
+            var text = element.GetString()?.Trim().ToLowerInvariant();
+            if (text is "true" or "1" or "yes" or "on") { value = true; return true; }
+            if (text is "false" or "0" or "no" or "off") return true;
+        }
+        return false;
+    }
+
+    private IActionResult NotificationValidation(string field) => UnprocessableEntity(new { success = false, errors = new[] { new { code = "VALIDATION_ERROR", message = "Notification settings are invalid", field } } });
 
     private static string NotificationSettingPrefix(int userId) => $"notification_settings.{userId}.";
 

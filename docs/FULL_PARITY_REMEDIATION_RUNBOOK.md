@@ -43,6 +43,38 @@ Before any production deployment or production-container action, stop and read
 deployment or touching production containers. Never modify the Laravel repo or
 Laravel Edition containers from this worktree.
 
+## 2026-07-14 ASP.NET Atomic Notification Settings Checkpoint (Locally Verified)
+
+The canonical React member-settings save at
+`PUT /api/v2/users/me/notification-settings` now has one concrete owner and one
+serialized transaction across all three Laravel domains. The complete typed general
+notification set and federation opt-in persist on the tenant-owned user, match
+frequency/hot/mutual settings persist on the unique tenant/user match-preference row,
+and global activity-digest cadence persists in the existing notification-settings
+ledger. Weekly match and digest values normalize to Laravel's canonical `monthly`.
+
+The endpoint requires every canonical boolean and both nested aggregates, rejects
+invalid or incomplete input before opening a transaction, returns the exact canonical
+saved projection, and is protected by a dedicated authenticated 10-per-60-second
+fixed-window policy. Migration 145 (`20260714042710_AtomicNotificationSettingsParity`)
+adds the exact federation and match-notification columns with safe existing-row
+defaults and canonical snake-case names.
+
+Migration 145 applies to both upgraded and blank-chain disposable PostgreSQL. EF
+model drift is clean; focused proof passes 2/2 on each database; the affected member-
+settings set passes 6/6; route ownership passes 114/114; comparator fixtures pass;
+and Debug test-project plus Release API builds have zero errors. The live comparator
+reports 4,546 ASP.NET operations and **2,596/2,608 matches (99.5%, 12 static misses)**.
+
+Current provisional global scores are **860/1000 implementation** and **735/1000
+certification confidence**. The honest combined finish-line estimate is **76%**,
+up from the goal baseline of 42% and the previous checkpoint of 75%. The remaining
+document-era vetting writes, podcast artwork, prerender, and group-auto-assignment
+routes, real fiat settlement, complete-suite/CI proof, unchanged-frontend browser
+proof, schema/localization depth, federation transport, and live-provider evidence
+remain open. No production resource or frontend source was touched by this backend
+slice.
+
 ## 2026-07-14 ASP.NET Event Configuration Policy Checkpoint (Locally Verified)
 
 The four canonical administrator event-configuration routes now own a typed,

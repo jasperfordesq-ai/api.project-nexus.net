@@ -79,6 +79,11 @@ public class User : ITenantEntity
     public string? NotificationPreferences { get; set; }
 
     /// <summary>
+    /// Laravel-compatible opt-in for federation activity notifications.
+    /// </summary>
+    public bool FederationNotificationsEnabled { get; set; } = true;
+
+    /// <summary>
     /// Laravel's existing public-volunteering preference. A null legacy value
     /// is treated as opted in; an explicit false prevents approved hour logs
     /// from being broadcast to the community activity feed.

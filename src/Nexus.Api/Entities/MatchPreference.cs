@@ -51,6 +51,10 @@ public class MatchPreference : ITenantEntity
     /// </summary>
     public bool IsActive { get; set; } = true;
 
+    public string NotificationFrequency { get; set; } = "monthly";
+    public bool NotifyHotMatches { get; set; } = true;
+    public bool NotifyMutualMatches { get; set; } = true;
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 

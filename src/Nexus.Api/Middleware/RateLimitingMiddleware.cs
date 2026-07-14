@@ -38,6 +38,7 @@ public static class RateLimitingExtensions
 {
     public const string AuthPolicy = "auth";
     public const string GeneralPolicy = "general";
+    public const string AtomicNotificationSettingsPolicy = "atomic-notification-settings";
     public const string AiPolicy = "Ai";
     public const string AiProviderTestPolicy = "ai-provider-test";
     public const string VolunteerWellbeingAlertsPolicy = "volunteer-wellbeing-alerts";
@@ -198,6 +199,13 @@ public static class RateLimitingExtensions
                         PermitLimit = config.GetValue("RateLimiting:General:PermitLimit", 100),
                         Window = TimeSpan.FromSeconds(config.GetValue("RateLimiting:General:WindowSeconds", 60))
                     }));
+
+            options.AddPolicy(AtomicNotificationSettingsPolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: GetAuthenticatedUserOrClientIdentifier(context, trustedProxies),
+                    factory: _ => FixedWindow(
+                        config.GetValue("RateLimiting:AtomicNotificationSettings:PermitLimit", 10),
+                        TimeSpan.FromSeconds(config.GetValue("RateLimiting:AtomicNotificationSettings:WindowSeconds", 60)))));
 
             // Laravel assigns independent authenticated one-minute buckets to
             // the Event Registration Product route groups. Keeping the buckets

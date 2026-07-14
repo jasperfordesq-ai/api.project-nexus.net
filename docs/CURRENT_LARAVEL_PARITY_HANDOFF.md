@@ -12,26 +12,27 @@ parity job after a session interruption. The implementation branches may still
 be moving, so treat every numeric snapshot below as advisory. Regenerate the
 live state before editing code or claiming progress.
 
-## Latest Resume Point: Event Configuration Policy
+## Latest Resume Point: Atomic Notification Settings
 
-All four `/api/v2/admin/config/events` read, audit, update, and restore operations now
-use a serialized tenant-safe typed policy aggregate with optimistic versions, strict
-key/type/dependency validation, explicit change reasons, no-op/stale rejection, live
-impact counters, and disruptive-disable confirmation. Confirmed reminder disablement
-cancels pending reminders; confirmed federation disablement withdraws shared events,
-advances federation versions, and enqueues partner tombstones. Selective/full restore
-is versioned and idempotent, and audit history projects actor/reason/version/changes.
-Platform-unavailable timed offers and authoritative outbox delivery fail closed.
+The canonical React settings save now owns all three Laravel persistence domains in
+one serializable tenant/user transaction: general/federation flags on the user, match
+frequency/hot/mutual fields on the unique match-preference row, and global activity-
+digest cadence in the notification-settings ledger. Every canonical boolean is
+required and typed, weekly values normalize to monthly, invalid input produces no
+partial write, and the response returns the canonical saved projection. A dedicated
+authenticated fixed-window policy enforces Laravel's 10 updates per 60 seconds.
 
-Focused migrated-schema proof passes 3/3, route ownership passes 114/114, comparator
-fixtures pass, and Debug/Release builds have zero errors. The live comparator reports
-4,545 ASP.NET operations and 2,595/2,608 matched with 13 static misses. Provisional
-global scores are 855/1000 implementation, 730/1000 certification, and 75% overall.
-Resume with podcast artwork, prerender, group auto-assignment, or notification settings;
-keep the seven document-era vetting writes gated until their legacy-evidence safety
-contract is traced. Real fiat settlement, complete-suite/CI, unchanged canonical
-frontend smoke, schema/localization depth, federation transport, and live-provider
-certification remain open.
+Migration 145 adds the exact four canonical columns with safe defaults and applies to
+upgraded and blank-chain disposable PostgreSQL. Model drift is clean; focused proof
+passes 2/2 on each database; the affected member-settings set passes 6/6; route
+ownership passes 114/114; comparator fixtures pass; and Debug/Release builds have zero
+errors. The live comparator reports 4,546 ASP.NET operations and 2,596/2,608 matched
+with 12 static misses. Provisional global scores are 860/1000 implementation, 735/1000
+certification, and 76% overall. Resume with podcast artwork, prerender, or group auto-
+assignment; keep the seven document-era vetting writes gated until their legacy-
+evidence safety contract is traced. Real fiat settlement, complete-suite/CI, unchanged
+canonical frontend smoke, schema/localization depth, federation transport, and live-
+provider certification remain open.
 
 ## Objective
 

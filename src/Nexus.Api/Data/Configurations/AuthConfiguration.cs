@@ -57,6 +57,9 @@ public class AuthConfiguration : TenantScopedConfiguration
             entity.Property(e => e.NotificationPreferences)
                 .HasColumnName("notification_preferences")
                 .HasColumnType("text");
+            entity.Property(e => e.FederationNotificationsEnabled)
+                .HasColumnName("federation_notifications_enabled")
+                .HasDefaultValue(true);
             entity.Property(e => e.ShowOnLeaderboard)
                 .HasColumnName("show_on_leaderboard")
                 .HasDefaultValue(true);

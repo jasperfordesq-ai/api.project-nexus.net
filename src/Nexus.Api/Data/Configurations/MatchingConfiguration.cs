@@ -27,6 +27,9 @@ public class MatchingConfiguration : TenantScopedConfiguration
             entity.Property(e => e.AvailableTimeSlots).HasMaxLength(500);
             entity.Property(e => e.SkillsOffered).HasColumnType("text");
             entity.Property(e => e.SkillsWanted).HasColumnType("text");
+            entity.Property(e => e.NotificationFrequency).HasColumnName("notification_frequency").HasMaxLength(20).HasDefaultValue("monthly");
+            entity.Property(e => e.NotifyHotMatches).HasColumnName("notify_hot_matches").HasDefaultValue(true);
+            entity.Property(e => e.NotifyMutualMatches).HasColumnName("notify_mutual_matches").HasDefaultValue(true);
             entity.HasIndex(e => e.TenantId);
             entity.HasIndex(e => new { e.TenantId, e.UserId }).IsUnique();
             entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);

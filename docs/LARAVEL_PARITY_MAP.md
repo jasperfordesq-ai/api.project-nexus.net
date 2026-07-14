@@ -6,18 +6,18 @@ Canonical source: `C:\platforms\htdocs\staging` (read-only).
 
 ## Latest Verified Backend Slice
 
-Administrator event-configuration read, audit, update and restore now use a durable
-tenant-safe typed policy aggregate with serializable locking, optimistic versions,
-reasoned audit history, selective/full idempotent restore, dependency validation,
-capability/impact projections and disruptive-disable confirmation. Confirmed reminder
-disablement cancels pending rows; confirmed federation disablement withdraws shared
-events and appends partner tombstones. Platform-unavailable modes fail closed. Focused
-migrated-schema proof passes 3/3, route ownership passes 114/114, comparator fixtures
-pass, and Debug/Release builds are green. The live inventory is **2,595/2,608 (99.5%,
-13 missing)**. Document-era vetting writes, media/prerender and remaining settings
-routes, real fiat settlement, complete-suite/CI proof, unchanged-frontend runtime
-proof, schema/localization depth, federation transport, and live-provider
-certification remain open.
+The canonical React notification-settings save now uses one serialized tenant/user
+transaction across general/federation flags, exact match-notification columns, and the
+global digest ledger. Strict complete-input validation prevents partial writes,
+weekly values normalize to monthly, the canonical saved projection round-trips, and
+an authenticated 10-per-minute limiter matches Laravel. Migration 145 applies to
+upgraded and blank-chain PostgreSQL with clean model drift. Focused proof passes 2/2
+on each database, the affected set passes 6/6, route ownership passes 114/114, and
+Debug/Release builds are green. The live inventory is **2,596/2,608 (99.5%, 12
+missing)**. Document-era vetting writes, media/prerender and group-auto-assignment,
+real fiat settlement, complete-suite/CI proof, unchanged-frontend runtime proof,
+schema/localization depth, federation transport, and live-provider certification
+remain open.
 
 ## Inventory Baseline
 

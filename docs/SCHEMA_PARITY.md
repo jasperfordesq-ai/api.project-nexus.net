@@ -5,6 +5,16 @@ Last reviewed: 2026-07-14
 Laravel source of truth: `C:\platforms\htdocs\staging\database\migrations` and
 `C:\platforms\htdocs\staging\app\Models`.
 
+## 2026-07-14 Atomic Notification Settings Schema Evidence
+
+Migration 145 adds `users.federation_notifications_enabled` plus
+`match_preferences.notification_frequency`, `notify_hot_matches`, and
+`notify_mutual_matches`, all non-null with Laravel-compatible safe defaults. The
+migration applies after the complete prior chain on two disposable PostgreSQL
+histories, focused persistence/no-partial-write proof passes 2/2 on each, and
+`has-pending-model-changes` reports no drift. The broader static schema-table counts
+below predate migrations 141-145 and remain historical until regenerated.
+
 ## 2026-07-14 Marketplace Dispute Settlement Schema Evidence
 
 Migration 144 adds `marketplace_disputes`, wallet purchase/refund transaction links
