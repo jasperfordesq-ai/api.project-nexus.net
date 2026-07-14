@@ -12947,6 +12947,38 @@ describe('shared accessible frontend shell', () => {
     expect(numericLikers.text).not.toContain('Laravel Blade route');
   });
 
+  it('renders the Laravel-compatible escaped Blog RSS contract', async () => {
+    const api = require('../src/lib/api');
+    api.getBlogPosts.mockResolvedValue({
+      data: {
+        items: [
+          {
+            slug: 'repair-share',
+            title: 'Repair & Share <News>',
+            excerpt: 'Tools & tips <for everyone>',
+            published_at: '2026-07-01T12:00:00Z'
+          }
+        ]
+      }
+    });
+
+    const response = await request(app)
+      .get('/blog/feed.xml')
+      .set('Host', 'web.example.test');
+
+    expect(response.status).toBe(200);
+    expect(response.headers['content-type']).toContain('application/rss+xml');
+    expect(response.text).toContain('<title>Blog — Project NEXUS Accessible</title>');
+    expect(response.text).toContain('<link>http://web.example.test/blog</link>');
+    expect(response.text).toContain('<language>en</language>');
+    expect(response.text).toContain('<title>Repair &amp; Share &lt;News&gt;</title>');
+    expect(response.text).toContain('<guid isPermaLink="true">http://web.example.test/blog/repair-share</guid>');
+    expect(response.text).toContain('<pubDate>Wed, 01 Jul 26 12:00:00 +0000</pubDate>');
+    expect(response.text).toContain('<description>Tools &amp; tips &lt;for everyone&gt;</description>');
+    expect(response.text).not.toContain('Repair & Share <News>');
+    expect(api.getBlogPosts).toHaveBeenCalledWith('', { per_page: 20 });
+  });
+
   it('submits the Laravel blog comment route through the blog and comments API helpers', async () => {
     const api = require('../src/lib/api');
     const cookieSignature = require('cookie-signature');

@@ -80,6 +80,28 @@ function scriptSafeJson(value) {
     .replace(/\u2029/g, '\\u2029');
 }
 
+function xmlEscape(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+function absoluteRequestUrl(req, res, pathname) {
+  const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
+  return new URL(urlFor(pathname), `${req.protocol}://${req.get('host')}`).href;
+}
+
+function rssDate(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${days[date.getUTCDay()]}, ${String(date.getUTCDate()).padStart(2, '0')} ${months[date.getUTCMonth()]} ${String(date.getUTCFullYear()).slice(-2)} ${String(date.getUTCHours()).padStart(2, '0')}:${String(date.getUTCMinutes()).padStart(2, '0')}:${String(date.getUTCSeconds()).padStart(2, '0')} +0000`;
+}
+
 function articleStructuredData(post, publisherName) {
   const data = {
     '@context': 'https://schema.org',
@@ -306,12 +328,17 @@ router.get('/feed.xml', asyncRoute(async (req, res) => {
   const posts = asList(asObject(data).items || data).map(normalizePost);
   const items = posts
     .filter((post) => post.slug)
-    .map((post) => `<item><title>${post.title}</title><link>/blog/${post.slug}</link><guid>/blog/${post.slug}</guid><description>${post.excerpt}</description></item>`)
+    .map((post) => {
+      const url = absoluteRequestUrl(req, res, `/blog/${encodeURIComponent(post.slug)}`);
+      const publishedAt = rssDate(post.publishedAt);
+      return `<item><title>${xmlEscape(post.title)}</title><link>${xmlEscape(url)}</link><guid isPermaLink="true">${xmlEscape(url)}</guid>${publishedAt ? `<pubDate>${xmlEscape(publishedAt)}</pubDate>` : ''}<description>${xmlEscape(post.excerpt)}</description></item>`;
+    })
     .join('');
 
   res.type('application/rss+xml; charset=UTF-8');
-  const blogTitle = res.locals.t('blog.title');
-  return res.send(`<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>${blogTitle}</title><link>/blog</link><description>${blogTitle}</description>${items}</channel></rss>`);
+  const channelTitle = `${res.locals.t('blog.title')} — ${res.locals.tenantName}`;
+  const channelLink = absoluteRequestUrl(req, res, '/blog');
+  return res.send(`<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>${xmlEscape(channelTitle)}</title><link>${xmlEscape(channelLink)}</link><description>${xmlEscape(channelTitle)}</description><language>${xmlEscape(res.locals.locale)}</language>${items}</channel></rss>`);
 }));
 
 router.get('/:slug([a-zA-Z0-9_-]+)/comments', asyncRoute(async (req, res) => {
