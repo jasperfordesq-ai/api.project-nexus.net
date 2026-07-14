@@ -1484,11 +1484,17 @@ app.get('/organisations/opportunities/:id(\\d+)/apply', requireOrganisationAuth,
     const organization = opportunity.organization && typeof opportunity.organization === 'object'
       ? opportunity.organization
       : {};
-    const organisationId = opportunity.organization_id || opportunity.organisation_id || organization.id || 0;
-    const organisationName = opportunity.org_name || opportunity.organisation_name || organization.name || '';
+    const parsedOrganisationId = Number.parseInt(String(opportunity.organization_id ?? ''), 10);
+    const organisationId = Number.isInteger(parsedOrganisationId) && parsedOrganisationId > 0
+      ? parsedOrganisationId
+      : 0;
+    const organisationName = String(opportunity.org_name ?? organization.name ?? '').trim();
+    const title = String(opportunity.title ?? '').trim()
+      || res.locals.t('govuk_alpha_organisations.apply.title');
 
     return {
       ...opportunity,
+      title,
       organisationId,
       organisationName,
       hasApplied: !!opportunity.has_applied

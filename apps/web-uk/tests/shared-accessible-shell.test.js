@@ -18922,6 +18922,37 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Cancel');
   });
 
+  it('matches Blade trimming and authoritative organisation ID boundaries on the opportunity apply page', async () => {
+    const api = require('../src/lib/api');
+    const t = createTranslator('en');
+    api.getVolunteerOpportunity.mockResolvedValueOnce({
+      data: {
+        id: 77,
+        title: '   ',
+        organization_id: 'not-an-id',
+        organisation_id: 42,
+        org_name: '   ',
+        organisation_name: 'Alias Club',
+        organization: { id: 43, name: 'Nested Club' },
+        has_applied: true
+      }
+    });
+
+    const response = await request(app)
+      .get('/organisations/opportunities/77/apply')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain(`>${t('govuk_alpha_organisations.apply.title')}</a>`);
+    expect(response.text).toContain(`>${t('govuk_alpha_organisations.apply.view_opportunity')}</a>`);
+    expect(response.text).toContain(t('govuk_alpha_organisations.apply.already_applied_title'));
+    expect(response.text).not.toContain('href="/organisations/42"');
+    expect(response.text).not.toContain('href="/organisations/43"');
+    expect(response.text).not.toContain('Alias Club');
+    expect(response.text).not.toContain('Nested Club');
+    expect(response.text).not.toContain('method="post" action="/volunteering/opportunities/77/apply"');
+  });
+
   it('redirects unsigned visitors from organisation opportunity applications before data lookup', async () => {
     const api = require('../src/lib/api');
     const response = await request(app).get('/organisations/opportunities/77/apply');
