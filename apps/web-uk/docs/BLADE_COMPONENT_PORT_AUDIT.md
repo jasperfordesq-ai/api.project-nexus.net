@@ -1247,6 +1247,13 @@ attributes. Focused legacy/canonical/filter proof passes `3/3`; the complete
 non-mutating gate passes `52/52` suites and `1,696/1,696` tests. Manual and
 disposable-runtime certification remain open.
 
+The Event archive-status follow-up now renders Blade's exact archived/deleted
+success banner and archive-failure error summary on the index. Bounded query
+states suppress stale generic flash content, so success copy appears once and
+retains the source `event-archived-title` relationship. Focused proof passes
+`1/1`; the complete non-mutating gate passes `52/52` suites and `1,697/1,697`
+tests. Live destructive and manual accessibility certification remain open.
+
 - GOV.UK crown, logotype, official header identity, OGL block, or Crown
   copyright wording.
 - Laravel/PHP implementation details.

@@ -186,7 +186,7 @@ together from a clean published checkout.
   with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
   Only this fixed-rubric audit contributes to the current bank.
 - **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `211d45e3`, including the later implementation, contract,
+  baseline `0e24bbee`, including the later implementation, contract,
   resilience, and component-audit slices. Their evidence is useful, but they
   contribute zero points until one complete fixed-rubric re-audit explicitly
   replaces the baseline.
@@ -292,6 +292,23 @@ No Laravel request, database, migration, authentication, mutation, upload,
 download, cleanup, container, or production operation was performed for this
 card-projection slice. It remains published and unscored, and the frozen bank
 remains `622/1,000` pending a complete fixed-rubric re-audit.
+
+## 2026-07-15 Event Archive Index States
+
+Frozen evidence refreshed at `2026-07-15T00:57:56.5661904+01:00` against
+Laravel `903d03d3db78bbf87129ad35728be3b72819acaf` and Web UK product commit
+`0e24bbee`. The Event index now renders Blade's exact archived/deleted success
+banner and archive-failure error summary from the bounded query states. These
+states suppress the stale generic flash banner, preventing duplicate success
+copy and restoring Blade's `event-archived-title` relationship.
+
+Focused success/failure proof passes `1/1`; the uninterrupted complete
+non-mutating gate passes `52/52` suites and `1,697/1,697` tests. Lint, generated
+route/API, and scoped diff gates are green. No Laravel request, database,
+migration, authentication, mutation, upload, download, cleanup, container, or
+production operation was performed. This significant-state improvement remains
+published and unscored, so the frozen bank remains `622/1,000` pending a
+complete fixed-rubric re-audit.
 
 ### Finite P0/P1 Completion Queue
 
