@@ -1478,6 +1478,7 @@ describe('shared accessible frontend shell', () => {
     expect(index.text).toContain('3 views');
     expect(index.text).toContain('href="/kb/42"');
     expect(index.text).toContain('href="/kb?cursor=next-cursor"');
+    expect(index.text).toContain('class="govuk-pagination__icon govuk-pagination__icon--next"');
     expect(index.text).not.toContain('Knowledge base articles will be wired');
     expect(index.text).not.toContain('shared accessible frontend preparation page');
 
@@ -12810,7 +12811,9 @@ describe('shared accessible frontend shell', () => {
     expect(index.text).toContain('/images/garden.jpg');
     expect(index.text).toContain('Ada Lovelace');
     expect(index.text).toContain(t('blog.read_time', { count: 4 }));
+    expect(index.text).toContain('&middot;');
     expect(index.text).toContain('cursor=next-cursor');
+    expect(index.text).toContain('class="govuk-pagination__icon govuk-pagination__icon--next"');
     expect(index.text).not.toContain('Laravel Blade route');
 
     const detail = await request(app).get('/blog/community-news?status=comment-added&locale=ar');
@@ -16170,6 +16173,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Food support');
     expect(response.text).toContain('Help prepare meals and welcome visitors');
     expect(response.text).toContain('href="/volunteering?q=kitchen&amp;category_id=3&amp;is_remote=1&amp;cursor=next-cursor"');
+    expect(response.text).toContain('class="govuk-pagination__icon govuk-pagination__icon--next"');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
@@ -17215,6 +17219,8 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('Member 51');
     expect(response.text).toContain('href="/federation/connections?tab=accepted&amp;page=1#connections-list"');
     expect(response.text).toContain('href="/federation/connections?tab=accepted&amp;page=3#connections-list"');
+    expect(response.text).toContain('class="govuk-pagination__icon govuk-pagination__icon--prev"');
+    expect(response.text).toContain('class="govuk-pagination__icon govuk-pagination__icon--next"');
   });
 
   it('replays safe create-job input after title validation', async () => {
@@ -24526,6 +24532,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('name="q"');
     expect(response.text).toContain('value="past" selected');
     expect(response.text).toContain('href="/events?when=past&amp;near=any&amp;q=repair&amp;cursor=next-page"');
+    expect(response.text).toContain('class="govuk-pagination__icon govuk-pagination__icon--next"');
   });
 
   it('uses Blade event category and stored-location filters', async () => {
@@ -27847,6 +27854,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('class="nexus-alpha-avatar nexus-alpha-avatar--placeholder" aria-hidden="true">Y</span>');
     expect(response.text.indexOf('Thanks, that would help.')).toBeLessThan(response.text.indexOf('Search messages'));
     expect(response.text).toContain('href="/messages/77?listing=42&amp;q=tools&amp;cursor=next-page"');
+    expect(response.text).toContain('class="govuk-pagination__icon govuk-pagination__icon--prev"');
     expect(response.text).toContain('action="/messages/77"');
     expect(response.text).toContain('name="scope" type="radio" value="self" checked');
     expect(response.text).toContain('name="scope" type="radio" value="everyone" aria-describedby=');
@@ -32251,6 +32259,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('method="post" action="/volunteering/applications/91/withdraw"');
     expect(response.text).toContain('Withdraw application');
     expect(response.text).toContain('href="/volunteering?tab=applications&amp;app_status=pending&amp;app_cursor=next-application"');
+    expect(response.text).toContain('class="govuk-pagination__icon govuk-pagination__icon--next"');
   });
 
   it('renders the signed Blade-style recommended and community-project sections inline', async () => {
