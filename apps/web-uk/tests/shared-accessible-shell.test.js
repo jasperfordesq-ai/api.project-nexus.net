@@ -26755,6 +26755,7 @@ describe('shared accessible frontend shell', () => {
             {
               id: 33,
               group_name: 'Local helpers',
+              group_avatar_url: '/uploads/local-helpers.jpg',
               participant_count: 3,
               unread_count: 2,
               last_message: {
@@ -26762,6 +26763,14 @@ describe('shared accessible frontend shell', () => {
                 body: 'Bring the spare keys',
                 created_at: '2026-07-06T10:30:00'
               }
+            },
+            {
+              id: 34,
+              group_name: 'Garden rota',
+              participant_count: 1,
+              unread_count: 0,
+              last_message: null,
+              updated_at: '2026-07-05T09:15:00'
             }
           ]
         };
@@ -26779,14 +26788,23 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Group conversations');
     expect(response.text).toContain('Direct messages');
     expect(response.text).toContain('Start a group conversation');
+    const groupsMain = response.text.match(/<main\b[\s\S]*?<\/main>/)?.[0] || '';
+    expect(groupsMain).not.toContain('govuk-grid-column-two-thirds');
+    expect(response.text).toContain('data-module="govuk-button" href="/messages/groups/new"');
     expect(response.text).toContain('Local helpers');
+    expect(response.text).toContain('src="/uploads/local-helpers.jpg" alt="" loading="lazy" decoding="async" width="48" height="48"');
+    expect(response.text).toContain('class="nexus-alpha-avatar nexus-alpha-avatar--placeholder" aria-hidden="true">G</span>');
     expect(response.text).toContain('3 members');
     expect(response.text).toContain('2 unread messages');
     expect(response.text).toContain('Latest');
     expect(response.text).toContain('Avery Stone');
     expect(response.text).toContain('Bring the spare keys');
     expect(response.text).toContain('6 July 2026, 10:30am');
+    expect(response.text).toContain('Garden rota');
+    expect(response.text).toContain('No messages yet');
+    expect(response.text).toContain('5 July 2026, 9:15am');
     expect(response.text).toContain('You have left the group.');
+    expect(response.text).toContain('data-module="govuk-notification-banner" role="alert" aria-labelledby="messages-groups-status-title"');
   });
 
   it('renders the Laravel group conversation create/search form', async () => {

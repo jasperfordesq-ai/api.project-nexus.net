@@ -395,6 +395,10 @@ The direct inbox now also uses Blade's full-width conversation cards, sender
 labels, filter and pagination structure, disabled/restricted notices, conditional
 empty-state action, and query-driven archive/restore success outcome; focused
 default-English proof passes `6/6`.
+The group index now follows Blade's full-width card list, 48-pixel group avatar
+or initial placeholder, distinct disabled/restricted banners, initialized status
+and create controls, and updated-time fallback for groups without a last message;
+focused default-English/restriction proof passes `2/2`.
 This certifies broad historical read/auth/gate/body coverage, not every
 mutation, upload, download, destructive side effect, or manual assistive-
 technology state. Saved-collection create/update/delete and collection-
@@ -750,7 +754,7 @@ rewriting.
 
 ### Jobs member-page evidence
 
-- Current post-slice integration checkpoint: full Jest passes `48/48` suites and `1,626/1,626` tests; lint and brand pass; both static localization gates pass with 6,910 references, 5,261 unique keys, and zero unresolved or conservative template matches.
+- Current post-slice integration checkpoint: full Jest passes `48/48` suites and `1,626/1,626` tests; lint and brand pass; both static localization gates pass with 6,911 references, 5,261 unique keys, and zero unresolved or conservative template matches.
 - `views/jobs.blade.php` and `partials/job-card.blade.php` now map to the browse route/template with Blade's tenant caption, catalog-backed filters/results/cards, single empty fallback on non-auth load failure, and next-page icon/semantics. Focused default-English populated, signed-out, and failure rendering is green.
 - `views/job-detail.blade.php` now resolves owner identity from Laravel `/api/v2/users/me`, shows owner management rather than save/apply controls, and renders the optional Laravel `/api/v2/jobs/{id}/match` result with Blade's catalog and progress semantics. Type, commitment, remote, and caption fallbacks are catalog/tenant backed. Similar-opportunity rendering and a public CV-upload configuration contract remain open because Laravel exposes no equivalent member-facing API data for them.
 - `views/jobs-saved.blade.php`, `partials/job-card.blade.php`, and `AlphaController::savedJobs()` now map to `src/routes/jobs.js` and `src/views/jobs/saved.njk` with Blade's tenant caption, catalog-backed card labels and plural counts, single empty fallback on non-auth load failure, unsave control, and next-page icon/semantics. Focused default-English rendering is green; broader gaps remain tracked in the Jobs workflows row.
