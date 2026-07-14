@@ -29954,11 +29954,14 @@ describe('shared accessible frontend shell', () => {
     expect(api.callCourseApi).toHaveBeenCalledWith('test-token', 'GET', '/42/reviews');
     expect(api.callCourseApi).toHaveBeenCalledWith('test-token', 'GET', '/42/progress');
     expect(detail.text).toContain('Advanced community care');
+    expect(detail.text).toContain('class="govuk-panel govuk-panel--confirmation govuk-!-margin-bottom-6"');
+    expect(detail.text).toContain('You are now enrolled. Enjoy the course.');
     expect(detail.text).toContain('Build practical skills for supporting neighbours safely.');
     expect(detail.text).not.toContain('<strong>practical</strong>');
     expect(detail.text).toContain('Intro to community support');
     expect(detail.text).toContain('Download your certificate');
     expect(detail.text).toContain('Leave a review');
+    expect(detail.text).not.toContain('Continue learning');
 
     const enrolRequired = await request(app)
       .get('/courses/42?status=enrol-required')
