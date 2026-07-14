@@ -1707,6 +1707,21 @@ describe('tenant-aware template helper conversion', () => {
     }
   });
 
+  it('initializes the Blade-matched interactive details disclosures', () => {
+    const readView = (templatePath) => fs.readFileSync(
+      path.join(__dirname, '..', 'src', 'views', templatePath),
+      'utf8'
+    );
+    const alerts = readView(path.join('jobs', 'alerts.njk'));
+    const events = readView(path.join('events', 'detail.njk'));
+    const conversation = readView(path.join('messages', 'conversation.njk'));
+
+    expect(alerts).toContain('<details class="govuk-details govuk-!-margin-bottom-0" data-module="govuk-details">');
+    expect(events).toContain('<details class="govuk-details govuk-!-margin-bottom-4" data-module="govuk-details">');
+    expect(events).toContain('<details class="govuk-details govuk-!-margin-bottom-0" data-module="govuk-details">');
+    expect(conversation).toContain('<details class="govuk-details govuk-!-margin-top-2" data-module="govuk-details">');
+  });
+
   it('keeps organisation directory and application controls behind urlFor()', () => {
     const templates = [
       'organisation-detail.njk',
