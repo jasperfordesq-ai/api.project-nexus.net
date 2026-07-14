@@ -12809,7 +12809,8 @@ describe('shared accessible frontend shell', () => {
     expect(index.text).toContain('value="garden"');
     expect(index.text).toContain('Community garden opens');
     expect(index.text).toContain('/images/garden.jpg');
-    expect(index.text).toContain('Ada Lovelace');
+    expect(index.text).toContain('Community &middot;');
+    expect(index.text).not.toContain('Ada Lovelace');
     expect(index.text).toContain(t('blog.read_time', { count: 4 }));
     expect(index.text).toContain('&middot;');
     expect(index.text).toContain('cursor=next-cursor');

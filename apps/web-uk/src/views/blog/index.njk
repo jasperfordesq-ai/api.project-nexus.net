@@ -57,8 +57,7 @@
                 <p class="govuk-body govuk-!-margin-bottom-1">{{ post.excerpt }}</p>
               {% endif %}
               <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-0">
-                {% if post.category.name %}{{ post.category.name }} - {% endif %}
-                {% if post.author.name %}{{ post.author.name }} - {% endif %}
+                {% if post.category.name %}{{ post.category.name }} &middot; {% endif %}
                 {% if post.publishedAt %}{{ post.publishedAt | formatDate }} &middot; {% endif %}
                 {% if post.readingTime %}{{ t("blog.read_time", { count: post.readingTime }) }}{% endif %}
               </p>
