@@ -1044,7 +1044,7 @@ function decoratePredictions(result) {
   };
 }
 
-function decorateApplicant(application, req = null) {
+function decorateApplicant(application, req = null, anonymousKey = 'govuk_alpha_jobs.shared.anonymous') {
   const applicant = application.applicant || application.user || {};
   const status = allowed(application.stage || application.status, JOB_APPLICANT_STAGE_OPTIONS, 'applied');
 
@@ -1053,11 +1053,15 @@ function decorateApplicant(application, req = null) {
     id: positiveInteger(application.id) || 0,
     applicantName: personName(applicant) || translateStatusMessage(
       req,
-      'govuk_alpha_jobs.shared.anonymous',
+      anonymousKey,
       'Anonymous candidate'
     ),
     status,
-    statusLabel: JOB_APPLICATION_LABELS[status] || status,
+    statusLabel: translateStatusMessage(
+      req,
+      `jobs_t2.app_status_${status}`,
+      JOB_APPLICATION_LABELS[status] || statusTitle(status)
+    ),
     appliedOnLabel: formatDateOnlyLong(application.created_at || application.applied_at),
     coverLetter: trimmed(application.message || application.cover_letter || application.notes, 5000),
     cvFilename: trimmed(application.cv_filename || application.cvFilename, 255)
@@ -2334,7 +2338,6 @@ router.get('/:id(\\d+)/applications', asyncRoute(async (req, res) => {
   let jobResult;
   let applicationsResult = null;
   let analyticsResult = null;
-  let loadError = false;
 
   try {
     jobResult = await getJob(token, id);
@@ -2365,7 +2368,7 @@ router.get('/:id(\\d+)/applications', asyncRoute(async (req, res) => {
     if (error instanceof ApiError && error.status === 404) {
       return res.status(404).render('errors/404', { title: 'Page not found' });
     }
-    loadError = true;
+    return res.status(403).render('errors/403', { title: 'Forbidden' });
   }
 
   try {
@@ -2379,16 +2382,23 @@ router.get('/:id(\\d+)/applications', asyncRoute(async (req, res) => {
     titleKey: 'jobs_t3.applicants_title',
     activeNav: 'explore',
     job: decorateJob(job),
-    applications: collectionItems(applicationsResult).map((application) => decorateApplicant(application, req)),
+    applications: collectionItems(applicationsResult).map((application) => decorateApplicant(
+      application,
+      req,
+      'jobs_t3.applicant_anonymous'
+    )),
     analytics: analyticsFrom(analyticsResult),
     status: req.query.status || '',
     successMessage: applicantSuccessMessage(req, req.query.status),
     errorMessage: applicantErrorMessage(req, req.query.status),
     statusOptions: JOB_APPLICANT_STAGE_OPTIONS.map((status) => ({
       value: status,
-      label: JOB_APPLICATION_LABELS[status] || status
+      label: translateStatusMessage(
+        req,
+        `jobs_t2.app_status_${status}`,
+        JOB_APPLICATION_LABELS[status] || statusTitle(status)
+      )
     })),
-    loadError,
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }));

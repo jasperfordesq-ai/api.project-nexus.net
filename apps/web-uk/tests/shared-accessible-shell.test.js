@@ -17590,7 +17590,7 @@ describe('shared accessible frontend shell', () => {
           applicant: { name: 'Alex Morgan', email: 'alex@example.org' },
           status: 'screening',
           created_at: '2099-07-02T10:00:00Z',
-          message: 'I can coordinate rotas and training.'
+          message: 'I can coordinate rotas\nand training.'
         }
       ]
     }).mockResolvedValueOnce({
@@ -17627,7 +17627,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Alex Morgan');
     expect(response.text).toContain('Screening');
     expect(response.text).toContain('Applied on 2 July 2099');
-    expect(response.text).toContain('I can coordinate rotas and training.');
+    expect(response.text).toContain('I can coordinate rotas<br>and training.');
     expect(response.text).toContain('action="/jobs/501/applications/91/status"');
     expect(response.text).toContain('Move to stage');
     expect(response.text).toContain('name="app_status"');
@@ -17648,6 +17648,29 @@ describe('shared accessible frontend shell', () => {
     expect(response.headers.location).toBe('/login?status=auth-required');
     expect(api.getJob).not.toHaveBeenCalled();
     expect(api.callJobApi).not.toHaveBeenCalled();
+  });
+
+  it('matches Blade owner denial when the applicant collection cannot be loaded', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.getJob.mockResolvedValueOnce({ data: { id: 501, title: 'Volunteer Coordinator' } });
+    api.callJobApi.mockImplementation((token, method, pathName) => {
+      if (pathName === '/501/applications') {
+        return Promise.reject(new api.ApiError('Unavailable', 503));
+      }
+      return Promise.resolve({ data: { id: 42 } });
+    });
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    const response = await request(app)
+      .get('/jobs/501/applications')
+      .set('Cookie', [`token=${encodeURIComponent(signedToken)}`]);
+
+    expect(api.callJobApi).toHaveBeenCalledWith('test-token', 'GET', '/501/applications');
+    expect(response.status).toBe(403);
+    expect(response.text).toContain(englishForbiddenTitle);
+    expect(response.text).not.toContain('Applications could not be loaded');
+    expect(api.callJobApi).not.toHaveBeenCalledWith('test-token', 'GET', '/501/analytics');
   });
 
   it('renders the Laravel-backed job analytics dashboard', async () => {
