@@ -19828,6 +19828,7 @@ describe('shared accessible frontend shell', () => {
     expect(index.text).not.toContain('shared accessible frontend preparation page');
 
     expect(detail.status).toBe(200);
+    expect(detail.text).toContain('<a class="govuk-back-link" href="/group-exchanges">Back to exchanges</a>');
     expect(detail.text).toContain('id="group-exchange-top"');
     expect(detail.text).toContain('Community garden build');
     expect(detail.text).toContain('Build raised beds on Saturday.');
