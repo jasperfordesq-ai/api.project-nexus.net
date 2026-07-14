@@ -1224,6 +1224,20 @@ rewriting.
 
 ## Do Not Port
 
+### 2026-07-15 Event index follow-up
+
+The current Event index supersedes the older row's authenticated-only and
+filter-depth wording. Like Blade, the index is publicly renderable when Events
+are enabled, exposes the calendar-feed and subscription links, requests 12
+rows, and carries search, time, category, stored-location radius, and step-free
+venue filters through cursor pagination. When Events are disabled, Web UK
+renders Blade's Event-specific `403` content and does not call the Event
+collection, category, or moderation APIs. Focused route/render/API proof passes
+`5/5`; the complete non-mutating gate passes `52/52` suites and `1,695/1,695`
+tests, and the fresh-current-container marker comparison passes `19/19` at
+`/hour-timebank/accessible`. Runtime side effects and manual assistive-
+technology certification remain open.
+
 - GOV.UK crown, logotype, official header identity, OGL block, or Crown
   copyright wording.
 - Laravel/PHP implementation details.

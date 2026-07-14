@@ -186,7 +186,7 @@ together from a clean published checkout.
   with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
   Only this fixed-rubric audit contributes to the current bank.
 - **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `732b05e4`, including the later implementation, contract,
+  baseline `55aec02b`, including the later implementation, contract,
   resilience, and component-audit slices. Their evidence is useful, but they
   contribute zero points until one complete fixed-rubric re-audit explicitly
   replaces the baseline.
@@ -249,6 +249,29 @@ ASP.NET switchability is not included in the 622 points and is not rescored by
 this frontend workstream. It remains a separate backend-owned certification:
 unchanged Web UK must pass against ASP.NET by configuration change only after
 that backend is declared ready.
+
+## 2026-07-15 Event Index Significant States
+
+Frozen evidence refreshed at `2026-07-15T00:48:29.0651782+01:00` against
+Laravel `903d03d3db78bbf87129ad35728be3b72819acaf` and Web UK product commit
+`55aec02b6bb50290355762e1f037e65d2380a086`. The Event index now mirrors
+Blade's calendar-feed and subscription links, 12-row collection request,
+step-free venue filter, active-filter detection, and cursor preservation. Its
+feature-disabled state now renders Blade's Event-specific `403` page and makes
+no Event collection, category, or moderation request instead of falling into
+the generic forbidden document.
+
+Focused route/render/API proof passes `5/5`; the uninterrupted complete
+non-mutating gate passes `52/52` suites and `1,695/1,695` tests. Brand, lint,
+CSS, route matrix, API ledger, locale structure/static keys/templates, scoped
+diff, and a fresh-current-container `19/19` canonical Blade marker comparison
+are green. The generated inventory remains `688/689` matched routes and `668`
+frontend contracts: `451` OpenAPI matches, `217` direct Laravel declarations
+omitted from OpenAPI, zero undeclared or dynamic consumers, and `370`
+state-changing contracts. No Laravel database, migration, authentication,
+mutation, upload, download, cleanup, or production operation was performed.
+This component-audit improvement remains published and unscored, so the frozen
+bank remains `622/1,000` pending a complete fixed-rubric re-audit.
 
 ### Finite P0/P1 Completion Queue
 
