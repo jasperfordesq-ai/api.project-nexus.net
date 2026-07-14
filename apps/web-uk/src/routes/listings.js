@@ -673,10 +673,10 @@ function oneDecimal(value) {
   return Number.isFinite(number) ? number.toFixed(1) : '';
 }
 
-function exchangeRequestStatus(status) {
+function exchangeRequestStatus(status, t) {
   const messages = {
-    'compliance-failed': 'This exchange needs requirements to be resolved before it can be requested.',
-    'exchange-failed': 'The exchange request could not be created.'
+    'compliance-failed': t('exchanges.compliance_failed'),
+    'exchange-failed': t('exchanges.request_failed')
   };
   const message = messages[trimmed(status)];
   return message ? { type: 'error', message } : null;
@@ -1050,8 +1050,9 @@ router.get('/:listingId(\\d+)/exchange-request', asyncRoute(async (req, res) => 
   }
 
   const suggestedHours = suggestedExchangeHours(listing);
+  const t = res.locals.t;
   res.render('listings/exchange-request', {
-    title: 'Request an exchange',
+    title: t('exchanges.request_title'),
     listing: { ...listing, id: listingId },
     listingType: listingType(listing.type),
     authorName: listingAuthorName(listing),
@@ -1059,7 +1060,7 @@ router.get('/:listingId(\\d+)/exchange-request', asyncRoute(async (req, res) => 
     suggestedHoursLabel: oneDecimal(suggestedHours),
     walletBalance,
     walletBalanceLabel: walletBalance === null ? '' : oneDecimal(walletBalance),
-    status: exchangeRequestStatus(req.query.status),
+    status: exchangeRequestStatus(req.query.status, t),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { notFoundTitle: 'Listing not found' }));

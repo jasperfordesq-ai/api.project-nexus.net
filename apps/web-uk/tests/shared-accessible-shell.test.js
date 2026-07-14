@@ -27024,7 +27024,7 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('Town shed');
     expect(signed.text).toContain('2.5 hours');
     expect(signed.text).toContain('Avery Stone');
-    expect(signed.text).toContain('Your current balance is 1.0 hours.');
+    expect(signed.text).toContain('Your time-credit balance is 1.0 hours.');
     expect(signed.text).toContain('This listing is estimated at 2.5 hours, which is more than your current balance.');
     expect(signed.text).toContain('method="post" action="/listings/42/exchange-request"');
     expect(signed.text).toContain('name="proposed_hours"');

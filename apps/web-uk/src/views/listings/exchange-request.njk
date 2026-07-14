@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% block mainContent %}
-  <a class="govuk-back-link" href="{{ urlFor('/listings/' + (listing.id | string)) }}">Back to listings</a>
+  <a class="govuk-back-link" href="{{ urlFor('/listings/' + (listing.id | string)) }}">{{ t("actions.back_to_listings") }}</a>
 
   {% if status %}
     <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
@@ -20,35 +20,35 @@
   {% endif %}
 
   <span class="govuk-caption-l">{{ t("exchanges.request_title") }}</span>
-  <h1 class="govuk-heading-xl">{{ listing.title or listing.name or "Listing" }}</h1>
+  <h1 class="govuk-heading-xl">{{ listing.title or listing.name or t("listings.title") }}</h1>
   <p class="govuk-body-l">{{ t("exchanges.request_description") }}</p>
 
   <dl class="govuk-summary-list govuk-!-margin-bottom-7">
     <div class="govuk-summary-list__row">
-      <dt class="govuk-summary-list__key">Type</dt>
-      <dd class="govuk-summary-list__value">{{ "Request" if listingType == "request" else "Offer" }}</dd>
+      <dt class="govuk-summary-list__key">{{ t("listings.type") }}</dt>
+      <dd class="govuk-summary-list__value">{{ t("listings.request") if listingType == "request" else t("listings.offer") }}</dd>
     </div>
     {% if listing.category_name or listing.categoryName %}
       <div class="govuk-summary-list__row">
-        <dt class="govuk-summary-list__key">Category</dt>
+        <dt class="govuk-summary-list__key">{{ t("listings.category") }}</dt>
         <dd class="govuk-summary-list__value">{{ listing.category_name or listing.categoryName }}</dd>
       </div>
     {% endif %}
     {% if listing.location %}
       <div class="govuk-summary-list__row">
-        <dt class="govuk-summary-list__key">Location</dt>
+        <dt class="govuk-summary-list__key">{{ t("listings.location") }}</dt>
         <dd class="govuk-summary-list__value">{{ listing.location }}</dd>
       </div>
     {% endif %}
     {% if listing.hours_estimate or listing.estimated_hours %}
       <div class="govuk-summary-list__row">
-        <dt class="govuk-summary-list__key">Hours</dt>
-        <dd class="govuk-summary-list__value">{{ listing.hours_estimate or listing.estimated_hours }} hours</dd>
+        <dt class="govuk-summary-list__key">{{ t("listings.hours_label") }}</dt>
+        <dd class="govuk-summary-list__value">{{ t("listings.hours", { count: listing.hours_estimate or listing.estimated_hours }) }}</dd>
       </div>
     {% endif %}
     {% if authorName %}
       <div class="govuk-summary-list__row">
-        <dt class="govuk-summary-list__key">Posted by</dt>
+        <dt class="govuk-summary-list__key">{{ t("listings.posted_by_label") }}</dt>
         <dd class="govuk-summary-list__value">{{ authorName }}</dd>
       </div>
     {% endif %}
@@ -56,14 +56,14 @@
 
   {% if walletBalance !== null and walletBalance !== undefined %}
     <div class="govuk-inset-text">
-      Your current balance is {{ walletBalanceLabel }} hours.
+      {{ t("exchanges.balance_context", { balance: walletBalanceLabel }) }}
     </div>
     {% if walletBalance < suggestedHours %}
       <div class="govuk-warning-text">
         <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
         <strong class="govuk-warning-text__text">
           <span class="govuk-visually-hidden">{{ t("states.important") }}</span>
-          This listing is estimated at {{ suggestedHoursLabel }} hours, which is more than your current balance. You can still send the request; your community decides how balances are managed.
+          {{ t("exchanges.balance_low_warning", { hours: suggestedHoursLabel }) }}
         </strong>
       </div>
     {% endif %}
@@ -73,7 +73,7 @@
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
 
     <div class="govuk-form-group">
-      <label class="govuk-label" for="proposed_hours">Hours</label>
+      <label class="govuk-label" for="proposed_hours">{{ t("exchanges.hours_label") }}</label>
       <div id="proposed-hours-hint" class="govuk-hint">{{ t("exchanges.hours_hint") }}</div>
       <input class="govuk-input govuk-input--width-5" id="proposed_hours" name="proposed_hours" type="number" min="0.25" max="24" step="0.25" value="{{ suggestedHours }}" aria-describedby="proposed-hours-hint" required>
     </div>
