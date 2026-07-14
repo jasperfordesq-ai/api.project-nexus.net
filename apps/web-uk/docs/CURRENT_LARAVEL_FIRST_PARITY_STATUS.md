@@ -171,7 +171,7 @@ Refresh the Laravel Blade/API source and Web UK implementation before relying on
 these numbers after either source moves.
 
 At this documentation audit, the product-source baseline was
-`428dad62b2ff21ee2136b6ab71469826ec39e99b`. The revoked-session confirmation,
+`e2768391bca8f18d11be20d17c111173e6b83786`. The revoked-session confirmation,
 Laravel method-spoof reconciliation, group-message contract, residual API-
 consumer correction, and backend-request timeout slices are above the frozen
 bank and remain **published and unscored**. The documentation remediation is
@@ -186,7 +186,7 @@ together from a clean published checkout.
   with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
   Only this fixed-rubric audit contributes to the current bank.
 - **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `428dad62`, including the later identity/session confirmation,
+  baseline `e2768391`, including the later identity/session confirmation,
   method-spoof reconciliation, group-message contract, residual API-consumer
   correction, and backend-request timeout slices. Their evidence is useful, but they
   contribute zero points until one complete fixed-rubric re-audit explicitly
@@ -1365,3 +1365,10 @@ marker comparisons. No Laravel source, database, migration, mutation, upload,
 download, cleanup, or production operation was performed. This closes a
 bounded part of component-audit package 10 but remains unscored, so the frozen
 bank remains 622/1,000 pending a complete fixed-rubric re-audit.
+
+A focused follow-up at `2026-07-14T16:03:45.6250428+01:00`, Web UK
+`e2768391bca8f18d11be20d17c111173e6b83786`, completes the Blog index metadata
+sequence: cards now show Blade's `category · date · reading time` and omit the
+extra author byline. Focused rendering, lint, template localization, and diff
+checks pass; the immediately preceding 51/51, 1,668/1,668 complete gate remains
+the aggregate evidence for this adjacent source-parity correction.
