@@ -20818,7 +20818,11 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('Garden Helpers');
     expect(signed.text).toContain('Edit announcement');
     expect(signed.text).toContain('Enter a title for the announcement.');
+    expect(signed.text).not.toContain('href="#edit-ann-title"');
+    expect(signed.text).toContain('govuk-form-group govuk-form-group--error');
+    expect(signed.text).toContain('<span class="govuk-visually-hidden">Error:</span> Enter a title for the announcement.');
     expect(signed.text).toContain('id="edit-ann-title" name="title" type="text"');
+    expect(signed.text).toContain('aria-describedby="edit-ann-title-hint edit-ann-title-error"');
     expect(signed.text).toContain('value="Autumn rota"');
     expect(signed.text).toContain('id="edit-ann-content" name="content"');
     expect(signed.text).toContain('Please confirm your October availability.');

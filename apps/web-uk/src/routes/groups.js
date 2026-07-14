@@ -1263,7 +1263,7 @@ router.get('/:id(\\d+)/announcements/:annId(\\d+)/edit', requireAuth, asyncRoute
   const announcement = normalizeAnnouncement(announcementData);
 
   return res.render('groups/announcement-edit', {
-    title: 'Edit announcement',
+    title: res.locals.t('govuk_alpha_groups.announcements.edit_heading'),
     activeNav: 'explore',
     group,
     announcement,
