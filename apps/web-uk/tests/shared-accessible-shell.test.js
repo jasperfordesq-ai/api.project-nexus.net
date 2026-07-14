@@ -21005,6 +21005,96 @@ describe('shared accessible frontend shell', () => {
     expect(api.callGroupApi).not.toHaveBeenCalled();
   });
 
+  it('replays Laravel group discussion validation input and field errors once', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.getGroup.mockReset().mockResolvedValue({
+      data: {
+        id: 42,
+        name: 'Garden Helpers',
+        my_membership: { role: 'member', status: 'active' }
+      }
+    });
+    api.callGroupApi.mockReset();
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/groups/42/discussions/new')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const invalid = await agent
+      .post('/groups/42/discussions/new')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], title: ' ', content: 'Keep this opening message.' });
+    expect(invalid.status).toBe(302);
+    expect(invalid.headers.location).toBe('/groups/42/discussions/new');
+    expect(api.callGroupApi).not.toHaveBeenCalled();
+
+    const replayed = await agent
+      .get(invalid.headers.location)
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    expect(replayed.status).toBe(200);
+    expect(replayed.text).toContain('<a href="#title">Enter a title for the discussion.</a>');
+    expect(replayed.text).toContain('id="title-error" class="govuk-error-message"');
+    expect(replayed.text).toContain('aria-describedby="title-hint title-error"');
+    expect(replayed.text).toContain('Keep this opening message.');
+
+    const consumed = await agent
+      .get('/groups/42/discussions/new')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    expect(consumed.text).not.toContain('id="title-error"');
+    expect(consumed.text).not.toContain('Keep this opening message.');
+  });
+
+  it('replays Laravel group discussion reply validation errors once', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    api.getGroup.mockReset().mockResolvedValue({
+      data: {
+        id: 42,
+        name: 'Garden Helpers',
+        my_membership: { role: 'member', status: 'active' }
+      }
+    });
+    api.callGroupApi.mockReset().mockResolvedValue({
+      data: {
+        discussion: { id: 33, title: 'Compost rota', content: 'Opening message.' },
+        items: []
+      }
+    });
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/groups/42/discussions/33')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+    api.callGroupApi.mockClear();
+
+    const invalid = await agent
+      .post('/groups/42/discussions/33/reply')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], content: ' ' });
+    expect(invalid.status).toBe(302);
+    expect(invalid.headers.location).toBe('/groups/42/discussions/33');
+    expect(api.callGroupApi).not.toHaveBeenCalled();
+
+    const replayed = await agent
+      .get(invalid.headers.location)
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    expect(replayed.status).toBe(200);
+    expect(replayed.text).toContain('<a href="#content">Enter a message.</a>');
+    expect(replayed.text).toContain('id="content-error" class="govuk-error-message"');
+    expect(replayed.text).toContain('aria-describedby="content-hint content-error"');
+
+    const consumed = await agent
+      .get('/groups/42/discussions/33')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    expect(consumed.text).not.toContain('id="content-error"');
+  });
+
   it('renders the Laravel group discussion detail page for signed-in group members', async () => {
     const api = require('../src/lib/api');
     api.getGroup.mockReset().mockResolvedValueOnce({

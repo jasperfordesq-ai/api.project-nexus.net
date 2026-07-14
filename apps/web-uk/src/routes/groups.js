@@ -896,6 +896,33 @@ function discussionPayload(body) {
   return { title, content };
 }
 
+function discussionFormValues(body) {
+  return {
+    title: String(body?.title || '').slice(0, 255),
+    content: String(body?.content || '').slice(0, 20000)
+  };
+}
+
+function rememberDiscussionForm(req, groupId, discussionId, values, errors = {}) {
+  if (!req.session) return;
+  req.session.groupDiscussionFormReplay = {
+    groupId: positiveInteger(groupId),
+    discussionId: positiveInteger(discussionId),
+    values,
+    errors
+  };
+}
+
+function consumeDiscussionForm(req, groupId, discussionId = null) {
+  const replay = req.session?.groupDiscussionFormReplay;
+  if (req.session) delete req.session.groupDiscussionFormReplay;
+  return replay
+    && replay.groupId === positiveInteger(groupId)
+    && replay.discussionId === positiveInteger(discussionId)
+    ? replay
+    : { values: {}, errors: {} };
+}
+
 function uploadedFile(req, fieldName) {
   const file = req.files && req.files[fieldName];
   return file && typeof file === 'object' ? file : null;
@@ -1302,11 +1329,14 @@ router.get('/:id(\\d+)/discussions/new', requireAuth, asyncRoute(async (req, res
   if (!isActiveGroupMember(group, profile)) {
     return renderForbidden(res);
   }
+  const replay = consumeDiscussionForm(req, id);
 
   return res.render('groups/discussion-create', {
-    title: 'Start a discussion',
+    title: res.locals.t('groups.discussions.new_title'),
     activeNav: 'explore',
     group,
+    formValues: replay.values,
+    fieldErrors: replay.errors,
     ...discussionStatus(req.query.status, res.locals.t, { createPage: true })
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Group not found' }));
@@ -1326,6 +1356,7 @@ router.get('/:id(\\d+)/discussions/:discussionId(\\d+)', requireAuth, asyncRoute
       createdAtLabel: bladeDateTime24Label(message?.created_at || message?.createdAt || message?.posted_at || message?.postedAt)
     }))
     .filter((message) => message.id !== null);
+  const replay = consumeDiscussionForm(req, id, discussionId);
 
   return res.render('groups/discussion-detail', {
     title: discussion.title,
@@ -1333,6 +1364,8 @@ router.get('/:id(\\d+)/discussions/:discussionId(\\d+)', requireAuth, asyncRoute
     group,
     discussion,
     messages,
+    replyValues: replay.values,
+    fieldErrors: replay.errors,
     ...discussionStatus(req.query.status, res.locals.t)
   });
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Discussion not found' }));
@@ -1813,12 +1846,20 @@ router.post('/:id(\\d+)/announcements/:annId(\\d+)/pin', requireAuth, asyncRoute
 router.post('/:id(\\d+)/discussions/new', requireAuth, asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
   const payload = discussionPayload(req.body);
+  const values = discussionFormValues(req.body);
 
   if (payload === null) {
+    const errors = {};
+    if (trimmed(values.title) === '') errors.title = res.locals.t('groups.errors.title_required');
+    if (trimmed(values.content) === '') errors.content = res.locals.t('groups.errors.content_required');
+    rememberDiscussionForm(req, id, null, values, errors);
     return res.redirect(urlFor(res, `/groups/${id}/discussions/new`));
   }
 
-  return requireGroupAction(req, res, groupSubpageRedirect(res, id, 'discussions/new', 'discussion-failed'), async (token) => {
+  return requireGroupAction(req, res, () => {
+    rememberDiscussionForm(req, id, null, values);
+    return groupSubpageRedirect(res, id, 'discussions/new', 'discussion-failed');
+  }, async (token) => {
     const result = await callGroup(token, 'POST', `/${id}/discussions`, payload);
     const discussionId = resultId(result);
     const target = discussionId
@@ -1832,12 +1873,19 @@ router.post('/:id(\\d+)/discussions/:discussionId(\\d+)/reply', requireAuth, asy
   const id = Number(req.params.id);
   const discussionId = Number(req.params.discussionId);
   const content = trimmed(req.body.content, 20000);
+  const values = { content: String(req.body.content || '').slice(0, 20000) };
 
   if (content === '') {
+    rememberDiscussionForm(req, id, discussionId, values, {
+      content: res.locals.t('groups.errors.content_required')
+    });
     return res.redirect(urlFor(res, `/groups/${id}/discussions/${discussionId}`));
   }
 
-  return requireGroupAction(req, res, discussionRedirect(res, id, discussionId, 'reply-failed', '#discussion-replies'), async (token) => {
+  return requireGroupAction(req, res, () => {
+    rememberDiscussionForm(req, id, discussionId, values);
+    return discussionRedirect(res, id, discussionId, 'reply-failed', '#discussion-replies');
+  }, async (token) => {
     await callGroup(token, 'POST', `/${id}/discussions/${discussionId}/messages`, { content });
     return res.redirect(discussionRedirect(res, id, discussionId, 'reply-posted', '#discussion-replies'));
   });

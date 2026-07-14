@@ -27,6 +27,15 @@
     </div>
   {% endif %}
 
+  {% if fieldErrors.content %}
+    <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+      <div role="alert">
+        <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
+        <div class="govuk-error-summary__body"><ul class="govuk-list govuk-error-summary__list"><li><a href="#content">{{ fieldErrors.content }}</a></li></ul></div>
+      </div>
+    </div>
+  {% endif %}
+
   <article class="nexus-alpha-card govuk-!-margin-bottom-4">
     {% if discussion.authorName %}
       <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">
@@ -55,10 +64,11 @@
 
   <form method="post" action="{{ urlFor('/groups/' + (group.id | string) + '/discussions/' + (discussion.id | string) + '/reply') }}" novalidate>
     <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-    <div class="govuk-form-group">
+    <div class="govuk-form-group{% if fieldErrors.content %} govuk-form-group--error{% endif %}">
       <label class="govuk-label govuk-label--m" for="content">{{ t("groups.discussions.reply_label") }}</label>
       <div id="content-hint" class="govuk-hint">{{ t("groups.discussions.reply_hint") }}</div>
-      <textarea class="govuk-textarea" id="content" name="content" rows="4" aria-describedby="content-hint"></textarea>
+      {% if fieldErrors.content %}<p id="content-error" class="govuk-error-message"><span class="govuk-visually-hidden">{{ t("states.error_prefix") }}</span> {{ fieldErrors.content }}</p>{% endif %}
+      <textarea class="govuk-textarea{% if fieldErrors.content %} govuk-textarea--error{% endif %}" id="content" name="content" rows="4" aria-describedby="content-hint{% if fieldErrors.content %} content-error{% endif %}">{{ replyValues.content or '' }}</textarea>
     </div>
     <button class="govuk-button" data-module="govuk-button">{{ t("groups.discussions.reply_submit") }}</button>
   </form>
