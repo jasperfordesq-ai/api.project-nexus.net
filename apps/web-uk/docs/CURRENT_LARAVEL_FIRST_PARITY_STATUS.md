@@ -398,9 +398,14 @@ standalone confirmation page instead of rendering an in-page notification
 banner above the request form. It has one `Check your email` H1, the large
 confirmation detail, mounted resend and sign-in links, no request form, and the
 source back link. The ordinary request state also restores Blade's large lead
-paragraph. Focused auth/template proof passed `3/3` suites and `804/804`
-tests. The complete non-mutating gate passed `49/49` suites and `1,653/1,653`
-tests, route inventory `688/689`, API ledger `663/444/219/0`, 11-locale
+paragraph. Malformed addresses now retain Blade's linked email error without
+calling Laravel, while a rate-limited response remains in the page-level error
+summary without incorrectly marking the email field invalid. Focused
+confirmation proof passed `3/3` suites and `804/804` tests; focused validation
+proof passed `2/2` suites and `789/789` tests. The complete gate remained
+`49/49` suites and `1,653/1,653` tests after both changes. The complete
+non-mutating checkpoint also retains route inventory `688/689`, API ledger
+`663/444/219/0`, 11-locale
 catalog sync/shape, `7,341` static references with `0` unresolved, the
 322-template zero-match audit, and the current 19/19 Blade marker comparison.
 No Laravel mutation/runtime smoke ran. This closes one concrete

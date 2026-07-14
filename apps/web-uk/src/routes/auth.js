@@ -728,15 +728,16 @@ router.post('/logout', asyncRoute(async (req, res) => {
 // Forgot password
 function renderForgotPassword(req, res) {
   const status = req.query.status || '';
+  const invalidEmail = status === 'forgot-invalid';
   const errorKey = status === 'forgot-rate-limited'
     ? 'auth.forgot_rate_limited'
-    : (status === 'forgot-invalid' ? 'auth.forgot_invalid' : '');
+    : (invalidEmail ? 'auth.forgot_invalid' : '');
   res.render('forgot-password', {
     title: translate(req, 'auth.forgot_title'),
     csrfToken: req.csrfToken ? req.csrfToken() : '',
     forgotSent: status === 'forgot-sent',
     errors: errorKey ? [{ text: translate(req, errorKey), href: '#email' }] : [],
-    fieldErrors: errorKey ? { email: translate(req, errorKey) } : {},
+    fieldErrors: invalidEmail ? { email: translate(req, errorKey) } : {},
     formAction: '/login/forgot-password',
     turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
   });
@@ -757,7 +758,8 @@ async function handleForgotPasswordPost(req, res) {
   const errors = [];
   const fieldErrors = {};
 
-  if (!email || !email.trim()) {
+  const normalizedEmail = String(email || '').trim();
+  if (!normalizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
     const message = translate(req, 'auth.forgot_invalid');
     errors.push({ text: message, href: '#email' });
     fieldErrors.email = message;
@@ -781,7 +783,7 @@ async function handleForgotPasswordPost(req, res) {
   }
 
   try {
-    await forgotPassword(email.trim(), tenantSlug);
+    await forgotPassword(normalizedEmail, tenantSlug);
   } catch (error) {
     // Handle ApiOfflineError specially for 503
     if (error instanceof ApiOfflineError) {

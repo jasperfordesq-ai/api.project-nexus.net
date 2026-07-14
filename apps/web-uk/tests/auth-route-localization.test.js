@@ -217,11 +217,19 @@ describe('request-scoped auth route localization', () => {
       .send({ email: '', tenant_slug: 'acme' });
     expect(invalid.body.locals.fieldErrors.email).toBe(t('auth.forgot_invalid'));
 
+    const malformed = await request(app)
+      .post('/login/forgot-password')
+      .type('form')
+      .send({ email: 'not-an-email', tenant_slug: 'acme' });
+    expect(malformed.body.locals.fieldErrors.email).toBe(t('auth.forgot_invalid'));
+    expect(api.forgotPassword).not.toHaveBeenCalled();
+
     const rateLimited = await request(app).get('/login/forgot-password?status=forgot-rate-limited');
     expect(rateLimited.body.locals.errors).toEqual([{
       text: t('auth.forgot_rate_limited'),
       href: '#email'
     }]);
+    expect(rateLimited.body.locals.fieldErrors).toEqual({});
 
     const sent = await request(app).get('/login/forgot-password?status=forgot-sent');
     expect(sent.body.locals.forgotSent).toBe(true);
