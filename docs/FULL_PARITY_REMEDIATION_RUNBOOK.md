@@ -261,6 +261,30 @@ security/localization, 45/100 build/test/CI, 10/125 unchanged-frontends, and
 20/75 providers/ops/docs. Exact remaining deductions are 0, 71, 26, 10, 55,
 115, and 55 points.
 
+### 2026-07-14 Signed External Marketplace Refund Reconciliation (Published)
+
+Evidence snapshot: Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf`, ASP.NET implementation
+`ef8a0cf8d9458abda8350f8bf2a5adca44f12724`, captured 2026-07-14
+18:53:01 +01:00. The signed Stripe marketplace webhook now parses
+`charge.refunded`, binds the charge and PaymentIntent to one local payment,
+requires destination-charge transfer/application-fee reversal evidence, and
+recovers paid separate-charge transfers with stable reversal idempotency. Each
+provider refund enters the existing tenant/payment ledger exactly once; event
+replay is idempotent, incomplete expanded-refund detail fails closed, and no
+local financial state advances when reversal evidence is unsafe.
+
+The Release API build passes with zero errors and three known unrelated warnings.
+The complete marketplace payment/dispute gate passes 26/26. Charge-dispute
+created/updated/closed win/loss reconciliation, refund notifications, live Stripe
+proof, full-suite/CI, and unchanged-client runtime certification remain open.
+
+Published implementation `ef8a0cf8d9458abda8350f8bf2a5adca44f12724`
+banks 3 semantic and 1 provider/operations point for **672/1000**: 100/100
+route, 282/350 semantic, 124/150 schema, 90/100 security/localization, 45/100
+build/test/CI, 10/125 unchanged-frontends, and 21/75 providers/ops/docs. Exact
+remaining deductions are 0, 68, 26, 10, 55, 115, and 54 points.
+
 ## Historical Checkpoints
 
 Everything in this section is dated implementation evidence. Its older

@@ -7,7 +7,7 @@ Status: **Maintained reference — detailed evidence and gap map, not a current 
 Evidence provenance: the latest published-backend summary was reviewed on
 2026-07-14 against Laravel
 `903d03d3db78bbf87129ad35728be3b72819acaf` and ASP.NET implementation
-`4f7b9f202322d792574f2003274fadfda9e7037d`; dirty backend work is excluded.
+`ef8a0cf8d9458abda8350f8bf2a5adca44f12724`; dirty backend work is excluded.
 Every older inventory lacking its own exact source pair is historical and
 provenance-incomplete, regardless of words such as “latest” retained inside a
 checkpoint.
@@ -51,6 +51,13 @@ idempotency. `20260714165402_MarketplaceRefundReconciliationParity` adds the
 durable refund ledger and refund-aware economic constraints and applies cleanly
 to disposable upgraded PostgreSQL. Signed external-refund/charge-dispute event
 reconciliation, refund notifications, and live-provider proof remain open.
+
+Signed `charge.refunded` events now bind provider charge/intent identity, require
+destination-charge transfer and application-fee reversal evidence, reverse paid
+separate-charge transfers idempotently, and enter each expanded provider refund
+in the durable ledger once. Incomplete provider detail fails closed. Charge-
+dispute win/loss reconciliation, refund notifications, and live-provider proof
+remain open.
 
 The seven apparent document-era vetting gaps are retired OpenAPI-only artifacts:
 Laravel live routes omit them, the controller prohibits them, feature tests assert
