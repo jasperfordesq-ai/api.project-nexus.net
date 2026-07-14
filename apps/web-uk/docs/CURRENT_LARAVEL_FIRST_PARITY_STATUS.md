@@ -186,7 +186,7 @@ together from a clean published checkout.
   with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
   Only this fixed-rubric audit contributes to the current bank.
 - **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `b0a853b5`, including the later implementation, contract,
+  baseline `33063a71`, including the later implementation, contract,
   resilience, and component-audit slices. Their evidence is useful, but they
   contribute zero points until one complete fixed-rubric re-audit explicitly
   replaces the baseline.
@@ -205,9 +205,9 @@ together from a clean published checkout.
 | Missing Laravel routes | 1 | Event offline check-in code generation |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 52/52 suites, 1,686/1,686 tests | Latest uninterrupted complete non-mutating gate at product baseline `b0a853b5` |
+| Jest | 52/52 suites, 1,687/1,687 tests | Latest uninterrupted complete non-mutating gate at product baseline `33063a71` |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
-| Static locale usage | 7,579 references, 5,784 unique keys, 0 unresolved | Current complete-reference audit |
+| Static locale usage | 7,580 references, 5,784 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
 | Blade marker check | Current 19/19 | Current-source public GET marker comparison; not screenshot or visual certification |
 | Automated accessibility | Not currently certified: 28 passed, login failed, 58 did not run | Full aggregate requires a disposable Laravel environment; manual AT review remains open |
@@ -1505,6 +1505,26 @@ falling through to nonzero aliases.
 
 Focused default-English directory/browse proof passes `5/5`; the uninterrupted
 complete non-mutating gate passes `52/52` suites and `1,686/1,686` tests. Lint, brand,
+CSS, route matrix, API ledger, locale structure/static keys/templates, and
+`19/19` canonical Blade markers are green. The marker comparison used public
+read-only GETs only; no Laravel database, migration, mutation, upload,
+download, container, or production operation was performed. This published
+component-audit improvement remains unscored, so the frozen bank remains
+`622/1,000` pending a complete fixed-rubric re-audit.
+
+## 2026-07-14 Organisation Jobs Metadata Parity
+
+Frozen evidence refreshed at `2026-07-14T23:24:20.3693979+01:00` against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and Web UK product commit
+`33063a71`. The organisation jobs page now applies Blade's trimmed-name fallback
+and emits the same optional Organization JSON-LD fields with script-safe JSON
+serialization and a Unicode-safe 300-character description boundary. The jobs
+collection remains intentionally empty: current Laravel source does not cross
+volunteer-organisation identifiers into the separate job-vacancy organisation
+model, so Web UK makes no invented jobs API call.
+
+Focused organisation-jobs proof passes `4/4`; the uninterrupted complete
+non-mutating gate passes `52/52` suites and `1,687/1,687` tests. Lint, brand,
 CSS, route matrix, API ledger, locale structure/static keys/templates, and
 `19/19` canonical Blade markers are green. The marker comparison used public
 read-only GETs only; no Laravel database, migration, mutation, upload,
