@@ -303,6 +303,13 @@ function directStatus(status, t) {
   } : null;
 }
 
+function inboxSuccessMessage(status, t) {
+  return {
+    'conversation-archived': t('govuk_alpha.messages.conversation_archived'),
+    'conversation-restored': t('govuk_alpha.messages.conversation_restored')
+  }[trimmed(status)] || null;
+}
+
 function groupName(group, t = null) {
   return trimmed(group && (group.group_name || group.groupName || group.name))
     || (t ? t('govuk_alpha_messages.groups.untitled') : 'Group conversation');
@@ -392,7 +399,7 @@ function directConversationFrom(result, userId, currentUserId, t = null) {
   };
 }
 
-function normalizeInboxConversation(conversation, t) {
+function normalizeInboxConversation(conversation, currentUserId, t) {
   const source = conversation && typeof conversation === 'object' ? conversation : {};
   const otherUser = source.other_user && typeof source.other_user === 'object'
     ? source.other_user
@@ -407,6 +414,7 @@ function normalizeInboxConversation(conversation, t) {
   const lastMessageText = typeof rawLastMessage === 'string'
     ? trimmed(rawLastMessage)
     : trimmed(lastMessage.body || lastMessage.content);
+  const lastMessageSenderId = positiveInteger(lastMessage.sender_id ?? lastMessage.senderId);
 
   return {
     ...source,
@@ -414,7 +422,10 @@ function normalizeInboxConversation(conversation, t) {
     otherUser,
     displayName,
     unreadCount: Number(source.unread_count ?? source.unreadCount ?? 0) || 0,
-    lastMessageText: lastMessageText || t('govuk_alpha_messages.groups.no_messages_yet'),
+    lastMessageText,
+    lastMessageSenderLabel: lastMessageSenderId !== null && lastMessageSenderId === currentUserId
+      ? t('govuk_alpha.messages.sent_by_you')
+      : displayName,
     lastMessageAt: lastMessage.created_at || lastMessage.createdAt || source.last_message_at || source.lastMessageAt || null
   };
 }
@@ -941,7 +952,7 @@ router.get('/', requireAuth, asyncRoute(async (req, res) => {
   const restriction = await messageRestriction(req);
   const access = messageAccess(req, restriction);
   const canStart = access.canSend && tenantFeatureEnabled(req, 'connections', true);
-  const [conversationsData, unreadData, searchData] = await Promise.all([
+  const [conversationsData, unreadData, searchData, profile] = await Promise.all([
     getConversations(req.token, {
       per_page: 20,
       archived: showArchived,
@@ -950,10 +961,13 @@ router.get('/', requireAuth, asyncRoute(async (req, res) => {
     getUnreadCount(req.token).catch(() => ({ data: { count: 0 } })),
     canStart && searchQuery
       ? searchUsers(req.token, searchQuery, { limit: 10 }).catch(() => ({ data: [] }))
-      : Promise.resolve({ data: [] })
+      : Promise.resolve({ data: [] }),
+    getRequestProfile(req, req.token).catch(() => null)
   ]);
+  const inboxProfile = dataFrom(profile);
+  const currentUserId = positiveInteger(inboxProfile && inboxProfile.id);
   const conversations = listFrom(dataFrom(conversationsData))
-    .map((conversation) => normalizeInboxConversation(conversation, res.locals.t));
+    .map((conversation) => normalizeInboxConversation(conversation, currentUserId, res.locals.t));
   const normalizedFilter = filter.toLowerCase();
   const visibleConversations = normalizedFilter
     ? conversations.filter((conversation) => {
@@ -983,7 +997,8 @@ router.get('/', requireAuth, asyncRoute(async (req, res) => {
       cursor: trimmed(meta.cursor || meta.next_cursor)
     },
     csrfToken: req.csrfToken ? req.csrfToken() : '',
-    successMessage: req.flash ? req.flash('success')[0] : null
+    successMessage: inboxSuccessMessage(req.query.status, res.locals.t)
+      || (req.flash ? req.flash('success')[0] : null)
   });
 }));
 

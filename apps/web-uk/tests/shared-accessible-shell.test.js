@@ -6606,6 +6606,8 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('href="/members"');
     expect(response.text).not.toContain('href="/messages/new"');
     expect(response.text).not.toContain('action="/messages/new"');
+    const messagesMain = response.text.match(/<main\b[\s\S]*?<\/main>/)?.[0] || '';
+    expect(messagesMain).not.toContain('govuk-grid-column-two-thirds');
   });
 
   it('renders the messages inbox through the active Arabic Laravel catalog', async () => {
@@ -6659,7 +6661,7 @@ describe('shared accessible frontend shell', () => {
           last_message: {
             id: 91,
             body: 'Can we confirm Saturday?',
-            sender_id: 77,
+            sender_id: 101,
             created_at: '2026-07-09T10:00:00'
           }
         },
@@ -6675,7 +6677,7 @@ describe('shared accessible frontend shell', () => {
     api.getUnreadCount.mockResolvedValueOnce({ data: { count: 3 } });
 
     const response = await request(app)
-      .get('/messages?archived=1&filter=Avery&cursor=abc')
+      .get('/messages?archived=1&filter=Avery&cursor=abc&status=conversation-restored')
       .set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(200);
@@ -6687,12 +6689,18 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Avery Stone');
     expect(response.text).toContain('/uploads/avery.jpg');
     expect(response.text).toContain('Can we confirm Saturday?');
+    expect(response.text).toContain('Conversation with Avery Stone');
+    expect(response.text).toContain('<strong>Last message:</strong>');
+    expect(response.text).toContain('You:');
     expect(response.text).toContain('9 July 2026, 10:00am');
     expect(response.text).not.toContain('[object Object]');
     expect(response.text).toContain('3 unread');
     expect(response.text).toContain('2 unread messages');
+    expect(response.text).toContain('The conversation has been restored.');
     expect(response.text).toContain('action="/messages/77/restore"');
     expect(response.text).toContain('href="/messages?archived=1&amp;filter=Avery&amp;cursor=next-page"');
+    expect(response.text).toContain('Load more');
+    expect(response.text).toContain('More conversations');
   });
 
   it('gives whitespace-only conversation names a localized accessible fallback', async () => {
@@ -6714,8 +6722,31 @@ describe('shared accessible frontend shell', () => {
 
     expect(response.status).toBe(200);
     expect(response.text).toContain('Community member');
-    expect(response.text).toContain('No messages yet');
+    expect(response.text).toContain('<strong>Last message:</strong>');
+    expect(response.text).not.toContain('No messages yet');
     expect(response.text).toContain('href="/messages/78"');
+  });
+
+  it('renders the Blade direct-messaging restriction notice and suppresses starting a conversation', async () => {
+    const api = require('../src/lib/api');
+    api.getConversations.mockResolvedValueOnce({ data: [], meta: { cursor: null, has_more: false } });
+    api.getUnreadCount.mockResolvedValueOnce({ data: { count: 0 } });
+    api.callMessageApi.mockImplementation(async (_token, method, pathName) => {
+      if (method === 'GET' && pathName === '/restriction-status') {
+        return { data: { messaging_disabled: true } };
+      }
+      throw new Error(`Unexpected message API call: ${method} ${pathName}`);
+    });
+
+    const response = await request(app)
+      .get('/messages')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('id="messages-restricted-title"');
+    expect(response.text).toContain('Your messaging access is currently restricted. You can still read existing messages.');
+    expect(response.text).not.toContain('id="message-user-search"');
+    expect(response.text).not.toContain('href="/members">Message a member</a>');
   });
 
   it('renders the Laravel wallet manage hub for signed-in members', async () => {
