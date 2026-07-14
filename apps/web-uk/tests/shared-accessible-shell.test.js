@@ -13691,6 +13691,10 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('id="report-reason-listing-42" name="reason" type="text" maxlength="500"');
     expect(response.text).toContain('Mute this member<span class="govuk-visually-hidden"> Ada Lovelace</span>');
     expect(response.text).toContain('href="/acme/accessible/feed?type=listings&amp;cursor=next%2Fcursor&amp;per_page=10&amp;mode=recent&amp;subtype=offer"');
+    expect(response.text).toContain('aria-label="Feed pages"');
+    expect(response.text).toContain('class="govuk-pagination__icon govuk-pagination__icon--next"');
+    expect(response.text).toContain('<span class="govuk-pagination__link-title">Load more</span>');
+    expect(response.text).toContain('<span class="govuk-pagination__link-label">More feed items</span>');
   });
 
   it('renders the feed hub when Laravel returns author-shaped posts', async () => {
