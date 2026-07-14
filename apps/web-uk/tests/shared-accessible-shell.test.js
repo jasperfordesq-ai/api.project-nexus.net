@@ -16429,6 +16429,50 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('class="govuk-button" data-module="govuk-button" href="/organisations/register"');
   });
 
+  it('preserves Blade organisation browse fallbacks and authoritative zero statistics', async () => {
+    const api = require('../src/lib/api');
+    const t = createTranslator('en');
+    const tc = createChoiceTranslator('en');
+    api.getVolunteerOrganisations.mockResolvedValueOnce({
+      data: [
+        {
+          id: 42,
+          name: '   ',
+          description: null,
+          excerpt: 'Must not render',
+          website: '   ',
+          opportunity_count: 9,
+          volunteer_count: 9,
+          total_hours: 9,
+          average_rating: 4.5,
+          public_contract: {
+            stats: {
+              opportunity_count: 0,
+              volunteer_count: 0,
+              total_hours: 0,
+              average_rating: 0
+            }
+          }
+        }
+      ],
+      meta: { has_more: false }
+    });
+    api.getMyVolunteerOrganisations.mockResolvedValueOnce({ data: [] });
+
+    const response = await request(app)
+      .get('/organisations/browse')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain(`href="/organisations/42">${t('govuk_alpha_organisations.browse.title')}</a>`);
+    expect(response.text).toContain(tc('govuk_alpha_organisations.browse.stat_opportunities', 0, { count: '0' }));
+    expect(response.text).not.toContain('Must not render');
+    expect(response.text).not.toContain(tc('govuk_alpha_organisations.browse.stat_opportunities', 9, { count: '9' }));
+    expect(response.text).not.toContain(tc('govuk_alpha_organisations.browse.stat_volunteers', 9, { count: '9' }));
+    expect(response.text).not.toContain(t('govuk_alpha_organisations.browse.stat_hours', { count: '9' }));
+    expect(response.text).not.toContain(t('govuk_alpha_organisations.browse.has_website'));
+  });
+
   it('keeps the organisations browse directory usable across empty and partial API failures', async () => {
     const api = require('../src/lib/api');
     api.getVolunteerOrganisations

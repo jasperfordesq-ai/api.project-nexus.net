@@ -1177,27 +1177,37 @@ app.get('/organisations/browse', requireOrganisationAuth, (req, res) => {
           const stats = publicContract.stats && typeof publicContract.stats === 'object'
             ? publicContract.stats
             : (organisation.stats && typeof organisation.stats === 'object' ? organisation.stats : {});
-          const description = organisation.description || organisation.excerpt || '';
-          const totalHours = Number(stats.total_hours || organisation.total_hours || 0);
-          const averageRating = Number(stats.average_rating || organisation.average_rating || 0);
+          const name = String(organisation.name ?? '').trim()
+            || res.locals.t('govuk_alpha_organisations.browse.title');
+          const description = String(organisation.description ?? '');
+          const summary = description.trim() === ''
+            ? ''
+            : (description.length > 160 ? `${description.slice(0, 157)}...` : description);
+          const opportunityCount = Number(stats.opportunity_count ?? organisation.opportunity_count ?? 0);
+          const volunteerCount = Number(stats.volunteer_count ?? organisation.volunteer_count ?? 0);
+          const totalHours = Number(stats.total_hours ?? organisation.total_hours ?? 0);
+          const averageRating = Number(stats.average_rating ?? organisation.average_rating ?? 0);
+          const normalizedTotalHours = Number.isFinite(totalHours) ? totalHours : 0;
+          const normalizedAverageRating = Number.isFinite(averageRating) ? averageRating : 0;
 
           return {
             ...organisation,
+            name,
             description,
-            summary: description.length > 160 ? `${description.slice(0, 157)}...` : description,
-            opportunityCount: stats.opportunity_count || organisation.opportunity_count || 0,
-            volunteerCount: stats.volunteer_count || organisation.volunteer_count || 0,
-            totalHours,
-            totalHoursLabel: res.locals.formatLocaleNumber(totalHours, {
-              minimumFractionDigits: Number.isInteger(totalHours) ? 0 : 1,
+            summary,
+            opportunityCount: Number.isFinite(opportunityCount) ? Math.trunc(opportunityCount) : 0,
+            volunteerCount: Number.isFinite(volunteerCount) ? Math.trunc(volunteerCount) : 0,
+            totalHours: normalizedTotalHours,
+            totalHoursLabel: res.locals.formatLocaleNumber(normalizedTotalHours, {
+              minimumFractionDigits: Number.isInteger(normalizedTotalHours) ? 0 : 1,
               maximumFractionDigits: 1
             }),
-            averageRating,
-            averageRatingLabel: res.locals.formatLocaleNumber(averageRating, {
+            averageRating: normalizedAverageRating,
+            averageRatingLabel: res.locals.formatLocaleNumber(normalizedAverageRating, {
               minimumFractionDigits: 1,
               maximumFractionDigits: 1
             }),
-            hasWebsite: !!organisation.website
+            hasWebsite: String(organisation.website ?? '').trim() !== ''
           };
         }),
         organisationsQuery,
