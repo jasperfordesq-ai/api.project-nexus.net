@@ -113,7 +113,7 @@ commit as the implementation it describes.
 
 The frontend baseline for the current checkout includes the Event registration,
 account-hub reconciliation, and Event Communications pagination slices; its
-published parent is repository commit `560af921`. The Laravel source baseline
+published parent is repository commit `9e5b13e3`. The Laravel source baseline
 is `903d03d3`. The first SHA names the
 repository snapshot containing Web UK; it does not make ASP.NET authoritative.
 Refresh the Laravel Blade/API source and Web UK implementation before relying on
@@ -129,7 +129,7 @@ these numbers after either source moves.
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
 | Jest | 48/48 suites, 1,631/1,631 tests | Fresh green code gate |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
-| Static locale usage | 6,995 references, 5,321 unique keys, 0 unresolved | Current complete-reference audit |
+| Static locale usage | 7,005 references, 5,330 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 320 templates, 0 conservative matches | Current hard-coded-copy audit |
 | Blade marker check | 19/19 | Text-marker spotcheck, not visual certification |
 | Automated accessibility | Latest recorded 87/87 | Manual AT review remains open |

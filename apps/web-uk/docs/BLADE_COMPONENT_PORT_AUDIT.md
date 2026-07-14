@@ -202,10 +202,15 @@ retry, optimistic versions, and idempotency headers. The current Laravel
 paginated-collection envelope is now consumed without dropping its top-level
 metadata; broadcast and append-only audit history pages expose Blade's
 previous/next links, preserve the selected broadcast and list page, and render
-the translated action, status, version, and UTC timestamp. Focused render and
-exact contract/payload proof passes. Live delivery-provider execution,
-disposable broadcast fixtures, manual assistive-technology review, and
-unchanged ASP.NET runtime proof remain open.
+the translated action, status, version, and UTC timestamp. The default-English
+compose form now includes Blade's audience and message guidance, checkbox and
+button module hooks, described controls, and preview notice. Broadcast cards
+render Blade's privacy-safe aggregate audience, channel, delivery and schedule
+summary with localized numbers/dates and status colours, without the extra
+event-title caption absent from the source. Focused render and exact
+contract/payload proof passes. Live delivery-provider execution, disposable
+broadcast fixtures, manual assistive-technology review, and unchanged ASP.NET
+runtime proof remain open.
 
 ## 2026-07-13 Event Tickets Checkpoint
 

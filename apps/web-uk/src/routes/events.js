@@ -1704,7 +1704,37 @@ async function renderCommunications(req, res, options = {}) {
     broadcastId ? callApi(token, 'GET', `/event-broadcasts/${broadcastId}?history_page=${historyPage}&history_per_page=50`) : null
   ]);
   const event = eventFrom(eventResult);
-  const broadcasts = collectionFrom(listResult);
+  const formatDate = typeof res.locals.formatLocaleDate === 'function'
+    ? res.locals.formatLocaleDate
+    : (value) => trimmed(value);
+  const dateLabel = (value) => {
+    const date = new Date(value);
+    if (!value || Number.isNaN(date.getTime())) {
+      return res.locals.t('govuk_alpha.events.communications.not_recorded');
+    }
+    return `${formatDate(date, {
+      day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC'
+    })}, ${formatDate(date, {
+      day: undefined, month: undefined, year: undefined,
+      hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'UTC', timeZoneName: 'short'
+    })}`;
+  };
+  const formatNumber = typeof res.locals.formatLocaleNumber === 'function'
+    ? res.locals.formatLocaleNumber
+    : (value) => String(Number(value) || 0);
+  const broadcasts = collectionFrom(listResult).map((broadcast) => ({
+    ...broadcast,
+    versionLabel: formatNumber(broadcast?.version || 0),
+    recipientCountLabel: formatNumber(broadcast?.audience?.recipient_count || 0),
+    delivery: {
+      ...(broadcast?.delivery || {}),
+      totalLabel: formatNumber(broadcast?.delivery?.total || 0),
+      deliveredLabel: formatNumber(broadcast?.delivery?.delivered || 0),
+      suppressedLabel: formatNumber(broadcast?.delivery?.suppressed || 0),
+      deadLetteredLabel: formatNumber(broadcast?.delivery?.dead_lettered || 0)
+    },
+    scheduledAtLabel: dateLabel(broadcast?.scheduled_at)
+  }));
   const listMeta = listResult?.meta || dataFrom(listResult)?.meta || dataFrom(listResult)?.pagination || {};
   const listCurrentPage = positiveInteger(listMeta.current_page ?? listMeta.page) || page;
   const listPerPage = positiveInteger(listMeta.per_page) || 20;
@@ -1722,20 +1752,8 @@ async function renderCommunications(req, res, options = {}) {
   const detailBroadcastId = positiveInteger(detail?.broadcast?.id);
   const historyCurrentPage = positiveInteger(historyMeta.current_page) || historyPage;
   const historyTotalPages = Math.max(1, positiveInteger(historyMeta.total_pages) || 1);
-  const formatDate = typeof res.locals.formatLocaleDate === 'function'
-    ? res.locals.formatLocaleDate
-    : (value) => trimmed(value);
   const history = Array.isArray(detail?.history) ? detail.history.map((entry) => {
-    const date = new Date(entry?.created_at);
-    const dateLabel = entry?.created_at && !Number.isNaN(date.getTime())
-      ? `${formatDate(date, {
-        day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC'
-      })}, ${formatDate(date, {
-        day: undefined, month: undefined, year: undefined,
-        hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'UTC', timeZoneName: 'short'
-      })}`
-      : res.locals.t('govuk_alpha.events.communications.not_recorded');
-    return { ...entry, dateLabel };
+    return { ...entry, dateLabel: dateLabel(entry?.created_at) };
   }) : [];
   const historyPath = (targetPage) => eventPath(
     id,

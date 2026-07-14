@@ -22982,12 +22982,21 @@ describe('shared accessible frontend shell', () => {
     const api = require('../src/lib/api');
     api.callEventApi
       .mockResolvedValueOnce({ data: { id: 42, title: 'Community garden day' } })
-      .mockResolvedValueOnce({ data: [{ id: 8, event_id: 42, variant: 'announcement', status: 'draft', version: 3, capabilities: { schedule: true, cancel: true, retry: false } }], meta: { current_page: 2, per_page: 20, total: 60, total_pages: 3 } })
+      .mockResolvedValueOnce({ data: [{ id: 8, event_id: 42, variant: 'announcement', status: 'draft', version: 3, audience: { segments: ['registration_confirmed'], recipient_count: 12 }, channels: ['email', 'in_app'], delivery: { delivered: 8, total: 12, suppressed: 1, dead_lettered: 2 }, scheduled_at: '2026-07-15T09:30:00Z', capabilities: { schedule: true, cancel: true, retry: false } }], meta: { current_page: 2, per_page: 20, total: 60, total_pages: 3 } })
       .mockResolvedValueOnce({ data: { broadcast: { id: 8, event_id: 42 }, history: [{ action: 'scheduled', to_status: 'scheduled', version: 4, created_at: '2026-07-14T10:00:00Z' }], history_meta: { current_page: 2, per_page: 50, total: 150, total_pages: 3 } } });
     const response = await request(app).get('/events/42/communications?page=2&broadcast_id=8&history_page=2').set('Cookie', signedCookieHeader());
     expect(response.status).toBe(200);
     expect(response.headers['cache-control']).toBe('private, no-store');
-    expect(response.text).toContain('Community garden day');
+    expect(response.text).not.toContain('<span class="govuk-caption-l">Community garden day</span>');
+    expect(response.text).toContain('Post-event messages can only use attendance segments');
+    expect(response.text).toContain('id="communication-body-hint"');
+    expect(response.text).toContain('data-module="govuk-checkboxes"');
+    expect(response.text).toContain('<dt class="govuk-summary-list__key">Audience</dt>');
+    expect(response.text).toContain('Confirmed registrations<br>12 recipients');
+    expect(response.text).toContain('Email, In-app notification');
+    expect(response.text).toContain('8 of 12 delivered; 1 suppressed; 2 require intervention.');
+    expect(response.text).toContain('15 July 2026, 09:30 UTC');
+    expect(response.text).toContain('Leave blank to send as soon as possible');
     expect(response.text).toContain('/events/42/communications/8/schedule');
     expect(response.text).toContain('/events/42/communications/8/cancel');
     expect(response.text).not.toContain('/events/42/communications/8/retry');
