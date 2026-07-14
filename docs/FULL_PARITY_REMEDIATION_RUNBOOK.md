@@ -1450,9 +1450,15 @@ npm run locales:audit
 npm run locales:audit-templates -- --summary
 npm run route:matrix
 npm run visual:blade
-npm run smoke:laravel:local
-npm run smoke:federation:local
 ```
+
+This is the ordinary non-mutating accessible baseline. Do not run
+`smoke:laravel:local`, `smoke:federation:local`, any `*:mutation:*` command,
+authenticated settings journey, or upload/download check against the ordinary
+Laravel environment. Those gates may run only with `LARAVEL_BASE_URL` bound to
+a separately provisioned, verified disposable Laravel database/environment.
+The production-derived ordinary local database is read-only and is not a
+fixture, even when a script creates unique rows or attempts cleanup.
 
 Use the chunk controls documented in
 `apps/web-uk/docs/CURRENT_WEB_UK_HANDOFF.md` for exhaustive module and body-text

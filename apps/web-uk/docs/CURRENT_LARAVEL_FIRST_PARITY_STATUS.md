@@ -101,6 +101,21 @@ app and database returned healthy. The Laravel repository still matches
 `origin/main` and retains only its pre-existing
 `react-frontend/package-lock.json` modification and untracked `.codex/` path.
 
+An independent safety refresh on 2026-07-14 created another read-only,
+single-transaction production dump at
+`/opt/nexus-php/backups/production-safety-20260714T043334Z.sql.gz`. Its external
+workstation copy is
+`C:\platforms\backups\nexus-laravel-incident-20260714\production-safety-20260714T043334Z.sql.gz`;
+it is outside both repositories. Remote and local SHA-256 are both
+`17523ce4183f41349d63f0732f593ca7ed58b04bc21bb9aa1025ea4667817163`.
+The dump passed gzip and completion-marker checks and a full isolated MariaDB
+restore. Fresh read-only inventories agree at 723 base tables, 286 rows in the
+legacy `migrations` registry, 385 rows in `laravel_migrations`, 11 tenants, 360
+users, and zero disposable `Codex` groups. A scan of every text-like column in
+the ordinary local snapshot also returned zero `Codex` matches. Because the
+ordinary local database already matches this fresh production inventory, it was
+not dropped or reimported again during the independent refresh.
+
 Consequences for this workstream:
 
 - do not apply or roll back any Laravel migration;
@@ -120,10 +135,11 @@ commit as the implementation it describes.
 ## Audited Baseline
 
 The frontend baseline for the current checkout includes the Event registration,
-account-hub reconciliation, Event Communications, lifecycle-history, and recurrence-
-history slices; its published parent is repository commit `9d978346`; the current
-checkout also contains the Event moderation route slice. The Laravel source
-baseline is `903d03d3`. The first SHA names the
+account-hub reconciliation, Event Communications, lifecycle-history, recurrence-
+history, and Event moderation slices; its published parent is repository commit
+`b797c26f`. The current checkout also contains an uncommitted Event Agenda
+presentation refresh owned by the Web UK workstream. The Laravel source baseline
+is `903d03d3`. The first SHA names the
 repository snapshot containing Web UK; it does not make ASP.NET authoritative.
 Refresh the Laravel Blade/API source and Web UK implementation before relying on
 these numbers after either source moves.
@@ -524,9 +540,15 @@ npm --prefix apps/web-uk run locales:audit-keys
 npm --prefix apps/web-uk run locales:audit-templates -- --summary
 npm --prefix apps/web-uk run test:accessibility
 npm --prefix apps/web-uk run visual:blade
-npm --prefix apps/web-uk run smoke:laravel:local
 git diff --check -- apps/web-uk
 ```
+
+The command above is the ordinary non-mutating gate. Do not run
+`smoke:laravel:local`, any `*:mutation:*` command, authenticated settings
+journeys, upload/download checks, or `smoke:federation:local` against the
+ordinary Laravel environment. Those commands can authenticate or mutate state
+and may run only when `LARAVEL_BASE_URL` points to a separately provisioned,
+verified disposable Laravel environment.
 
 Record the exact Laravel and Web UK SHAs, fixture identity, commands, pass/fail
 counts, retained failures, and cleanup result. Route equality, a focused test,
