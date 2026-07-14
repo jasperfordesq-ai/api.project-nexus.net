@@ -1647,40 +1647,90 @@ public class CompatibilityController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> TenantBootstrap([FromQuery] string? slug = null)
     {
-        // Find tenant by slug, domain, or X-Tenant-ID header
         Tenant? tenant = null;
 
-        if (!string.IsNullOrWhiteSpace(slug))
+        // Laravel TRS-001: an explicit slug is authoritative. Unknown,
+        // whitespace-only, and inactive slugs fail closed instead of falling
+        // through to a header, host, origin, or arbitrary default tenant.
+        if (slug is { Length: > 0 })
         {
+            var normalizedSlug = slug.Trim();
             tenant = await _db.Tenants
                 .IgnoreQueryFilters()
-                .FirstOrDefaultAsync(t => t.Slug == slug && t.IsActive);
-        }
+                .AsNoTracking()
+                .FirstOrDefaultAsync(t => t.Slug == normalizedSlug && t.IsActive);
 
-        if (tenant == null)
-        {
-            // Try X-Tenant-ID header
-            var headerTenantId = Request.Headers["X-Tenant-ID"].FirstOrDefault();
-            if (int.TryParse(headerTenantId, out var tid))
+            if (tenant == null)
             {
-                tenant = await _db.Tenants
-                    .IgnoreQueryFilters()
-                    .FirstOrDefaultAsync(t => t.Id == tid && t.IsActive);
+                Response.Headers["API-Version"] = "2.0";
+                return NotFound(new
+                {
+                    errors = new[]
+                    {
+                        new
+                        {
+                            code = "TENANT_NOT_FOUND",
+                            message = "The requested community was not found or is inactive."
+                        }
+                    }
+                });
             }
         }
-
-        if (tenant == null)
+        else
         {
-            // Fall back to the first active tenant. Including Id=1 here is
-            // important: in single-tenant deployments and on platform.* the
-            // master tenant is the default home, and excluding it leaves the
-            // bootstrap returning the wrong tenant (or 404) for super-admins
-            // who live there.
-            tenant = await _db.Tenants
-                .IgnoreQueryFilters()
-                .Where(t => t.IsActive)
-                .OrderBy(t => t.Id)
-                .FirstOrDefaultAsync();
+            // Laravel resolves a custom Host before considering Origin. Strip
+            // the conventional www alias because tenant domains are stored as
+            // their canonical host names.
+            var requestHost = NormalizeTenantHost(Request.Host.Host);
+            tenant = await FindActiveTenantByDomainAsync(requestHost);
+
+            // Origin is only a fallback while Host is unresolved or resolved
+            // to the platform/master tenant. It must never override a custom
+            // tenant Host, which would allow cross-community bootstrap drift.
+            if (tenant is null || tenant.Id <= 1)
+            {
+                var origin = Request.Headers["Origin"].FirstOrDefault();
+                if (Uri.TryCreate(origin, UriKind.Absolute, out var originUri))
+                {
+                    var originTenant = await FindActiveTenantByDomainAsync(
+                        NormalizeTenantHost(originUri.Host),
+                        excludeMaster: true);
+                    if (originTenant is not null)
+                    {
+                        tenant = originTenant;
+                    }
+                }
+            }
+
+            // Preserve the public API's explicit numeric tenant compatibility
+            // only when neither Host nor Origin selected a non-master tenant.
+            if (tenant is null || tenant.Id <= 1)
+            {
+                var headerTenantId = Request.Headers["X-Tenant-ID"].FirstOrDefault();
+                if (int.TryParse(headerTenantId, out var tenantId))
+                {
+                    var headerTenant = await _db.Tenants
+                        .IgnoreQueryFilters()
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(t => t.Id == tenantId && t.IsActive);
+                    if (headerTenant is not null)
+                    {
+                        tenant = headerTenant;
+                    }
+                }
+            }
+
+            if (tenant == null)
+            {
+                // Shared-host/default landing behavior remains compatible for
+                // deployments without an explicit tenant selector.
+                tenant = await _db.Tenants
+                    .IgnoreQueryFilters()
+                    .AsNoTracking()
+                    .Where(t => t.IsActive)
+                    .OrderBy(t => t.Id)
+                    .FirstOrDefaultAsync();
+            }
         }
 
         if (tenant == null)
@@ -1829,6 +1879,39 @@ public class CompatibilityController : ControllerBase
             bootstrap.config,
             bootstrap.settings,
         });
+    }
+
+    private async Task<Tenant?> FindActiveTenantByDomainAsync(
+        string? host,
+        bool excludeMaster = false)
+    {
+        if (string.IsNullOrWhiteSpace(host))
+        {
+            return null;
+        }
+
+        var normalizedHost = host.ToLowerInvariant();
+        return await _db.Tenants
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(tenant => tenant.IsActive
+                && tenant.Domain != null
+                && tenant.Domain.ToLower() == normalizedHost
+                && (!excludeMaster || tenant.Id != 1))
+            .FirstOrDefaultAsync();
+    }
+
+    private static string? NormalizeTenantHost(string? host)
+    {
+        if (string.IsNullOrWhiteSpace(host))
+        {
+            return null;
+        }
+
+        var normalized = host.Trim().TrimEnd('.').ToLowerInvariant();
+        return normalized.StartsWith("www.", StringComparison.Ordinal)
+            ? normalized[4..]
+            : normalized;
     }
 
     // ──────────────────────────────────────────────

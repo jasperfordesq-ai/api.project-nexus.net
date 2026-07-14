@@ -51,6 +51,88 @@ public class PublicCompatibilityEndpointsTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task LaravelV2TenantBootstrap_UnknownExplicitSlug_FailsClosedWithoutTenantFallback()
+    {
+        ClearAuthToken();
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            "/api/v2/tenant/bootstrap?slug=does-not-exist");
+        request.Headers.Add("X-Tenant-ID", TestData.Tenant2.Id.ToString());
+
+        var response = await Client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var content = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var error = content.GetProperty("errors").EnumerateArray().Single();
+        error.GetProperty("code").GetString().Should().Be("TENANT_NOT_FOUND");
+        error.GetProperty("message").GetString()
+            .Should().Be("The requested community was not found or is inactive.");
+    }
+
+    [Fact]
+    public async Task LaravelV2TenantBootstrap_ExplicitSlug_TakesPriorityOverTenantHeader()
+    {
+        ClearAuthToken();
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            "/api/v2/tenant/bootstrap?slug=test-tenant");
+        request.Headers.Add("X-Tenant-ID", TestData.Tenant2.Id.ToString());
+
+        var response = await Client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await response.Content.ReadFromJsonAsync<JsonElement>();
+        content.GetProperty("data").GetProperty("id").GetInt32().Should().Be(TestData.Tenant1.Id);
+        content.GetProperty("data").GetProperty("slug").GetString().Should().Be("test-tenant");
+    }
+
+    [Fact]
+    public async Task LaravelV2TenantBootstrap_UsesCustomHostBeforeOrigin_AndOriginOnSharedHost()
+    {
+        string? tenant2Domain;
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var tenant2 = await db.Tenants.SingleAsync(tenant => tenant.Id == TestData.Tenant2.Id);
+            tenant2Domain = tenant2.Domain;
+            tenant2.Domain = "tenant-two.example.test";
+            await db.SaveChangesAsync();
+        }
+
+        try
+        {
+            ClearAuthToken();
+            using var customHostRequest = new HttpRequestMessage(HttpMethod.Get, "/api/v2/tenant/bootstrap");
+            customHostRequest.Headers.Host = "www.tenant-two.example.test";
+            customHostRequest.Headers.Add("Origin", "https://unresolved-origin.example.test");
+
+            var customHostResponse = await Client.SendAsync(customHostRequest);
+
+            customHostResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+            var customHostContent = await customHostResponse.Content.ReadFromJsonAsync<JsonElement>();
+            customHostContent.GetProperty("data").GetProperty("id").GetInt32().Should().Be(TestData.Tenant2.Id);
+
+            using var sharedHostRequest = new HttpRequestMessage(HttpMethod.Get, "/api/v2/tenant/bootstrap");
+            sharedHostRequest.Headers.Host = "app.project-nexus.ie";
+            sharedHostRequest.Headers.Add("Origin", "https://www.tenant-two.example.test");
+
+            var sharedHostResponse = await Client.SendAsync(sharedHostRequest);
+
+            sharedHostResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+            var sharedHostContent = await sharedHostResponse.Content.ReadFromJsonAsync<JsonElement>();
+            sharedHostContent.GetProperty("data").GetProperty("id").GetInt32().Should().Be(TestData.Tenant2.Id);
+        }
+        finally
+        {
+            using var scope = Factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var tenant2 = await db.Tenants.SingleAsync(tenant => tenant.Id == TestData.Tenant2.Id);
+            tenant2.Domain = tenant2Domain;
+            await db.SaveChangesAsync();
+        }
+    }
+
+    [Fact]
     public async Task TenantBootstrap_ExploreFeatureHonorsTenantOverride()
     {
         TenantConfig? existing;
