@@ -1806,6 +1806,24 @@ public class MarketplaceController : ControllerBase
                     paymentIntentElement.GetString()!, intentIdElement.GetString()!, amountRefunded,
                     refunds, eventId, ct);
             }
+            else if (eventType is "charge.dispute.created" or "charge.dispute.updated" or "charge.dispute.closed")
+            {
+                if (!stripeObject.TryGetProperty("charge", out var chargeElement) ||
+                    chargeElement.ValueKind != JsonValueKind.String ||
+                    !stripeObject.TryGetProperty("status", out var disputeStatusElement) ||
+                    disputeStatusElement.ValueKind != JsonValueKind.String ||
+                    !stripeObject.TryGetProperty("amount", out var disputeAmountElement) ||
+                    !disputeAmountElement.TryGetInt64(out var disputeAmount))
+                    return BadRequest(new { error = "missing_dispute_economics" });
+                result = await _paymentService.ReconcileChargeDisputeAsync(
+                    eventType,
+                    intentIdElement.GetString()!,
+                    chargeElement.GetString()!,
+                    disputeStatusElement.GetString()!,
+                    disputeAmount,
+                    eventId,
+                    ct);
+            }
             else if (eventType == "account.updated")
             {
                 if (!TryStripeBoolean(stripeObject, "details_submitted", out var detailsSubmitted) ||

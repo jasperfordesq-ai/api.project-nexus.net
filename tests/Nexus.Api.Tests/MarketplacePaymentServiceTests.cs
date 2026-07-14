@@ -277,6 +277,81 @@ public sealed class MarketplacePaymentServiceTests
     }
 
     [Fact]
+    public async Task ChargeDispute_HeldEscrowWon_RestoresOrderAndReleaseEligibility()
+    {
+        await using var db = CreateDb();
+        var gateway = new FakeGateway { Configured = true };
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Marketplace:PlatformFeePercent"] = "5",
+            ["Marketplace:EscrowEnabled"] = "true"
+        }).Build();
+        var service = new MarketplacePaymentService(
+            db, gateway, configuration, NullLogger<MarketplacePaymentService>.Instance);
+        var order = SeedPayableOrder(db);
+        (await service.CreateIntentAsync(42, 11, order.Id, CancellationToken.None)).Succeeded.Should().BeTrue();
+        gateway.Retrieved = gateway.Created! with
+        {
+            Status = "succeeded", AmountReceivedMinor = 2599, LatestChargeId = "ch_dispute_won"
+        };
+        (await service.ConfirmAsync(42, 11, gateway.Created.Id, CancellationToken.None)).Succeeded.Should().BeTrue();
+
+        (await service.ReconcileChargeDisputeAsync(
+            "charge.dispute.created", "dp_held_won", "ch_dispute_won", "needs_response", 2599,
+            "evt_dp_created", CancellationToken.None)).Succeeded.Should().BeTrue();
+        order.Status.Should().Be("disputed");
+        (await db.MarketplaceEscrows.SingleAsync()).Status.Should().Be("disputed");
+
+        (await service.ReconcileChargeDisputeAsync(
+            "charge.dispute.closed", "dp_held_won", "ch_dispute_won", "won", 2599,
+            "evt_dp_won", CancellationToken.None)).Succeeded.Should().BeTrue();
+        order.Status.Should().Be("paid");
+        var escrow = await db.MarketplaceEscrows.SingleAsync();
+        escrow.Status.Should().Be("held");
+        escrow.ReleaseAfter.Should().BeOnOrBefore(DateTime.UtcNow);
+        (await db.MarketplacePaymentRefunds.CountAsync()).Should().Be(0);
+        (await db.WebhookEvents.CountAsync()).Should().Be(2);
+    }
+
+    [Fact]
+    public async Task ChargeDispute_HeldEscrowLost_RefundsOrderWithoutTransferMovement()
+    {
+        await using var db = CreateDb();
+        var gateway = new FakeGateway { Configured = true };
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Marketplace:PlatformFeePercent"] = "5",
+            ["Marketplace:EscrowEnabled"] = "true"
+        }).Build();
+        var service = new MarketplacePaymentService(
+            db, gateway, configuration, NullLogger<MarketplacePaymentService>.Instance);
+        var order = SeedPayableOrder(db);
+        (await service.CreateIntentAsync(42, 11, order.Id, CancellationToken.None)).Succeeded.Should().BeTrue();
+        gateway.Retrieved = gateway.Created! with
+        {
+            Status = "succeeded", AmountReceivedMinor = 2599, LatestChargeId = "ch_dispute_lost"
+        };
+        (await service.ConfirmAsync(42, 11, gateway.Created.Id, CancellationToken.None)).Succeeded.Should().BeTrue();
+        (await service.ReconcileChargeDisputeAsync(
+            "charge.dispute.created", "dp_held_lost", "ch_dispute_lost", "needs_response", 2599,
+            "evt_dp_lost_created", CancellationToken.None)).Succeeded.Should().BeTrue();
+
+        (await service.ReconcileChargeDisputeAsync(
+            "charge.dispute.closed", "dp_held_lost", "ch_dispute_lost", "lost", 2599,
+            "evt_dp_lost", CancellationToken.None)).Succeeded.Should().BeTrue();
+
+        var payment = await db.MarketplacePayments.SingleAsync();
+        payment.Status.Should().Be("refunded");
+        payment.StripeDisputeStatus.Should().Be("lost");
+        order.Status.Should().Be("refunded");
+        (await db.MarketplaceEscrows.SingleAsync()).Status.Should().Be("refunded");
+        var ledger = await db.MarketplacePaymentRefunds.SingleAsync();
+        ledger.StripeRefundId.Should().Be("dispute:dp_held_lost");
+        ledger.Reason.Should().Be("stripe_dispute_lost");
+        gateway.TransferReversalCalls.Should().Be(0);
+    }
+
+    [Fact]
     public async Task StripeGateway_SeparateChargeOmitsDestinationAndApplicationFee()
     {
         var handler = new RecordingHandler();

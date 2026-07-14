@@ -1416,6 +1416,116 @@ public sealed class MarketplacePaymentService(
         return new(new { received = true, applied = true });
     }
 
+    public async Task<MarketplacePaymentResult> ReconcileChargeDisputeAsync(
+        string eventType,
+        string disputeId,
+        string chargeId,
+        string status,
+        long amountMinor,
+        string? externalEventId,
+        CancellationToken ct)
+    {
+        if (eventType is not ("charge.dispute.created" or "charge.dispute.updated" or "charge.dispute.closed") ||
+            string.IsNullOrWhiteSpace(disputeId) || string.IsNullOrWhiteSpace(chargeId) ||
+            string.IsNullOrWhiteSpace(externalEventId) || externalEventId.Length > 200)
+            return Error("VALIDATION_ERROR", "Stripe dispute evidence is incomplete.", 422);
+        var payment = await db.MarketplacePayments.IgnoreQueryFilters()
+            .SingleOrDefaultAsync(x => x.StripeChargeId == chargeId, ct);
+        if (payment is null) return new(new { received = true, applied = false });
+        if (await db.WebhookEvents.IgnoreQueryFilters().AsNoTracking().AnyAsync(x =>
+                x.TenantId == payment.TenantId && x.Provider == "stripe-marketplace" &&
+                x.ExternalEventId == externalEventId, ct))
+            return new(new { received = true, applied = true });
+
+        await using var transaction = db.Database.IsRelational() && db.Database.CurrentTransaction is null
+            ? await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct)
+            : null;
+        if (transaction is not null)
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT pg_advisory_xact_lock({payment.TenantId}, {payment.MarketplaceOrderId})", ct);
+        await db.Entry(payment).ReloadAsync(ct);
+        var order = await db.MarketplaceOrders.IgnoreQueryFilters()
+            .SingleOrDefaultAsync(x => x.TenantId == payment.TenantId && x.Id == payment.MarketplaceOrderId, ct);
+        if (order is null) return Error("RESOLUTION_FAILED", "Marketplace order not found.", 409);
+        var escrow = await db.MarketplaceEscrows.IgnoreQueryFilters()
+            .SingleOrDefaultAsync(x => x.TenantId == payment.TenantId && x.MarketplaceOrderId == order.Id, ct);
+        var currency = NormalizeCurrency(payment.Currency);
+        if (currency is null) return Error("RESOLUTION_FAILED", "Marketplace payment currency is invalid.", 409);
+        if (payment.PayoutStatus is "paid" or "scheduled")
+            return Error("RESOLUTION_FAILED", "Paid marketplace dispute recovery requires transfer evidence.", 409);
+
+        payment.StripeDisputeId = disputeId;
+        payment.StripeDisputeStatus = status;
+        if (payment.DisputePreviousOrderStatus is null && order.Status != "disputed")
+            payment.DisputePreviousOrderStatus = order.Status;
+        var isWon = status == "won";
+        var isLost = status == "lost";
+        if (isWon)
+        {
+            if (order.Status == "disputed")
+                order.Status = payment.DisputePreviousOrderStatus ?? "paid";
+            if (escrow is { Status: "disputed" })
+            {
+                escrow.Status = "held";
+                escrow.ReleaseAfter = DateTime.UtcNow;
+                escrow.UpdatedAt = DateTime.UtcNow;
+            }
+        }
+        else if (isLost)
+        {
+            var remaining = RoundMajor(payment.Amount - (payment.RefundAmount ?? 0), currency);
+            var disputedAmount = Math.Min(remaining, Math.Max(0, FromMinor(amountMinor, currency)));
+            if (disputedAmount <= 0)
+                return Error("RESOLUTION_FAILED", "Stripe dispute amount is invalid.", 409);
+            var feeExposure = remaining > 0
+                ? Math.Min(payment.PlatformFee, RoundMajor(payment.PlatformFee * (disputedAmount / remaining), currency))
+                : 0;
+            var sellerExposure = Math.Min(payment.SellerPayout,
+                Math.Max(0, RoundMajor(disputedAmount - feeExposure, currency)));
+            await ApplyRefundLedgerAsync(payment, order, $"dispute:{disputeId}", disputedAmount,
+                feeExposure, sellerExposure, "stripe_dispute_lost", currency, ct);
+            if (payment.Status != "refunded" && order.Status == "disputed")
+                order.Status = payment.DisputePreviousOrderStatus ?? "paid";
+            if (payment.Status != "refunded" && escrow is { Status: "disputed" })
+            {
+                escrow.Status = "held";
+                escrow.ReleaseAfter = DateTime.UtcNow;
+                escrow.UpdatedAt = DateTime.UtcNow;
+            }
+        }
+        else
+        {
+            if (order.Status is not ("cancelled" or "refunded")) order.Status = "disputed";
+            if (escrow is { Status: "held" })
+            {
+                escrow.Status = "disputed";
+                escrow.UpdatedAt = DateTime.UtcNow;
+            }
+        }
+        payment.UpdatedAt = DateTime.UtcNow;
+        order.UpdatedAt = DateTime.UtcNow;
+        db.WebhookEvents.Add(new WebhookEvent
+        {
+            TenantId = payment.TenantId,
+            EventType = eventType,
+            Source = "stripe",
+            Provider = "stripe-marketplace",
+            ExternalEventId = externalEventId,
+            PayloadJson = JsonSerializer.Serialize(new
+            {
+                dispute_id = disputeId,
+                charge_id = chargeId,
+                status,
+                amount = amountMinor
+            }),
+            Status = "processed",
+            ReceivedAt = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync(ct);
+        if (transaction is not null) await transaction.CommitAsync(ct);
+        return new(new { received = true, applied = true });
+    }
+
     public async Task<MarketplacePaymentResult> ConfirmDeliveryAsync(
         int tenantId,
         int buyerId,
