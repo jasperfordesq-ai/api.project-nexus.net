@@ -175,6 +175,7 @@ public static class ServiceExtensions
         services.AddSingleton<EventInvitationEvidenceHasher>();
         services.AddScoped<EventNotificationPreferenceResolver>();
         services.AddScoped<EventReminderPreferenceService>();
+        services.AddScoped<EventFederationStatusService>();
         services.AddScoped<EventAnalyticsQueryService>();
         services.AddScoped<EventInvitationDeliveryProcessor>();
         services.AddHostedService<EventInvitationDeliveryWorker>();

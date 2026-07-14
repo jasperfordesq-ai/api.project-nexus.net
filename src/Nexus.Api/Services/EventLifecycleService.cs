@@ -20,7 +20,8 @@ public sealed class EventLifecycleService
     private static readonly HashSet<string> Publications = ["draft", "pending_review", "published", "archived"];
     private static readonly HashSet<string> Operations = ["scheduled", "postponed", "cancelled", "completed"];
     private readonly NexusDbContext _db;
-    public EventLifecycleService(NexusDbContext db) => _db = db;
+    private readonly EventFederationStatusService _federation;
+    public EventLifecycleService(NexusDbContext db, EventFederationStatusService federation) { _db = db; _federation = federation; }
 
     public async Task<EventLifecycleResult> TransitionAsync(int tenantId, int eventId, int actorId, string action, string? reason, CancellationToken ct)
     {
@@ -160,6 +161,7 @@ public sealed class EventLifecycleService
         var outbox = new EventDomainOutbox { TenantId = tenantId, EventId = eventId, AggregateStream = "lifecycle", AggregateVersion = nextVersion, IdempotencyKey = $"event:{tenantId}:{eventId}:lifecycle:v{nextVersion}", Payload = JsonSerializer.Serialize(new { schema_version = 1, tenant_id = tenantId, event_id = eventId, actor_user_id = actorId, organizer_user_id = evt.CreatedById, affected_recipient_user_ids = recipients, lifecycle_version = nextVersion, publication = new { from = fromPublication, to = toPublication }, operational = new { from = fromOperational, to = toOperational }, legacy_status = legacy, reason, metadata, occurred_at = now }), AvailableAt = now, ProcessedAt = now, CreatedAt = now, UpdatedAt = now };
         _db.EventDomainOutbox.Add(outbox);
         await SynchronizeModerationQueueAsync(evt, actorId, action, reason, ct);
+        await _federation.EnqueueLifecycleAsync(evt, ct);
         await _db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
 
@@ -293,6 +295,7 @@ public sealed class EventLifecycleService
         }
 
         await SynchronizeSeriesModerationQueueAsync(root, targets.Select(x => x.Id).ToArray(), actorId, action, reason, ct);
+        foreach (var outcome in changed) await _federation.EnqueueLifecycleAsync(outcome.Event, ct);
         await _db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
 

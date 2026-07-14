@@ -66,6 +66,7 @@ public class Event : ITenantEntity
     public string Timezone { get; set; } = "UTC";
     public bool AllDay { get; set; }
     public string FederatedVisibility { get; set; } = "none";
+    public long FederationVersion { get; set; } = 1;
     public long CalendarSequence { get; set; }
     public long AgendaVersion { get; set; }
     public long CheckinManifestVersion { get; set; }

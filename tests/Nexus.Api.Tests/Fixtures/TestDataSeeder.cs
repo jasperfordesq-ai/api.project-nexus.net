@@ -323,6 +323,7 @@ public static class TestDataSeeder
                     'event_registration_form_answers','event_registration_form_submissions',
                     'event_registration_form_questions','event_registration_form_versions',
                     'event_registration_settings_history','event_registration_settings',
+                    'event_federation_deliveries',
                     'federation_external_partner_logs','federation_external_partners',
                     'federation_webhook_nonces','federation_system_control',
                     'federation_tenant_whitelist','federation_tenant_features',

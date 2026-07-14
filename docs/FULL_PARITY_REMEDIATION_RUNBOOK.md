@@ -43,6 +43,39 @@ Before any production deployment or production-container action, stop and read
 deployment or touching production containers. Never modify the Laravel repo or
 Laravel Edition containers from this worktree.
 
+## 2026-07-14 ASP.NET Event Federation Reliability Checkpoint (Locally Verified)
+
+Event lifecycle mutations now maintain a monotonic federation version and enqueue
+one durable, idempotent delivery record per active Nexus event partner. Published,
+scheduled listed/joinable events enqueue a privacy-minimal upsert; withdrawals and
+terminal or private transitions enqueue tombstones to active and prior recipients.
+The delivery ledger preserves schema, aggregate, and calendar versions, payload and
+idempotency hashes, bounded attempts, claim timing, delivery/dead-letter state, and
+safe error codes without foreign keys that could erase historical evidence.
+
+Organizer and administrator diagnostics are owned at
+`GET /api/events/{id}/federation-status` and its `/api/v2` alias. The private,
+no-store response reports configured/recipient partner counts, health, latest
+per-partner status, attempts, versions, timing, and sanitized error codes. It never
+returns payloads, hashes, idempotency keys, raw provider errors, or member data;
+member and cross-tenant access fail closed.
+
+Migration 142 (`20260714012032_EventFederationReliabilityParity`) replayed after the
+complete migration chain on a new PostgreSQL database. EF model drift is clean,
+the combined current lifecycle/federation suite passes 14/14, route ownership passes
+114/114, and Debug and Release builds succeed with zero errors. The live comparator
+reports 4,529 ASP.NET operations and **2,585/2,608 matches (99.1%, 23 static
+misses)**. The test reset fixture now truncates the new ledger so reused event IDs
+cannot contaminate integration cases.
+
+Current provisional global scores are **825/1000 implementation** and **700/1000
+certification confidence**. The honest combined finish-line estimate is **72%**,
+up from the goal baseline of 42% and the previous checkpoint of 71%. Outbound claim,
+HTTP signing/delivery, retry/dead-letter processing, inbound federation, complete-
+suite/CI proof, unchanged-frontend-on-ASP.NET browser proof, broader schema and
+localization depth, and live-provider evidence remain open. No production resource
+or frontend source was touched by this backend slice.
+
 ## 2026-07-14 ASP.NET Custom Recurrence And Series Lifecycle Checkpoint (Locally Verified)
 
 Event reminder preferences are no longer handled by the shallow event update/read

@@ -33,6 +33,7 @@ public class EventConfiguration : TenantScopedConfiguration
             entity.Property(e => e.OperationalStatus).HasMaxLength(32);
             entity.Property(e => e.Timezone).HasMaxLength(64);
             entity.Property(e => e.FederatedVisibility).HasMaxLength(16);
+            entity.Property(e => e.FederationVersion).HasDefaultValue(1L);
             entity.Property(e => e.OccurrenceKey).HasMaxLength(191);
             entity.Property(e => e.RecurrenceEngine).HasMaxLength(32);
             entity.Property(e => e.RecurrenceEngineVersion).HasMaxLength(32);

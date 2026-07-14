@@ -6,22 +6,16 @@ Canonical source: `C:\platforms\htdocs\staging` (read-only).
 
 ## Latest Verified Backend Slice
 
-Event recurrence v2 parity now includes capability discovery, finite/never/custom
-RRULE creation, normalized EXDATE/RDATE behavior, signed effective revisions,
-immutable definition-blueprint capture, and an observable hourly materializer.
-New occurrences inherit the latest effective revision and eligible blueprint once
-inside tenant-safe bounded transactions; paused roots do not grow and Dublin DST
-gaps/folds fail closed. Publication converges the complete series while operational
-lifecycle changes converge the root and future occurrences, preserve immutable
-member evidence, and emit one authoritative root fact. Migration 140 replays from
-an empty PostgreSQL database, model drift is clear, and recurrence/lifecycle/route-
-ownership proof passes 9/9, 11/11, and 114/114. Canonical self-relationship reads
-now expose redacted registration, waitlist, attendance, capacity, and action facts
-on both aliases, with migrated HTTP proof. Personal calendar, guardian grant, and
-guest attendance also have explicit canonical aliases. The current inventory is
-2,584/2,608 (99.1%). Event reminder GET/PUT/DELETE now use a dedicated versioned,
-tenant-safe preference aggregate with migration 141 and 2/2 migrated-schema proof;
-24 route shapes and broader runtime certification remain open.
+Event lifecycle changes now maintain monotonic federation versions and durable,
+idempotent upsert/tombstone delivery evidence for active and prior Nexus partners.
+Both API aliases expose a manager-only, private/no-store federation status contract
+whose health and per-partner diagnostics exclude payloads, hashes, raw provider
+errors, idempotency keys, and member data. Migration 142 replays from an empty
+PostgreSQL database, model drift is clear, the combined current lifecycle/federation
+suite passes 14/14, route ownership passes 114/114, and Debug/Release builds have
+zero errors. The live inventory is **2,585/2,608 (99.1%, 23 missing)**. Outbound
+claim/sign/deliver/retry processing, inbound federation, complete-suite/CI proof,
+unchanged-frontend runtime proof, and live-provider certification remain open.
 
 ## Inventory Baseline
 

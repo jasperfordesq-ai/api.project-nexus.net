@@ -12,30 +12,24 @@ parity job after a session interruption. The implementation branches may still
 be moving, so treat every numeric snapshot below as advisory. Regenerate the
 live state before editing code or claiming progress.
 
-## Latest Resume Point: Custom Recurrence And Series Lifecycle
+## Latest Resume Point: Event Federation Reliability
 
-Event reminders now use a dedicated versioned preference aggregate rather than the
-shallow event handler. Both aliases support canonical GET/PUT/DELETE, strict
-overrides/rules, serializable optimistic concurrency, reset-to-inherited behavior,
-and resolved preference payloads. Migration 141 replays cleanly, model drift is
-clear, and focused migrated-schema proof passes 2/2.
+Event lifecycle mutations now increment a durable federation version and enqueue
+idempotent, versioned upsert or tombstone records for active/prior Nexus event
+partners. Organizer/admin federation status is explicitly owned under both API
+aliases with private/no-store caching, strict tenant/manager authorization, health
+and per-partner diagnostics, and no payload, hash, idempotency-key, raw-error, or
+member-data leakage. Migration 142 replays after the complete chain on blank
+PostgreSQL; model drift is clean, Debug/Release builds have zero errors, the combined
+current lifecycle/federation suite passes 14/14, and route ownership passes 114/114.
 
-The locally verified backend slice owns finite/never/custom RRULE creation,
-normalized EXDATE/RDATE behavior, signed effective revisions, immutable definition
-blueprints, and rolling materialization under both API aliases. Migration 140 and
-the full chain replay cleanly; model drift, Debug/Release build, comparator fixture,
-9/9 recurrence tests, 11/11 lifecycle tests, and 114/114 route-ownership tests pass.
-Recurring publication converges the complete series; operational lifecycle changes
-converge the root and future occurrences, emit one authoritative root fact, and
-preserve immutable per-member evidence. Member/admin cancel and delete routes no
-longer use direct flags or physical deletion. Canonical self-relationship reads are
-now redacted, tenant-safe, and available on both aliases; personal calendar,
-guardian grant, and guest attendance also expose explicit canonical aliases. The
-live inventory is 2,584/2,608 with 24 misses. Provisional global scores are
-820/1000 implementation, 695/1000
-certification, and 71% overall. Resume with the 24-route/runtime queue, then the
-complete suite/CI, unchanged canonical frontend smoke, schema/localization depth,
-and live-provider certification.
+The live comparator reports 4,529 ASP.NET operations and 2,585/2,608 matched with
+23 static misses. Provisional global scores are 825/1000 implementation, 700/1000
+certification, and 72% overall. Resume with outbound federation claim/sign/deliver/
+retry processing or the next coherent 23-route workflow. Complete-suite/CI,
+unchanged canonical frontend smoke, schema/localization depth, inbound federation,
+and live-provider certification remain open; the status/enqueue slice alone does
+not certify provider delivery.
 
 ## Objective
 

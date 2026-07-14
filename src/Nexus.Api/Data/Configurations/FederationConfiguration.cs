@@ -244,6 +244,31 @@ public class FederationConfiguration : TenantScopedConfiguration
                 .OnDelete(DeleteBehavior.SetNull);
         });
 
+        modelBuilder.Entity<EventFederationDelivery>(entity =>
+        {
+            entity.ToTable("event_federation_deliveries");
+            entity.Property(e => e.Action).HasMaxLength(16);
+            entity.Property(e => e.IdempotencyKey).HasMaxLength(64).IsFixedLength();
+            entity.Property(e => e.PayloadHash).HasMaxLength(64).IsFixedLength();
+            entity.Property(e => e.Payload).HasColumnType("jsonb");
+            entity.Property(e => e.Status).HasMaxLength(20);
+            entity.Property(e => e.LastErrorCode).HasMaxLength(64);
+            entity.Property(e => e.LastError).HasColumnType("text");
+            entity.HasIndex(e => new { e.TenantId, e.ExternalPartnerId, e.IdempotencyKey }).IsUnique().HasDatabaseName("uq_event_fed_delivery_idempotency");
+            entity.HasIndex(e => new { e.TenantId, e.EventId, e.ExternalPartnerId, e.PayloadSchemaVersion, e.EventAggregateVersion, e.EventCalendarVersion }).IsUnique().HasDatabaseName("uq_event_fed_delivery_version");
+            entity.HasIndex(e => new { e.Status, e.AvailableAt, e.NextAttemptAt, e.Id }).HasDatabaseName("idx_event_fed_delivery_claim");
+            entity.HasIndex(e => new { e.TenantId, e.ExternalPartnerId, e.Status, e.Id }).HasDatabaseName("idx_event_fed_delivery_partner");
+            entity.HasIndex(e => new { e.TenantId, e.EventId, e.ExternalPartnerId, e.EventAggregateVersion, e.Id }).HasDatabaseName("idx_event_fed_delivery_event");
+            entity.ToTable(t =>
+            {
+                t.HasCheckConstraint("chk_event_fed_delivery_action", "\"Action\" IN ('upsert','tombstone')");
+                t.HasCheckConstraint("chk_event_fed_delivery_status", "\"Status\" IN ('pending','retry','processing','delivered','dead_letter')");
+                t.HasCheckConstraint("chk_event_fed_delivery_attempts", "\"Attempts\" BETWEEN 0 AND 5");
+            });
+            // Deliberately no foreign keys: event archival and partner removal must not erase delivery evidence.
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+
         modelBuilder.Entity<FederationNeighborhoodTenant>(entity =>
         {
             entity.ToTable("federation_neighborhood_tenants");
