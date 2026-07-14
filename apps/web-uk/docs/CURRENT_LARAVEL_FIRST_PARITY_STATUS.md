@@ -367,7 +367,7 @@ recent-Event consumer rows now have concrete method/path classification. This
 is static/mock contract closure, not disposable mutation/export certification,
 so the banked score remains 622/1000.
 
-## Public Login Required-State Parity
+## Public Authentication Required-State Parity
 
 The default-English login form now exposes native `required` states for email,
 password, and the root-domain community-code field, matching the Laravel Blade
@@ -380,6 +380,10 @@ image alternatives, or horizontal overflow, plus clean home/login reflow at
 environment, so keyboard order, focus visibility, screen-reader output, and the
 remaining manual WCAG matrix are still explicitly uncertified. This evidence
 does not change the banked 622/1000 score without a complete rubric re-audit.
+The reset-password form also now matches Blade's deliberate native-state
+contract: both password controls disable spellcheck and only the confirmation
+control carries `required`. Focused rendered-output coverage protects those
+exact attributes without widening the source contract.
 
 ## Podcast Episode Visibility Labels
 

@@ -6260,7 +6260,8 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('<h1 class="govuk-heading-xl">Choose a new password</h1>');
     expect(response.text).toContain('method="post" action="/password/reset"');
     expect(response.text).toContain('name="token" value="reset-token"');
-    expect(response.text).toContain('name="password_confirmation"');
+    expect(response.text).toMatch(/<input[^>]*id="password"[^>]*spellcheck="false"[^>]*>/);
+    expect(response.text).toMatch(/<input[^>]*id="password_confirmation"[^>]*spellcheck="false"[^>]*required(?:="required")?[^>]*>/);
   });
 
   it('renders Laravel\'s reset-password form when the token query is absent', async () => {
