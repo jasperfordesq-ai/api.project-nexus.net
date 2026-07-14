@@ -65,7 +65,7 @@
     <div class="govuk-grid-column-one-third">
       <div class="nexus-alpha-card">
         <h2 class="govuk-heading-m">{{ t("reviews_page.average_label") }}</h2>
-        <p class="govuk-heading-l govuk-!-margin-bottom-1">{{ reviewStats.average or t("polish_members.rating_none") }}{% if reviewStats.average %} / 5{% endif %}</p>
+        <p class="govuk-heading-l govuk-!-margin-bottom-1">{% if reviewStats.average %}{{ t("ux.rating_out_of", { rating: reviewStats.average }) }}{% else %}{{ t("polish_members.rating_none") }}{% endif %}</p>
         <p class="govuk-body govuk-!-margin-bottom-0">{{ t("reviews_page.total_label") }}: {{ reviewStats.total }}</p>
       </div>
     </div>
@@ -114,7 +114,7 @@
                 <input type="hidden" name="receiver_id" value="{{ pending.receiverId }}">
                 <input type="hidden" name="transaction_id" value="{{ pending.transactionId }}">
                 <div class="govuk-form-group">
-                  <fieldset class="govuk-fieldset"><legend class="govuk-fieldset__legend govuk-fieldset__legend--s">{{ t("reviews_page.rating_legend") }}</legend><div class="govuk-radios govuk-radios--inline govuk-radios--small">{% for star in [5,4,3,2,1] %}<div class="govuk-radios__item"><input class="govuk-radios__input" id="rating-{{ pendingIndex }}-{{ star }}" name="rating" type="radio" value="{{ star }}"{% if star == 5 %} checked{% endif %}><label class="govuk-label govuk-radios__label" for="rating-{{ pendingIndex }}-{{ star }}">{{ star }}</label></div>{% endfor %}</div></fieldset>
+                  <fieldset class="govuk-fieldset"><legend class="govuk-fieldset__legend govuk-fieldset__legend--s">{{ t("reviews_page.rating_legend") }}</legend><div class="govuk-radios govuk-radios--inline govuk-radios--small">{% for star in [5,4,3,2,1] %}<div class="govuk-radios__item"><input class="govuk-radios__input" id="rating-{{ pendingIndex }}-{{ star }}" name="rating" type="radio" value="{{ star }}" required><label class="govuk-label govuk-radios__label" for="rating-{{ pendingIndex }}-{{ star }}"><span aria-hidden="true">{{ star }}</span><span class="govuk-visually-hidden">{{ t("ux.rating_out_of", { rating: star }) }}</span></label></div>{% endfor %}</div></fieldset>
                 </div>
                 <div class="govuk-form-group">
                   <label class="govuk-label govuk-label--s" for="comment-{{ loop.index }}">{{ t("reviews_page.comment_label") }}</label><div id="comment-hint-{{ loop.index }}" class="govuk-hint">{{ t("reviews_page.comment_hint") }}</div>

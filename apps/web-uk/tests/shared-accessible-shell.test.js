@@ -11082,6 +11082,8 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Repair a radio');
     expect(response.text).toContain('Shared a repair update');
     expect(response.text).toContain('Please ask first.');
+    expect(response.text).toContain('id="profile-transfer-confirm" name="confirm" type="checkbox" value="1" required');
+    expect(response.text).toContain('I understand the credits move immediately and this cannot be undone.');
     expect(response.text).toContain('action="/acme/accessible/members/77/unblock"');
     expect(response.text).not.toContain('action="/acme/accessible/members/77/block"');
   });
@@ -15333,7 +15335,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Reviews');
     expect(response.text).toContain('Thank you. Your review has been submitted.');
     expect(response.text).toContain('View all reviews');
-    expect(response.text).toContain('4.8 / 5');
+    expect(response.text).toContain('4.8 out of 5');
     expect(response.text).toContain('12');
     expect(response.text).toContain('by Anonymous');
     expect(response.text).not.toContain('Private Reviewer');
@@ -15343,6 +15345,9 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('action="/reviews"');
     expect(response.text).toContain('name="receiver_id" value="77"');
     expect(response.text).toContain('name="transaction_id" value="88"');
+    expect(response.text).toContain('id="rating-1-5" name="rating" type="radio" value="5" required');
+    expect(response.text).not.toContain('id="rating-1-5" name="rating" type="radio" value="5" checked');
+    expect(response.text).toContain('<span class="govuk-visually-hidden">5 out of 5</span>');
     expect(response.text).toContain('action="/reviews/92/delete"');
     expect(response.text).toContain('Are you sure you want to delete this review? This cannot be undone.');
   });
