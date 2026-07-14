@@ -727,12 +727,12 @@ function dateLabel(value, month = 'long') {
   }).format(new Date(Date.UTC(parts.year, parts.month, parts.day)));
 }
 
-function contactTypeLabel(value) {
+function contactTypeLabel(value, t) {
   const labels = {
-    message: 'Message',
-    phone: 'Phone',
-    email: 'Email',
-    exchange_request: 'Exchange request'
+    message: t('govuk_alpha_listings.analytics.contact_type_message'),
+    phone: t('govuk_alpha_listings.analytics.contact_type_phone'),
+    email: t('govuk_alpha_listings.analytics.contact_type_email'),
+    exchange_request: t('govuk_alpha_listings.analytics.contact_type_exchange_request')
   };
   const type = trimmed(value);
   if (labels[type]) return labels[type];
@@ -755,14 +755,14 @@ function analyticsSeries(rows) {
   });
 }
 
-function decorateListingAnalytics(result) {
+function decorateListingAnalytics(result, t) {
   const data = dataFrom(result) || {};
   const summary = data && typeof data.summary === 'object' && data.summary !== null ? data.summary : {};
   const viewsOverTime = analyticsSeries(data.views_over_time || data.viewsOverTime);
   const contactsOverTime = analyticsSeries(data.contacts_over_time || data.contactsOverTime);
   const contactTypes = (Array.isArray(data.contact_types || data.contactTypes) ? (data.contact_types || data.contactTypes) : [])
     .map((row) => ({
-      label: contactTypeLabel(row && (row.contact_type || row.contactType)),
+      label: contactTypeLabel(row && (row.contact_type || row.contactType), t),
       countLabel: integerLabel(row && row.count)
     }));
   const trend = Number(summary.views_trend_percent ?? summary.viewsTrendPercent ?? 0);
@@ -777,10 +777,10 @@ function decorateListingAnalytics(result) {
       contactRate: decimalLabel(summary.contact_rate ?? summary.contactRate),
       saveRate: decimalLabel(summary.save_rate ?? summary.saveRate),
       trendLabel: trend > 0
-        ? `Up ${decimalLabel(Math.abs(trend))}% on the previous 7 days`
+        ? t('govuk_alpha_listings.analytics.trend_up', { percent: decimalLabel(Math.abs(trend)) })
         : trend < 0
-          ? `Down ${decimalLabel(Math.abs(trend))}% on the previous 7 days`
-          : 'No change on the previous 7 days'
+          ? t('govuk_alpha_listings.analytics.trend_down', { percent: decimalLabel(Math.abs(trend)) })
+          : t('govuk_alpha_listings.analytics.trend_flat')
     },
     createdAtLabel: dateLabel(data.created_at || data.createdAt),
     expiresAtLabel: dateLabel(data.expires_at || data.expiresAt),
@@ -1094,15 +1094,17 @@ router.get('/:id(\\d+)/analytics', asyncRoute(async (req, res) => {
 
   const listing = dataFrom(listingResult) || {};
   const analyticsData = dataFrom(analyticsResult) || {};
-  const listingTitle = trimmed(listing.title || listing.name || analyticsData.title) || 'Listing analytics';
+  const t = res.locals.t;
+  const pageTitle = t('govuk_alpha_listings.analytics.title');
+  const listingTitle = trimmed(listing.title || listing.name || analyticsData.title) || pageTitle;
 
   return res.render('listings/analytics', {
-    title: 'Listing analytics',
+    title: pageTitle,
     listing: { ...listing, id },
     listingTitle,
     days,
     dayOptions: [7, 14, 30, 60, 90],
-    analytics: decorateListingAnalytics(analyticsResult)
+    analytics: decorateListingAnalytics(analyticsResult, t)
   });
 }, { notFoundTitle: 'Listing not found' }));
 

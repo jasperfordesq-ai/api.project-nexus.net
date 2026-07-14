@@ -27117,8 +27117,10 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('Listing created');
     expect(signed.text).toContain('1 January 2099');
     expect(signed.text).toContain('Views over time');
+    expect(signed.text).toContain('aria-label="Views on 1 Jul"');
     expect(signed.text).toContain('1 Jul');
     expect(signed.text).toContain('Contacts over time');
+    expect(signed.text).toContain('aria-label="Contacts on 2 Jul"');
     expect(signed.text).toContain('2 Jul');
     expect(signed.text).toContain('How members got in touch');
     expect(signed.text).toContain('Exchange request');
