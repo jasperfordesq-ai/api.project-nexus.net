@@ -481,6 +481,25 @@ sync/shape, `7,347` static references with zero unresolved keys, and the
 regression risk but does not change the banked `622/1000` score without a
 complete rubric re-audit.
 
+## Logout Confirmation State Parity
+
+Checkpoint frozen at `2026-07-14T13:24:14.8139762+01:00` against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and published Web UK base
+`a45568158a72bfcb3a501f35392a8a3b2e5e67ed`; both matched `origin/main`
+before this Web UK-only slice.
+
+Successful logout now redirects through the active accessible mount to
+`/login?status=signed-out`, matching Laravel Blade instead of silently
+discarding its already-supported confirmation state. Focused mounted proof
+passes `69/69` and verifies the visible `You have signed out.` success banner
+after the complete local cookie set is cleared. The mocked route still submits
+both access and refresh credentials to Laravel's logout contract; no Laravel
+request, mutation, database, or migration operation ran. The complete
+non-mutating gate remains green at `49/49` suites and `1,656/1,656` tests with
+green lint and branding. This closes one default-English authentication state
+but does not independently remove the complete component-state deduction, so
+the banked score remains `622/1000`.
+
 ## Podcast Episode Visibility Labels
 
 Podcast studio episode visibility selects now follow Blade's exact catalog

@@ -747,7 +747,7 @@ router.post('/logout', asyncRoute(async (req, res) => {
   }
 
   clearAuthCookies(res);
-  return redirectTo(res, '/login');
+  return redirectTo(res, '/login?status=signed-out');
 }));
 
 // Forgot password

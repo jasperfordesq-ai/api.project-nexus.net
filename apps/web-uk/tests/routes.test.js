@@ -337,8 +337,13 @@ describe('Public Routes', () => {
         .send({ _csrf: timeoutCsrfMatch[1], timeout: 'true' });
 
       expect(logoutResponse.status).toBe(302);
-      expect(logoutResponse.headers.location).toBe('/acme/accessible/login');
+      expect(logoutResponse.headers.location).toBe('/acme/accessible/login?status=signed-out');
       expect(api.logout).toHaveBeenCalledWith('test-token', 'refresh-token');
+
+      const signedOutPage = await agent.get(logoutResponse.headers.location);
+      expect(signedOutPage.status).toBe(200);
+      expect(signedOutPage.text).toContain('You have signed out.');
+      expect(signedOutPage.text).toContain('govuk-notification-banner--success');
     });
 
     it('keeps server-level cookie redirects inside the active shared accessible mount', async () => {
