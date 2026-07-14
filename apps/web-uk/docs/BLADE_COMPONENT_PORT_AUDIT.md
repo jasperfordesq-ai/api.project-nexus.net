@@ -560,6 +560,12 @@ Laravel-relative paths against the configured backend origin. Focused
 organisation proof passes `24/24`; the complete non-mutating gate passes
 `52/52` suites and `1,682/1,682` tests, with lint, brand, CSS, locale, route,
 API-ledger, and `19/19` Blade-marker gates green.
+Simple Search now mirrors Blade's selected-title trimming and positive numeric
+ID boundary: whitespace-only titles do not create empty result cards, a null
+title may use the source name fallback, and invalid IDs render text without an
+invalid detail link. Focused Search proof passes `5/5`; the complete non-
+mutating gate passes `52/52` suites and `1,683/1,683` tests with the same static
+and `19/19` Blade-marker gates green.
 This certifies broad historical read/auth/gate/body coverage, not every
 mutation, upload, download, destructive side effect, or manual assistive-
 technology state. Saved-collection create/update/delete and collection-
