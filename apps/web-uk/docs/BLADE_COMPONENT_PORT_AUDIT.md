@@ -1006,6 +1006,10 @@ rewriting.
 - Group Exchange detail now renders Blade's `Back to exchanges` link before the
   caption and heading through `urlFor()`. The focused list/create/detail render
   passes `1/1`; mutation and manual accessibility certification remain open.
+- Account deletion now places its validation error summary before the H1, as
+  required by Blade's GOV.UK focus-on-load order. Focused signed/unsigned
+  rendering passes `1/1`; manual focus and screen-reader certification remain
+  open.
 
 ### Jobs member-page evidence
 
