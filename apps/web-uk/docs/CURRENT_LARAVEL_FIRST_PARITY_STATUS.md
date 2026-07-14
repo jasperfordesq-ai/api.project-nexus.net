@@ -171,7 +171,7 @@ Refresh the Laravel Blade/API source and Web UK implementation before relying on
 these numbers after either source moves.
 
 At this documentation audit, the product-source baseline was
-`327984b02de82350b8f17b6cb885a3a27c7d95be`. The revoked-session confirmation,
+`b7b42c2ab9e17a042aa8b72eb34c1c4595868fb0`. The revoked-session confirmation,
 Laravel method-spoof reconciliation, group-message contract, residual API-
 consumer correction, and backend-request timeout slices are above the frozen
 bank and remain **published and unscored**. The documentation remediation is
@@ -186,13 +186,13 @@ together from a clean published checkout.
   with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
   Only this fixed-rubric audit contributes to the current bank.
 - **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `beb7285e`, including the later identity/session confirmation,
+  baseline `b7b42c2a`, including the later identity/session confirmation,
   method-spoof reconciliation, group-message contract, residual API-consumer
   correction, and backend-request timeout slices. Their evidence is useful, but they
   contribute zero points until one complete fixed-rubric re-audit explicitly
   replaces the baseline.
-- **Dirty and uncommitted:** generated artifacts refreshed while the timeout
-  slice was in flight plus unrelated ASP.NET backend work are outside the bank.
+- **Dirty and uncommitted:** generated provenance and this concise checkpoint
+  are in flight; unrelated ASP.NET backend work remains outside the bank.
   Recheck `git status` before every report; no dirty file earns estimated points.
 
 ### Latest Recorded Gates
@@ -205,13 +205,13 @@ together from a clean published checkout.
 | Missing Laravel routes | 1 | Event offline check-in code generation |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 51/51 suites, 1,667/1,667 tests | Latest recorded uninterrupted full gate after the frozen score; later improvements remain unscored until a complete rubric re-audit |
+| Jest | 51/51 suites, 1,668/1,668 tests | Latest recorded uninterrupted full gate after the frozen score; later improvements remain unscored until a complete rubric re-audit |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
 | Static locale usage | 7,341 references, 5,620 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
 | Blade marker check | Current 19/19 | Current-source public GET marker comparison; not screenshot or visual certification |
 | Automated accessibility | Not currently certified: 28 passed, login failed, 58 did not run | Full aggregate requires a disposable Laravel environment; manual AT review remains open |
-| Frontend API consumer ledger | 663 contracts: 448 OpenAPI matches, 215 unmatched, 0 dynamic; the unmatched set is 210 direct Laravel route declarations omitted from OpenAPI plus 5 without a resolved direct declaration | Static method/path and ownership evidence; declaration classification is not runtime certification and remains unscored |
+| Frontend API consumer ledger | 667 contracts: 451 OpenAPI matches, 216 unmatched, 0 dynamic; every unmatched contract resolves to a direct Laravel route declaration omitted from OpenAPI | Static method/path and ownership evidence; declaration classification is not runtime certification and remains unscored |
 
 ### Frozen Completion Baseline
 
@@ -281,10 +281,10 @@ when a concrete regression requires an independently publishable fix.
 8. **P0 - Event check-in boundary:** obtain a safe Laravel offline signed-code
    contract or an explicit source-contract decision for
    `POST /events/{id}/check-in/code`. Owner: Laravel backend/API workstream.
-9. **P1 - API ledger closure:** reconcile the five consumers still lacking a
-   resolved direct Laravel declaration and decide whether the 210 declared
-   routes require OpenAPI publication. Add focused assertions for concrete
-   gaps. Owner: Web UK; Laravel API owner for OpenAPI/source omissions.
+9. **P1 - API ledger closure:** Web UK consumer resolution is complete: zero
+   consumers lack a direct Laravel declaration and zero are dynamically
+   unresolved. Decide whether the 216 declared routes require OpenAPI
+   publication. Owner: Laravel API owner for the remaining OpenAPI decision.
 10. **P1 - Component-audit closure:** finish the remaining default-English
     significant-state rows and mark each closed, upstream-blocked, or
     certification-only with evidence. Owner: Web UK.
@@ -310,9 +310,10 @@ request-scoped tenant authority, auth/role boundary, request and response shape,
 status/error behavior, redirects, side effects, cleanup requirements, Laravel
 operation/controller metadata, frontend consumers, and detected tests.
 
-The current static inventory contains 663 consumed contracts. It matches 448
-method/path pairs to Laravel OpenAPI, leaves 215 without an exact OpenAPI match,
-and has no dynamically unresolved method/path callsites. It also classifies 370
+The current static inventory contains 667 consumed contracts. It matches 451
+method/path pairs to Laravel OpenAPI, leaves 216 without an exact OpenAPI match,
+and has no dynamically unresolved method/path callsites. Every unmatched row
+resolves to a direct Laravel route declaration. It also classifies 370
 rows as state-changing and therefore requiring disposable-
 environment runtime proof. An unmatched row may be an OpenAPI documentation
 gap, a frontend contract gap, or a generator-normalization gap; it is not proof
@@ -1215,10 +1216,10 @@ After the localization P0, the remaining priority order is:
    normalized marker check only.
 5. Complete manual keyboard, screen-reader, focus-order, error-summary, no-JS,
    zoom/reflow, forced-colour, and disabled-user evidence.
-6. Reconcile the five frontend consumers still lacking a resolved direct
-   Laravel declaration and track the 210 direct route declarations omitted
-   from OpenAPI. Do not count either classification or a test-file reference as
-   behavioral certification.
+6. Track the 216 direct Laravel route declarations omitted from OpenAPI and
+   obtain an API-owner publication decision. Web UK now has zero consumers
+   without a direct Laravel declaration. Do not count declaration
+   classification or a test-file reference as behavioral certification.
 7. Harden production concerns separately: persistent sessions,
    production-only secrets/configuration, and deployed timeout proof.
 
@@ -1325,3 +1326,25 @@ checks. No Laravel source, database, migration, mutation, upload, download,
 cleanup, or production operation was performed. This improves evidence
 classification only; the frozen bank remains 622/1,000 pending a complete
 rubric re-audit.
+
+## 2026-07-14 Frontend Consumer Resolution Closure
+
+Frozen evidence at `2026-07-14T15:41:44.1400523+01:00` against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and Web UK product commit
+`b7b42c2ab9e17a042aa8b72eb34c1c4595868fb0`. The ledger now models the
+gamification helper's Laravel achievement-prefix exception and exposes fixed
+endpoint prefixes directly at the remaining marketplace, matches, wallet, and
+volunteering call sites without changing their runtime requests.
+
+The generated inventory now contains 667 contracts: 451 exact OpenAPI matches,
+216 direct Laravel route declarations omitted from OpenAPI, zero consumers
+without a Laravel declaration, zero dynamically unresolved consumers, 370
+state-changing contracts, and zero state-changing consumers without detected
+static/mock proof. Focused proof is green. The uninterrupted complete
+non-mutating gate passes 51/51 suites and 1,668/1,668 tests, plus green lint,
+brand, CSS, route matrix, ledger, locale structure/static keys/templates, and
+19/19 Blade marker comparisons. No Laravel source, database, migration,
+mutation, upload, download, cleanup, or production operation was performed.
+The remaining OpenAPI publication decision belongs to the Laravel API owner;
+this published implementation remains unscored, so the frozen bank remains
+622/1,000 pending a complete fixed-rubric re-audit.
