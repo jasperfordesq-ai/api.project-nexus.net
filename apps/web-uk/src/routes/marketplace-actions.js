@@ -111,6 +111,11 @@ function redirectOnAuthError(error, res) {
   return false;
 }
 
+function apiErrorCode(error) {
+  const firstError = Array.isArray(error?.data?.errors) ? error.data.errors[0] : null;
+  return trimmed(firstError?.code ?? error?.data?.code ?? error?.data?.error).toUpperCase();
+}
+
 function dataFrom(result) {
   return result && typeof result === 'object' && result.data !== undefined
     ? result.data
@@ -761,26 +766,32 @@ router.post('/orders/:id(\\d+)/pay', (req, res) => {
 });
 
 router.post('/orders/:id(\\d+)/rate', asyncRoute(async (req, res) => {
-  if (!tokenFrom(req)) return redirectTo(res, loginRedirect());
+  const token = tokenFrom(req);
+  if (!token) return redirectTo(res, loginRedirect());
   const id = Number(req.params.id);
   const rating = positiveInteger(req.body.rating);
   if (rating === null || rating < 1 || rating > 5) {
     return redirectTo(res, ordersRedirect(req, 'rate-invalid'));
   }
 
-  return runAction(
-    req,
-    res,
-    'POST',
-    `/orders/${id}/rate`,
-    {
+  try {
+    await callApi(token, 'POST', `/orders/${id}/rate`, {
       rating,
       comment: trimmed(req.body.comment, 1000),
       is_anonymous: checked(req.body.is_anonymous)
-    },
-    ordersRedirect(req, 'rated'),
-    ordersRedirect(req, 'rate-failed')
-  );
+    });
+    return redirectTo(res, ordersRedirect(req, 'rated'));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    const code = apiErrorCode(error);
+    if (code === 'SAFEGUARDING_POLICY_UNAVAILABLE') {
+      return redirectTo(res, ordersRedirect(req, 'rate-safeguarding-unavailable'));
+    }
+    if (['SAFEGUARDING_CONTACT_RESTRICTED', 'SAFEGUARDING_INTERACTION_NOT_ALLOWED'].includes(code)) {
+      return redirectTo(res, ordersRedirect(req, 'rate-safeguarding-restricted'));
+    }
+    return redirectTo(res, ordersRedirect(req, 'rate-failed'));
+  }
 }));
 
 router.post('/onboarding', asyncRoute(async (req, res) => {

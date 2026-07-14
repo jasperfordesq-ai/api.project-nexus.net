@@ -141,6 +141,8 @@ const MARKETPLACE_ERROR_MESSAGES = {
   'cancel-failed': 'Sorry, the order could not be cancelled.',
   'rate-failed': 'Sorry, your rating could not be saved.',
   'rate-invalid': 'Choose a rating between 1 and 5 stars.',
+  'rate-safeguarding-restricted': 'The recipient’s community safeguarding policy does not allow this direct interaction. Ask a coordinator for help.',
+  'rate-safeguarding-unavailable': 'We cannot confirm the community safeguarding policy right now. No message has been sent. Please try again shortly.',
   'business-name-required': 'Enter your business name',
   'display-name-required': 'Enter a display name',
   'onboarding-failed': 'Sorry, your details could not be saved. Please try again.',
@@ -175,6 +177,8 @@ const MARKETPLACE_ERROR_MESSAGE_KEYS = {
   'cancel-failed': 'govuk_alpha_commerce.orders.status_cancel_failed',
   'rate-failed': 'govuk_alpha_commerce.orders.status_rate_failed',
   'rate-invalid': 'govuk_alpha_commerce.orders.status_rate_invalid',
+  'rate-safeguarding-restricted': 'safeguarding.errors.interaction_not_allowed',
+  'rate-safeguarding-unavailable': 'safeguarding.errors.policy_unavailable',
   'business-name-required': 'govuk_alpha_commerce.onboarding.error_business_name',
   'display-name-required': 'govuk_alpha_commerce.onboarding.error_display_name',
   'onboarding-failed': 'govuk_alpha_commerce.onboarding.status_failed',
@@ -723,7 +727,7 @@ async function acceptedOfferCheckout(token, id) {
   };
 }
 
-function decorateOrder(order, role) {
+function decorateOrder(order, role, translate = fallbackTranslator) {
   const row = order && typeof order === 'object' ? order : {};
   const listing = row.listing && typeof row.listing === 'object' ? row.listing : {};
   const buyer = row.buyer && typeof row.buyer === 'object' ? row.buyer : {};
@@ -742,21 +746,23 @@ function decorateOrder(order, role) {
     ...row,
     id: orderId,
     number,
-    orderNumberLabel: `Order ${number}`,
-    listingTitle: trimmed(listing.title || row.listing_title) || 'Marketplace',
+    orderNumberLabel: translate('govuk_alpha_commerce.orders.order_number', { number }),
+    listingTitle: trimmed(listing.title || row.listing_title) || translate('marketplace.title'),
     status,
-    statusLabel: ORDER_STATUS_LABELS[status] || status,
+    statusLabel: Object.hasOwn(ORDER_STATUS_LABELS, status)
+      ? translate(`govuk_alpha_commerce.orders.status_${status}`)
+      : status,
     statusTagClass: ['completed', 'delivered'].includes(status)
       ? 'govuk-tag--green'
       : (status === 'cancelled' ? 'govuk-tag--red' : 'govuk-tag--blue'),
     totalLabel: formatMoney(row.total_price ?? row.total ?? row.amount, row.currency || row.price_currency || 'EUR'),
     counterparty,
-    counterpartyLabel: isSeller ? 'Buyer' : 'Seller',
+    counterpartyLabel: translate(`govuk_alpha_commerce.orders.${isSeller ? 'buyer_label' : 'seller_label'}`),
     trackingNumber: trimmed(row.tracking_number),
     canShip: isSeller && ['paid', 'shipped'].includes(status),
     canConfirm: !isSeller && ['shipped', 'paid', 'delivered'].includes(status),
     canPay: !isSeller && status === 'pending_payment' && decimalNumber(row.total_price ?? row.total) > 0,
-    canCancel: ['pending_payment', 'paid'].includes(status),
+    canCancel: status === 'pending_payment',
     canRate: ['completed', 'delivered'].includes(status) && !alreadyRated
   };
 }
@@ -1406,6 +1412,7 @@ async function ordersViewModel(req, res, role) {
   const isSeller = role === 'seller';
   const allowedTabs = isSeller ? SELLER_ORDER_TABS : BUYER_ORDER_TABS;
   const tab = allowed(req.query.tab, allowedTabs, 'all');
+  const translate = typeof res.locals.t === 'function' ? res.locals.t : fallbackTranslator;
   try {
     const result = await callMarketplace(token, 'GET', ordersPath(role, tab));
     return {
@@ -1420,11 +1427,11 @@ async function ordersViewModel(req, res, role) {
       tab,
       tabs: allowedTabs.map((value) => ({
         value,
-        label: value.charAt(0).toUpperCase() + value.slice(1),
+        label: translate(`govuk_alpha_commerce.orders.tab_${value}`),
         href: `${isSeller ? '/marketplace/sales' : '/marketplace/orders'}?tab=${value}`,
         active: value === tab
       })),
-      orders: rowsFrom(result).map((order) => decorateOrder(order, role)),
+      orders: rowsFrom(result).map((order) => decorateOrder(order, role, translate)),
       status: statusEntry(req, req.query.status)
     };
   } catch (error) {

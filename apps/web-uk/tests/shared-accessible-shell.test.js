@@ -30710,6 +30710,8 @@ describe('shared accessible frontend shell', () => {
     expect(api.callMarketplaceApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/orders/sales?limit=50&status=paid');
     expect(buyer.text).toContain('My orders');
     expect(buyer.text).toContain('Delivery confirmed. Thank you.');
+    expect(buyer.text).toContain('id="commerce-orders-status"');
+    expect(buyer.text).toContain('govuk-notification-banner--success');
     expect(buyer.text).toContain('Order MKT-91');
     expect(buyer.text).toContain('Community bike');
     expect(buyer.text).toContain('Confirm delivery');
@@ -30717,7 +30719,38 @@ describe('shared accessible frontend shell', () => {
     expect(seller.text).toContain('The order was marked as shipped.');
     expect(seller.text).toContain('Garden chair');
     expect(seller.text).toContain('Mark as shipped');
+    expect(seller.text).not.toContain('action="/marketplace/orders/92/cancel"');
     expect(seller.text).not.toContain('Laravel Blade route');
+  });
+
+  it('matches Blade order failure banners and pre-payment cancellation controls', async () => {
+    const api = require('../src/lib/api');
+    api.callMarketplaceApi.mockResolvedValueOnce({
+      data: [
+        {
+          id: 93,
+          order_number: 'MKT-93',
+          status: 'pending_payment',
+          total_price: 18,
+          currency: 'GBP',
+          listing: { title: 'Tool set' },
+          seller: { name: 'Aisha Khan' }
+        }
+      ]
+    });
+
+    const response = await request(app)
+      .get('/marketplace/orders?status=rate-safeguarding-restricted')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('id="commerce-orders-status"');
+    expect(response.text).toContain('The recipient’s community safeguarding policy does not allow this direct interaction. Ask a coordinator for help.');
+    expect(response.text).not.toContain('govuk-notification-banner--success');
+    expect(response.text).not.toContain('govuk-error-summary');
+    expect(response.text).toContain('Pay by card');
+    expect(response.text).toContain('Cancelling an order cannot be undone.');
+    expect(response.text).toContain('action="/marketplace/orders/93/cancel"');
   });
 
   it('renders the Laravel-backed marketplace pickups page', async () => {
@@ -31168,6 +31201,15 @@ describe('shared accessible frontend shell', () => {
       comment: 'Great handover',
       is_anonymous: false
     });
+
+    api.callMarketplaceApi.mockRejectedValueOnce(new api.ApiError('Restricted', 403, {
+      errors: [{ code: 'SAFEGUARDING_CONTACT_RESTRICTED' }]
+    }));
+    const restrictedRate = await post('/marketplace/orders/42/rate', {
+      rating: '4',
+      redirect_to: 'sales'
+    });
+    expect(restrictedRate.headers.location).toBe('/marketplace/sales?status=rate-safeguarding-restricted');
   });
 
   it('submits Laravel marketplace seller onboarding, pickup slot, and coupon aliases', async () => {
