@@ -599,6 +599,11 @@ organisation/creator and boolean fields, and en-dash salary ranges. Focused
 populated/boundary/unsigned/failure proof passes `4/4`; after correcting one
 stale hyphenated salary assertion, the complete non-mutating rerun passes
 `52/52` suites and `1,692/1,692` tests.
+The direct-message inbox now preserves Blade's blank-identity rows during an
+active name filter while retaining the localized accessible display fallback;
+named non-matches remain excluded. Focused archived/paginated, fallback, and
+filtered-identity proof passes `3/3`; the complete non-mutating gate passes
+`52/52` suites and `1,693/1,693` tests.
 Simple Search now mirrors Blade's selected-title trimming and positive numeric
 ID boundary: whitespace-only titles do not create empty result cards, a null
 title may use the source name fallback, and invalid IDs render text without an
