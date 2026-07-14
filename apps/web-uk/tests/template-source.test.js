@@ -902,7 +902,8 @@ describe('tenant-aware template helper conversion', () => {
     expect(detail).not.toContain('onsubmit="return confirm');
     expect(detail).not.toContain("'/delete')");
     expect(index).toContain('pagination.hasMore and pagination.cursor');
-    expect(index).toContain('href: pagination.nextHref');
+    expect(index).toContain('href="{{ pagination.nextHref }}" rel="next"');
+    expect(index).toContain('govuk-pagination__icon govuk-pagination__icon--next');
   });
 
   it('keeps resource browse, library, upload, delete, and discussion controls behind urlFor()', () => {

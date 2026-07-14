@@ -20875,6 +20875,9 @@ describe('shared accessible frontend shell', () => {
     expect(index.text).toContain('href="/groups/42"');
     expect(index.text).toContain('Public');
     expect(index.text).toContain('href="/groups?q=repair&amp;filter=joined&amp;cursor=next-groups"');
+    expect(index.text).toContain('<nav class="govuk-pagination govuk-!-margin-top-6" aria-label="Group pages">');
+    expect(index.text).toContain('<span class="govuk-pagination__link-title">Next</span>');
+    expect(index.text).toContain('class="govuk-pagination__icon govuk-pagination__icon--next"');
     expect(index.text).toContain('id="q" name="q" type="text" value="repair"');
     expect(index.text).toMatch(/value="joined" selected/);
     expect(index.text).not.toContain('Joined</strong>');
