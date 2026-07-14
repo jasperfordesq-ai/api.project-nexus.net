@@ -30408,6 +30408,7 @@ describe('shared accessible frontend shell', () => {
 
   it('renders the Laravel-backed marketplace my listings dashboard', async () => {
     const api = require('../src/lib/api');
+    api.getProfile.mockResolvedValueOnce({ data: { id: 101 } });
     api.callMarketplaceApi.mockResolvedValueOnce({
       data: [
         {
@@ -30428,15 +30429,31 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(200);
-    expect(api.callMarketplaceApi).toHaveBeenCalledWith('test-token', 'GET', '/listings?limit=100');
+    expect(api.getProfile).toHaveBeenCalledWith('test-token');
+    expect(api.callMarketplaceApi).toHaveBeenCalledWith('test-token', 'GET', '/listings?limit=100&user_id=101');
     expect(response.text).toContain('My listings');
+    expect(response.text).toContain('Your items at Project NEXUS Accessible');
     expect(response.text).toContain('Your listing was renewed.');
     expect(response.text).toContain('Expired bike');
     expect(response.text).toContain('Ready to renew');
     expect(response.text).toContain('Renew');
+    expect(response.text).toContain('Delete');
     expect(response.text).toContain('href="/marketplace/42/edit"');
     expect(response.text).not.toContain('Active helmet');
     expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('fails closed before loading marketplace listings when the authenticated profile has no id', async () => {
+    const api = require('../src/lib/api');
+    api.getProfile.mockResolvedValueOnce({ data: {} });
+
+    const response = await request(app)
+      .get('/marketplace/mine')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(503);
+    expect(api.getProfile).toHaveBeenCalledWith('test-token');
+    expect(api.callMarketplaceApi).not.toHaveBeenCalled();
   });
 
   it('renders the Laravel-backed marketplace saved and free listing pages', async () => {

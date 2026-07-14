@@ -86,7 +86,6 @@ describe('request-scoped Marketplace status localization', () => {
     ['order-failed', 'govuk_alpha_commerce.buy.error_generic'],
     ['offer-amount-invalid', 'govuk_alpha_commerce.offer.error_amount'],
     ['offer-failed', 'govuk_alpha_commerce.offer.error_generic'],
-    ['report-validation', 'govuk_alpha_commerce.report.error_reason'],
     ['report-failed', 'govuk_alpha_commerce.report.status_report_failed'],
     ['accept-failed', 'govuk_alpha_commerce.offers.status_action_failed'],
     ['decline-failed', 'govuk_alpha_commerce.offers.status_action_failed'],

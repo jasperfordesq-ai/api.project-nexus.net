@@ -8,6 +8,7 @@ const { randomUUID } = require('node:crypto');
 const { ApiError, callMarketplaceApi, callMerchantOnboardingApi } = require('../lib/api');
 const { flagEnabled } = require('../lib/accessible-shell');
 const { createTranslator } = require('../lib/localization');
+const { getRequestProfile } = require('../lib/request-profile');
 const { asyncRoute } = require('../lib/routeHelpers');
 const { getRequestIntlLocale } = require('../lib/request-intl-locale');
 
@@ -938,10 +939,14 @@ async function loadSellerCoupon(token, id, req) {
   return coupon;
 }
 
-function listingTabs(activeTab, counts) {
+function listingTabs(req, activeTab, counts) {
   return LISTING_STATUS_TABS.map((value) => ({
     value,
-    label: LISTING_STATUS_LABELS[value],
+    label: translateMarketplaceMessage(
+      req,
+      `govuk_alpha_commerce.my_listings.tab_${value}`,
+      LISTING_STATUS_LABELS[value]
+    ),
     href: `/marketplace/mine?tab=${value}`,
     count: counts[value] || 0,
     active: activeTab === value
@@ -964,8 +969,8 @@ function indexPath(query) {
   return `/listings?${params.toString()}`;
 }
 
-function myListingsPath() {
-  return '/listings?limit=100';
+function myListingsPath(userId) {
+  return `/listings?limit=100&user_id=${userId}`;
 }
 
 function savedListingsPath() {
@@ -1349,7 +1354,12 @@ router.get('/mine', asyncRoute(async (req, res) => {
   if (!token) return undefined;
 
   try {
-    const allListings = (await loadListingRows(token, myListingsPath())).rows;
+    const profile = dataFrom(await getRequestProfile(req, token)) || {};
+    const currentUserId = positiveInteger(profile.id ?? profile.user_id);
+    if (currentUserId === null) {
+      throw new ApiError('Authenticated marketplace profile is missing an id.', 502);
+    }
+    const allListings = (await loadListingRows(token, myListingsPath(currentUserId))).rows;
     const tab = allowed(req.query.tab, LISTING_STATUS_TABS, 'active');
     const counts = countsByStatus(allListings);
     return res.render('marketplace/manage', {
@@ -1359,7 +1369,7 @@ router.get('/mine', asyncRoute(async (req, res) => {
       activeTab: 'mine',
       listings: allListings.filter((listing) => trimmed(listing.status) === tab),
       tab,
-      tabs: listingTabs(tab, counts),
+      tabs: listingTabs(req, tab, counts),
       status: statusEntry(req, req.query.status)
     });
   } catch (error) {

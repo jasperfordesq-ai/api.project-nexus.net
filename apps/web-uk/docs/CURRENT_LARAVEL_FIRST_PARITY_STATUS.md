@@ -173,7 +173,7 @@ these numbers after either source moves.
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
 | Jest | 49/49 suites, 1,646/1,646 tests | Fresh green code gate |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
-| Static locale usage | 7,315 references, 5,594 unique keys, 0 unresolved | Current complete-reference audit |
+| Static locale usage | 7,322 references, 5,602 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
 | Blade marker check | Current 19/19 | Current-source public GET marker comparison; not screenshot or visual certification |
 | Automated accessibility | Not currently certified: 28 passed, login failed, 58 did not run | Full aggregate requires a disposable Laravel environment; manual AT review remains open |
@@ -337,6 +337,25 @@ Blade markers, 7,315-reference / 5,594-unique-key zero-unresolved locale, and
 322-template zero-match gates are green. The ledger records 590 contracts: 371
 OpenAPI matches, 202 unmatched, 17 dynamic, and 284 state-changing. No live
 report was submitted and no Laravel database access occurred.
+
+## Marketplace My Listings Ownership And Blade Refresh
+
+The signed My listings page now loads the authenticated Laravel profile first
+and calls the Laravel marketplace index with
+`limit=100&user_id={authenticatedUserId}`. Laravel accepts that own-listings
+filter only when it matches the bearer identity. A missing profile ID now fails
+closed before any listings request, rather than falling back to the unscoped
+browse collection and potentially showing other sellers' records.
+
+The page now uses Blade's exact default-English caption, description, create
+action, status banner, tab labels, tab-specific empty states, and view, edit,
+renew, and delete labels instead of hard-coded copy and unrelated Jobs keys.
+Focused render/contract and missing-identity proof passes 2/2. The complete
+Jest gate passes 49/49 suites and 1,646/1,646 tests; brand, lint, CSS, route,
+7,322-reference / 5,602-unique-key zero-unresolved locale, and 322-template
+zero-match gates are green. The ledger remains 590 contracts: 371 OpenAPI
+matches, 202 unmatched, 17 dynamic, and 284 state-changing. No Laravel
+mutation, database access, upload, or download ran.
 
 ## Marketplace Offer Workflow Refresh
 

@@ -15,6 +15,7 @@ jest.mock('../src/lib/api', () => ({
       this.data = data;
     }
   },
+  getProfile: jest.fn(),
   callMarketplaceApi: jest.fn(),
   callMerchantOnboardingApi: jest.fn()
 }));
@@ -40,6 +41,7 @@ function createApp() {
 
 describe('Laravel-first Marketplace document-title localization', () => {
   beforeEach(() => {
+    api.getProfile.mockReset().mockResolvedValue({ data: { id: 101 } });
     api.callMerchantOnboardingApi.mockReset().mockResolvedValue({ data: {} });
     api.callMarketplaceApi.mockReset().mockImplementation((token, method, apiPath) => {
       if (apiPath === '/categories') {
