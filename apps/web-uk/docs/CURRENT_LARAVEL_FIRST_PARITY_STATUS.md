@@ -205,7 +205,7 @@ together from a clean published checkout.
 | Missing Laravel routes | 1 | Event offline check-in code generation |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 52/52 suites, 1,672/1,672 tests | Latest recorded uninterrupted full gate after the frozen score; later improvements remain unscored until a complete rubric re-audit |
+| Jest | 52/52 suites, 1,674/1,674 tests | Latest recorded uninterrupted full gate after the frozen score; later improvements remain unscored until a complete rubric re-audit |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
 | Static locale usage | 7,341 references, 5,620 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
@@ -1482,6 +1482,30 @@ localization audit, and diff checks are green. No Laravel source, database,
 migration, mutation, container, or production operation was performed. This
 published component-audit improvement remains unscored, so the frozen bank
 remains 622/1,000 pending a complete fixed-rubric re-audit.
+
+## 2026-07-14 Complete Non-Mutating Checkpoint
+
+Frozen evidence at `2026-07-14T17:53:37.0182866+01:00` against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf`, Web UK product commit
+`d05a3caff85981d1da9bf4883a64dbc2a25143cb`, and verification/provenance commit
+`66f192002b4c9ab81f0d387f27283eeb12143c4a`. The first full Jest run exposed
+one stale source guard that still required the member-profile star display
+removed by the Blade review-card slice. The guard was narrowed to require the
+current localized rating tag plus assistive copy; its focused rerun passed 1/1,
+then the uninterrupted full Jest rerun passed 52/52 suites and 1,674/1,674
+tests.
+
+Brand, lint, CSS, route matrix, API ledger, locale structure, template
+localization, and diff checks are green. The refreshed matrix remains 688/689
+matched declarations; the ledger remains 667 contracts, 451 OpenAPI matches,
+216 direct Laravel route declarations omitted from OpenAPI, and zero undeclared
+or dynamically unresolved consumers. Locale structure remains 11 locales, 36
+namespaces, and 8,837 keys; 322 templates have zero conservative matches. Blade
+marker comparison passes 19/19 at the canonical `/hour-timebank/accessible`
+mount. No accessibility/login, mutation, upload, download, destructive,
+Laravel-database, container, or production operation was performed. These
+published improvements remain unscored, so the frozen bank remains 622/1,000
+pending a complete fixed-rubric re-audit.
 
 ## 2026-07-14 Interactive Details Initialization Parity
 

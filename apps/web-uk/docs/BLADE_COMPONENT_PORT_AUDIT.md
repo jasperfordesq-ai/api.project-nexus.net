@@ -1017,6 +1017,10 @@ rewriting.
 - The cookie confirmation banner's hide control now keeps native link semantics
   like Blade instead of overriding its role to button. Focused shell-partial
   proof passes `15/15`; manual assistive-technology certification remains open.
+- The post-slice complete non-mutating checkpoint passes `52/52` suites and
+  `1,674/1,674` tests after replacing the stale member star-display guard with
+  a current rating-tag/assistive-copy guard. Route, API-ledger, locale,
+  template, and `19/19` canonical Blade marker gates are also green.
 
 ### Jobs member-page evidence
 
