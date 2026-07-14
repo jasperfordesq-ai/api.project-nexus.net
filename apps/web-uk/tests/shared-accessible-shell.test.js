@@ -14357,6 +14357,7 @@ describe('shared accessible frontend shell', () => {
       voted_option_id: 13,
       total_votes: 10,
       results_visible: true,
+      is_creator: true,
       options: [
         { id: 13, text: 'Bike repair', vote_count: 7, percentage: 70 },
         { id: 14, text: 'Bread making', vote_count: 3, percentage: 30 }
@@ -14430,6 +14431,12 @@ describe('shared accessible frontend shell', () => {
     expect(list.text).toContain('Community garden');
     expect(list.text).toContain('Rank this poll');
     expect(list.text).toContain('View and discuss');
+    expect(list.text).toContain('action="/polls/42/delete"');
+    expect(list.text).toContain('action="/polls/43/delete"');
+    expect(list.text).toContain('action="/polls/44/delete"');
+    expect(list.text.match(/govuk-details__summary-text">Delete poll/g)).toHaveLength(3);
+    expect(list.text.match(/This action is permanent and cannot be undone\./g)).toHaveLength(3);
+    expect(list.text.match(/>Yes, delete<\/button>/g)).toHaveLength(3);
     expect(list.text).not.toContain('Laravel Blade route');
 
     const detail = await request(app)

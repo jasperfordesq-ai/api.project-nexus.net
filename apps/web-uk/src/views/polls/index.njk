@@ -138,10 +138,19 @@
 
               <p class="govuk-body govuk-!-margin-top-2 govuk-!-margin-bottom-0"><a class="govuk-link" href="{{ urlFor('/polls/' + (poll.id | string)) }}">{{ t("govuk_alpha_gamification.nav.view_and_discuss") }}</a></p>
               {% if poll.isCreator %}
-                <form method="post" action="{{ urlFor('/polls/' + (poll.id | string) + '/delete') }}" class="govuk-!-margin-top-3">
-                  <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-                  <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">{{ t("polls.delete_button") }}</button>
-                </form>
+                <details class="govuk-details govuk-!-margin-top-3 govuk-!-margin-bottom-0" data-module="govuk-details">
+                  <summary class="govuk-details__summary"><span class="govuk-details__summary-text">{{ t("polls.delete_button") }}</span></summary>
+                  <div class="govuk-details__text">
+                    <div class="govuk-warning-text">
+                      <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
+                      <strong class="govuk-warning-text__text"><span class="govuk-visually-hidden">{{ t("states.warning_prefix") }}</span>{{ t("ux.confirm_irreversible") }}</strong>
+                    </div>
+                    <form method="post" action="{{ urlFor('/polls/' + (poll.id | string) + '/delete') }}">
+                      <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                      <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">{{ t("ux.confirm_delete_button") }}</button>
+                    </form>
+                  </div>
+                </details>
               {% endif %}
             </article>
           {% endif %}
@@ -168,6 +177,21 @@
                 <div class="govuk-inset-text">{{ t("polls.results_hidden") }}</div>
               {% endif %}
               <p class="govuk-body govuk-!-margin-top-2 govuk-!-margin-bottom-0"><a class="govuk-link" href="{{ urlFor('/polls/' + (poll.id | string)) }}">{{ t("govuk_alpha_gamification.nav.view_and_discuss") }}</a></p>
+              {% if poll.isCreator %}
+                <details class="govuk-details govuk-!-margin-top-3 govuk-!-margin-bottom-0" data-module="govuk-details">
+                  <summary class="govuk-details__summary"><span class="govuk-details__summary-text">{{ t("polls.delete_button") }}</span></summary>
+                  <div class="govuk-details__text">
+                    <div class="govuk-warning-text">
+                      <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
+                      <strong class="govuk-warning-text__text"><span class="govuk-visually-hidden">{{ t("states.warning_prefix") }}</span>{{ t("ux.confirm_irreversible") }}</strong>
+                    </div>
+                    <form method="post" action="{{ urlFor('/polls/' + (poll.id | string) + '/delete') }}">
+                      <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                      <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">{{ t("ux.confirm_delete_button") }}</button>
+                    </form>
+                  </div>
+                </details>
+              {% endif %}
             </article>
           {% endif %}
         {% endfor %}
