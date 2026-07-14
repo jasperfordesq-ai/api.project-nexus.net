@@ -3,13 +3,13 @@
 Generated from `src/lib/api.js`, routed Web UK consumers, tests, and Laravel `openapi.json`.
 This is static evidence: an OpenAPI match or test reference does not prove runtime behavior, role policy, side effects, cleanup, or frontend parity.
 
-- Contracts: 662
-- Laravel OpenAPI matches: 439
-- Missing OpenAPI matches: 223
+- Contracts: 663
+- Laravel OpenAPI matches: 441
+- Missing OpenAPI matches: 222
 - Dynamic unresolved contracts: 0
 - State-changing contracts: 369
 - Rows without detected tests: 0
-- API source SHA-256: `a6d978911e365e9952d6ada4ff2c8a3918e72be251648e4ab7e3570f307d7d19`
+- API source SHA-256: `f0aea812c4a69c4aedcee82fbe642b8fdb2646068cda05aadfe8c07d4c055ae1`
 - Laravel OpenAPI SHA-256: `0f62bf532901e6925b630d6a8ed0add7cd2c2bd9395b773c6a1a6581c0d38722`
 
 The JSON companion contains the full request/response, status/error, redirect, side-effect, cleanup, Laravel implementation, consumer, and test fields.
@@ -97,6 +97,8 @@ The JSON companion contains the full request/response, status/error, redirect, s
 | GET | `/api/v2/courses/mine` | `callCourseApi` | missing-openapi-match | read-only by HTTP method<br>not applicable | src/routes/courses.js | tests/api.test.js<br>tests/laravel-runtime-smoke.test.js<br>tests/runtime/courses-mutation.spec.js<br>tests/shared-accessible-shell.test.js |
 | GET | `/api/v2/courses/quizzes/{param}` | `callCourseApi` | missing-openapi-match | read-only by HTTP method<br>not applicable | src/routes/courses.js | tests/api.test.js<br>tests/runtime/courses-mutation.spec.js<br>tests/shared-accessible-shell.test.js |
 | POST | `/api/v2/courses/quizzes/{param}/attempt` | `callCourseApi` | missing-openapi-match | state-changing; disposable-environment runtime proof required<br>fixture-specific cleanup and final absence/equality proof required | src/routes/courses.js | tests/api.test.js<br>tests/runtime/courses-mutation.spec.js<br>tests/shared-accessible-shell.test.js |
+| GET | `/api/v2/event-broadcasts/{param}?history_page={param}&history_per_page=50` | `callEventBroadcastApi` | EventBroadcast_show<br>App\Http\Controllers\Api\EventBroadcastController@show | read-only by HTTP method<br>not applicable | src/routes/events.js | tests/api.test.js<br>tests/shared-accessible-shell.test.js |
+| POST | `/api/v2/event-broadcasts/{param}/schedule` | `callEventBroadcastApi` | EventBroadcast_schedule<br>App\Http\Controllers\Api\EventBroadcastController@schedule | state-changing; disposable-environment runtime proof required<br>fixture-specific cleanup and final absence/equality proof required | src/routes/events.js | tests/api.test.js<br>tests/shared-accessible-shell.test.js |
 | GET | `/api/v2/event-templates??{param}` | `callEventTemplateApi` | EventTemplate_index<br>App\Http\Controllers\Api\EventTemplateController@index | read-only by HTTP method<br>not applicable | src/routes/events.js | tests/shared-accessible-shell.test.js |
 | GET | `/api/v2/event-templates/{param}` | `callEventTemplateApi` | EventTemplate_show<br>App\Http\Controllers\Api\EventTemplateController@show | read-only by HTTP method<br>not applicable | src/routes/event-templates.js<br>src/routes/events.js | tests/shared-accessible-shell.test.js |
 | GET | `/api/v2/event-templates/{param}/history??{param}` | `callEventTemplateApi` | EventTemplate_history<br>App\Http\Controllers\Api\EventTemplateController@history | read-only by HTTP method<br>not applicable | src/routes/event-templates.js | tests/shared-accessible-shell.test.js |
@@ -188,7 +190,6 @@ The JSON companion contains the full request/response, status/error, redirect, s
 | POST | `/api/v2/events/calendar/feed-tokens` | `callEventApi` | EventCalendar_createToken<br>App\Http\Controllers\Api\EventCalendarController@createToken | state-changing; disposable-environment runtime proof required<br>fixture-specific cleanup and final absence/equality proof required | src/routes/events.js | tests/api-consumer-ledger.test.js<br>tests/api.test.js<br>tests/shared-accessible-shell.test.js |
 | DELETE | `/api/v2/events/calendar/feed-tokens/{param}` | `callEventApi` | EventCalendar_revokeToken<br>App\Http\Controllers\Api\EventCalendarController@revokeToken | state-changing; disposable-environment runtime proof required<br>fixture-specific cleanup and final absence/equality proof required | src/routes/events.js | tests/api-consumer-ledger.test.js<br>tests/api.test.js<br>tests/shared-accessible-shell.test.js |
 | GET | `/api/v2/events/calendar/feed.ics` | `downloadEventApi` | EventCalendar_tenantFeed<br>App\Http\Controllers\Api\EventCalendarController@tenantFeed | read-only by HTTP method<br>not applicable | src/routes/events.js | tests/shared-accessible-shell.test.js |
-| POST | `/api/v2/events/event-broadcasts/{param}/{param}` | `callEventApi` | missing-openapi-match | state-changing; disposable-environment runtime proof required<br>fixture-specific cleanup and final absence/equality proof required | src/routes/events.js | tests/api-consumer-ledger.test.js<br>tests/api.test.js<br>tests/shared-accessible-shell.test.js |
 | GET | `/api/v2/events/recurrence-capabilities` | `callEventApi` | EventRecurrenceCapability_show<br>App\Http\Controllers\Api\EventRecurrenceCapabilityController@show | read-only by HTTP method<br>not applicable | src/routes/events.js | tests/api-consumer-ledger.test.js<br>tests/api.test.js<br>tests/shared-accessible-shell.test.js |
 | POST | `/api/v2/events/recurring` | `callEventApi` | Events_createRecurring<br>App\Http\Controllers\Api\EventsController@createRecurring | state-changing; disposable-environment runtime proof required<br>fixture-specific cleanup and final absence/equality proof required | src/routes/events.js | tests/api-consumer-ledger.test.js<br>tests/api.test.js<br>tests/shared-accessible-shell.test.js |
 | POST | `/api/v2/exchanges` | `createExchangeRequest` | documented | state-changing; disposable-environment runtime proof required<br>fixture-specific cleanup and final absence/equality proof required | src/routes/listings.js | tests/api.test.js<br>tests/shared-accessible-shell.test.js |

@@ -153,6 +153,7 @@ jest.mock('../src/lib/api', () => ({
   uploadJobApplication: jest.fn().mockResolvedValue({ data: { id: 91 } }),
   callAdminJobApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callAdminEventApi: jest.fn().mockResolvedValue({ data: [], meta: { total: 0, current_page: 1, last_page: 1 } }),
+  callEventBroadcastApi: jest.fn().mockResolvedValue({ data: { id: 8 } }),
   callJobDownload: jest.fn(),
   getEventCategories: jest.fn().mockResolvedValue({ data: [] }),
   uploadEventImage: jest.fn().mockResolvedValue({ data: { cover_image: '/uploads/events/garden.webp' } }),
@@ -612,6 +613,7 @@ describe('shared accessible frontend shell', () => {
     api.callGroupExchangeApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callEventApi.mockReset().mockResolvedValue({ data: { id: 42 } });
     api.callAdminEventApi.mockReset().mockResolvedValue({ data: [], meta: { total: 0, current_page: 1, last_page: 1 } });
+    api.callEventBroadcastApi.mockReset().mockResolvedValue({ data: { id: 8 } });
     api.downloadEventApi.mockReset().mockResolvedValue({ status: 200, body: Buffer.from('metric,value'), headers: { 'content-type': 'text/csv; charset=UTF-8', 'content-disposition': 'attachment; filename="event-42-analytics.csv"' } });
     api.getEventCategories.mockReset().mockResolvedValue({ data: [] });
     api.uploadEventImage.mockReset().mockResolvedValue({ data: { cover_image: '/uploads/events/garden.webp' } });
@@ -23183,8 +23185,8 @@ describe('shared accessible frontend shell', () => {
     const api = require('../src/lib/api');
     api.callEventApi
       .mockResolvedValueOnce({ data: { id: 42, title: 'Community garden day' } })
-      .mockResolvedValueOnce({ data: [{ id: 8, event_id: 42, variant: 'announcement', status: 'draft', version: 3, audience: { segments: ['registration_confirmed'], recipient_count: 12 }, channels: ['email', 'in_app'], delivery: { delivered: 8, total: 12, suppressed: 1, dead_lettered: 2 }, scheduled_at: '2026-07-15T09:30:00Z', capabilities: { schedule: true, cancel: true, retry: false } }], meta: { current_page: 2, per_page: 20, total: 60, total_pages: 3 } })
-      .mockResolvedValueOnce({ data: { broadcast: { id: 8, event_id: 42 }, history: [{ action: 'scheduled', to_status: 'scheduled', version: 4, created_at: '2026-07-14T10:00:00Z' }], history_meta: { current_page: 2, per_page: 50, total: 150, total_pages: 3 } } });
+      .mockResolvedValueOnce({ data: [{ id: 8, event_id: 42, variant: 'announcement', status: 'draft', version: 3, audience: { segments: ['registration_confirmed'], recipient_count: 12 }, channels: ['email', 'in_app'], delivery: { delivered: 8, total: 12, suppressed: 1, dead_lettered: 2 }, scheduled_at: '2026-07-15T09:30:00Z', capabilities: { schedule: true, cancel: true, retry: false } }], meta: { current_page: 2, per_page: 20, total: 60, total_pages: 3 } });
+    api.callEventBroadcastApi.mockResolvedValueOnce({ data: { broadcast: { id: 8, event_id: 42 }, history: [{ action: 'scheduled', to_status: 'scheduled', version: 4, created_at: '2026-07-14T10:00:00Z' }], history_meta: { current_page: 2, per_page: 50, total: 150, total_pages: 3 } } });
     const response = await request(app).get('/events/42/communications?page=2&broadcast_id=8&history_page=2').set('Cookie', signedCookieHeader());
     expect(response.status).toBe(200);
     expect(response.headers['cache-control']).toBe('private, no-store');
@@ -23209,7 +23211,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('href="/events/42/communications?page=2&amp;broadcast_id=8&amp;history_page=1"');
     expect(response.text).toContain('href="/events/42/communications?page=2&amp;broadcast_id=8&amp;history_page=3"');
     expect(api.callEventApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/42/broadcasts?page=2&per_page=20');
-    expect(api.callEventApi).toHaveBeenNthCalledWith(3, 'test-token', 'GET', '/event-broadcasts/8?history_page=2&history_per_page=50');
+    expect(api.callEventBroadcastApi).toHaveBeenCalledWith('test-token', 'GET', '/8?history_page=2&history_per_page=50');
   });
 
   it('previews and creates a Laravel Event Communication with exact audience and idempotency', async () => {
@@ -23249,12 +23251,12 @@ describe('shared accessible frontend shell', () => {
       ['cancel', { reason: 'Venue unavailable' }, 'cancelled'],
       ['retry', {}, 'retried']
     ]) {
-      api.callEventApi.mockResolvedValueOnce({ data: { changed: true } });
+      api.callEventBroadcastApi.mockResolvedValueOnce({ data: { changed: true } });
       const response = await agent.post(`/events/42/communications/8/${action}`).set('Cookie', signedCookieHeader()).type('form').send({
         _csrf: csrf, expected_version: '3', idempotency_key: `comm-${action}-123`, ...extra
       });
       expect(response.headers.location).toBe(`/events/42/communications?status=${status}`);
-      expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', `/event-broadcasts/8/${action}`, {
+      expect(api.callEventBroadcastApi).toHaveBeenLastCalledWith('test-token', 'POST', `/8/${action}`, {
         expected_version: 3, ...(action === 'schedule' ? { scheduled_at: '2026-08-01T10:00' } : {}), ...(action === 'cancel' ? { reason: 'Venue unavailable' } : {})
       }, { headers: { 'Idempotency-Key': `comm-${action}-123` } });
     }

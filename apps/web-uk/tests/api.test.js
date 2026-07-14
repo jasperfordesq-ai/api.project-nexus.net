@@ -2531,6 +2531,31 @@ describe('API Request Functions', () => {
       );
     });
 
+    it('should call Laravel event broadcast endpoints outside the event resource prefix', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { changed: true } })
+      });
+
+      await api.callEventBroadcastApi('test-token', 'POST', '/8/schedule', {
+        expected_version: 3,
+        scheduled_at: '2026-08-01T10:00'
+      }, { headers: { 'Idempotency-Key': 'comm-schedule-123' } });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/event-broadcasts/8/schedule',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token',
+            'Idempotency-Key': 'comm-schedule-123'
+          }),
+          body: JSON.stringify({ expected_version: 3, scheduled_at: '2026-08-01T10:00' })
+        })
+      );
+    });
+
     it('should call Laravel admin event endpoints with the exact query and decision payload', async () => {
       mockFetch
         .mockResolvedValueOnce({

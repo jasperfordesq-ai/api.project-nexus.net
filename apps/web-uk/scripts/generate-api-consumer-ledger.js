@@ -20,6 +20,7 @@ const WRAPPERS = {
   callIdeationApi: wrapper('/api/v2', 1, 2, 3),
   callGroupExchangeApi: wrapper('/api/v2/group-exchanges', 1, 2, 3),
   callEventApi: wrapper('/api/v2/events', 1, 2, 3),
+  callEventBroadcastApi: wrapper('/api/v2/event-broadcasts', 1, 2, 3),
   callAdminEventApi: wrapper('/api/v2/admin/events', 1, 2, 3),
   callEventTemplateApi: wrapper('/api/v2/event-templates', 1, 2, 3),
   downloadEventApi: wrapper('/api/v2/events', null, 1, null, true, 'GET'),

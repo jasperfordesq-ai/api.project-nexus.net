@@ -19,6 +19,7 @@ const {
   votePoll,
   getPolls,
   callEventApi,
+  callEventBroadcastApi,
   callAdminEventApi,
   callEventTemplateApi,
   downloadEventApi,
@@ -1988,7 +1989,7 @@ async function renderCommunications(req, res, options = {}) {
   const [eventResult, listResult, detailResult] = await Promise.all([
     callApi(token, 'GET', `/${id}`),
     callApi(token, 'GET', `/${id}/broadcasts?page=${page}&per_page=20`),
-    broadcastId ? callApi(token, 'GET', `/event-broadcasts/${broadcastId}?history_page=${historyPage}&history_per_page=50`) : null
+    broadcastId ? callEventBroadcastApi(token, 'GET', `/${broadcastId}?history_page=${historyPage}&history_per_page=50`) : null
   ]);
   const event = eventFrom(eventResult);
   const formatDate = typeof res.locals.formatLocaleDate === 'function'
@@ -2115,7 +2116,10 @@ async function mutateCommunication(req, res, action) {
     return redirectTo(res, eventPath(id, '/communications?status=invalid'));
   }
   try {
-    await callEventMutation(tokenFrom(req), 'POST', `/event-broadcasts/${broadcastId}/${action}`, payload, key);
+    const options = { headers: { 'Idempotency-Key': key } };
+    if (action === 'schedule') await callEventBroadcastApi(tokenFrom(req), 'POST', `/${broadcastId}/schedule`, payload, options);
+    else if (action === 'cancel') await callEventBroadcastApi(tokenFrom(req), 'POST', `/${broadcastId}/cancel`, payload, options);
+    else await callEventBroadcastApi(tokenFrom(req), 'POST', `/${broadcastId}/retry`, payload, options);
     const success = { schedule: 'scheduled', cancel: 'cancelled', retry: 'retried' }[action];
     return redirectTo(res, eventPath(id, `/communications?status=${success}`));
   } catch (error) {
