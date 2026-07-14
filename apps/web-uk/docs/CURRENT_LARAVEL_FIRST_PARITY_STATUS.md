@@ -170,7 +170,8 @@ tenant flags that Blade does not use to hide offer/request choices or skill
 tags. The form omits service type and category when Blade omits them, uses the
 exact catalog hints and primary validation messages, includes Blade's no-JS AI
 description helper and edit-page delete warning/action, and removes invented
-minimum-length, image-size, and layout copy.
+minimum-length, image-size, and layout copy. The description textarea exposes
+both the standard and AI helper hints to assistive technology.
 
 The AI helper now preserves bounded form values in one-use session state,
 places Laravel's returned suggestion into the description field, and returns

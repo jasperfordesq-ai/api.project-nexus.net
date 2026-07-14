@@ -26032,6 +26032,7 @@ describe('shared accessible frontend shell', () => {
       expect(form.text).toContain('id="skill_tags"');
       expect(form.text).not.toContain('name="service_type"');
       expect(form.text).toContain('formaction="/listing-config-test/accessible/listings/generate-description"');
+      expect(form.text).toContain('aria-describedby="description-ai-hint description-hint"');
     });
 
     it('round-trips the no-JS AI suggestion and every safe form value through one-use session state', async () => {
