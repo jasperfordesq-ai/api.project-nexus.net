@@ -177,9 +177,12 @@ function stripTags(value) {
 }
 
 function normalizeFeedItem(item, t = (key) => key) {
+  const type = String(item && item.type ? item.type : 'post').toLowerCase();
+  const id = Number(item && item.id);
   const typeLabel = feedItemType(item, t);
   return {
     id: item && item.id,
+    href: type === 'post' && Number.isInteger(id) && id > 0 ? `/feed/posts/${id}` : '/feed',
     typeLabel,
     title: String(item && (item.title || item.heading || typeLabel)).trim(),
     content: stripTags(item && (item.content || item.body)),

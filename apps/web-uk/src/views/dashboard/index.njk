@@ -171,7 +171,7 @@
             <article class="nexus-alpha-card">
               <strong class="govuk-tag govuk-tag--grey">{{ item.typeLabel }}</strong>
               <h3 class="govuk-heading-m govuk-!-margin-top-2 govuk-!-margin-bottom-2">
-                <a class="govuk-link" href="{{ urlFor('/feed') }}">{{ item.title }}</a>
+                <a class="govuk-link" href="{{ urlFor(item.href) }}">{{ item.title }}</a>
               </h3>
               <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-2">{{ t("feed.posted_by", { name: item.authorName }) }}</p>
               {% if item.content %}

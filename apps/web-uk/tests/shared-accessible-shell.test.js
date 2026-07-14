@@ -864,6 +864,12 @@ describe('shared accessible frontend shell', () => {
           title: 'Community garden update',
           content: 'The beds are ready for planting.',
           author: { name: 'Mo' }
+        },
+        {
+          id: 78,
+          type: 'listing',
+          title: 'Neighbour offer',
+          author: { name: 'Sam' }
         }
       ]
     });
@@ -944,6 +950,9 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Edit your profile');
     expect(response.text).toContain('Recent feed');
     expect(response.text).toContain('Community garden update');
+    expect(response.text).toContain('href="/feed/posts/77"');
+    expect(response.text).toContain('Neighbour offer');
+    expect(response.text).not.toContain('href="/feed/posts/78"');
     expect(response.text).toContain('Recent listings');
     expect(response.text).toContain('Borrow a repair kit');
     expect(response.text).toContain('href="/listings/new"');
