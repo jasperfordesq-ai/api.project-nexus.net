@@ -20624,8 +20624,8 @@ describe('shared accessible frontend shell', () => {
       data: {
         id: 42,
         name: 'Garden Helpers',
-        image_url: 'https://example.test/images/group-avatar.webp',
-        cover_image_url: 'https://example.test/images/group-cover.webp',
+        image_url: '/storage/images/group-avatar.webp',
+        cover_image_url: '/storage/images/group-cover.webp',
         viewer_membership: { role: 'admin', status: 'active' }
       }
     });
@@ -20646,7 +20646,7 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('Group avatar');
     expect(signed.text).toContain('A small square image shown next to the group name.');
     expect(signed.text).toContain(t('govuk_alpha_groups.image.avatar_hint'));
-    expect(signed.text).toContain('src="https://example.test/images/group-avatar.webp"');
+    expect(signed.text).toContain(`src="${getApiBaseUrl()}/storage/images/group-avatar.webp"`);
     expect(signed.text).toContain('alt="Current group avatar"');
     expect(signed.text).toContain('id="avatar-image" name="image" type="file"');
     expect(signed.text).toContain('name="type" value="avatar"');
@@ -20654,7 +20654,7 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('Cover image');
     expect(signed.text).toContain('A wide banner image shown at the top of the group page.');
     expect(signed.text).toContain(t('govuk_alpha_groups.image.cover_hint'));
-    expect(signed.text).toContain('src="https://example.test/images/group-cover.webp"');
+    expect(signed.text).toContain(`src="${getApiBaseUrl()}/storage/images/group-cover.webp"`);
     expect(signed.text).toContain('alt="Current group cover image"');
     expect(signed.text).toContain('id="cover-image" name="image" type="file"');
     expect(signed.text).toContain('name="type" value="cover"');
