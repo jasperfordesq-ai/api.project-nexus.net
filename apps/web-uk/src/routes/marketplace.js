@@ -981,11 +981,11 @@ function freeListingsPath() {
   return '/listings/free?limit=50';
 }
 
-function categoryListingsPath(slug, query) {
+function categoryListingsPath(categoryId, query) {
   const params = new URLSearchParams();
   params.set('limit', '30');
   appendText(params, 'q', query.q);
-  appendText(params, 'category', slug);
+  params.set('category_id', String(categoryId));
   return `/listings?${params.toString()}`;
 }
 
@@ -1118,10 +1118,6 @@ function countsByStatus(listings) {
     if (Object.prototype.hasOwnProperty.call(counts, status)) counts[status] += 1;
     return counts;
   }, { active: 0, draft: 0, sold: 0, expired: 0 });
-}
-
-function itemCountLabel(count) {
-  return `${count} ${count === 1 ? 'item' : 'items'}`;
 }
 
 function advancedSearchState(query) {
@@ -1423,22 +1419,15 @@ router.get('/category/:slug([A-Za-z0-9_-]+)', asyncRoute(async (req, res) => {
 
   const slug = trimmed(req.params.slug, 120);
   try {
-    const [categories, listingResult] = await Promise.all([
-      loadCategories(token),
-      loadListingRows(token, categoryListingsPath(slug, req.query))
-    ]);
+    const categories = await loadCategories(token);
     const category = categories.find((item) => item.slug === slug);
     if (!category) throw new ApiError('Category not found', 404);
+    const listingResult = await loadListingRows(token, categoryListingsPath(category.id, req.query));
     return res.render('marketplace/listing-list', {
       title: category.name,
-      heading: category.name,
-      caption: 'Marketplace category',
-      description: itemCountLabel(listingResult.rows.length),
-      emptyMessage: 'There are no items in this category right now.',
       activeNav: 'explore',
       activeTab: 'browse',
       backHref: '/marketplace',
-      backLabel: 'Back to marketplace',
       listings: listingResult.rows,
       mode: 'category',
       query: trimmed(req.query.q),

@@ -7,7 +7,7 @@
 
 {% block mainContent %}
   {% if backHref %}
-    <a class="govuk-back-link" href="{{ urlFor(backHref) }}">{{ backLabel or 'Back to marketplace' }}</a>
+    <a class="govuk-back-link" href="{{ urlFor(backHref) }}">{{ t("govuk_alpha_commerce.category.back_to_marketplace") if mode == 'category' else (backLabel or 'Back to marketplace') }}</a>
   {% endif %}
 
   {% include "marketplace/_nav.njk" %}
@@ -31,6 +31,10 @@
     <span class="govuk-caption-xl">{{ t("govuk_alpha_commerce.free_items.caption", { community: tenantName or serviceName }) }}</span>
     <h1 class="govuk-heading-xl">{{ t("govuk_alpha_commerce.free_items.title") }}</h1>
     <p class="govuk-body-l">{{ t("govuk_alpha_commerce.free_items.description") }}</p>
+  {% elseif mode == 'category' %}
+    <span class="govuk-caption-l">{{ t("govuk_alpha_commerce.category.caption", { community: tenantName or serviceName }) }}</span>
+    <h1 class="govuk-heading-xl">{{ category.name }}</h1>
+    <p class="govuk-body">{{ tc("govuk_alpha_commerce.category.count", listings.length, { count: listings.length }) }}</p>
   {% else %}
     {% include "marketplace/_status-banner.njk" %}
     <span class="govuk-caption-xl">{{ caption }} at {{ tenantName or serviceName }}</span>
@@ -41,18 +45,22 @@
   {% if mode == 'category' %}
     <form method="get" action="{{ urlFor('/marketplace/category/' + category.slug) }}" class="govuk-!-margin-bottom-6">
       <div class="govuk-form-group">
-        <label class="govuk-label" for="q">Search within this category</label>
-        <div id="q-hint" class="govuk-hint">Find an item by name or keyword.</div>
+        <label class="govuk-label" for="q">{{ t("govuk_alpha_commerce.category.search_label") }}</label>
+        <div id="q-hint" class="govuk-hint">{{ t("govuk_alpha_commerce.category.search_hint") }}</div>
         <input class="govuk-input govuk-input--width-20" id="q" name="q" type="search" value="{{ query }}" aria-describedby="q-hint">
       </div>
-      <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">Search</button>
+      <button type="submit" class="govuk-button govuk-button--secondary" data-module="govuk-button">{{ t("govuk_alpha_commerce.category.search_submit") }}</button>
     </form>
   {% endif %}
 
   {% if not listings.length %}
-    <div class="govuk-inset-text">
-      <p class="govuk-body">{% if mode == 'saved' %}{{ t("govuk_alpha_commerce.saved.empty") }}{% elseif mode == 'free' %}{{ t("govuk_alpha_commerce.free_items.empty") }}{% else %}{{ emptyMessage }}{% endif %}</p>
-    </div>
+    {% if mode == 'category' %}
+      <p class="govuk-inset-text">{{ t("govuk_alpha_commerce.category.empty") }}</p>
+    {% else %}
+      <div class="govuk-inset-text">
+        <p class="govuk-body">{% if mode == 'saved' %}{{ t("govuk_alpha_commerce.saved.empty") }}{% elseif mode == 'free' %}{{ t("govuk_alpha_commerce.free_items.empty") }}{% else %}{{ emptyMessage }}{% endif %}</p>
+      </div>
+    {% endif %}
   {% else %}
     <div class="nexus-alpha-card-list">
       {% for item in listings %}

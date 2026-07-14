@@ -719,6 +719,16 @@ full gate passes 49/49 suites and 1,648/1,648 tests, with 7,332 static
 references, 5,611 unique keys, zero unresolved or conservative template
 matches across 322 templates, and no Laravel mutation or database access.
 
+2026-07-14 Marketplace category follow-up: category browse now resolves the
+Laravel category and sends its numeric `category_id` plus optional search to
+the marketplace index. The former unsupported `category={slug}` query could
+return unfiltered results; unknown slugs now fail before listing collection
+access. Back link, caption, plural count, search controls, and empty hierarchy
+use Blade's exact default-English catalog. Focused filtered/fail-closed proof
+passes 2/2; the full gate passes 49/49 suites and 1,649/1,649 tests, with 7,339
+static references, 5,618 unique keys, zero unresolved or conservative template
+matches across 322 templates, and no Laravel mutation or database access.
+
 | Blade pattern | Laravel source | ASP.NET target | Status |
 | --- | --- | --- | --- |
 | Event moderation queue and decisions | `views/event-moderation-queue.blade.php`, `views/event-moderation-decision.blade.php`, `EventModerationParity`, `Api\AdminEventsController` | `src/routes/events.js`, `src/views/events/moderation-queue.njk`, `src/views/events/moderation-decision.njk`, `src/lib/api.js` | Partial. Signed tenant administrators can open the default-English queue and separate approve/reject confirmation pages through Laravel's current admin Event list/detail contracts. Queue status, count, cards, pagination, decision summaries, warnings, field-linked validation, mounted redirects, and private/no-store headers follow Blade. Approval requires explicit confirmation; rejection requires confirmation plus a bounded reason and submits only that reason to Laravel's canonical reject action. Non-admin or missing-event API responses fail closed. Focused mocked queue/validation/action and direct API-client proof pass; the full non-mutating gate is 48/48 suites and 1,635/1,635 tests, and the generated route matrix is 688/689. This is not contract-identical certification: Laravel's admin list does not join the moderation queue, orders by Event creation rather than queue submission, and omits Blade's `is_online`. Live moderation side effects, manual assistive-technology review, and unchanged ASP.NET runtime proof remain uncertified. |

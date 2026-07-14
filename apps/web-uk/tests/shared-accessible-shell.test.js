@@ -30543,12 +30543,30 @@ describe('shared accessible frontend shell', () => {
 
     expect(response.status).toBe(200);
     expect(api.callMarketplaceApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/categories');
-    expect(api.callMarketplaceApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/listings?limit=30&q=bike&category=transport');
+    expect(api.callMarketplaceApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/listings?limit=30&q=bike&category_id=9');
     expect(response.text).toContain('Back to marketplace');
+    expect(response.text).toContain('Browsing Project NEXUS Accessible');
     expect(response.text).toContain('Transport');
     expect(response.text).toContain('1 item');
     expect(response.text).toContain('Category bike');
+    expect(response.text).toContain('Search within this category');
+    expect(response.text).toContain('value="bike"');
     expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('rejects an unknown marketplace category before loading listings', async () => {
+    const api = require('../src/lib/api');
+    api.callMarketplaceApi.mockResolvedValueOnce({
+      data: [{ id: 9, name: 'Transport', slug: 'transport' }]
+    });
+
+    const response = await request(app)
+      .get('/marketplace/category/not-a-category')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(404);
+    expect(api.callMarketplaceApi).toHaveBeenCalledTimes(1);
+    expect(api.callMarketplaceApi).toHaveBeenCalledWith('test-token', 'GET', '/categories');
   });
 
   it('renders the Laravel-backed marketplace advanced search page', async () => {
