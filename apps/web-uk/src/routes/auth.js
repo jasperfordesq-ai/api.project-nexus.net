@@ -734,9 +734,7 @@ function renderForgotPassword(req, res) {
   res.render('forgot-password', {
     title: translate(req, 'auth.forgot_title'),
     csrfToken: req.csrfToken ? req.csrfToken() : '',
-    successMessage: status === 'forgot-sent'
-      ? translate(req, 'auth.forgot_sent_detail')
-      : null,
+    forgotSent: status === 'forgot-sent',
     errors: errorKey ? [{ text: translate(req, errorKey), href: '#email' }] : [],
     fieldErrors: errorKey ? { email: translate(req, errorKey) } : {},
     formAction: '/login/forgot-password',

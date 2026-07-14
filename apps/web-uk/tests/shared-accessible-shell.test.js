@@ -6215,6 +6215,19 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('name="_csrf"');
   });
 
+  it('renders the Laravel forgot-password confirmation as a standalone page', async () => {
+    const response = await request(app).get('/acme/accessible/login/forgot-password?status=forgot-sent');
+
+    expect(response.status).toBe(200);
+    expect(response.text.match(/<h1\b/g)).toHaveLength(1);
+    expect(response.text).toContain('<h1 class="govuk-heading-xl">Check your email</h1>');
+    expect(response.text).toContain('class="govuk-body-l">If an account exists for that email address');
+    expect(response.text).toContain('href="/acme/accessible/login/forgot-password">Use a different email address</a>');
+    expect(response.text).toContain('href="/acme/accessible/login">Back to sign in</a>');
+    expect(response.text).not.toContain('govuk-notification-banner');
+    expect(response.text).not.toContain('method="post" action="/acme/accessible/login/forgot-password"');
+  });
+
   it('links to the Laravel forgot-password alias from the login page', async () => {
     const response = await request(app).get('/login');
 

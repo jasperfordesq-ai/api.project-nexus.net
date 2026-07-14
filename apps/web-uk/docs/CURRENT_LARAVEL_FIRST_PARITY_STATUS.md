@@ -171,9 +171,9 @@ these numbers after either source moves.
 | Missing Laravel routes | 1 | Event offline check-in code generation |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 49/49 suites, 1,649/1,649 tests | Fresh green code gate |
+| Jest | 49/49 suites, 1,653/1,653 tests | Fresh green code gate |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
-| Static locale usage | 7,337 references, 5,618 unique keys, 0 unresolved | Current complete-reference audit |
+| Static locale usage | 7,341 references, 5,620 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
 | Blade marker check | Current 19/19 | Current-source public GET marker comparison; not screenshot or visual certification |
 | Automated accessibility | Not currently certified: 28 passed, login failed, 58 did not run | Full aggregate requires a disposable Laravel environment; manual AT review remains open |
@@ -384,6 +384,29 @@ The reset-password form also now matches Blade's deliberate native-state
 contract: both password controls disable spellcheck and only the confirmation
 control carries `required`. Focused rendered-output coverage protects those
 exact attributes without widening the source contract.
+
+## Password Reset Request Confirmation Parity
+
+Checkpoint frozen at `2026-07-14T12:21:00+01:00` against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and published Web UK base
+`1871130ed5dff15e5333f4110d46f44395c1ae53`. Both bases matched
+`origin/main`; this checkpoint's Web UK change was in flight and the only other
+dirty files belonged to the separate ASP.NET workstream.
+
+The mounted forgot-password `forgot-sent` state now matches Blade's deliberate
+standalone confirmation page instead of rendering an in-page notification
+banner above the request form. It has one `Check your email` H1, the large
+confirmation detail, mounted resend and sign-in links, no request form, and the
+source back link. The ordinary request state also restores Blade's large lead
+paragraph. Focused auth/template proof passed `3/3` suites and `804/804`
+tests. The complete non-mutating gate passed `49/49` suites and `1,653/1,653`
+tests, route inventory `688/689`, API ledger `663/444/219/0`, 11-locale
+catalog sync/shape, `7,341` static references with `0` unresolved, the
+322-template zero-match audit, and the current 19/19 Blade marker comparison.
+No Laravel mutation/runtime smoke ran. This closes one concrete
+default-English significant state but does not remove the complete 14-point
+component-audit deduction, so the banked score remains `622/1000` pending a
+complete rubric re-audit.
 
 ## Podcast Episode Visibility Labels
 

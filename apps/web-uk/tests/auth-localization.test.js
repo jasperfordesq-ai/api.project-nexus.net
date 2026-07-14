@@ -104,7 +104,9 @@ describe('Laravel-first auth localization', () => {
       'auth.forgot_email_label',
       'auth.forgot_email_hint',
       'auth.forgot_submit',
+      'auth.forgot_sent_title',
       'auth.forgot_sent_detail',
+      'auth.forgot_resend',
       'auth.back_to_sign_in'
     ]],
     ['reset-password.njk', [

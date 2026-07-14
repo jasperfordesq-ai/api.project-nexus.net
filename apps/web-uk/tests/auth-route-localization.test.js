@@ -224,7 +224,7 @@ describe('request-scoped auth route localization', () => {
     }]);
 
     const sent = await request(app).get('/login/forgot-password?status=forgot-sent');
-    expect(sent.body.locals.successMessage).toBe(t('auth.forgot_sent_detail'));
+    expect(sent.body.locals.forgotSent).toBe(true);
   });
 
   it('localizes reset validation and API failures in Arabic', async () => {
