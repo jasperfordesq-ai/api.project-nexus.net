@@ -152,6 +152,48 @@ security/localization, 45/100 build/test/CI, 10/125 unchanged-frontends, and
 16/75 providers/ops/docs. Exact remaining deductions are 0, 88, 35, 10, 55,
 115, and 59 points.
 
+### 2026-07-14 Marketplace Paid Notifications And Order Identity (Published)
+
+Evidence snapshot: Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf`, ASP.NET implementation
+`f562c49796b81ac2ea47a4699dc22f9f0e57f9c0`, captured 2026-07-14
+15:22:08 +01:00. The first provider-verified paid transition now independently
+delivers buyer/seller email and buyer/seller in-app bells under each recipient's
+locale for all 11 Laravel locales. It preserves Laravel's `marketplace_order`
+type and `/marketplace/orders/{id}` link, formats zero- and two-decimal
+currencies correctly, HTML-escapes listing copy, and uses tenant-correct email
+URLs. The unchanged canonical React flow is covered through the signed
+`payment_intent.succeeded` webhook rather than relying on its unused fallback
+confirm endpoint.
+
+Delivery identity is durable per tenant/order/event/user/channel. Delivered or
+skipped channels never duplicate; failed and stale claims retry with attempt,
+provider-evidence, and sanitized-error history. Payment remains committed when
+email delivery fails, bells remain independent, and direct or webhook replay
+heals incomplete channels without reopening financial state. Marketplace order
+numbers are now persisted as non-enumerable `MKT-{ULID}` identities instead of
+fabricated response-time IDs. Migration
+`20260714132232_MarketplacePaidNotificationParity` safely backfills existing
+orders, fails preflight on duplicate identity, and adds the canonical delivery
+ledger constraints and indexes.
+
+Release API build passes with zero errors; the complete focused payment,
+Connect, signed-webhook, notification, failure, and replay class passes 16/16.
+The migration applies to disposable upgraded PostgreSQL, the database has zero
+blank order numbers, and EF reports no pending model changes. Comparator
+fixtures pass and the live inventory remains 2,601/2,601 active operations with
+zero missing. No live Stripe or email credentials were used, the canonical
+Laravel `/marketplace/orders/{id}` link currently has no matching React detail
+route, and full-suite/CI plus unchanged-client runtime certification remain
+open.
+
+Published implementation `f562c49796b81ac2ea47a4699dc22f9f0e57f9c0`
+banks 4 semantic, 2 schema, and 1 provider/operations point for **645/1000**:
+100/100 route, 266/350 semantic, 117/150 schema, 90/100
+security/localization, 45/100 build/test/CI, 10/125 unchanged-frontends, and
+17/75 providers/ops/docs. Exact remaining deductions are 0, 84, 33, 10, 55,
+115, and 58 points.
+
 ## Historical Checkpoints
 
 Everything in this section is dated implementation evidence. Its older
