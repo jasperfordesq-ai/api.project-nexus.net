@@ -1,6 +1,6 @@
 # Blade Component Port Audit
 
-Last reviewed: 2026-07-13
+Last reviewed: 2026-07-14
 
 ## 2026-07-13 Tenant, Mutation, and Manual Accessibility Checkpoint
 
@@ -193,15 +193,19 @@ exact payload, reset, and localization proof passes. Live scheduler/delivery
 evidence, provider variants, manual assistive-technology review, and unchanged
 ASP.NET runtime proof remain open.
 
-## 2026-07-13 Event Communications Checkpoint
+## 2026-07-14 Event Communications Checkpoint
 
 Event organisers now have Laravel's aggregate-only broadcast workflow: private
 history and audit reads, audience/channel preview, preview-confirmed draft
 creation, capability-gated scheduling, cancellation with reason, failed-delivery
-retry, optimistic versions, and idempotency headers. Focused render and exact
-payload proof passes. Live delivery-provider execution, disposable broadcast
-fixtures, manual assistive-technology review, and unchanged ASP.NET runtime
-proof remain open.
+retry, optimistic versions, and idempotency headers. The current Laravel
+paginated-collection envelope is now consumed without dropping its top-level
+metadata; broadcast and append-only audit history pages expose Blade's
+previous/next links, preserve the selected broadcast and list page, and render
+the translated action, status, version, and UTC timestamp. Focused render and
+exact contract/payload proof passes. Live delivery-provider execution,
+disposable broadcast fixtures, manual assistive-technology review, and
+unchanged ASP.NET runtime proof remain open.
 
 ## 2026-07-13 Event Tickets Checkpoint
 

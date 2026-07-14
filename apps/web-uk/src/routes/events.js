@@ -1704,18 +1704,63 @@ async function renderCommunications(req, res, options = {}) {
     broadcastId ? callApi(token, 'GET', `/event-broadcasts/${broadcastId}?history_page=${historyPage}&history_per_page=50`) : null
   ]);
   const event = eventFrom(eventResult);
-  const listData = dataFrom(listResult) || {};
+  const broadcasts = collectionFrom(listResult);
+  const listMeta = listResult?.meta || dataFrom(listResult)?.meta || dataFrom(listResult)?.pagination || {};
+  const listCurrentPage = positiveInteger(listMeta.current_page ?? listMeta.page) || page;
+  const listPerPage = positiveInteger(listMeta.per_page) || 20;
+  const listTotal = Math.max(0, Number(listMeta.total) || broadcasts.length);
+  const listTotalPages = Math.max(
+    1,
+    positiveInteger(listMeta.total_pages ?? listMeta.last_page)
+      || Math.ceil(listTotal / listPerPage)
+  );
   const detail = detailResult ? dataFrom(detailResult) : null;
   if (detail?.broadcast && positiveInteger(detail.broadcast.event_id) !== id) {
     return res.status(404).render('errors/404', { title: 'Broadcast not found' });
   }
+  const historyMeta = detail?.history_meta || {};
+  const detailBroadcastId = positiveInteger(detail?.broadcast?.id);
+  const historyCurrentPage = positiveInteger(historyMeta.current_page) || historyPage;
+  const historyTotalPages = Math.max(1, positiveInteger(historyMeta.total_pages) || 1);
+  const formatDate = typeof res.locals.formatLocaleDate === 'function'
+    ? res.locals.formatLocaleDate
+    : (value) => trimmed(value);
+  const history = Array.isArray(detail?.history) ? detail.history.map((entry) => {
+    const date = new Date(entry?.created_at);
+    const dateLabel = entry?.created_at && !Number.isNaN(date.getTime())
+      ? `${formatDate(date, {
+        day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC'
+      })}, ${formatDate(date, {
+        day: undefined, month: undefined, year: undefined,
+        hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'UTC', timeZoneName: 'short'
+      })}`
+      : res.locals.t('govuk_alpha.events.communications.not_recorded');
+    return { ...entry, dateLabel };
+  }) : [];
+  const historyPath = (targetPage) => eventPath(
+    id,
+    `/communications?page=${listCurrentPage}&broadcast_id=${detailBroadcastId}&history_page=${targetPage}`
+  );
   res.set('Cache-Control', 'private, no-store');
   res.set('Pragma', 'no-cache');
   return res.render('events/communications', {
     title: res.locals.t('govuk_alpha.events.communications.title'), activeNav: 'events',
-    event: { id, title: trimmed(event.title) }, broadcasts: collectionFrom(listResult),
-    pagination: listData.meta || listData.pagination || { current_page: page, total: collectionFrom(listResult).length, per_page: 20 },
-    detail, preview: options.preview || null,
+    event: { id, title: trimmed(event.title) }, broadcasts,
+    pagination: {
+      currentPage: listCurrentPage,
+      totalPages: listTotalPages,
+      previousHref: listCurrentPage > 1 ? eventPath(id, `/communications?page=${listCurrentPage - 1}`) : '',
+      nextHref: listCurrentPage < listTotalPages ? eventPath(id, `/communications?page=${listCurrentPage + 1}`) : ''
+    },
+    detail: detail ? {
+      ...detail,
+      history,
+      pagination: {
+        previousHref: detailBroadcastId && historyCurrentPage > 1 ? historyPath(historyCurrentPage - 1) : '',
+        nextHref: detailBroadcastId && historyCurrentPage < historyTotalPages ? historyPath(historyCurrentPage + 1) : ''
+      }
+    } : null,
+    preview: options.preview || null,
     draft: options.draft || { variant: 'announcement', segments: ['registration_confirmed'], channels: ['email', 'in_app'], body: '' },
     status: options.status ?? trimmed(req.query.status), idempotencyKey: randomUUID(), csrfToken: req.csrfToken ? req.csrfToken() : ''
   });

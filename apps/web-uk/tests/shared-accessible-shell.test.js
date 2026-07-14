@@ -22982,15 +22982,24 @@ describe('shared accessible frontend shell', () => {
     const api = require('../src/lib/api');
     api.callEventApi
       .mockResolvedValueOnce({ data: { id: 42, title: 'Community garden day' } })
-      .mockResolvedValueOnce({ data: [{ id: 8, event_id: 42, variant: 'announcement', status: 'draft', version: 3, capabilities: { schedule: true, cancel: true, retry: false } }] });
-    const response = await request(app).get('/events/42/communications').set('Cookie', signedCookieHeader());
+      .mockResolvedValueOnce({ data: [{ id: 8, event_id: 42, variant: 'announcement', status: 'draft', version: 3, capabilities: { schedule: true, cancel: true, retry: false } }], meta: { current_page: 2, per_page: 20, total: 60, total_pages: 3 } })
+      .mockResolvedValueOnce({ data: { broadcast: { id: 8, event_id: 42 }, history: [{ action: 'scheduled', to_status: 'scheduled', version: 4, created_at: '2026-07-14T10:00:00Z' }], history_meta: { current_page: 2, per_page: 50, total: 150, total_pages: 3 } } });
+    const response = await request(app).get('/events/42/communications?page=2&broadcast_id=8&history_page=2').set('Cookie', signedCookieHeader());
     expect(response.status).toBe(200);
     expect(response.headers['cache-control']).toBe('private, no-store');
     expect(response.text).toContain('Community garden day');
     expect(response.text).toContain('/events/42/communications/8/schedule');
     expect(response.text).toContain('/events/42/communications/8/cancel');
     expect(response.text).not.toContain('/events/42/communications/8/retry');
-    expect(api.callEventApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/42/broadcasts?page=1&per_page=20');
+    expect(response.text).toContain('aria-label="Communication pages"');
+    expect(response.text).toContain('href="/events/42/communications?page=1"');
+    expect(response.text).toContain('href="/events/42/communications?page=3"');
+    expect(response.text).toContain('This append-only history shows lifecycle changes');
+    expect(response.text).toContain('<strong>Delivery scheduled</strong> — Scheduled, version 4, 14 July 2026, 10:00 UTC');
+    expect(response.text).toContain('href="/events/42/communications?page=2&amp;broadcast_id=8&amp;history_page=1"');
+    expect(response.text).toContain('href="/events/42/communications?page=2&amp;broadcast_id=8&amp;history_page=3"');
+    expect(api.callEventApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/42/broadcasts?page=2&per_page=20');
+    expect(api.callEventApi).toHaveBeenNthCalledWith(3, 'test-token', 'GET', '/event-broadcasts/8?history_page=2&history_per_page=50');
   });
 
   it('previews and creates a Laravel Event Communication with exact audience and idempotency', async () => {
