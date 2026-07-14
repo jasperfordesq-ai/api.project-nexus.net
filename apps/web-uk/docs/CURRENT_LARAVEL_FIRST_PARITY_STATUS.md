@@ -171,7 +171,7 @@ Refresh the Laravel Blade/API source and Web UK implementation before relying on
 these numbers after either source moves.
 
 At this documentation audit, the product-source baseline was
-`ea7b5bb6cf96db923593d5a29c20c176a0fa169b`. The revoked-session confirmation,
+`b1c33aa2aa6a53e659d74636b877c826b467c8ea`. The revoked-session confirmation,
 Laravel method-spoof reconciliation, group-message contract, residual API-
 consumer correction, and backend-request timeout slices are above the frozen
 bank and remain **published and unscored**. The documentation remediation is
@@ -186,7 +186,7 @@ together from a clean published checkout.
   with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
   Only this fixed-rubric audit contributes to the current bank.
 - **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `ea7b5bb6`, including the later identity/session confirmation,
+  baseline `b1c33aa2`, including the later identity/session confirmation,
   method-spoof reconciliation, group-message contract, residual API-consumer
   correction, and backend-request timeout slices. Their evidence is useful, but they
   contribute zero points until one complete fixed-rubric re-audit explicitly
@@ -1537,6 +1537,23 @@ complete gate is green at 52/52 suites and 1,672/1,672 tests. No Laravel source,
 database, migration, mutation, container, or production operation was
 performed. This published component-audit improvement remains unscored, so the
 frozen bank remains 622/1,000 pending a complete fixed-rubric re-audit.
+
+## 2026-07-14 Course Content Rendering Parity
+
+Frozen evidence at `2026-07-14T18:16:08.3275701+01:00` against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and published Web UK product commit
+`b1c33aa2aa6a53e659d74636b877c826b467c8ea`. Course detail now follows Blade's
+plain-text summary boundary instead of displaying source markup as text. Text
+lesson bodies now preserve Laravel-approved CMS formatting while stripping
+scripts, inline event handlers, unsafe URL schemes, and unsupported attributes.
+
+Focused course-family rendering passes 1/1, and the complete non-mutating gate
+passes 52/52 suites and 1,674/1,674 tests. Brand, lint, CSS, route, API-ledger,
+locale, 322-template zero-match, 19/19 canonical Blade-marker, and diff checks
+are green. No Laravel request, database, migration, mutation, container, or
+production operation was performed. This published component-audit improvement
+remains unscored, so the frozen bank remains 622/1,000 pending a complete fixed-
+rubric re-audit.
 
 ## 2026-07-14 Member Review Card Parity
 
