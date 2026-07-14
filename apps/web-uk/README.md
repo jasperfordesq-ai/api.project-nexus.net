@@ -371,6 +371,10 @@ the ordinary environment disposable.
 
 See the root [agent instructions](../../CLAUDE.md) for the Docker-only project invariant and production-container warnings.
 
+The fail-closed [production release runbook](docs/PRODUCTION_RELEASE_RUNBOOK.md)
+defines the evidence, configuration, disposable-runtime, approval, and rollback
+requirements. It does not lift the current Web UK production deployment hold.
+
 ### Quick Commands
 
 ```bash
