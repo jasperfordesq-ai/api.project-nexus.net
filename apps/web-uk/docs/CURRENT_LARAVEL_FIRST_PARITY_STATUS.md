@@ -126,9 +126,9 @@ these numbers after either source moves.
 | Missing Laravel routes | 6 | All are Event workflows |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 48/48 suites, 1,629/1,629 tests | Fresh green code gate |
+| Jest | 48/48 suites, 1,630/1,630 tests | Fresh green code gate |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
-| Static locale usage | 6,984 references, 5,314 unique keys, 0 unresolved | Current complete-reference audit |
+| Static locale usage | 6,986 references, 5,315 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 320 templates, 0 conservative matches | Current hard-coded-copy audit |
 | Blade marker check | 19/19 | Text-marker spotcheck, not visual certification |
 | Automated accessibility | Latest recorded 87/87 | Manual AT review remains open |
@@ -316,7 +316,9 @@ modules; incomplete policy status fails closed to localized copy.
 The form editor now exposes Blade's governed classification, help, required,
 validation, consent/waiver version, conditional visibility, guidance, and cancel
 controls instead of hiding fields already supported by the Laravel contract.
-The full non-mutating gate passes 48/48 suites and 1,629/1,629 tests with green lint,
+Invalid or handled-conflict editor submissions now replay all authoring values
+with Blade's localized error summary; incomplete input stops before mutation.
+The full non-mutating gate passes 48/48 suites and 1,630/1,630 tests with green lint,
 brand, CSS, route, and localization gates. No Laravel runtime or database
 mutation was run.
 

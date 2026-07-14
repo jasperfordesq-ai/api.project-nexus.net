@@ -2103,6 +2103,45 @@ function consumeRegistrationAnswers(req, eventId, formId) {
     : { values: {}, errors: {} };
 }
 
+function registrationFormInput(body) {
+  const rows = body?.questions && typeof body.questions === 'object'
+    ? Object.values(body.questions).slice(0, 100)
+    : [];
+  return {
+    name: trimmed(body?.name, 255),
+    description: trimmed(body?.description, 2000),
+    questions: rows.map((row, index) => {
+      const conditionKey = trimmed(row?.condition_key, 191);
+      const validation = {};
+      if (row?.min_length !== '' && row?.min_length !== undefined) validation.min_length = row.min_length;
+      if (row?.max_length !== '' && row?.max_length !== undefined) validation.max_length = row.max_length;
+      return {
+        enabled: checked(row?.enabled), stable_key: trimmed(row?.stable_key, 191) || `question_${index + 1}`,
+        question_type: trimmed(row?.question_type), data_classification: trimmed(row?.data_classification),
+        prompt: trimmed(row?.prompt, 2000), help_text: trimmed(row?.help_text, 2000), purpose: trimmed(row?.purpose, 2000),
+        retention_days: row?.retention_days, is_required: checked(row?.is_required),
+        choice_options: trimmed(row?.choices, 10000).split(/\r?\n/).map((choice) => choice.trim()).filter(Boolean),
+        validation_rules: validation, displayed_text: trimmed(row?.displayed_text, 10000),
+        displayed_text_version: trimmed(row?.displayed_text_version, 191),
+        visibility_rules: conditionKey ? { conditions: [{ question_key: conditionKey, operator: trimmed(row?.condition_operator) || 'equals', value: trimmed(row?.condition_value, 1000) }] } : null
+      };
+    })
+  };
+}
+
+function rememberRegistrationForm(req, eventId, formId, values, message) {
+  if (!req.session) return;
+  req.session.eventRegistrationForm = { eventId, formId: formId || 0, values, errors: [message] };
+}
+
+function consumeRegistrationForm(req, eventId, formId) {
+  const replay = req.session?.eventRegistrationForm;
+  if (req.session?.eventRegistrationForm) delete req.session.eventRegistrationForm;
+  return replay && replay.eventId === eventId && replay.formId === (formId || 0)
+    ? replay
+    : { values: null, errors: [] };
+}
+
 router.get('/:id(\\d+)/registration', requireAuth, asyncRoute(async (req, res) => {
   const id = Number(req.params.id); const token = tokenFrom(req); const query = new URLSearchParams();
   for (const collection of ['submissions', 'campaigns', 'guests']) for (const suffix of ['page', 'per_page']) { const key = `${collection}_${suffix}`; if (positiveInteger(req.query[key])) query.set(key, String(positiveInteger(req.query[key]))); }
@@ -2144,18 +2183,28 @@ async function renderRegistrationForm(req, res) {
   if (!state.organizer) return renderForbidden(res, new Error('You do not have permission to manage registration forms.'));
   const form = formId ? arrayValues(state.organizer.forms).find((item) => positiveInteger(item?.id) === formId) : null;
   if (formId && (!form || form.status !== 'draft')) return res.status(404).render('errors/404', { title: 'Registration form not found' });
+  const replay = consumeRegistrationForm(req, id, formId);
+  const formValues = replay.values || form || {};
+  const questionRows = replay.values
+    ? [...arrayValues(replay.values.questions), ...Array(Math.max(0, 5 - arrayValues(replay.values.questions).length)).fill({ enabled: false })]
+    : [...arrayValues(form?.questions).map((row) => ({ ...row, enabled: true })), ...Array(5).fill({ enabled: false })];
   res.set('Cache-Control', 'private, no-store');
-  return res.render('events/registration-form', { title: res.locals.t(`event_registration.forms.editor.${form ? 'edit_title' : 'create_title'}`), activeNav: 'events', eventId: id, form, questionRows: [...arrayValues(form?.questions), ...Array(5).fill({})], settingsRevision: positiveInteger(state.organizer.settings?.revision) || 1, idempotencyKey: randomUUID(), csrfToken: req.csrfToken ? req.csrfToken() : '' });
+  return res.render('events/registration-form', { title: res.locals.t(`event_registration.forms.editor.${form ? 'edit_title' : 'create_title'}`), activeNav: 'events', eventId: id, form, formValues, formErrors: replay.errors, questionRows, settingsRevision: positiveInteger(state.organizer.settings?.revision) || 1, idempotencyKey: randomUUID(), csrfToken: req.csrfToken ? req.csrfToken() : '' });
 }
 router.get('/:id(\\d+)/registration/forms/new', requireAuth, asyncRoute(renderRegistrationForm));
 router.get('/:id(\\d+)/registration/forms/:formId(\\d+)', requireAuth, asyncRoute(renderRegistrationForm));
 
 async function saveRegistrationForm(req, res) {
   const id = Number(req.params.id); const formId = positiveInteger(req.params.formId); const key = trimmed(req.body.idempotency_key, 191); const settingsRevision = positiveInteger(req.body.expected_settings_revision); const formRevision = formId ? positiveInteger(req.body.expected_form_revision) : null; const name = trimmed(req.body.name, 255); const description = trimmed(req.body.description, 2000) || null; const questions = registrationQuestions(req.body.questions);
-  if (!key || !settingsRevision || !name || questions.length === 0 || (formId && !formRevision)) return redirectTo(res, eventPath(id, formId ? `/registration/forms/${formId}?status=invalid` : '/registration/forms/new?status=invalid'));
+  const replay = registrationFormInput(req.body);
+  const errorMessage = res.locals.t('event_registration.accessible.validation_error');
+  if (!key || !settingsRevision || !name || questions.length === 0 || (formId && !formRevision)) {
+    rememberRegistrationForm(req, id, formId, replay, errorMessage);
+    return redirectTo(res, eventPath(id, formId ? `/registration/forms/${formId}?status=invalid` : '/registration/forms/new?status=invalid'));
+  }
   const path = formId ? `/${id}/registration-product/forms/${formId}` : `/${id}/registration-product/forms`; const method = formId ? 'PUT' : 'POST'; const payload = { name, description, questions, expected_settings_revision: settingsRevision, ...(formId ? { expected_form_revision: formRevision } : {}) };
   try { await callEventMutation(tokenFrom(req), method, path, payload, key); return redirectTo(res, eventPath(id, '/registration?status=form-saved')); }
-  catch (error) { if (redirectOnAuthError(error, res)) return undefined; if (error instanceof ApiError && [400, 403, 404, 409, 422, 429, 503].includes(error.status)) return redirectTo(res, eventPath(id, formId ? `/registration/forms/${formId}?status=failed` : '/registration/forms/new?status=failed')); throw error; }
+  catch (error) { if (redirectOnAuthError(error, res)) return undefined; if (error instanceof ApiError && [400, 403, 404, 409, 422, 429, 503].includes(error.status)) { rememberRegistrationForm(req, id, formId, replay, errorMessage); return redirectTo(res, eventPath(id, formId ? `/registration/forms/${formId}?status=failed` : '/registration/forms/new?status=failed')); } throw error; }
 }
 router.post('/:id(\\d+)/registration/forms/new', requireAuth, asyncRoute(saveRegistrationForm));
 router.post('/:id(\\d+)/registration/forms/:formId(\\d+)', requireAuth, asyncRoute(saveRegistrationForm));

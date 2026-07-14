@@ -23270,6 +23270,29 @@ describe('shared accessible frontend shell', () => {
     expect(api.callEventApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/42/registration-product/manage');
   });
 
+  it('replays invalid Laravel Event Registration form input without a mutation', async () => {
+    const api = require('../src/lib/api'); const agent = request.agent(app);
+    const shell = await agent.get('/contact').set('Cookie', signedCookieHeader());
+    const csrf = shell.text.match(/name="_csrf" value="([^"]+)"/)[1];
+    api.callEventApi.mockClear();
+    const rejected = await agent.post('/events/42/registration/forms/new').set('Cookie', signedCookieHeader()).type('form').send({
+      _csrf: csrf, idempotency_key: 'form-invalid-123', expected_settings_revision: '3', name: 'Replay this form', description: 'Keep this description',
+      questions: { 0: { stable_key: 'access_needs', question_type: 'short_text', prompt: 'Keep this prompt', purpose: 'Planning', retention_days: '365' } }
+    });
+    expect(rejected.headers.location).toBe('/events/42/registration/forms/new?status=invalid');
+    expect(api.callEventApi).not.toHaveBeenCalled();
+    api.callEventApi
+      .mockResolvedValueOnce({ data: { registrations: [], invitations: [], guests: [], settings: {} } })
+      .mockResolvedValueOnce({ data: { settings: { revision: 3 }, forms: [] } });
+    const replay = await agent.get(rejected.headers.location).set('Cookie', signedCookieHeader());
+    expect(replay.status).toBe(200);
+    expect(replay.text).toContain('class="govuk-error-summary" data-module="govuk-error-summary" role="alert" tabindex="-1"');
+    expect(replay.text).toContain('value="Replay this form"');
+    expect(replay.text).toContain('>Keep this description</textarea>');
+    expect(replay.text).toContain('>Keep this prompt</textarea>');
+    expect(replay.text).not.toContain('id="question-0-enabled" name="questions[0][enabled]" type="checkbox" value="1" checked');
+  });
+
   it('creates a Laravel Event Registration form with normalized governed questions', async () => {
     const api = require('../src/lib/api'); const agent = request.agent(app); const shell = await agent.get('/contact').set('Cookie', signedCookieHeader()); const csrf = shell.text.match(/name="_csrf" value="([^"]+)"/)[1];
     api.callEventApi.mockResolvedValueOnce({ data: { changed: true } });

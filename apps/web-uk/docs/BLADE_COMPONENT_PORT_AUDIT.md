@@ -259,7 +259,9 @@ semantics, with a localized fallback for incomplete policy status. Focused
 authorization/render/payload proof passes. The form editor now presents Blade's
 complete governed question schema: classification, help, required state,
 validation bounds, consent/waiver versioning, conditional visibility, guidance,
-and cancel action. Submission, campaign, guest,
+and cancel action. Invalid and handled-conflict submissions replay authoring
+values through Blade's localized error summary, while incomplete input makes no
+mutation call. Submission, campaign, guest,
 retention, live disposable effects, manual assistive-technology review, and
 unchanged ASP.NET runtime proof remain open.
 
@@ -284,7 +286,7 @@ idempotent guest attendance transitions. Single-value multi-choice submissions
 are normalized against the authoritative published form schema. Focused
 questionnaire/no-mutation and exact-payload, privacy, export, consent, and
 confirmation proof passes; the full non-mutating gate is 48/48 suites and
-1,629/1,629 tests. Campaigns,
+1,630/1,630 tests. Campaigns,
 retention, live disposable effects, manual assistive-technology review, and
 unchanged ASP.NET runtime proof remain open.
 
@@ -396,7 +398,7 @@ The seven redirect/auth rows formerly marked Started have real mounted routes,
 focused behavior evidence, and material Laravel integration, so this review
 corrects them to Partial without claiming their explicitly listed gaps closed.
 
-The current aggregate evidence includes `48/48` Jest suites and `1,629/1,629`
+The current aggregate evidence includes `48/48` Jest suites and `1,630/1,630`
 tests, green lint/brand/CSS gates, `683` of `689` Laravel routes matched (`690`
 local declarations, `6` classified API-boundary gaps, `5` documented extras,
 and `3` ignored infrastructure routes), structurally complete
