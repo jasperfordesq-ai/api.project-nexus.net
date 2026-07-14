@@ -564,9 +564,10 @@ Organisation browse now applies the same Blade boundary to directory cards:
 whitespace-only names use the source title fallback, API-only `excerpt` is not
 promoted into description, whitespace-only websites are absent, and nested
 authoritative zero statistics do not fall through to stale nonzero aliases.
-Focused browse proof passes `3/3`; the complete non-mutating gate passes
-`52/52` suites and `1,685/1,685` tests with the same static and `19/19`
-Blade-marker gates green.
+The ordinary Organisations directory now applies the same trimmed-name
+fallback. Focused directory/browse proof passes `5/5`; the complete non-
+mutating gate passes `52/52` suites and `1,686/1,686` tests with the same
+static and `19/19` Blade-marker gates green.
 Simple Search now mirrors Blade's selected-title trimming and positive numeric
 ID boundary: whitespace-only titles do not create empty result cards, a null
 title may use the source name fallback, and invalid IDs render text without an

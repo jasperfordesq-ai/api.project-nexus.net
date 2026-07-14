@@ -171,7 +171,7 @@ Refresh the Laravel Blade/API source and Web UK implementation before relying on
 these numbers after either source moves.
 
 At this documentation audit, the product-source baseline was
-`fc27f96fd2a4d4a1a9da30a527a1f794691e7d23`. The post-bank implementation,
+`b0a853b55384c3152331ac7b858d23b3c4e544d8`. The post-bank implementation,
 contract, resilience, component-audit, attached Event-poll, and Listing-
 analytics slices are above the frozen bank and remain **published and
 unscored**. The documentation remediation is
@@ -186,7 +186,7 @@ together from a clean published checkout.
   with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
   Only this fixed-rubric audit contributes to the current bank.
 - **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `fc27f96f`, including the later implementation, contract,
+  baseline `b0a853b5`, including the later implementation, contract,
   resilience, and component-audit slices. Their evidence is useful, but they
   contribute zero points until one complete fixed-rubric re-audit explicitly
   replaces the baseline.
@@ -205,9 +205,9 @@ together from a clean published checkout.
 | Missing Laravel routes | 1 | Event offline check-in code generation |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 52/52 suites, 1,685/1,685 tests | Latest uninterrupted complete non-mutating gate at product baseline `fc27f96f` |
+| Jest | 52/52 suites, 1,686/1,686 tests | Latest uninterrupted complete non-mutating gate at product baseline `b0a853b5` |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
-| Static locale usage | 7,578 references, 5,784 unique keys, 0 unresolved | Current complete-reference audit |
+| Static locale usage | 7,579 references, 5,784 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
 | Blade marker check | Current 19/19 | Current-source public GET marker comparison; not screenshot or visual certification |
 | Automated accessibility | Not currently certified: 28 passed, login failed, 58 did not run | Full aggregate requires a disposable Laravel environment; manual AT review remains open |
@@ -1493,17 +1493,18 @@ download, container, or production operation was performed. This published
 component-audit improvement remains unscored, so the frozen bank remains
 `622/1,000` pending a complete fixed-rubric re-audit.
 
-## 2026-07-14 Organisation Browse Result Boundary Parity
+## 2026-07-14 Organisation Directory Result Boundary Parity
 
-Frozen evidence at `2026-07-14T23:10:37.8655195+01:00` against Laravel
+Frozen evidence refreshed at `2026-07-14T23:16:45.4304010+01:00` against Laravel
 `903d03d3db78bbf87129ad35728be3b72819acaf` and Web UK product commit
-`fc27f96fd2a4d4a1a9da30a527a1f794691e7d23`. Organisation browse now follows
-Blade's card boundaries for fallback names, description presence, website
-presence, and authoritative zero statistics. It no longer promotes API-only
-`excerpt` or replaces nested zero values with nonzero aliases.
+`b0a853b55384c3152331ac7b858d23b3c4e544d8`. Both Organisation directory views
+now trim card names before using Blade's title fallback. The richer browse view
+also follows Blade's description and website presence rules and preserves
+authoritative zero statistics instead of promoting API-only `excerpt` or
+falling through to nonzero aliases.
 
-Focused default-English proof passes `3/3`; the uninterrupted complete
-non-mutating gate passes `52/52` suites and `1,685/1,685` tests. Lint, brand,
+Focused default-English directory/browse proof passes `5/5`; the uninterrupted
+complete non-mutating gate passes `52/52` suites and `1,686/1,686` tests. Lint, brand,
 CSS, route matrix, API ledger, locale structure/static keys/templates, and
 `19/19` canonical Blade markers are green. The marker comparison used public
 read-only GETs only; no Laravel database, migration, mutation, upload,
