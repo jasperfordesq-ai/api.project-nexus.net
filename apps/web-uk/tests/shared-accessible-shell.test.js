@@ -16926,6 +16926,48 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('This organisation has no reviews yet.');
   });
 
+  it('matches Blade organisation detail trimming, contact, and opportunity boundaries', async () => {
+    const api = require('../src/lib/api');
+    const t = createTranslator('en');
+    api.getVolunteerOrganisation.mockResolvedValueOnce({
+      data: {
+        id: 42,
+        public_contract: {
+          id: 42,
+          name: '   ',
+          description: '   ',
+          email: '   ',
+          contact_email: 'fallback@example.test',
+          website: 'HTTP://example.test'
+        }
+      }
+    });
+    api.getOrganisationOpportunities.mockResolvedValueOnce({
+      data: [
+        { id: 'invalid', title: 'Invalid opportunity', description: 'Must not render.' },
+        { id: 77, title: '   ', description: `   ${'x'.repeat(181)}   ` }
+      ]
+    });
+    api.getOrganisationReviews.mockResolvedValueOnce({
+      data: { reviews: [{ rating: 3, comment: '   ', author: { name: '' } }] }
+    });
+
+    const response = await request(app)
+      .get('/organisations/42')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain(`<h1 class="govuk-heading-xl">${t('govuk_alpha.organisations.title')}</h1>`);
+    expect(response.text).not.toContain('href="mailto:fallback@example.test"');
+    expect(response.text).toContain('href="https://HTTP://example.test"');
+    expect(response.text).not.toContain('Invalid opportunity');
+    expect(response.text).not.toContain('/volunteering/opportunities/invalid');
+    expect(response.text).toContain(`href="/volunteering/opportunities/77">${t('govuk_alpha.organisations.title')}</a>`);
+    expect(response.text).toContain(`${'x'.repeat(177)}...`);
+    expect(response.text).not.toContain('x'.repeat(181));
+    expect(response.text).not.toContain('<div class="govuk-body">   </div>');
+  });
+
   it('hides the organisation jobs link when the tenant jobs feature is disabled', async () => {
     const api = require('../src/lib/api');
     api.getTenantBootstrap.mockResolvedValueOnce({

@@ -1564,10 +1564,18 @@ app.get('/organisations/:id(\\d+)', requireOrganisationAuth, (req, res) => {
         ...publicContract,
         stats
       };
+      const parsedOrganisationId = Number.parseInt(String(organisation.id ?? ''), 10);
+      organisation.id = Number.isInteger(parsedOrganisationId) && parsedOrganisationId > 0
+        ? parsedOrganisationId
+        : 0;
+      organisation.name = String(organisation.name ?? '').trim()
+        || res.locals.t('govuk_alpha.organisations.title');
+      organisation.description = String(organisation.description ?? '').trim();
       const website = typeof organisation.website === 'string' ? organisation.website.trim() : '';
       const websiteHref = website
-        ? (/^https?:\/\//i.test(website) ? website : `https://${website}`)
+        ? (website.startsWith('http://') || website.startsWith('https://') ? website : `https://${website}`)
         : '';
+      const contactEmail = String(organisation.email ?? organisation.contact_email ?? '').trim();
       const [opportunitiesResult, reviewsResult] = await Promise.allSettled([
         getOrganisationOpportunities(req.params.id, { per_page: 10 }),
         getOrganisationReviews(req.params.id)
@@ -1593,7 +1601,7 @@ app.get('/organisations/:id(\\d+)', requireOrganisationAuth, (req, res) => {
       const averageRating = Number(stats.average_rating || 0);
 
       res.render('organisation-detail', {
-        title: organisation.name || res.locals.t('govuk_alpha.organisations.title'),
+        title: organisation.name,
         activeNav: 'explore',
         organisation,
         orgStats: {
@@ -1611,10 +1619,20 @@ app.get('/organisations/:id(\\d+)', requireOrganisationAuth, (req, res) => {
           )
         },
         orgOpportunities: opportunities.map((opportunity) => {
-          const description = opportunity.description || '';
+          const parsedOpportunityId = Number.parseInt(String(opportunity?.id ?? ''), 10);
+          const id = Number.isInteger(parsedOpportunityId) && parsedOpportunityId > 0
+            ? parsedOpportunityId
+            : 0;
+          const title = String(opportunity?.title ?? '').trim()
+            || res.locals.t('govuk_alpha.organisations.title');
+          const description = String(opportunity?.description ?? '').trim();
           return {
             ...opportunity,
-            summary: description.length > 180 ? `${description.slice(0, 177)}...` : description
+            id,
+            title,
+            summary: unicodeLength(description) > 180
+              ? `${unicodeSlice(description, 177)}...`
+              : description
           };
         }),
         orgReviews: reviews.map((review) => {
@@ -1624,10 +1642,11 @@ app.get('/organisations/:id(\\d+)', requireOrganisationAuth, (req, res) => {
             ...review,
             authorName: String(author.name || '').trim() || res.locals.t('govuk_alpha.feed.unknown_author'),
             authorAvatar: resolveBackendAssetUrl(author.avatar || author.avatar_url),
-            rating: Number.isFinite(rating) ? Math.max(0, Math.min(5, Math.trunc(rating))) : 0
+            rating: Number.isFinite(rating) ? Math.max(0, Math.min(5, Math.trunc(rating))) : 0,
+            comment: String(review?.comment ?? '').trim()
           };
         }),
-        contactEmail: organisation.contact_email || organisation.email || '',
+        contactEmail,
         website,
         websiteHref,
         jobVacanciesEnabled: featureEnabled(req.accessibleRouting?.tenant || {}, 'job_vacancies', true)
