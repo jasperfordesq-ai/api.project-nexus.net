@@ -20940,6 +20940,7 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('Compost rota');
     expect(signed.text).toContain('Pinned');
     expect(signed.text).toContain('Started by Avery Green');
+    expect(signed.text).toContain('<time datetime="2026-09-14T00:00:00.000Z">14 September 2026</time>');
     expect(signed.text).toContain('4 replies');
     expect(signed.text).toContain('href="/groups/42/discussions/33"');
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
@@ -21148,6 +21149,7 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).not.toContain('&lt;strong&gt;');
     expect(signed.text).toContain('1 replies');
     expect(signed.text).toContain('Reply by Sam Lee');
+    expect(signed.text).toContain('<time datetime="2026-09-14T09:30:00.000Z">14 September 2026, 10:30</time>');
     expect(signed.text).toContain('14 September 2026, 10:30');
     expect(signed.text).toContain('I can cover the first week.');
     expect(signed.text).not.toContain('&lt;em&gt;');

@@ -39,7 +39,7 @@
   <article class="nexus-alpha-card govuk-!-margin-bottom-4">
     {% if discussion.authorName %}
       <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">
-        {{ t("groups.discussions.started_by", { name: discussion.authorName }) }}{% if discussion.createdAtLabel %} · {{ discussion.createdAtLabel }}{% endif %}
+        {{ t("groups.discussions.started_by", { name: discussion.authorName }) }}{% if discussion.createdAtLabel %}<span aria-hidden="true"> · </span><time datetime="{{ discussion.createdAt }}">{{ discussion.createdAtLabel }}</time>{% endif %}
       </p>
     {% endif %}
     <div class="govuk-body">{{ discussion.content | striptags | nl2br | safe }}</div>
@@ -54,7 +54,7 @@
       <article class="nexus-alpha-card govuk-!-margin-bottom-3">
         {% if message.authorName %}
           <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-1">
-            {{ t("polish_groups.reply_posted_by", { name: message.authorName }) }}{% if message.createdAtLabel %} · {{ message.createdAtLabel }}{% endif %}
+            {{ t("polish_groups.reply_posted_by", { name: message.authorName }) }}{% if message.createdAtLabel %}<span aria-hidden="true"> · </span><time datetime="{{ message.createdAt }}">{{ message.createdAtLabel }}</time>{% endif %}
           </p>
         {% endif %}
         <div class="govuk-body govuk-!-margin-bottom-0">{{ message.content | striptags | nl2br | safe }}</div>

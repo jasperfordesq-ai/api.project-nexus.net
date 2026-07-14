@@ -336,6 +336,13 @@ function normalizeGroup(item, fallbackId = null) {
   };
 }
 
+function isoDateTime(value) {
+  const text = trimmed(value);
+  if (!text) return '';
+  const date = new Date(text);
+  return Number.isNaN(date.getTime()) ? '' : date.toISOString();
+}
+
 function bladeDateTime24Label(value) {
   const text = trimmed(value);
   if (!text) return '';
@@ -372,6 +379,7 @@ function normalizeAnnouncement(item) {
 function normalizeDiscussion(item) {
   const raw = item && typeof item === 'object' ? item : {};
   const author = raw.author && typeof raw.author === 'object' ? raw.author : {};
+  const createdAt = raw.created_at || raw.createdAt || raw.posted_at || raw.postedAt;
   return {
     id: positiveInteger(raw.id),
     title: trimmed(raw.title || '') || 'View discussion',
@@ -379,7 +387,8 @@ function normalizeDiscussion(item) {
     authorName: trimmed(author.name || raw.author_name || raw.authorName || ''),
     replyCount: Number(raw.reply_count ?? raw.replyCount ?? raw.replies_count ?? raw.repliesCount ?? 0) || 0,
     isPinned: checked(raw.is_pinned ?? raw.isPinned),
-    createdAtLabel: dateLabel(raw.created_at || raw.createdAt || raw.posted_at || raw.postedAt)
+    createdAt: isoDateTime(createdAt),
+    createdAtLabel: dateLabel(createdAt)
   };
 }
 
@@ -1353,6 +1362,7 @@ router.get('/:id(\\d+)/discussions/:discussionId(\\d+)', requireAuth, asyncRoute
   const messages = (Array.isArray(data.messages) ? data.messages : collectionFrom({ data }))
     .map((message) => ({
       ...normalizeDiscussion(message),
+      createdAt: isoDateTime(message?.created_at || message?.createdAt || message?.posted_at || message?.postedAt),
       createdAtLabel: bladeDateTime24Label(message?.created_at || message?.createdAt || message?.posted_at || message?.postedAt)
     }))
     .filter((message) => message.id !== null);
