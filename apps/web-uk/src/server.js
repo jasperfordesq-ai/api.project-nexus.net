@@ -1093,6 +1093,8 @@ app.get('/organisations', requireOrganisationAuth, (req, res) => {
         const description = String(organisation?.description || '').trim();
         return {
           ...organisation,
+          name: String(organisation?.name ?? '').trim()
+            || res.locals.t('govuk_alpha.organisations.title'),
           summary: description.length > 160 ? `${description.slice(0, 157)}...` : description
         };
       });

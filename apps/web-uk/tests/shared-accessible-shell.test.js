@@ -16288,6 +16288,22 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 
+  it('uses the Blade fallback for a whitespace-only organisation directory name', async () => {
+    const api = require('../src/lib/api');
+    const t = createTranslator('en');
+    api.getVolunteerOrganisations.mockResolvedValueOnce({
+      data: [{ id: 42, name: '   ', description: 'Community support.' }]
+    });
+
+    const response = await request(app)
+      .get('/organisations')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain(`href="/organisations/42">${t('govuk_alpha.organisations.title')}</a>`);
+    expect(response.text).toContain('Community support.');
+  });
+
   it('keeps the organisations page usable when the Laravel organisations API is unavailable', async () => {
     const api = require('../src/lib/api');
     api.getVolunteerOrganisations.mockRejectedValueOnce(new api.ApiOfflineError());
