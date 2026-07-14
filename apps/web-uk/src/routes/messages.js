@@ -19,7 +19,7 @@ const {
   ApiError
 } = require('../lib/api');
 const { asyncRoute, handleApiError } = require('../lib/routeHelpers');
-const { flagEnabled } = require('../lib/accessible-shell');
+const { flagEnabled, resolveBackendAssetUrl } = require('../lib/accessible-shell');
 const { audit } = require('../lib/auditLogger');
 const { getRequestProfile } = require('../lib/request-profile');
 
@@ -365,13 +365,34 @@ function directConversationApiPath(userId, query) {
   return `/${userId}?${search.toString()}`;
 }
 
+function messageMediaProjection(message) {
+  const source = message && typeof message === 'object' ? message : {};
+  const sender = source.sender && typeof source.sender === 'object' ? source.sender : {};
+  const attachments = Array.isArray(source.attachments) ? source.attachments : [];
+  return {
+    ...source,
+    sender: {
+      ...sender,
+      avatarAssetUrl: resolveBackendAssetUrl(sender.avatar_url || sender.avatarUrl)
+    },
+    audioAssetUrl: resolveBackendAssetUrl(source.audio_url || source.audioUrl),
+    attachments: attachments.map(attachment => ({
+      ...attachment,
+      assetUrl: resolveBackendAssetUrl(
+        attachment?.url || attachment?.file_url || attachment?.download_url || attachment?.path
+      )
+    }))
+  };
+}
+
 function directConversationFrom(result, userId, currentUserId, t = null) {
   const data = dataFrom(result);
   const meta = (result && result.meta) || (data && data.meta) || {};
   const rawConversation = meta.conversation || (data && data.conversation) || {};
   const otherUser = conversationOtherUser(rawConversation, userId, t);
   const editCutoff = Date.now() - (24 * 60 * 60 * 1000);
-  const messages = listFrom(data).map(message => {
+  const messages = listFrom(data).map(rawMessage => {
+    const message = messageMediaProjection(rawMessage);
     const messageId = positiveInteger(message && message.id);
     const senderId = positiveInteger(message && message.sender_id);
     const isOwn = senderId !== null && senderId === currentUserId;
@@ -904,10 +925,13 @@ router.get('/groups/:conversationId(\\d+)', requireAuth, asyncRoute(async (req, 
   const viewer = participants.find(member => member.id !== null && member.id === currentUserId);
   const viewerRole = trimmed(viewer && viewer.role) || 'member';
   const searchQuery = trimmed(req.query.q);
-  const messages = listFrom(dataFrom(messagesResult)).map(message => ({
-    ...message,
-    displaySenderName: senderName(message, currentUserId, res.locals.t)
-  })).reverse();
+  const messages = listFrom(dataFrom(messagesResult)).map(rawMessage => {
+    const message = messageMediaProjection(rawMessage);
+    return {
+      ...message,
+      displaySenderName: senderName(message, currentUserId, res.locals.t)
+    };
+  }).reverse();
   const visibleMessages = searchQuery
     ? messages.filter(message => String(message.body || message.content || '').toLowerCase().includes(searchQuery.toLowerCase()))
     : messages;

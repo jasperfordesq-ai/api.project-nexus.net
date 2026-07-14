@@ -20940,7 +20940,6 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('Compost rota');
     expect(signed.text).toContain('Pinned');
     expect(signed.text).toContain('Started by Avery Green');
-    expect(signed.text).toContain('<time datetime="2026-09-14T00:00:00.000Z">14 September 2026</time>');
     expect(signed.text).toContain('4 replies');
     expect(signed.text).toContain('href="/groups/42/discussions/33"');
     expect(signed.text).not.toContain('shared accessible frontend preparation page');
@@ -21145,6 +21144,7 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).toContain('Compost rota');
     expect(signed.text).toContain('Your reply has been posted.');
     expect(signed.text).toContain('Started by Avery Green');
+    expect(signed.text).toContain('<time datetime="2026-09-14T00:00:00.000Z">14 September 2026</time>');
     expect(signed.text).toContain('Please swap weeks here if you need help.');
     expect(signed.text).not.toContain('&lt;strong&gt;');
     expect(signed.text).toContain('1 replies');
@@ -27980,7 +27980,7 @@ describe('shared accessible frontend shell', () => {
     const mainHtml = response.text.match(/<main[^>]*>([\s\S]*?)<\/main>/)[1];
     expect(mainHtml).not.toContain('govuk-grid-column-two-thirds');
     expect(response.text).toContain('<li class="govuk-!-margin-bottom-2" style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap">');
-    expect(response.text).toContain('<img class="nexus-alpha-avatar" src="/uploads/55/casey.jpg" alt="" loading="lazy" decoding="async" width="48" height="48">');
+    expect(response.text).toContain(`<img class="nexus-alpha-avatar" src="${getApiBaseUrl()}/uploads/55/casey.jpg" alt="" loading="lazy" decoding="async" width="48" height="48">`);
     expect(response.text).toContain('<span class="nexus-alpha-avatar nexus-alpha-avatar--placeholder" aria-hidden="true">Y</span>');
     expect(response.text).toContain('<details class="govuk-details" data-module="govuk-details">');
     expect(response.text).toContain('<legend class="govuk-fieldset__legend govuk-fieldset__legend--s">Add a reaction</legend>');
@@ -28225,9 +28225,9 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('I can bring the spare tools.');
     expect(response.text).toContain('Thanks, that would help.');
     expect(response.text).toContain('guide.pdf');
-    expect(response.text).toContain('href="/uploads/guide.pdf" download');
-    expect(response.text).toContain('href="/uploads/tools.jpg" target="_blank" rel="noopener"');
-    expect(response.text).toContain('src="/uploads/tools.jpg" alt="Spare tools" width="220" loading="lazy" decoding="async"');
+    expect(response.text).toContain(`href="${getApiBaseUrl()}/uploads/guide.pdf" download`);
+    expect(response.text).toContain(`href="${getApiBaseUrl()}/uploads/tools.jpg" target="_blank" rel="noopener"`);
+    expect(response.text).toContain(`src="${getApiBaseUrl()}/uploads/tools.jpg" alt="Spare tools" width="220" loading="lazy" decoding="async"`);
     expect(response.text).toContain('Search messages');
     expect(response.text).toContain('value="tools"');
     expect(response.text).toContain('id="conv-search"');
@@ -28235,7 +28235,7 @@ describe('shared accessible frontend shell', () => {
     expect(directMain).not.toContain('govuk-grid-column-two-thirds');
     expect(response.text).toContain('class="nexus-alpha-card"');
     expect(response.text).toContain('class="nexus-alpha-card-head"');
-    expect(response.text).toContain('src="/uploads/morgan-avatar.jpg" alt="" loading="lazy" decoding="async" width="48" height="48"');
+    expect(response.text).toContain(`src="${getApiBaseUrl()}/uploads/morgan-avatar.jpg" alt="" loading="lazy" decoding="async" width="48" height="48"`);
     expect(response.text).toContain('class="nexus-alpha-avatar nexus-alpha-avatar--placeholder" aria-hidden="true">Y</span>');
     expect(response.text.indexOf('Thanks, that would help.')).toBeLessThan(response.text.indexOf('Search messages'));
     expect(response.text).toContain('href="/messages/77?listing=42&amp;q=tools&amp;cursor=next-page"');
@@ -28316,7 +28316,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('href="/messages/77?cursor=older-page"');
     expect(response.text).toContain('This message was deleted.');
     expect(response.text).not.toContain('Deleted secret text');
-    expect(response.text).toContain('src="/uploads/voice-note.webm"');
+    expect(response.text).toContain(`src="${getApiBaseUrl()}/uploads/voice-note.webm"`);
     expect(response.text).toContain('Recorded transcript');
     expect(response.text).not.toContain('action="/messages/77/m/2/translate"');
     expect(response.text).toContain('action="/messages/77/m/3/edit"');

@@ -76,8 +76,8 @@
           {% for message in messages %}
             <li id="m-{{ message.id }}" class="nexus-alpha-card">
               <div class="nexus-alpha-card-head">
-                {% if message.sender and message.sender.avatar_url %}
-                  <img class="nexus-alpha-avatar" src="{{ message.sender.avatar_url }}" alt="" loading="lazy" decoding="async" width="48" height="48">
+                {% if message.sender and message.sender.avatarAssetUrl %}
+                  <img class="nexus-alpha-avatar" src="{{ message.sender.avatarAssetUrl }}" alt="" loading="lazy" decoding="async" width="48" height="48">
                 {% else %}
                   <span class="nexus-alpha-avatar nexus-alpha-avatar--placeholder" aria-hidden="true">{{ message.displaySenderName | first | upper }}</span>
                 {% endif %}
@@ -98,8 +98,8 @@
                     <div class="govuk-body">{{ message.body }}</div>
                   {% endif %}
 
-                  {% if (message.is_voice or message.isVoice) and (message.audio_url or message.audioUrl) %}
-                    <audio controls preload="none" src="{{ message.audio_url or message.audioUrl }}">
+                  {% if (message.is_voice or message.isVoice) and message.audioAssetUrl %}
+                    <audio controls preload="none" src="{{ message.audioAssetUrl }}">
                       {{ t("govuk_alpha_messages.voice.no_audio_support") }}
                     </audio>
                     {% if message.transcript %}
@@ -116,7 +116,7 @@
                   {% if attachments.length %}
                     <ul class="govuk-list govuk-list--bullet">
                       {% for attachment in attachments %}
-                        {% set attachmentHref = attachment.url or attachment.file_url or attachment.download_url or attachment.path %}
+                        {% set attachmentHref = attachment.assetUrl %}
                         {% set attachmentName = attachment.name or attachment.file_name or attachment.filename or t("govuk_alpha_messages.attachments.default_name") %}
                         {% set attachmentMime = attachment.mime_type or attachment.mimeType or attachment.type or '' %}
                         <li>
