@@ -540,6 +540,11 @@ frozen Blade partials' image fields, alternatives, dimensions, and surrounding
 card hierarchy. Focused advanced-search proof passes `1/1`; the complete non-
 mutating gate remains green at `52/52` suites and `1,681/1,681` tests with lint,
 brand, CSS, and both localization audits passing.
+Profile settings and the onboarding profile/confirmation steps now resolve the
+signed-in member's Laravel-relative avatar path against the configured backend
+origin while retaining Blade's existing current-photo presentation. Focused
+settings and onboarding proof passes `2/2`; the same complete non-mutating and
+static gates remain green.
 This certifies broad historical read/auth/gate/body coverage, not every
 mutation, upload, download, destructive side effect, or manual assistive-
 technology state. Saved-collection create/update/delete and collection-
