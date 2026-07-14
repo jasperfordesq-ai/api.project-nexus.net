@@ -14,6 +14,12 @@ live state before editing code or claiming progress.
 
 ## Latest Resume Point: Custom Recurrence And Series Lifecycle
 
+Event reminders now use a dedicated versioned preference aggregate rather than the
+shallow event handler. Both aliases support canonical GET/PUT/DELETE, strict
+overrides/rules, serializable optimistic concurrency, reset-to-inherited behavior,
+and resolved preference payloads. Migration 141 replays cleanly, model drift is
+clear, and focused migrated-schema proof passes 2/2.
+
 The locally verified backend slice owns finite/never/custom RRULE creation,
 normalized EXDATE/RDATE behavior, signed effective revisions, immutable definition
 blueprints, and rolling materialization under both API aliases. Migration 140 and
@@ -25,9 +31,9 @@ preserve immutable per-member evidence. Member/admin cancel and delete routes no
 longer use direct flags or physical deletion. Canonical self-relationship reads are
 now redacted, tenant-safe, and available on both aliases; personal calendar,
 guardian grant, and guest attendance also expose explicit canonical aliases. The
-live inventory is 2,583/2,608 with 25 misses. Provisional global scores are
-815/1000 implementation, 690/1000
-certification, and 70% overall. Resume with the 25-route/runtime queue, then the
+live inventory is 2,584/2,608 with 24 misses. Provisional global scores are
+820/1000 implementation, 695/1000
+certification, and 71% overall. Resume with the 24-route/runtime queue, then the
 complete suite/CI, unchanged canonical frontend smoke, schema/localization depth,
 and live-provider certification.
 

@@ -165,6 +165,24 @@ public sealed class EventNotificationPreferenceProduct : ITenantEntity
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
 
+public sealed class EventReminderRuleProduct : ITenantEntity
+{
+    public long Id { get; set; }
+    public int TenantId { get; set; }
+    public int EventId { get; set; }
+    public int UserId { get; set; }
+    public int OffsetMinutes { get; set; }
+    public bool Enabled { get; set; } = true;
+    public bool? EmailEnabled { get; set; }
+    public bool? InAppEnabled { get; set; }
+    public bool? WebPushEnabled { get; set; }
+    public bool? FcmEnabled { get; set; }
+    public bool? RealtimeEnabled { get; set; }
+    public long RuleVersion { get; set; } = 1;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+
 public sealed class EventNotificationDelivery : ITenantEntity
 {
     public long Id { get; set; }

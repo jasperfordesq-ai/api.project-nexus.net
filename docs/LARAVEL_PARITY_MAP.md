@@ -19,7 +19,9 @@ ownership proof passes 9/9, 11/11, and 114/114. Canonical self-relationship read
 now expose redacted registration, waitlist, attendance, capacity, and action facts
 on both aliases, with migrated HTTP proof. Personal calendar, guardian grant, and
 guest attendance also have explicit canonical aliases. The current inventory is
-2,583/2,608 (99.0%); 25 route shapes and broader runtime certification remain open.
+2,584/2,608 (99.1%). Event reminder GET/PUT/DELETE now use a dedicated versioned,
+tenant-safe preference aggregate with migration 141 and 2/2 migrated-schema proof;
+24 route shapes and broader runtime certification remain open.
 
 ## Inventory Baseline
 

@@ -490,6 +490,22 @@ public class EventConfiguration : TenantScopedConfiguration
             });
             e.HasQueryFilter(x => !TenantContext.IsResolved || x.TenantId == TenantContext.TenantId);
         });
+        modelBuilder.Entity<EventReminderRuleProduct>(e =>
+        {
+            e.ToTable("event_reminder_rules");
+            e.Property(x => x.RuleVersion).HasDefaultValue(1L);
+            e.HasIndex(x => new { x.TenantId, x.EventId, x.UserId, x.OffsetMinutes }).IsUnique().HasDatabaseName("uq_event_reminder_rule_offset");
+            e.HasIndex(x => new { x.TenantId, x.UserId, x.Enabled, x.EventId }).HasDatabaseName("idx_event_reminder_rule_user");
+            e.HasOne<Tenant>().WithMany().HasForeignKey(x => x.TenantId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<Event>().WithMany().HasForeignKey(x => x.EventId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            e.ToTable(t =>
+            {
+                t.HasCheckConstraint("chk_event_reminder_rule_offset", "\"OffsetMinutes\" BETWEEN 5 AND 525600");
+                t.HasCheckConstraint("chk_event_reminder_rule_version", "\"RuleVersion\" >= 1");
+            });
+            e.HasQueryFilter(x => !TenantContext.IsResolved || x.TenantId == TenantContext.TenantId);
+        });
         modelBuilder.Entity<EventRegistrationGuest>(e => { e.ToTable("event_registration_guests"); e.Property(x => x.Status).HasMaxLength(16); Hash64(e.Property(x => x.EmailBlindHash)); Hash64(e.Property(x => x.IdentityFingerprint)); e.Property(x => x.PreferredLocale).HasMaxLength(15); Hash64(e.Property(x => x.ConsentTextHash)); e.Property(x => x.ConsentTextVersion).HasMaxLength(64); Hash64(e.Property(x => x.NotificationConsentHash)); e.Property(x => x.NotificationConsentVersion).HasMaxLength(64); e.HasIndex(x => new { x.TenantId, x.RegistrationId, x.GuestNumber }).IsUnique(); e.HasIndex(x => new { x.TenantId, x.RegistrationId, x.IdentityFingerprint }).IsUnique().HasFilter("\"Status\" = 'captured'"); e.HasIndex(x => new { x.TenantId, x.TicketEntitlementId }).IsUnique().HasFilter("\"TicketEntitlementId\" IS NOT NULL"); e.HasQueryFilter(x => !TenantContext.IsResolved || x.TenantId == TenantContext.TenantId); });
         modelBuilder.Entity<EventRegistrationGuestAttendance>(e => { e.ToTable("event_registration_guest_attendance"); e.Property(x => x.Status).HasMaxLength(32); e.HasIndex(x => new { x.TenantId, x.EventId, x.GuestId }).IsUnique(); e.HasQueryFilter(x => !TenantContext.IsResolved || x.TenantId == TenantContext.TenantId); });
         modelBuilder.Entity<EventRegistrationGuestAttendanceHistory>(e => { e.ToTable("event_registration_guest_attendance_history"); e.Property(x => x.Action).HasMaxLength(32); e.Property(x => x.FromStatus).HasMaxLength(32); e.Property(x => x.ToStatus).HasMaxLength(32); e.Property(x => x.Status).HasMaxLength(32); Hash64(e.Property(x => x.IdempotencyHash)); Hash64(e.Property(x => x.RequestHash)); e.Property(x => x.Reason).HasMaxLength(500); e.Property(x => x.Metadata).HasColumnType("jsonb"); e.HasIndex(x => new { x.TenantId, x.AttendanceId, x.AttendanceVersion }).IsUnique(); e.HasIndex(x => new { x.TenantId, x.IdempotencyHash }).IsUnique(); e.HasQueryFilter(x => !TenantContext.IsResolved || x.TenantId == TenantContext.TenantId); });

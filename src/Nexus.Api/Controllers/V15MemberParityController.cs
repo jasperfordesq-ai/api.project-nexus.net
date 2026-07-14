@@ -146,7 +146,6 @@ public class V15MemberParityController : ControllerBase
 
     [HttpPut("api/v2/events/{id:int}")]
     [HttpPut("api/v2/events/{id:int}/recurring")]
-    [HttpPut("api/v2/events/{id:int}/reminders")]
     public async Task<IActionResult> V2UpdateEvent(int id, [FromBody] JsonElement body)
     {
         var ev = await _db.Events.FirstOrDefaultAsync(e => e.Id == id);
@@ -268,7 +267,6 @@ public class V15MemberParityController : ControllerBase
         return Ok(new { success = true });
     }
 
-    [HttpGet("api/v2/events/{id:int}/reminders")]
     [HttpPost("api/v2/events/{id:int}/image")]
     [HttpPost("api/v2/events/{id:int}/series")]
     [HttpGet("api/v2/events/{id:int}/waitlist")]

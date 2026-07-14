@@ -45,6 +45,15 @@ Laravel Edition containers from this worktree.
 
 ## 2026-07-14 ASP.NET Custom Recurrence And Series Lifecycle Checkpoint (Locally Verified)
 
+Event reminder preferences are no longer handled by the shallow event update/read
+fallback. GET/PUT/DELETE now own a tenant-safe aggregate on both API aliases with
+strict channel/cadence/rule validation, optimistic revisions, serializable locking,
+soft-disabled rule history, reset-to-inherited semantics, resolved channel data,
+and canonical limits/capabilities. Migration 141
+(`20260714005420_EventReminderPreferencesParity`) replays after the full chain,
+model drift is clean, focused migrated-schema proof passes 2/2, and route ownership
+remains 114/114.
+
 ASP.NET now accepts the reviewed Laravel custom RRULE subset (`FREQ`, `INTERVAL`,
 `BYDAY`, `BYMONTHDAY`, `BYMONTH`, `WKST`, `COUNT`, and `UNTIL`) with canonical
 ordering, DTSTART-derived defaults, WKST-aware weekly intervals, negative month
@@ -68,14 +77,14 @@ errors, EF model drift is clean, and comparator fixture/live refresh remain gree
 The canonical self-relationship read now projects redacted registration, waitlist,
 attendance, capacity, and action facts on both aliases; personal calendar, guardian
 grant, and guest-attendance aliases are explicitly represented. The live inventory
-is 2,583/2,608 operations (99.0%, 25 static misses). A legacy admin-controller test
+is 2,584/2,608 operations (99.1%, 24 static misses). A legacy admin-controller test
 attempt was environment-blocked before application assertions because Testcontainers
 could not initialize its resource reaper; it is unknown rather than green.
 
-Current provisional global scores are **815/1000 implementation** and **690/1000
-certification confidence**. The honest combined finish-line estimate is **70%**,
+Current provisional global scores are **820/1000 implementation** and **695/1000
+certification confidence**. The honest combined finish-line estimate is **71%**,
 up from the goal baseline of 42% and the previous published checkpoint of 68%.
-The 25 remaining route shapes, complete-suite/CI proof, unchanged canonical-
+The 24 remaining route shapes, complete-suite/CI proof, unchanged canonical-
 frontend-on-ASP.NET browser proof, broader schema/localization depth, and live-
 provider evidence remain open. No production resource or frontend file was touched.
 

@@ -55,6 +55,7 @@ public class NexusDbContext : DbContext
     public DbSet<EventRecurrenceDefinitionBlueprint> EventRecurrenceDefinitionBlueprints => Set<EventRecurrenceDefinitionBlueprint>();
     public DbSet<EventRecurrenceDefinitionApplication> EventRecurrenceDefinitionApplications => Set<EventRecurrenceDefinitionApplication>();
     public DbSet<EventNotificationDelivery> EventNotificationDeliveries => Set<EventNotificationDelivery>();
+    public DbSet<EventReminderRuleProduct> EventReminderRulesProduct => Set<EventReminderRuleProduct>();
     public DbSet<EventTemplate> EventTemplates => Set<EventTemplate>();
     public DbSet<EventTemplateVersion> EventTemplateVersions => Set<EventTemplateVersion>();
     public DbSet<EventTemplateMaterialization> EventTemplateMaterializations => Set<EventTemplateMaterialization>();
