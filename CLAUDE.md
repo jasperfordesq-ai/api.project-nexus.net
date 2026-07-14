@@ -178,8 +178,11 @@ canonical React frontend is the Laravel repo frontend at
 - Web UK work must not modify ASP.NET backend source, tests, migrations, schema,
   fixtures or runtime data. It must not edit Laravel source, run Laravel
   migrations, alter/query/clean its ordinary local database, or touch
-  production. Mutation certification requires a dedicated disposable Laravel
-  environment or explicit user authorization with verified cleanup.
+  production. The ordinary local Laravel database is a confidential,
+  production-derived snapshot and is never a test fixture. Live mutation,
+  upload, download, or destructive certification requires a separately
+  provisioned disposable Laravel environment; cleanup against the ordinary
+  local database is not an acceptable substitute.
 - ASP.NET switching is a separate future gate: once that backend is ready, rerun
   the same unchanged Web UK suite by changing configuration only. Never add
   ASP.NET-specific page, template, validation, redirect or workflow branches.

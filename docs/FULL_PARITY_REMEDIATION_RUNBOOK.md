@@ -998,7 +998,9 @@ smoked against ASP.NET later.
 4. Reconcile every `Partial` and `Started` row in
    `apps/web-uk/docs/BLADE_COMPONENT_PORT_AUDIT.md` against current Laravel
    Blade, controllers, API calls, validation, gates, banners, empty states,
-   error states, and POST/upload/delete side effects.
+   error states, and POST/upload/delete contracts. Use mocked HTTP contract
+   tests against the ordinary checkout; live side-effect proof belongs only in
+   a separately provisioned disposable Laravel environment.
 5. **Localization/RTL foundation substantially advanced 2026-07-10, but still
    open:** Web UK imports all 11 offered Laravel locales across 24 namespaces
    and 7,337 keys with zero structural drift; resolves locale per request;
@@ -1016,8 +1018,9 @@ smoked against ASP.NET later.
    listener and gates 12 cases: nine representative public pages plus three
    Arabic RTL pages at 320px, covering document direction, structure, unique
    IDs, horizontal reflow, and serious/critical axe violations. Continue
-   expanding authenticated, error, upload, destructive, and additional RTL
-   states, and perform a recorded manual pass for keyboard use, focus order and
+   expanding authenticated and error states. Exercise live upload/destructive
+   states only in a separately provisioned disposable Laravel environment, and
+   perform a recorded manual pass for keyboard use, focus order and
    visibility, screen-reader announcements, zoom/reflow, contrast, error
    summaries, and RTL behavior.
    The source-level error-summary focus audit is complete for current Nunjucks
@@ -1027,8 +1030,10 @@ smoked against ASP.NET later.
    process as certification evidence.
 8. Rerun the complete Laravel smoke scope, chunked if necessary, including
    signed/unsigned, unauthorized, not-found, feature-disabled, tenant-domain,
-   custom-domain, forms, uploads, destructive actions, redirects, and body-copy
-   checks.
+   custom-domain, forms, redirects, and body-copy checks. Against the ordinary
+   production-derived local Laravel database this scope must be strictly
+   read-only. Run upload/mutation/destructive chunks only against a separately
+   provisioned disposable Laravel environment.
 9. Refresh the route matrix, component audit, switching contract, and Web UK
    handoff with exact command output. Remove superseded scores and false
    completion claims.

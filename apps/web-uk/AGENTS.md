@@ -22,8 +22,10 @@ Urgent first-read rules:
 - `C:\platforms\htdocs\staging` and its ordinary local database are read-only
   from this workstream. Never edit Laravel source, run Laravel migrations,
   alter its schema, query its database directly, or perform database cleanup.
-  Mutation/upload/download certification requires a dedicated disposable test
-  environment or explicit user authorization, with verified cleanup.
+  The database is a confidential production-derived snapshot, not a fixture.
+  Never run live mutation, upload, download, or destructive tests against it,
+  even when the test creates unique rows and attempts cleanup. Such proof
+  requires a separately provisioned disposable Laravel environment.
 - Work only under `apps/web-uk/**` and approved documentation pointers. Do not
   modify `src/Nexus.Api/**`, `tests/Nexus.Api.Tests/**`, ASP.NET migrations, or
   the frozen `apps/react-frontend` copy.

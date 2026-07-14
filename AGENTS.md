@@ -35,6 +35,13 @@ work must not modify ASP.NET backend source/migrations or Laravel source/schema/
 ordinary local database, and it must not introduce backend-specific frontend
 branches.
 
+The ordinary local Laravel database is a confidential production-derived
+snapshot. Never run Laravel migrations or live mutation/upload/download/delete
+tests against it, even when a test claims to use disposable rows or cleanup.
+Use mocked frontend contract tests or a separately provisioned disposable
+Laravel environment. The canonical Hour Timebank URL is
+`/hour-timebank/accessible`; `/hour-timebank/alpha` is redirect-only.
+
 Before starting or resuming `apps/web-uk` work, read
 [`apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md`](./apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md).
 It contains the current blocker set, concurrent-session ownership boundaries,

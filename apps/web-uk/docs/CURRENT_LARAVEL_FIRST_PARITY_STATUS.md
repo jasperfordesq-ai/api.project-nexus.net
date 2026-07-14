@@ -39,8 +39,10 @@ Laravel source and its ordinary local database are read-only from this
 workstream. Do not solve a missing Laravel API by inventing frontend-only
 behaviour, editing Laravel, running Laravel migrations, altering its schema,
 querying its database directly, or performing database cleanup. Real mutation,
-upload, download, and destructive certification requires a dedicated disposable
-Laravel test environment or explicit user authorization with verified cleanup.
+upload, download, and destructive certification requires a separately
+provisioned disposable Laravel test environment. The ordinary database is a
+confidential production-derived snapshot; unique fixtures and cleanup do not
+authorize writes to it.
 
 ASP.NET is not a source of truth for this frontend and is not part of the
 frontend implementation loop. Do not inspect it to decide frontend behaviour
@@ -70,28 +72,34 @@ session owns backend work, including `src/Nexus.Api/**`,
 
 ## Local Laravel Boundary Incident
 
-This workstream previously violated the read-only boundary by applying two
-existing Laravel migrations to the ordinary local MySQL database and leaving
-disposable mutation residue. A production read-only inventory on 2026-07-13
-established that both migrations were already legitimate production schema,
-recorded there in batch `96`; this workstream did not create or deploy either
-production schema change.
+This workstream violated the read-only boundary twice. The first incident
+applied existing Laravel migrations and left mutation residue in the ordinary
+local MariaDB database. After the 2026-07-13 recovery, the long-running frontend
+session again used that restored production-derived snapshot for authenticated
+settings changes and create/edit/delete/upload smoke journeys. The later phase
+did not run Laravel migrations or change Laravel source, and its tests attempted
+cleanup, but those facts do not make the writes acceptable or prove the snapshot
+was unchanged.
 
-With explicit owner authorization, production was dumped consistently to
-`/opt/nexus-php/backups/incident-production-20260713T145005Z.sql.gz`. The dump
-passed gzip, completion-marker, SHA-256, and isolated restore checks, was copied
-to Laravel's Git-ignored `backups/incident-recovery/` directory, and did not
-alter production rows or schema. The pre-repair local database was separately
-preserved there as `incident-local-before-repair-20260713T150209Z.sql.gz`.
+On 2026-07-14 the later incident was repaired with owner authorization. Before
+repair, the local database was preserved outside both repositories as
+`C:\platforms\backups\nexus-laravel-incident-20260714\local-before-recovery_20260714_043458.sql.gz`
+and verified by gzip, dump-completion marker, and SHA-256. A new consistent,
+single-transaction production dump was created read-only at
+`/opt/nexus-php/backups/manual_backup_20260714_043554.sql.gz`, copied to
+`C:\platforms\backups\nexus-laravel-incident-20260714\manual_backup_20260714_043554.sql.gz`,
+and verified at both locations with SHA-256
+`c5d93cd95424d22d981c41ca3ebe6fb73a75a993d18aeaf56145897a9eb606d8`.
 
-The local `nexus` database was then reinitialized from the verified production
-dump. It now matches the audited production snapshot: 11 tenants, 360 users,
-383 Laravel migration rows, both questioned migrations in batch `96`, both
-group-template columns, all ten event-accessibility columns, and zero matches
-for `Codex` across every text column. Laravel and MariaDB returned healthy after
-restart. The Laravel repository remained unchanged apart from its pre-existing
-`react-frontend/package-lock.json` and untracked `.codex/` state; neither backup
-is eligible for Git staging because `/backups/` is ignored.
+The local `nexus` database was dropped and recreated only in the local Docker
+Desktop context, then restored directly from that verified production dump.
+No Laravel migration, schema-generation command, ASP.NET database operation, or
+production data mutation was run. Production and restored-local fingerprints
+match at 723 base tables, 286 migration rows, 11 tenants, and 360 users; both use
+`utf8mb4_unicode_ci`. The local MariaDB event scheduler is off, and the Laravel
+app and database returned healthy. The Laravel repository still matches
+`origin/main` and retains only its pre-existing
+`react-frontend/package-lock.json` modification and untracked `.codex/` path.
 
 Consequences for this workstream:
 
@@ -101,7 +109,7 @@ Consequences for this workstream:
   snapshot for read-only comparison, never as a disposable certification
   fixture;
 - run future mutation certification only against an isolated disposable Laravel
-  environment whose complete cleanup can be verified.
+  environment provisioned separately from the ordinary local database.
 
 Do not append another general progress narrative to
 `CURRENT_WEB_UK_HANDOFF.md`. Update this file only when the source SHAs,

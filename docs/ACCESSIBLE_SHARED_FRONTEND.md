@@ -68,8 +68,9 @@ tenant, auth, and runtime smoke certification.
   read-only: no source edits, migrations, schema repair, direct database
   queries, or cleanup.
 - Mutation/upload/download/destructive certification requires a dedicated
-  disposable Laravel environment or explicit user authorization with verified
-  cleanup.
+  disposable Laravel environment provisioned separately from the ordinary
+  local database. The ordinary database is a confidential production-derived
+  snapshot; fixture cleanup is not permission to write to it.
 - Never touch production containers or production data.
 
 ## Official GOV.UK Sources

@@ -2,7 +2,25 @@
 
 Last reviewed: 2026-07-14
 
-## 2026-07-13 Tenant, Mutation, and Manual Accessibility Checkpoint
+> **Certification-evidence correction:** Every live mutation, upload, download,
+> destructive, "disposable", persistence, cleanup, or final-absence result
+> recorded anywhere in this ledger against the ordinary local Laravel instance
+> is invalidated as certification evidence. No row-level wording such as
+> "passed", "certified", or "final absence" overrides this correction. Those
+> records are retained only as implementation history and regression-discovery
+> context. As of this review, no separately provisioned disposable Laravel
+> environment has been evidenced; all live side-effect certification remains
+> open. Mocked contract tests and strictly read-only render evidence remain
+> usable on their own stated terms.
+
+## 2026-07-13 Unsafe Mutation Evidence And Manual Accessibility Checkpoint
+
+The live mutation results in this historical section are invalidated as
+certification evidence. They were run against the ordinary local Laravel
+database, which is a confidential production-derived snapshot and was never an
+authorized disposable fixture. Implementation defects exposed by those runs
+may remain valid and their focused mocked regressions remain useful, but the
+live side-effect outcomes must not be counted, rerun, or cited as green proof.
 
 A current `timebanking-org` Laravel gate passed `1/1` in `20.3` seconds:
 Home returned `200`; Marketplace, Courses, Podcasts, Premium, Coupons, and the
@@ -30,21 +48,24 @@ rerun then reached Web UK's multipart create form and Laravel returned `500`
 because that stale local schema still lacked later Event lifecycle columns. The
 failed insert retained no disposable Event.
 
-A 2026-07-13 production inventory subsequently proved that this migration and
-`2026_07_11_000042_record_group_template_payload` were already legitimate
-production migrations in batch `96`; Web UK did not author or deploy them.
-After a verified consistent production backup and a separate forensic backup
-of the old local database, the owner-authorized repair reinitialized local
-`nexus` from the production snapshot. The repaired local database has 11
-tenants, 360 users, 383 Laravel migrations, both questioned migrations in batch
-`96`, the expected two group-template and ten event-accessibility columns, and
-zero `Codex` matches across all text columns. Both backup files are under the
-Laravel repository's ignored `/backups/` tree, and Laravel source was not
-changed. Because the ordinary local database now contains confidential
-production data, it is read-only comparison evidence, not a mutation fixture.
-Future mutation gates must use an isolated disposable Laravel environment with
-verified cleanup; this frontend workstream must not perform schema repair or
-database cleanup.
+A 2026-07-13 production inventory subsequently showed that this migration and
+`2026_07_11_000042_record_group_template_payload` were pre-existing production
+schema; Web UK did not author or deploy them. That first repair was not the end
+of the incident: the long-running frontend session later resumed authenticated
+settings and create/edit/delete/upload journeys against the restored ordinary
+database.
+
+On 2026-07-14 the local database was preserved for forensics and reinitialized
+again from a newly verified, single-transaction production dump. The canonical
+incident record is `CURRENT_LARAVEL_FIRST_PARITY_STATUS.md`; current production
+and restored-local fingerprints match at 723 base tables, 286 migration rows,
+11 tenants, and 360 users, with `utf8mb4_unicode_ci`. Backups are outside both
+repositories under
+`C:\platforms\backups\nexus-laravel-incident-20260714`. Because the ordinary
+local database contains confidential production data, it is read-only
+comparison evidence, not a mutation fixture. Future mutation gates require an
+isolated environment provisioned separately from that database; this frontend
+workstream must not perform schema repair, direct queries, or cleanup.
 
 Database-evidence supersession rule: later component rows that say the local
 database currently lacks `events.accessibility_step_free`, Event lifecycle
@@ -56,20 +77,16 @@ still need a fresh read-only rerun, while every mutation lifecycle requires a
 separate disposable clone. Do not run those mutation gates against the restored
 ordinary local database.
 
-Profile-settings mutation is now current-certified for skills, match
-notifications, and ordinary notification settings. The default-English
-aggregate passed `3/3` in `7.5` minutes. It added and removed a uniquely named
-member skill; changed and restored the exact match-preference tuple; and changed
-and restored the exact ordinary notification and digest settings. The third
-case exposed and fixed Web UK posting digest cadence to Laravel's general
-preference endpoint, where it was silently ignored. Web UK now uses the
-separate global notification-settings contract and includes the source's event-
-email preference. All cases passed one-main/H1/unique-ID/320px reflow/axe checks
-and have API cleanup/restoration fallbacks. Full verification passed `46/46`
-suites, `1,567/1,567` tests, ESLint, the branding guard, and the `315`-template
-localization audit. Avatar upload remains open because Laravel exposes no bearer
-cleanup contract that also removes the stored file; nulling only `avatar_url`
-is not accepted as residue-free evidence.
+The same invalidated run exercised skills, match notifications, and ordinary
+notification settings. It exposed a real Web UK defect: digest cadence was sent
+to Laravel's general preference endpoint, where it was ignored. Web UK now uses
+the separate global notification-settings contract and includes the source's
+event-email preference, with retained mocked regression coverage. The former
+`3/3` live result and cleanup/restoration claims are not certification. The
+non-mutating aggregate at that checkpoint passed `46/46` suites and
+`1,567/1,567` tests plus ESLint, branding, and template-localization gates.
+Profile-setting mutation and avatar upload remain open until a separately
+provisioned disposable Laravel environment exists.
 
 A manual in-app browser inspection of the default-English login page confirmed
 the skip link, banner/main/footer landmarks, labelled email and password
@@ -85,8 +102,9 @@ certification remains an external manual sign-off.
 
 ## 2026-07-13 Laravel Source Refresh Checkpoint
 
-The read-only Laravel source and its maintained API, testing, Events, and
-accessible-frontend documentation were refreshed at `c2cf4fa66`. Events is now
+At this historical checkpoint, the read-only Laravel source and its maintained
+API, testing, Events, and accessible-frontend documentation were refreshed at
+`c2cf4fa66`. Events was then
 explicitly authenticated, tenant-scoped, and feature-gated; there is no
 maintained anonymous catalogue/detail contract. Publication, operational state,
 registration, waitlist/offer, attendance, entitlement, and engagement remain

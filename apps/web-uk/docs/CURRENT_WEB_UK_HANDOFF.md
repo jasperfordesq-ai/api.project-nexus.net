@@ -18,6 +18,13 @@ Last reviewed: 2026-07-13
 > API contract, and ASP.NET is a separate future backend that must conform to
 > Laravel. The Laravel repository, schema, and ordinary local database are
 > read-only from this workstream.
+>
+> Any historical claim in this file that a live mutation, upload, download,
+> destructive action, disposable lifecycle, cleanup, or final absence was
+> certified against the ordinary local Laravel instance is invalidated. Those
+> runs may explain retained frontend regressions, but they are not current
+> certification evidence. No separately provisioned disposable Laravel
+> environment is currently evidenced.
 
 This is the first file to read if an agent needs to resume the accessible
 frontend rewrite after a session interruption. The previous parallel `main`
@@ -56,13 +63,15 @@ Laravel's contracts; it must not define or fork Web UK behaviour.
 | Previous parity worktree | `C:\Users\jaspe\.config\superpowers\worktrees\asp.net-backend\codex-web-uk-laravel-parity` |
 
 The Laravel repository, schema, and ordinary local database are read-only from
-this workstream. Mutation certification must use an isolated disposable Laravel
-environment or explicit user authorization with verified cleanup. ASP.NET
-backend files and migrations belong to the separate backend workstream.
+this workstream. The ordinary database is a confidential production-derived
+snapshot and must never receive test writes. Mutation certification must use an
+isolated disposable Laravel environment provisioned separately from it.
+ASP.NET backend files and migrations belong to the separate backend workstream.
 
 ## 2026-07-13 Laravel Source and Independent-Audit Refresh
 
-The read-only Laravel source is current at `c2cf4fa66`. Recent commits and the
+At this historical checkpoint, the read-only Laravel source was
+`c2cf4fa66`. Recent commits and the
 maintained `docs/API.md`, `docs/TESTING.md`, `docs/modules/events.md`,
 `accessible-frontend/CLAUDE.md`, `accessible-frontend/README.md`, and
 `accessible-frontend/COMPONENTS.md` were rescanned before continuing Web UK

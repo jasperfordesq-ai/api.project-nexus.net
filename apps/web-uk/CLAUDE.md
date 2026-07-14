@@ -41,9 +41,10 @@ it must conform to those contracts and must not cause frontend forks. See
   read-only. Do not edit Laravel source, run Laravel migrations, alter Laravel
   schema, query the database directly, or perform database cleanup.
 - Runtime mutation, upload, download, and destructive certification must use a
-  dedicated disposable Laravel test environment. Using an ordinary/shared
-  Laravel development database requires explicit user authorization and a
-  proven cleanup plan.
+  separately provisioned disposable Laravel test environment. The
+  ordinary/shared local Laravel database is a confidential production-derived
+  snapshot and must never be used for these tests; unique fixture names,
+  `finally` cleanup, or owner authorization do not make it disposable.
 - Never touch production containers or production data.
 
 Route and backend preparation docs live beside this app:
