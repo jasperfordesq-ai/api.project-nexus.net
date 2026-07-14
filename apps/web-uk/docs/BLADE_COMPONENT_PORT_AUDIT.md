@@ -262,6 +262,8 @@ renders the published description and exact short/long/choice/consent/waiver
 control families, preserves conditional required semantics, enforces bounded
 length and selection rules, and replays invalid answers through field-linked
 summary and inline errors without calling either mutation endpoint.
+Attendee invitations now render Blade's type/status summary cards, expose the
+Accept action only while issued, and preserve the localized empty state.
 Organizers can review or export answers only with explicit purpose/correlation
 evidence, cancel guests only after destructive confirmation, and apply versioned,
 idempotent guest attendance transitions. Single-value multi-choice submissions

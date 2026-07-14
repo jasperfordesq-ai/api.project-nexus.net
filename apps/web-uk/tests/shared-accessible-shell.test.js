@@ -23273,7 +23273,7 @@ describe('shared accessible frontend shell', () => {
       registration: { status: 'confirmed' },
       registrations: [{ id: 10, registration_state: 'cancelled' }, { id: 11, registration_state: 'confirmed', registration_version: 2 }],
       form: { id: 8, name: 'Access needs', description: 'Tell us what you need.', questions },
-      invitations: [], guests: [], settings: { guests_enabled: false }
+      invitations: [{ id: 71, status: 'issued' }, { id: 72, status: 'accepted' }], guests: [], settings: { guests_enabled: false }
     };
     const mockRegistrationPage = () => api.callEventApi
       .mockResolvedValueOnce({ data: { id: 42, title: 'Community garden day' } })
@@ -23291,6 +23291,11 @@ describe('shared accessible frontend shell', () => {
     expect(page.text).toContain('class="govuk-radios__input"');
     expect(page.text).toContain('class="govuk-checkboxes__input"');
     expect(page.text).toContain('Consent wording');
+    expect(page.text.match(/<h4 class="govuk-summary-card__title">Selected members<\/h4>/g)).toHaveLength(2);
+    expect(page.text).toContain('<strong class="govuk-tag">Issued</strong>');
+    expect(page.text).toContain('<strong class="govuk-tag">Accepted</strong>');
+    expect(page.text).toContain('/events/42/registration/invitations/71/accept');
+    expect(page.text).not.toContain('/events/42/registration/invitations/72/accept');
     const csrf = page.text.match(/name="_csrf" value="([^"]+)"/)[1];
 
     api.callEventApi.mockResolvedValueOnce({ data: attendee });
