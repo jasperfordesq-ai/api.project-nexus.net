@@ -1385,7 +1385,13 @@ describe('shared accessible frontend shell', () => {
         .set('Cookie', signedCookieHeader());
 
       expect(response.status).toBe(403);
-      if (path === '/acme/accessible/volunteering') {
+      if (path === '/acme/accessible/events') {
+        expect(response.text).toContain('Events are not enabled for this community.');
+        expect(response.text).toContain('The events module is not currently available for Acme Timebank.');
+        expect(response.text).not.toContain('Browse events by category');
+        expect(api.getEvents).not.toHaveBeenCalled();
+        expect(api.getEventCategories).not.toHaveBeenCalled();
+      } else if (path === '/acme/accessible/volunteering') {
         expect(response.text).toContain('Volunteering is not enabled for this community.');
         expect(response.text).toContain('The volunteering module is not currently available for Acme Timebank.');
         expect(response.text).not.toContain('How volunteering works');
@@ -25307,20 +25313,24 @@ describe('shared accessible frontend shell', () => {
     });
 
     const response = await request(app)
-      .get('/events?q=repair&when=past&cursor=abc')
+      .get('/events?q=repair&when=past&step_free=yes&cursor=abc')
       .set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(200);
     expect(api.getEvents).toHaveBeenCalledWith('test-token', {
-      per_page: 20,
+      per_page: 12,
       cursor: 'abc',
       q: 'repair',
       category_id: null,
-      when: 'past'
+      when: 'past',
+      step_free: 'yes'
     });
     expect(response.text).toContain('name="q"');
     expect(response.text).toContain('value="past" selected');
-    expect(response.text).toContain('href="/events?when=past&amp;near=any&amp;q=repair&amp;cursor=next-page"');
+    expect(response.text).toContain('value="yes" selected');
+    expect(response.text).toContain('href="/events?when=past&amp;near=any&amp;q=repair&amp;step_free=yes&amp;cursor=next-page"');
+    expect(response.text).toContain('href="/events/calendar.ics"');
+    expect(response.text).toContain('href="/events/calendar-subscriptions"');
     expect(response.text).toContain('class="govuk-pagination__icon govuk-pagination__icon--next"');
   });
 
@@ -25336,11 +25346,12 @@ describe('shared accessible frontend shell', () => {
 
     expect(response.status).toBe(200);
     expect(api.getEvents).toHaveBeenCalledWith('test-token', {
-      per_page: 20,
+      per_page: 12,
       cursor: undefined,
       q: '',
       category_id: 4,
       when: 'upcoming',
+      step_free: 'any',
       near_lat: 51.85,
       near_lng: -9.3,
       radius_km: 10
@@ -25394,11 +25405,12 @@ describe('shared accessible frontend shell', () => {
 
     expect(index.status).toBe(200);
     expect(api.getEvents).toHaveBeenCalledWith('test-token', {
-      per_page: 20,
+      per_page: 12,
       cursor: undefined,
       q: '',
       category_id: null,
-      when: 'upcoming'
+      when: 'upcoming',
+      step_free: 'any'
     });
     expect(index.text).toContain('Public repair cafe');
     expect(index.text).toContain('href="/events/new"');

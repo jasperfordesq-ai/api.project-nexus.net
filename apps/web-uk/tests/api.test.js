@@ -1302,11 +1302,12 @@ describe('API Request Functions', () => {
         near_lng: -9.3,
         radius_km: 10,
         when: 'past',
+        step_free: 'unknown',
         q: 'repair'
       });
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://localhost:5000/api/v2/events?per_page=12&cursor=next-page&group_id=9&category_id=4&near_lat=51.85&near_lng=-9.3&radius_km=10&when=past&q=repair',
+        'http://localhost:5000/api/v2/events?per_page=12&cursor=next-page&group_id=9&category_id=4&near_lat=51.85&near_lng=-9.3&radius_km=10&step_free=unknown&when=past&q=repair',
         expect.objectContaining({
           headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
         })

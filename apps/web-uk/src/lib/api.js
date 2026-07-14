@@ -2626,6 +2626,7 @@ async function getEvents(token, params = {}) {
   if (params.near_lat !== undefined && params.near_lat !== null) query.set('near_lat', params.near_lat);
   if (params.near_lng !== undefined && params.near_lng !== null) query.set('near_lng', params.near_lng);
   if (params.radius_km) query.set('radius_km', params.radius_km);
+  if (params.step_free && params.step_free !== 'any') query.set('step_free', params.step_free);
   if (params.when) {
     query.set('when', params.when);
   } else if (params.upcoming_only === false) {

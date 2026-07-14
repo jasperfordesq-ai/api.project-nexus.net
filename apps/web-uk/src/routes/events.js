@@ -3024,7 +3024,7 @@ router.post('/:id(\\d+)/translate', asyncRoute(async (req, res) => {
 // List events
 router.get('/', asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
-  const limit = 20;
+  const limit = 12;
   const searchQuery = trimmed(req.query.q || req.query.search);
   const categoryId = positiveInteger(req.query.category_id);
   const when = ['upcoming', 'past', 'all'].includes(req.query.when)
@@ -3033,10 +3033,36 @@ router.get('/', asyncRoute(async (req, res) => {
   const near = ['any', '5', '10', '25', '50'].includes(String(req.query.near))
     ? String(req.query.near)
     : 'any';
+  const stepFree = ['any', 'yes', 'no', 'unknown'].includes(String(req.query.step_free))
+    ? String(req.query.step_free)
+    : 'any';
   const upcomingOnly = when === 'upcoming';
-  const hasFilters = Boolean(searchQuery || categoryId || when !== 'upcoming' || near !== 'any');
+  const hasFilters = Boolean(searchQuery || categoryId || when !== 'upcoming' || near !== 'any' || stepFree !== 'any');
   let nearNoLocation = false;
   let nearFilters = {};
+
+  if (res.locals.eventsDisabled) {
+    return res.status(403).render('events/index', {
+      title: res.locals.t('events.title'),
+      events: [],
+      loadError: false,
+      categories: [],
+      searchQuery,
+      categoryId,
+      hasFilters,
+      upcomingOnly,
+      when,
+      near,
+      stepFree,
+      nearNoLocation: false,
+      pagination: { hasMore: false, cursor: '' },
+      isAuthenticated: Boolean(token),
+      canModerateEvents: false,
+      moduleDisabled: true,
+      successMessage: null,
+      errorMessage: null
+    });
+  }
 
   if (near !== 'any' && token) {
     const profile = await getRequestProfile(req, token).catch((error) => {
@@ -3059,6 +3085,7 @@ router.get('/', asyncRoute(async (req, res) => {
       q: searchQuery,
       category_id: categoryId,
       when,
+      step_free: stepFree,
       ...nearFilters
     }).catch((error) => {
       if (!token && isAuthError(error)) {
@@ -3095,7 +3122,9 @@ router.get('/', asyncRoute(async (req, res) => {
     upcomingOnly,
     when,
     near,
+    stepFree,
     nearNoLocation,
+    moduleDisabled: false,
     pagination: {
       hasMore: Boolean(meta.has_more),
       cursor: trimmed(meta.cursor || meta.next_cursor)

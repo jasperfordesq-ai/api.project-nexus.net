@@ -3,14 +3,24 @@
 {% from "govuk/components/button/macro.njk" import govukButton %}
 
 {% block mainContent %}
+  {% if not moduleDisabled %}
+    <p class="govuk-body">
+      <a class="govuk-link" href="{{ urlFor('/events/calendar.ics') }}">{{ t("events.calendar_feed_download") }}</a>
+      <br><a class="govuk-link" href="{{ urlFor('/events/calendar-subscriptions') }}">{{ t("events.calendar_subscriptions_link") }}</a>
+      <br><span class="govuk-hint">{{ t("events.calendar_feed_hint") }}</span>
+    </p>
+  {% endif %}
+
   <span class="govuk-caption-l">{{ t("events.caption", { community: tenantName or serviceName }) }}</span>
   <h1 class="govuk-heading-xl">{{ t("events.title") }}</h1>
   <p class="govuk-body-l">{{ t("events.description") }}</p>
 
-  <p class="govuk-body">
-    <a class="govuk-link" href="{{ urlFor('/events/browse') }}">{{ t("govuk_alpha_events.nav.browse_by_category") }}</a>
-    {% if canModerateEvents %}<br><a class="govuk-link" href="{{ urlFor('/events/moderation') }}">{{ t("govuk_alpha_events.moderation.queue_link") }}</a>{% endif %}
-  </p>
+  {% if not moduleDisabled %}
+    <p class="govuk-body">
+      <a class="govuk-link" href="{{ urlFor('/events/browse') }}">{{ t("govuk_alpha_events.nav.browse_by_category") }}</a>
+      {% if canModerateEvents %}<br><a class="govuk-link" href="{{ urlFor('/events/moderation') }}">{{ t("govuk_alpha_events.moderation.queue_link") }}</a>{% endif %}
+    </p>
+  {% endif %}
 
   {% if successMessage %}
     {% set notificationMessage = successMessage %}
@@ -24,7 +34,17 @@
     {% include "partials/notification-banner.njk" %}
   {% endif %}
 
-  {% if isAuthenticated %}
+  {% if moduleDisabled %}
+    <div class="govuk-notification-banner" data-module="govuk-notification-banner" role="region" aria-labelledby="events-disabled-title">
+      <div class="govuk-notification-banner__header">
+        <h2 class="govuk-notification-banner__title" id="events-disabled-title">{{ t("states.error_title") }}</h2>
+      </div>
+      <div class="govuk-notification-banner__content">
+        <p class="govuk-notification-banner__heading">{{ t("states.events_disabled") }}</p>
+        <p class="govuk-body">{{ t("events.module_disabled_detail", { community: tenantName or serviceName }) }}</p>
+      </div>
+    </div>
+  {% elif isAuthenticated %}
     <p class="govuk-body">
       {{ govukButton({ text: t("actions.create_event"), href: urlFor("/events/new") }) }}
     </p>
@@ -36,6 +56,7 @@
     </div>
   {% endif %}
 
+  {% if not moduleDisabled %}
   <form method="get" action="{{ urlFor('/events') }}" class="govuk-!-margin-bottom-7">
     <fieldset class="govuk-fieldset" aria-describedby="events-filter-hint">
       <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">
@@ -49,6 +70,20 @@
             <label class="govuk-label" for="q">{{ t("events.search_label") }}</label>
             <div id="q-hint" class="govuk-hint">{{ t("events.search_hint") }}</div>
             <input class="govuk-input govuk-!-width-two-thirds" id="q" name="q" type="search" value="{{ searchQuery }}" aria-describedby="q-hint">
+          </div>
+        </div>
+      </div>
+
+      <div class="govuk-grid-row">
+        <div class="govuk-grid-column-one-half">
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="step_free">{{ t("event_accessibility.filters.step_free_label") }}</label>
+            <div id="step-free-hint" class="govuk-hint">{{ t("event_accessibility.filters.step_free_hint") }}</div>
+            <select class="govuk-select" id="step_free" name="step_free" aria-describedby="step-free-hint">
+              {% for option in ["any", "yes", "no", "unknown"] %}
+                <option value="{{ option }}" {% if stepFree == option %}selected{% endif %}>{{ t("event_accessibility.filters.step_free_options." + option) }}</option>
+              {% endfor %}
+            </select>
           </div>
         </div>
       </div>
@@ -160,7 +195,7 @@
     {% if pagination.hasMore and pagination.cursor %}
       <nav class="govuk-pagination govuk-pagination--block govuk-!-margin-top-6" aria-label="{{ t('events.pagination_label') }}">
         <div class="govuk-pagination__next">
-          <a class="govuk-link govuk-pagination__link" href="{{ urlFor('/events?when=' + when + '&near=' + near + ('&q=' + (searchQuery | urlencode) if searchQuery else '') + ('&category_id=' + categoryId if categoryId else '') + '&cursor=' + (pagination.cursor | urlencode)) }}" rel="next">
+          <a class="govuk-link govuk-pagination__link" href="{{ urlFor('/events?when=' + when + '&near=' + near + ('&q=' + (searchQuery | urlencode) if searchQuery else '') + ('&category_id=' + categoryId if categoryId else '') + ('&step_free=' + stepFree if stepFree != 'any' else '') + '&cursor=' + (pagination.cursor | urlencode)) }}" rel="next">
             <svg class="govuk-pagination__icon govuk-pagination__icon--next" xmlns="http://www.w3.org/2000/svg" height="13" width="15" aria-hidden="true" focusable="false" viewBox="0 0 15 13"><path d="m8.107-0.0078125-1.4136 1.414 4.2926 4.293h-12.986v2h12.896l-4.1855 3.9766 1.377 1.4492 6.7441-6.4062-6.7246-6.7266z"></path></svg>
             <span class="govuk-pagination__link-title">{{ t("actions.load_more") }}</span><span class="govuk-visually-hidden">:</span>
             <span class="govuk-pagination__link-label">{{ t("events.more_results_label") }}</span>
@@ -168,5 +203,6 @@
         </div>
       </nav>
     {% endif %}
+  {% endif %}
   {% endif %}
 {% endblock %}

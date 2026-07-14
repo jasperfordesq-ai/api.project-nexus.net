@@ -81,6 +81,10 @@ function tenantFeatureGate(req, res, next) {
     }
 
     if (gate.featureKey && !flagEnabled(tenant, gate.featureKey, 'features', true)) {
+      if (gate.featureKey === 'events' && (req.path || '/') === '/events' && req.method === 'GET') {
+        res.locals.eventsDisabled = true;
+        return next();
+      }
       if (gate.featureKey === 'volunteering' && (req.path || '/') === '/volunteering') {
         res.locals.volunteeringDisabled = true;
         return next();
