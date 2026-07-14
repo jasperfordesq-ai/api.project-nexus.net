@@ -197,6 +197,30 @@ function Add-V15FrontendApiExpansion {
         return $true
     }
 
+    if ($fileName -eq 'EventsAdmin.tsx' -and $Raw -match '/v2/admin/events/.+\$\{actionModal[.]action\}') {
+        foreach ($action in @('approve', 'reject', 'postpone', 'cancel', 'complete', 'archive', 'restore')) {
+            Add-FrontendApiStringRow $Rows 'react-frontend-v15' 'POST' $Raw "/api/v2/admin/events/{id}/$action" $File $Line
+        }
+        return $true
+    }
+
+    if ($fileName -eq 'MarketplaceCasesPage.tsx' -and $Raw -match '/v2/admin/marketplace/reports/.+\$\{suffix\}') {
+        Add-FrontendApiStringRow $Rows 'react-frontend-v15' 'PUT' $Raw '/api/v2/admin/marketplace/reports/{id}/resolve' $File $Line
+        Add-FrontendApiStringRow $Rows 'react-frontend-v15' 'PUT' $Raw '/api/v2/admin/marketplace/reports/{id}/resolve-appeal' $File $Line
+        return $true
+    }
+
+    if ($fileName -eq 'analytics.ts' -and $Raw -match '/v2/groups/.+/analytics/export/\$\{type\}') {
+        Add-FrontendApiStringRow $Rows 'react-frontend-v15' 'GET' $Raw '/api/v2/groups/{id}/analytics/export/members' $File $Line
+        Add-FrontendApiStringRow $Rows 'react-frontend-v15' 'GET' $Raw '/api/v2/groups/{id}/analytics/export/activity' $File $Line
+        return $true
+    }
+
+    if ($fileName -eq 'event-tickets-api.ts' -and $Raw -match '/v2/events/.+/ticket-types/.+/\$\{action\}') {
+        Add-FrontendApiStringRow $Rows 'react-frontend-v15' 'POST' $Raw '/api/v2/events/{id}/ticket-types/{id}/{action}' $File $Line
+        return $true
+    }
+
     if ($fileName -eq 'PrerenderAdmin.tsx' -and $Raw -match '/api/v2/admin/prerender/export/[^/]+[.]csv') {
         Add-FrontendApiStringRow $Rows 'react-frontend-v15' 'GET' $Raw '/api/v2/admin/prerender/export/{kind}.csv' $File $Line
         return $true
@@ -204,6 +228,11 @@ function Add-V15FrontendApiExpansion {
 
     if ($fileName -eq 'adminApi.ts' -and $Raw -eq '/v2/admin/federation/data/export') {
         Add-FrontendApiStringRow $Rows 'react-frontend-v15' 'POST' $Raw '/api/v2/admin/federation/data/export' $File $Line
+        return $true
+    }
+
+    if ($fileName -eq 'event-registration-api.ts' -and $Raw -match '/registration-product/submissions/export$') {
+        Add-FrontendApiStringRow $Rows 'react-frontend-v15' 'POST' $Raw (Normalize-V15FrontendApiPath $Raw) $File $Line
         return $true
     }
 
@@ -657,6 +686,12 @@ function Export-AspNetRoutes {
                 $segmentStart = $classMatch.Index
                 $segmentEnd = if ($classIdx + 1 -lt $classMatches.Count) { $classMatches[$classIdx + 1].Index } else { $text.Length }
                 $segment = $text.Substring($segmentStart, $segmentEnd - $segmentStart)
+                $routeConstants = @{}
+                foreach ($constantMatch in [regex]::Matches(
+                    $segment,
+                    '(?m)\bconst\s+string\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*"([^"]*)"\s*;')) {
+                    $routeConstants[$constantMatch.Groups[1].Value] = $constantMatch.Groups[2].Value
+                }
 
                 $attributeWindowStart = [Math]::Max(0, $segmentStart - 1500)
                 $attributeWindow = $text.Substring($attributeWindowStart, $segmentStart - $attributeWindowStart)
@@ -677,11 +712,11 @@ function Export-AspNetRoutes {
                 $lines = $segment -split "`r?`n"
                 for ($i = 0; $i -lt $lines.Count; $i++) {
                     $line = $lines[$i]
-                    $match = [regex]::Match($line, '\[(HttpGet|HttpPost|HttpPut|HttpPatch|HttpDelete|HttpHead|HttpOptions)(?:\("([^"]*)"\))?')
-                    if (-not $match.Success) { continue }
+                    $attributeMatches = [regex]::Matches(
+                        $line,
+                        '(?:\[|,\s*|^\s*)(HttpGet|HttpPost|HttpPut|HttpPatch|HttpDelete|HttpHead|HttpOptions)(?:\((?:"([^"]*)"|([A-Za-z_][A-Za-z0-9_]*)(?:\s*\+\s*"([^"]*)")?)\))?')
+                    if ($attributeMatches.Count -eq 0) { continue }
 
-                    $verb = $httpMap[$match.Groups[1].Value]
-                    $child = $match.Groups[2].Value
                     $action = ''
                     $lookAheadEnd = [Math]::Min($i + 10, $lines.Count - 1)
                     for ($j = $i; $j -le $lookAheadEnd; $j++) {
@@ -698,27 +733,37 @@ function Export-AspNetRoutes {
                     if ($segment -match '\[Authorize' -or $nearby -match '\[Authorize') { $authNotes += 'authorize' }
                     if ($nearby -match '\[AllowAnonymous') { $authNotes += 'allow-anonymous' }
 
-                    foreach ($prefix in $prefixes) {
-                        $path = Join-RoutePath $prefix $child
-                        $rows.Add([pscustomobject]@{
-                            method = $verb
-                            path = $path
-                            controller = $controllerName
-                            action = $action
-                            file = $file.FullName
-                            auth_notes = ($authNotes -join ';')
-                        })
+                    foreach ($attributeMatch in $attributeMatches) {
+                        $verb = $httpMap[$attributeMatch.Groups[1].Value]
+                        $child = $attributeMatch.Groups[2].Value
+                        $constantName = $attributeMatch.Groups[3].Value
+                        if (-not [string]::IsNullOrWhiteSpace($constantName)) {
+                            if (-not $routeConstants.ContainsKey($constantName)) { continue }
+                            $child = $routeConstants[$constantName] + $attributeMatch.Groups[4].Value
+                        }
 
-                        $aliasPath = Get-AspNetV2RouteAlias $path
-                        if (-not [string]::IsNullOrWhiteSpace($aliasPath)) {
+                        foreach ($prefix in $prefixes) {
+                            $path = Join-RoutePath $prefix $child
                             $rows.Add([pscustomobject]@{
                                 method = $verb
-                                path = $aliasPath
+                                path = $path
                                 controller = $controllerName
                                 action = $action
                                 file = $file.FullName
                                 auth_notes = ($authNotes -join ';')
                             })
+
+                            $aliasPath = Get-AspNetV2RouteAlias $path
+                            if (-not [string]::IsNullOrWhiteSpace($aliasPath)) {
+                                $rows.Add([pscustomobject]@{
+                                    method = $verb
+                                    path = $aliasPath
+                                    controller = $controllerName
+                                    action = $action
+                                    file = $file.FullName
+                                    auth_notes = ($authNotes -join ';')
+                                })
+                            }
                         }
                     }
                 }
@@ -973,13 +1018,19 @@ function New-RouteIndex {
     $byShape = @{}
     $byMethodShape = @{}
     $templateRoutes = New-Object System.Collections.Generic.List[object]
+    $templatesBySegmentCount = @{}
 
     foreach ($route in $Routes) {
         $path = Normalize-RoutePath $route.path
         $shape = Convert-ToRouteShape $path
         $method = ([string]$route.method).ToUpperInvariant()
-        if ($path -match '\{[^/}]+\}[^/]*[.]' -or $path -match '[.][^/]*\{[^/}]+\}') {
+        if ($path -match '\{[^/}]+\}') {
             $templateRoutes.Add($route)
+            $templateSegmentCount = @($path.Trim('/') -split '/').Count
+            if (-not $templatesBySegmentCount.ContainsKey($templateSegmentCount)) {
+                $templatesBySegmentCount[$templateSegmentCount] = New-Object System.Collections.Generic.List[object]
+            }
+            $templatesBySegmentCount[$templateSegmentCount].Add($route)
         }
         if (-not $byPath.ContainsKey($path)) {
             $byPath[$path] = New-Object System.Collections.Generic.List[object]
@@ -1010,6 +1061,7 @@ function New-RouteIndex {
         ByMethodPath = $byMethodPath
         ByMethodShape = $byMethodShape
         TemplateRoutes = $templateRoutes.ToArray()
+        TemplatesBySegmentCount = $templatesBySegmentCount
     }
 }
 
@@ -1036,14 +1088,28 @@ function Get-RouteTemplateMatches {
     param([hashtable]$Index, [string]$Path, [string]$MethodHint)
 
     $items = New-Object System.Collections.Generic.List[object]
-    foreach ($route in $Index.TemplateRoutes) {
+    $normalizedPath = Normalize-RoutePath $Path
+    $segmentCount = @($normalizedPath.Trim('/') -split '/').Count
+    if (-not $Index.TemplatesBySegmentCount.ContainsKey($segmentCount)) {
+        return @()
+    }
+    foreach ($route in $Index.TemplatesBySegmentCount[$segmentCount]) {
         $routeMethod = ([string]$route.method).ToUpperInvariant()
         if ($MethodHint -and $routeMethod -ne $MethodHint) {
             continue
         }
 
-        $regex = Convert-RouteTemplateToRegex $route.path
-        if ((Normalize-RoutePath $Path) -match $regex) {
+        $routePath = Normalize-RoutePath $route.path
+        $templateStart = $routePath.IndexOf('{')
+        if ($templateStart -gt 0) {
+            $staticPrefix = $routePath.Substring(0, $templateStart)
+            if (-not $normalizedPath.StartsWith($staticPrefix, [StringComparison]::Ordinal)) {
+                continue
+            }
+        }
+
+        $regex = Convert-RouteTemplateToRegex $routePath
+        if ($normalizedPath -match $regex) {
             $items.Add($route)
         }
     }
