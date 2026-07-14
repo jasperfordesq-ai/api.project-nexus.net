@@ -186,7 +186,7 @@ together from a clean published checkout.
   with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
   Only this fixed-rubric audit contributes to the current bank.
 - **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `7b180e41`, including the later implementation, contract,
+  baseline `2ec1d706`, including the later implementation, contract,
   resilience, and component-audit slices. Their evidence is useful, but they
   contribute zero points until one complete fixed-rubric re-audit explicitly
   replaces the baseline.
@@ -205,7 +205,7 @@ together from a clean published checkout.
 | Missing Laravel routes | 1 | Event offline check-in code generation |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 52/52 suites, 1,690/1,690 tests | Latest uninterrupted complete non-mutating gate at product baseline `7b180e41` |
+| Jest | 52/52 suites, 1,691/1,691 tests | Latest uninterrupted complete non-mutating gate at product baseline `2ec1d706` |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
 | Static locale usage | 7,580 references, 5,784 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
@@ -1577,6 +1577,23 @@ source fallback, and management controls require the authoritative
 
 Focused default-English normal/boundary proof passes `2/2`; the uninterrupted
 complete non-mutating gate passes `52/52` suites and `1,690/1,690` tests. Lint,
+route matrix, and API ledger are green. No Laravel database, migration,
+mutation, upload, download, container, or production operation was performed.
+This published component-audit improvement remains unscored, so the frozen
+bank remains `622/1,000` pending a complete fixed-rubric re-audit.
+
+## 2026-07-14 Organisation Detail Result Boundaries
+
+Frozen evidence refreshed at `2026-07-14T23:42:56.7571941+01:00` against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and Web UK product commit
+`2ec1d706`. Organisation detail now matches Blade's trimmed name/description,
+email precedence, and case-sensitive website-scheme boundaries. Opportunity
+cards require positive numeric IDs, trim titles before fallback, and apply a
+Unicode-safe trimmed 180-character description limit; whitespace-only review
+comments are omitted.
+
+Focused signed/normal/empty/boundary proof passes `4/4`; the uninterrupted
+complete non-mutating gate passes `52/52` suites and `1,691/1,691` tests. Lint,
 route matrix, and API ledger are green. No Laravel database, migration,
 mutation, upload, download, container, or production operation was performed.
 This published component-audit improvement remains unscored, so the frozen
