@@ -171,9 +171,9 @@ these numbers after either source moves.
 | Missing Laravel routes | 1 | Event offline check-in code generation |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 49/49 suites, 1,647/1,647 tests | Fresh green code gate |
+| Jest | 49/49 suites, 1,648/1,648 tests | Fresh green code gate |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
-| Static locale usage | 7,328 references, 5,607 unique keys, 0 unresolved | Current complete-reference audit |
+| Static locale usage | 7,332 references, 5,611 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
 | Blade marker check | Current 19/19 | Current-source public GET marker comparison; not screenshot or visual certification |
 | Automated accessibility | Not currently certified: 28 passed, login failed, 58 did not run | Full aggregate requires a disposable Laravel environment; manual AT review remains open |
@@ -204,7 +204,7 @@ the test asserts the full contract. These unresolved classifications are now a
 concrete reconciliation queue rather than hidden readiness debt.
 
 Focused generator proof passes 2/2 and the full Jest gate passes 49/49 suites,
-1,647/1,647 tests. Brand, lint, CSS, route matrix, ledger regeneration, locale
+1,648/1,648 tests. Brand, lint, CSS, route matrix, ledger regeneration, locale
 sync/shape, static-key resolution, and the 322-template zero-match audit are
 green. A fresh current-checkout `visual:blade` run passed all 19/19
 unauthenticated GET comparisons at the canonical `/hour-timebank/accessible`
@@ -372,6 +372,21 @@ Focused populated/empty/status proof passes 2/2. The complete Jest gate passes
 5,607-unique-key zero-unresolved locale and 322-template zero-match audits are
 green. The route matrix remains 688/689 and the ledger remains 590 contracts,
 with no untested consumer. No Laravel mutation or database access ran.
+
+## Marketplace Free Items Refresh
+
+Free items now uses Blade's exact default-English caption, title, description,
+and empty state through the Laravel commerce catalog. Its sub-navigation state
+also matches Blade: the source assigns the `free` active key but exposes no
+Free tab, so Web UK no longer incorrectly highlights Browse. The authenticated
+read remains Laravel's canonical
+`GET /api/v2/marketplace/listings/free?limit=50`.
+
+Focused populated/empty/navigation proof passes 2/2. The complete Jest gate
+passes 49/49 suites and 1,648/1,648 tests; lint and the 7,332-reference /
+5,611-unique-key zero-unresolved locale and 322-template zero-match audits are
+green. Route/API inventories are unchanged, and no Laravel mutation or
+database access ran.
 
 ## Marketplace Offer Workflow Refresh
 

@@ -1406,12 +1406,8 @@ router.get('/free', asyncRoute(async (req, res) => {
     return res.render('marketplace/listing-list', {
       title: 'Free items',
       titleKey: 'govuk_alpha_commerce.free_items.title',
-      heading: 'Free items',
-      caption: 'Free items',
-      description: 'Items being given away for free by members of your community.',
-      emptyMessage: 'There are no free items available right now.',
       activeNav: 'explore',
-      activeTab: 'browse',
+      activeTab: 'free',
       listings,
       mode: 'free',
       status: null

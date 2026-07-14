@@ -30488,9 +30488,24 @@ describe('shared accessible frontend shell', () => {
     expect(saved.text).toContain('Saved bike');
     expect(saved.text).toContain('Remove from saved');
     expect(free.text).toContain('Free items');
+    expect(free.text).toContain('Free items at Project NEXUS Accessible');
     expect(free.text).toContain('Items being given away for free');
     expect(free.text).toContain('Free table');
+    expect(free.text).not.toContain('href="/marketplace" aria-current="page">Browse');
     expect(free.text).not.toContain('Laravel Blade route');
+  });
+
+  it('renders the exact marketplace free-items empty state', async () => {
+    const api = require('../src/lib/api');
+    api.callMarketplaceApi.mockResolvedValueOnce({ data: [] });
+
+    const response = await request(app)
+      .get('/marketplace/free')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('There are no free items available right now.');
+    expect(response.text).not.toContain('href="/marketplace" aria-current="page">Browse');
   });
 
   it('renders the exact marketplace saved empty state and ignores unrelated status tokens', async () => {
