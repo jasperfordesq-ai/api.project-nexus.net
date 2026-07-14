@@ -171,7 +171,7 @@ Refresh the Laravel Blade/API source and Web UK implementation before relying on
 these numbers after either source moves.
 
 At this documentation audit, the product-source baseline was
-`e2768391bca8f18d11be20d17c111173e6b83786`. The revoked-session confirmation,
+`31be5f793280a5727789efd42981ea58418d42d9`. The revoked-session confirmation,
 Laravel method-spoof reconciliation, group-message contract, residual API-
 consumer correction, and backend-request timeout slices are above the frozen
 bank and remain **published and unscored**. The documentation remediation is
@@ -186,7 +186,7 @@ together from a clean published checkout.
   with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
   Only this fixed-rubric audit contributes to the current bank.
 - **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `e2768391`, including the later identity/session confirmation,
+  baseline `31be5f79`, including the later identity/session confirmation,
   method-spoof reconciliation, group-message contract, residual API-consumer
   correction, and backend-request timeout slices. Their evidence is useful, but they
   contribute zero points until one complete fixed-rubric re-audit explicitly
@@ -1372,3 +1372,20 @@ sequence: cards now show Blade's `category · date · reading time` and omit the
 extra author byline. Focused rendering, lint, template localization, and diff
 checks pass; the immediately preceding 51/51, 1,668/1,668 complete gate remains
 the aggregate evidence for this adjacent source-parity correction.
+
+## 2026-07-14 Blog Article Metadata Parity
+
+Frozen evidence at `2026-07-14T16:13:04.3484360+01:00` against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and Web UK product commit
+`31be5f793280a5727789efd42981ea58418d42d9`. Blog detail pages now match
+Blade's visible metadata sequence and consume the Laravel article's meta title,
+description, canonical URL, Open Graph fields, publication/modified timestamps,
+and Article JSON-LD. Canonical URLs accept HTTP(S) only and JSON-LD is serialized
+for safe inline-script output.
+
+Focused Blog rendering, lint, template-localization, and diff checks pass. The
+immediately preceding complete non-mutating gate remains 51/51 suites and
+1,668/1,668 tests. No Laravel source, database, migration, mutation, upload,
+download, cleanup, or production operation was performed. This remains an
+unscored component-audit improvement; the frozen bank stays 622/1,000 pending a
+complete fixed-rubric re-audit.
