@@ -55,8 +55,10 @@ Active route representation is **2,601/2,601 matched with 0 missing**. Seven
 retired OpenAPI-only operations are reported separately and return to the
 active gate automatically if a live Laravel route reintroduces them. This
 closes the representation inventory only; it is not runtime, semantic, or
-production certification. Canonical React call-site coverage is not generated
-by this comparator; it remains part of semantic and unchanged-client evidence.
+production certification. The separately generated canonical React matrix has
+2,320 static call-site rows and 2,008 unique method/path entries, including 72
+ASP.NET static gaps and 172 method-unresolved entries; those rows remain semantic
+and unchanged-client work rather than route-score evidence.
 
 ## Baseline And Banked Evidence
 
@@ -94,8 +96,15 @@ report.
 
 ### Published But Not Rescored
 
-There was **no later published ASP.NET implementation delta awaiting points**
-at the verification snapshot.
+Published commit `923db629dea331ee093018887c4533d2c4e7133e` adds the
+exact-SHA canonical React call-site generator and maintained matrix at
+[`generated/canonical-react-contracts/README.md`](generated/canonical-react-contracts/README.md).
+It records 2,320 call-site rows, 2,008 unique method/path entries, 1,836 with
+method evidence, 172 with unresolved methods, and 72 ASP.NET static gaps against
+Laravel `903d03d3db78bbf87129ad35728be3b72819acaf` and ASP.NET
+`e14897a25d3c765d383ee3147b3e02ba266ee306`. It adds **zero banked points**:
+inventory generation does not prove payload, envelope, auth, tenant, side-effect,
+or runtime correctness.
 
 ### Dirty And In Flight
 
@@ -139,10 +148,10 @@ points bank only through the evidence transaction above.
 1. **Certify marketplace financial lifecycle with live providers.** The localized
    paid, payout, refund, escrow, reversal, and dispute workflows are implemented;
    obtain live Stripe/Connect proof without weakening their banked durable ledgers.
-2. **Generate the canonical React call-site contract matrix.** At named Laravel
-   and ASP.NET SHAs, inventory the unchanged canonical React client's methods,
-   paths, payloads, responses, statuses, auth, tenant, upload, and error
-   expectations; reconcile each row to ASP.NET or a concrete gap.
+2. **Reconcile the canonical React call-site contract matrix.** Resolve the 172
+   method-unresolved entries, classify the 22 Laravel-missing/mismatched entries,
+   close the 72 ASP.NET static gaps, and add payload, response, status, auth,
+   tenant, upload, side-effect, and runtime evidence to the affected rows.
 3. **Generate the unchanged Web UK-to-ASP.NET contract matrix.** Consume the
    current Web UK frontend ledger without frontend forks, classify every call
    against ASP.NET, and close configuration/auth/tenant/shape/status gaps before
