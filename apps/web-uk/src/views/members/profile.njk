@@ -170,40 +170,26 @@
       <h2 class="govuk-heading-l">{{ t("profile.reviews_title") }}</h2>
 
       {% if reviews and reviews.length > 0 %}
-        <ul class="govuk-list app-reviews-list">
+        <div class="nexus-alpha-card-list">
           {% for review in reviews %}
-            <li class="app-review govuk-!-margin-bottom-6">
-              <div class="app-review__header">
-                <span class="app-star-display" role="img" aria-label="{{ t('polish_members.write_review_rating_label', { n: review.rating }) }}">
-                  {% for i in [1, 2, 3, 4, 5] %}
-                    <svg class="app-star-display__star {% if i <= review.rating %}app-star-display__star--filled{% endif %}" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                    </svg>
-                  {% endfor %}
-                </span>
-                <strong class="govuk-!-margin-left-2">
-                  {% if review.is_anonymous or review.isAnonymous %}
-                    {{ t("reviews_page.anonymous") }}
-                  {% elif review.reviewer %}
-                    {{ review.reviewer.name or ((review.reviewer.first_name or review.reviewer.firstName) + " " + (review.reviewer.last_name or review.reviewer.lastName)) }}
-                  {% else %}
-                    {{ t("reviews_page.anonymous") }}
-                  {% endif %}
-                </strong>
-                <span class="govuk-body-s govuk-!-margin-left-2" style="color: #505a5f;">
-                  {{ (review.createdAt or review.created_at) | formatDate }}
-                </span>
-              </div>
+            {% if review.is_anonymous or review.isAnonymous %}
+              {% set reviewerName = t("profile.anonymous_review") %}
+            {% elif review.reviewer %}
+              {% set reviewerName = review.reviewer.name or ((review.reviewer.first_name or review.reviewer.firstName) + " " + (review.reviewer.last_name or review.reviewer.lastName)) %}
+            {% else %}
+              {% set reviewerName = t("profile.anonymous_review") %}
+            {% endif %}
+            <article class="nexus-alpha-card">
+              <h3 class="govuk-heading-m govuk-!-margin-bottom-1">{{ t("profile.review_by", { name: reviewerName }) }}</h3>
+              <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-2"><strong class="govuk-tag govuk-tag--blue">{{ t("ux.rating_out_of", { rating: review.rating }) }}</strong><span class="govuk-visually-hidden">{{ t("polish_members.rating_accessible", { n: review.rating }) }}</span></p>
               {% if review.comment %}
-                <p class="govuk-body govuk-!-margin-top-2 govuk-!-margin-bottom-0">
-                  {{ review.comment }}
-                </p>
+                <div class="govuk-body">{{ review.comment }}</div>
               {% endif %}
-            </li>
+            </article>
           {% endfor %}
-        </ul>
+        </div>
       {% else %}
-        <p class="govuk-body">{{ t("profile.empty_reviews") }}</p>
+        <div class="govuk-inset-text">{{ t("profile.empty_reviews") }}</div>
       {% endif %}
 
       {# Leave a Review Form #}

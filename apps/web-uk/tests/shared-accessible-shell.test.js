@@ -11076,6 +11076,9 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('name="action" value="decline"');
     expect(response.text).toContain('A thoughtful neighbour.');
     expect(response.text).toContain('Grace Hopper');
+    expect(response.text).toContain('<h3 class="govuk-heading-m govuk-!-margin-bottom-1">Review by Grace Hopper</h3>');
+    expect(response.text).toContain('<strong class="govuk-tag govuk-tag--blue">5 out of 5</strong>');
+    expect(response.text).not.toContain('app-star-display');
     expect(response.text).toContain('Builds useful machines with neighbours.');
     expect(response.text).toContain('Electronics');
     expect(response.text).toContain('2 endorsements');
