@@ -1059,7 +1059,16 @@ rewriting.
 
 ### Jobs member-page evidence
 
-- Current post-slice integration checkpoint: full Jest passes `48/48` suites and `1,626/1,626` tests; lint and brand pass; both static localization gates pass with 6,936 references, 5,281 unique keys, and zero unresolved or conservative template matches.
+- `views/jobs-analytics.blade.php` now maps to the mounted owner analytics page
+  with Blade's request-locale catalog, link-list hierarchy, conditional metric
+  and referral rows, table/progress semantics, localized stages/percentages,
+  and complete prediction metadata/comparison tags. Focused rendering passes
+  `1/1`; the complete non-mutating gate passes `52/52` suites and
+  `1,678/1,678` tests, with 7,513 static references, 5,742 unique keys, zero
+  unresolved keys, and zero conservative matches across 322 templates.
+- Earlier member-page checkpoint: full Jest passed `48/48` suites and
+  `1,626/1,626` tests; the analytics entry above supersedes its aggregate
+  counts without invalidating the earlier member-page evidence.
 - `views/jobs.blade.php` and `partials/job-card.blade.php` now map to the browse route/template with Blade's tenant caption, catalog-backed filters/results/cards, single empty fallback on non-auth load failure, and next-page icon/semantics. Focused default-English populated, signed-out, and failure rendering is green.
 - `views/job-detail.blade.php` now resolves owner identity from Laravel `/api/v2/users/me`, shows owner management rather than save/apply controls, and renders the optional Laravel `/api/v2/jobs/{id}/match` result with Blade's catalog and progress semantics. Type, commitment, remote, and caption fallbacks are catalog/tenant backed. Similar-opportunity rendering and a public CV-upload configuration contract remain open because Laravel exposes no equivalent member-facing API data for them.
 - `views/jobs-saved.blade.php`, `partials/job-card.blade.php`, and `AlphaController::savedJobs()` now map to `src/routes/jobs.js` and `src/views/jobs/saved.njk` with Blade's tenant caption, catalog-backed card labels and plural counts, single empty fallback on non-auth load failure, unsave control, and next-page icon/semantics. Focused default-English rendering is green; broader gaps remain tracked in the Jobs workflows row.
