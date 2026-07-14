@@ -11,9 +11,7 @@
 {% from "govuk/components/textarea/macro.njk" import govukTextarea %}
 
 {% block mainContent %}
-  <div class="govuk-grid-row">
-    <div class="govuk-grid-column-two-thirds">
-      <a href="{{ urlFor('/messages') }}" class="govuk-back-link">{{ t("govuk_alpha.actions.back_to_messages") }}</a>
+  <a href="{{ urlFor('/messages') }}" class="govuk-back-link">{{ t("govuk_alpha.actions.back_to_messages") }}</a>
 
       {% if directStatus and directStatus.type == "success" %}
         {% set notificationMessage = directStatus.message %}
@@ -40,12 +38,11 @@
       {% endif %}
 
       {% if not directMessagingEnabled %}
-        <div class="govuk-warning-text">
-          <span class="govuk-warning-text__icon" aria-hidden="true">!</span>
-          <strong class="govuk-warning-text__text">
-            <span class="govuk-visually-hidden">{{ t("govuk_alpha.states.warning") }}</span>
-            {{ t("govuk_alpha.messages.disabled_detail") }}
-          </strong>
+        <div class="govuk-notification-banner" data-module="govuk-notification-banner" role="region" aria-labelledby="conversation-disabled-title">
+          <div class="govuk-notification-banner__header">
+            <h2 class="govuk-notification-banner__title" id="conversation-disabled-title">{{ t("govuk_alpha.messages.disabled_title") }}</h2>
+          </div>
+          <div class="govuk-notification-banner__content"><p class="govuk-body">{{ t("govuk_alpha.messages.disabled_detail") }}</p></div>
         </div>
       {% elseif restricted %}
         <div class="govuk-notification-banner" data-module="govuk-notification-banner" role="region" aria-labelledby="conversation-restricted-title">
@@ -63,20 +60,6 @@
         </div>
       {% endif %}
 
-      <form method="get" action="{{ urlFor('/messages/' + (conversation.id | string)) }}" class="govuk-!-margin-bottom-6">
-        {% if listingId %}
-          <input type="hidden" name="listing" value="{{ listingId }}">
-        {% endif %}
-        {{ govukInput({
-          label: { text: t("polish_members.conversation_filter_label"), classes: "govuk-label--s" },
-          hint: { text: t("polish_members.conversation_filter_hint") },
-          id: "q",
-          name: "q",
-          value: query
-        }) }}
-        {{ govukButton({ text: t("govuk_alpha.actions.search"), classes: "govuk-button--secondary" }) }}
-      </form>
-
       {% if meta.hasMore and olderHref %}
         <nav class="govuk-pagination govuk-pagination--block govuk-!-margin-bottom-4" aria-label="{{ t('govuk_alpha.messages.older_pagination_label') }}">
           <div class="govuk-pagination__prev">
@@ -88,25 +71,30 @@
       {% endif %}
 
       {% if messages and messages.length %}
-        <ol class="app-messages-container govuk-list" role="log" aria-label="{{ t('govuk_alpha.messages.older_pagination_label') }}">
+        <ol class="govuk-list govuk-list--spaced">
           {% for message in messages %}
-            <li id="m-{{ message.id }}" class="app-message{% if message.isOwn %} app-message--own{% endif %}">
-              <div class="app-message-header">
-                <strong class="govuk-body-s govuk-!-font-weight-bold">{{ message.displaySenderName }}</strong>
-                {% if message.created_at or message.createdAt %}
-                  <span class="govuk-body-s">
-                    {{ t("govuk_alpha.messages.sent_label") }} {{ (message.created_at or message.createdAt) | formatBladeDateTime }}
-                    {% if message.is_edited or message.isEdited %} · {{ t("govuk_alpha.messages.edited") }}{% endif %}
-                  </span>
+            <li id="m-{{ message.id }}" class="nexus-alpha-card">
+              <div class="nexus-alpha-card-head">
+                {% if message.sender and message.sender.avatar_url %}
+                  <img class="nexus-alpha-avatar" src="{{ message.sender.avatar_url }}" alt="" loading="lazy" decoding="async" width="48" height="48">
+                {% else %}
+                  <span class="nexus-alpha-avatar nexus-alpha-avatar--placeholder" aria-hidden="true">{{ message.displaySenderName | first | upper }}</span>
                 {% endif %}
+                <p class="govuk-body govuk-!-font-weight-bold govuk-!-margin-bottom-0">{{ message.displaySenderName }}</p>
               </div>
 
-              <div class="app-message-body">
+              {% if message.created_at or message.createdAt %}
+                <p class="govuk-hint govuk-!-margin-bottom-2">
+                  {{ t("govuk_alpha.messages.sent_label") }} {{ (message.created_at or message.createdAt) | formatBladeDateTime }}
+                  {% if (message.is_edited or message.isEdited) and not message.isDeleted %} <span class="govuk-!-font-weight-regular">· {{ t("govuk_alpha.messages.edited") }}</span>{% endif %}
+                </p>
+              {% endif %}
+
                 {% if message.isDeleted %}
                   <p class="govuk-body govuk-hint">{{ t("govuk_alpha.messages.deleted_placeholder") }}</p>
                 {% else %}
                   {% if message.body %}
-                    <p class="govuk-body">{{ message.body }}</p>
+                    <div class="govuk-body">{{ message.body }}</div>
                   {% endif %}
 
                   {% if (message.is_voice or message.isVoice) and (message.audio_url or message.audioUrl) %}
@@ -114,7 +102,7 @@
                       {{ t("govuk_alpha_messages.voice.no_audio_support") }}
                     </audio>
                     {% if message.transcript %}
-                      <details class="govuk-details govuk-!-margin-top-2">
+                      <details class="govuk-details govuk-!-margin-top-2" data-module="govuk-details">
                         <summary class="govuk-details__summary">
                           <span class="govuk-details__summary-text">{{ t("govuk_alpha_messages.voice.transcript_toggle") }}</span>
                         </summary>
@@ -129,9 +117,16 @@
                       {% for attachment in attachments %}
                         {% set attachmentHref = attachment.url or attachment.file_url or attachment.download_url or attachment.path %}
                         {% set attachmentName = attachment.name or attachment.file_name or attachment.filename or t("govuk_alpha_messages.attachments.default_name") %}
+                        {% set attachmentMime = attachment.mime_type or attachment.mimeType or attachment.type or '' %}
                         <li>
                           {% if attachmentHref %}
-                            <a class="govuk-link" href="{{ attachmentHref }}">{{ attachmentName }}</a>
+                            {% if attachmentMime.startsWith('image/') %}
+                              <a class="govuk-link" href="{{ attachmentHref }}" target="_blank" rel="noopener"><span class="govuk-visually-hidden"> {{ t("govuk_alpha.opens_new_tab") }}</span>
+                                <img src="{{ attachmentHref }}" alt="{{ attachmentName }}" width="220" loading="lazy" decoding="async">
+                              </a>
+                            {% else %}
+                              <a class="govuk-link" href="{{ attachmentHref }}" download>{{ attachmentName }}</a>
+                            {% endif %}
                           {% else %}
                             {{ attachmentName }}
                           {% endif %}
@@ -145,7 +140,7 @@
                       <p class="govuk-body govuk-!-font-weight-bold govuk-!-margin-bottom-1">{{ t("govuk_alpha_messages.translate.translated_label") }}</p>
                       <p class="govuk-body govuk-!-margin-bottom-0">{{ translation.text }}</p>
                     </div>
-                  {% elseif translationEnabled and message.id and (message.body or message.transcript) %}
+                  {% elseif translationEnabled and message.id and (message.body | trim) %}
                     <form method="post" action="{{ urlFor('/messages/' + (conversation.id | string) + '/m/' + (message.id | string) + '/translate') }}" class="govuk-!-margin-top-2">
                       <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                       <input type="hidden" name="target_language" value="{{ locale }}">
@@ -155,7 +150,7 @@
                 {% endif %}
 
                 {% if message.canManage %}
-                  <details class="govuk-details govuk-!-margin-top-2">
+                  <details class="govuk-details govuk-!-margin-top-2" data-module="govuk-details">
                     <summary class="govuk-details__summary">
                       <span class="govuk-details__summary-text">{{ t("govuk_alpha.messages.edit_delete_toggle") }}</span>
                     </summary>
@@ -181,7 +176,7 @@
                         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
                         <fieldset class="govuk-fieldset govuk-!-margin-bottom-3">
                           <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">{{ t("govuk_alpha.messages.delete_legend") }}</legend>
-                          <div class="govuk-radios govuk-radios--small">
+                          <div class="govuk-radios govuk-radios--small" data-module="govuk-radios">
                             <div class="govuk-radios__item">
                               <input class="govuk-radios__input" id="delete-scope-self-{{ message.id }}" name="scope" type="radio" value="self" checked aria-describedby="delete-scope-self-hint-{{ message.id }}">
                               <label class="govuk-label govuk-radios__label" for="delete-scope-self-{{ message.id }}">{{ t("govuk_alpha.messages.delete_scope_self") }}</label>
@@ -199,13 +194,34 @@
                     </div>
                   </details>
                 {% endif %}
-              </div>
             </li>
           {% endfor %}
         </ol>
       {% else %}
         <div class="govuk-inset-text"><p class="govuk-body">{{ t("govuk_alpha.messages.empty") }}</p></div>
       {% endif %}
+
+      <div class="nexus-alpha-card govuk-!-margin-top-6 govuk-!-margin-bottom-4">
+        <form method="get" action="{{ urlFor('/messages/' + (conversation.id | string)) }}">
+          {% if listingId %}
+            <input type="hidden" name="listing" value="{{ listingId }}">
+          {% endif %}
+          {{ govukInput({
+            label: { text: t("polish_members.conversation_filter_label"), classes: "govuk-label--s" },
+            hint: { text: t("polish_members.conversation_filter_hint") },
+            id: "conv-search",
+            name: "q",
+            value: query,
+            classes: "govuk-!-width-two-thirds"
+          }) }}
+          <div class="govuk-button-group">
+            {{ govukButton({ text: t("govuk_alpha.polish_members.conversation_filter_submit"), classes: "govuk-button--secondary" }) }}
+            {% if query %}
+              <a class="govuk-link" href="{{ urlFor('/messages/' + (conversation.id | string)) }}">{{ t("govuk_alpha.polish_members.conversation_filter_clear") }}</a>
+            {% endif %}
+          </div>
+        </form>
+      </div>
 
       {% if canSend %}
         <hr class="govuk-section-break govuk-section-break--l govuk-section-break--visible">
@@ -246,6 +262,4 @@
         <input type="hidden" name="_csrf" value="{{ csrfToken }}">
         {{ govukButton({ text: t("govuk_alpha.actions.archive_conversation"), classes: "govuk-button--secondary" }) }}
       </form>
-    </div>
-  </div>
 {% endblock %}

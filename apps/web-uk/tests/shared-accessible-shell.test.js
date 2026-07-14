@@ -27170,8 +27170,11 @@ describe('shared accessible frontend shell', () => {
               sender_id: 77,
               body: 'I can bring the spare tools.',
               created_at: '2026-02-03T10:15:00Z',
-              sender: { name: 'Morgan Lee' },
-              attachments: [{ url: '/uploads/guide.pdf', name: 'guide.pdf' }]
+              sender: { name: 'Morgan Lee', avatar_url: '/uploads/morgan-avatar.jpg' },
+              attachments: [
+                { url: '/uploads/guide.pdf', name: 'guide.pdf', mime_type: 'application/pdf' },
+                { url: '/uploads/tools.jpg', name: 'Spare tools', mime_type: 'image/jpeg' }
+              ]
             },
             {
               id: 13,
@@ -27216,8 +27219,19 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('I can bring the spare tools.');
     expect(response.text).toContain('Thanks, that would help.');
     expect(response.text).toContain('guide.pdf');
+    expect(response.text).toContain('href="/uploads/guide.pdf" download');
+    expect(response.text).toContain('href="/uploads/tools.jpg" target="_blank" rel="noopener"');
+    expect(response.text).toContain('src="/uploads/tools.jpg" alt="Spare tools" width="220" loading="lazy" decoding="async"');
     expect(response.text).toContain('Search messages');
     expect(response.text).toContain('value="tools"');
+    expect(response.text).toContain('id="conv-search"');
+    const directMain = response.text.match(/<main\b[\s\S]*?<\/main>/)?.[0] || '';
+    expect(directMain).not.toContain('govuk-grid-column-two-thirds');
+    expect(response.text).toContain('class="nexus-alpha-card"');
+    expect(response.text).toContain('class="nexus-alpha-card-head"');
+    expect(response.text).toContain('src="/uploads/morgan-avatar.jpg" alt="" loading="lazy" decoding="async" width="48" height="48"');
+    expect(response.text).toContain('class="nexus-alpha-avatar nexus-alpha-avatar--placeholder" aria-hidden="true">Y</span>');
+    expect(response.text.indexOf('Thanks, that would help.')).toBeLessThan(response.text.indexOf('Search messages'));
     expect(response.text).toContain('href="/messages/77?listing=42&amp;q=tools&amp;cursor=next-page"');
     expect(response.text).toContain('action="/messages/77"');
     expect(response.text).toContain('name="scope" type="radio" value="self" checked');
@@ -27297,6 +27311,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('Deleted secret text');
     expect(response.text).toContain('src="/uploads/voice-note.webm"');
     expect(response.text).toContain('Recorded transcript');
+    expect(response.text).not.toContain('action="/messages/77/m/2/translate"');
     expect(response.text).toContain('action="/messages/77/m/3/edit"');
     expect(response.text).toContain('name="scope" type="radio" value="self" checked');
     expect(response.text).not.toContain('<form method="post" action="/messages/77" enctype="multipart/form-data"');

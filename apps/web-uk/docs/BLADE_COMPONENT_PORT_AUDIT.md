@@ -387,6 +387,10 @@ production-snapshot restore and the current read-only aggregate remains unrun.
 Group conversation detail now also follows Blade's full-width main layout,
 wrapping participant identity/tag/action rows, reaction fieldset legend, and
 GOV.UK module initialization hooks; focused default-English proof passes `1/1`.
+Direct conversation detail now follows the same Blade full-width card and
+sender-avatar pattern, places the source search card after the thread, restores
+image-preview versus file-download attachment semantics, and limits translation
+controls to messages with a body; focused default-English proof passes `2/2`.
 This certifies broad historical read/auth/gate/body coverage, not every
 mutation, upload, download, destructive side effect, or manual assistive-
 technology state. Saved-collection create/update/delete and collection-
