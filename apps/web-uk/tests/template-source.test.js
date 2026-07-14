@@ -1722,6 +1722,14 @@ describe('tenant-aware template helper conversion', () => {
     expect(conversation).toContain('<details class="govuk-details govuk-!-margin-top-2" data-module="govuk-details">');
   });
 
+  it('keeps both wallet transfer forms behind Blade confirmation checkboxes', () => {
+    for (const templatePath of [path.join('wallet', 'index.njk'), path.join('wallet', 'manage.njk')]) {
+      const template = fs.readFileSync(path.join(__dirname, '..', 'src', 'views', templatePath), 'utf8');
+      expect(template).toContain('name="confirm" type="checkbox" value="1" required');
+      expect(template).toContain('transfer_confirm_label');
+    }
+  });
+
   it('keeps organisation directory and application controls behind urlFor()', () => {
     const templates = [
       'organisation-detail.njk',

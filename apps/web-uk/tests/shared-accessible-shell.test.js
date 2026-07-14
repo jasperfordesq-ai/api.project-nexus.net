@@ -6933,6 +6933,8 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('name="recipient_id" value="77"');
     expect(response.text).toMatch(/name="idempotency_key" value="[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"/i);
     expect(response.text).toContain('id="note-77" name="note"');
+    expect(response.text).toContain('id="confirm-77" name="confirm" type="checkbox" value="1" required');
+    expect(response.text).toContain('I understand the credits move immediately and this cannot be undone.');
     expect(response.text).toContain('Donate credits');
     expect(response.text).toContain('It is not a money donation.');
     expect(response.text).toContain('Donations move credits one way and cannot be undone.');
@@ -8225,6 +8227,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Great exchange');
     expect(response.text).toContain('Finished and checked.');
     expect(response.text).toContain('method="post" action="/exchanges/88/rate"');
+    expect(response.text).toContain('<option value="" disabled selected>Choose a rating</option>');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
     expect(api.getProfile).toHaveBeenCalledWith('test-token');
     expect(api.getExchange).toHaveBeenCalledWith('test-token', 88);
