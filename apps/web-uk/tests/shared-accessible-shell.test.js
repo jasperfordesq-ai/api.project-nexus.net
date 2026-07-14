@@ -30379,7 +30379,7 @@ describe('shared accessible frontend shell', () => {
     api.callMarketplaceApi
       .mockResolvedValueOnce({
         data: [
-          { id: 42, title: 'Filtered bike', condition: 'good', price: 20, price_currency: 'GBP' }
+          { id: 42, title: 'Filtered bike', description: 'Filtered bike description', condition: 'good', price: 20, price_currency: 'GBP' }
         ]
       })
       .mockResolvedValueOnce({
@@ -30395,9 +30395,15 @@ describe('shared accessible frontend shell', () => {
     expect(api.callMarketplaceApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/categories');
     expect(response.text).toContain('Advanced search');
     expect(response.text).toContain('Narrow your search by price, condition, delivery and more.');
+    expect(response.text).toContain('<span class="govuk-caption-xl">Project NEXUS Accessible</span>');
+    expect(response.text).toContain('name="condition[]" type="checkbox" value="good" checked');
+    expect(response.text).toContain('Private seller');
+    expect(response.text).toContain('Collection only');
+    expect(response.text).toContain('Last 7 days');
     expect(response.text).toContain('Filtered bike');
     expect(response.text).toContain('Good');
     expect(response.text).toContain('Price: low to high');
+    expect(response.text).not.toContain('Filtered bike description');
     expect(response.text).not.toContain('Laravel Blade route');
   });
 
