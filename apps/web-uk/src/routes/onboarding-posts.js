@@ -252,8 +252,9 @@ router.get('/:step([a-z]+)', asyncRoute(async (req, res) => {
 
     const stepIndex = slugs.indexOf(step);
     return res.render('onboarding/index', {
-      title: 'Set up your profile',
+      title: res.locals.t('govuk_alpha.onboarding.title'),
       activeNav: 'dashboard',
+      communityName: res.locals.tenantName || res.locals.serviceName || '',
       step,
       steps,
       stepIndex,

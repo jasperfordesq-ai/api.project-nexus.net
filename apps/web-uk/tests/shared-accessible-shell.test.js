@@ -5728,9 +5728,11 @@ describe('shared accessible frontend shell', () => {
     expect(api.getOnboardingConfig).toHaveBeenCalledWith('test-token');
     expect(api.getProfile).toHaveBeenCalledWith('test-token');
     expect(profile.text).toContain('Set up your profile');
-    expect(profile.text).toContain('Step 2 of 6');
+    expect(profile.text).toContain('Project NEXUS Accessible — Step 2 of 6');
     expect(profile.text).toContain('Your profile');
     expect(profile.text).toContain('Profile photo');
+    expect(profile.text).toContain('About you');
+    expect(profile.text).toContain('Current photo');
     expect(profile.text).toContain('/avatars/member.jpg');
     expect(profile.text).toContain('A sentence or two about yourself.');
     expect(profile.text).toContain('Please add a short bio before continuing.');
@@ -5749,6 +5751,15 @@ describe('shared accessible frontend shell', () => {
     expect(interests.text).toContain('id="interest-2" name="interests[]"');
     expect(interests.text).toContain('Gardening');
 
+    const skills = await request(app)
+      .get('/onboarding/skills')
+      .set('Cookie', signedCookieHeader());
+
+    expect(skills.status).toBe(200);
+    expect(skills.text).toContain('Your skills');
+    expect(skills.text).toContain('Skills you can offer');
+    expect(skills.text).toContain('Help you are looking for');
+
     const safeguarding = await request(app)
       .get('/onboarding/safeguarding')
       .set('Cookie', signedCookieHeader());
@@ -5756,8 +5767,11 @@ describe('shared accessible frontend shell', () => {
     expect(safeguarding.status).toBe(200);
     expect(api.getOnboardingSafeguardingOptions).toHaveBeenCalledWith('test-token');
     expect(safeguarding.text).toContain('Safeguarding');
+    expect(safeguarding.text).toContain('Safeguarding options');
     expect(safeguarding.text).toContain('I have access needs');
+    expect(safeguarding.text).toContain('href="https://example.test/help" rel="noopener">Help centre</a>');
     expect(safeguarding.text).toContain('Preferred contact');
+    expect(safeguarding.text).toContain('<option value="">None selected</option>');
     expect(safeguarding.text).toContain('<option value="phone">Phone</option>');
     expect(safeguarding.text).toContain('None of these apply to me');
     expect(safeguarding.text).toContain('Skip for now');
@@ -5771,6 +5785,8 @@ describe('shared accessible frontend shell', () => {
     expect(complete.text).toContain('Profile photo');
     expect(complete.text).toContain('Added');
     expect(complete.text).toContain('I can help with gardening and repairs.');
+    expect(complete.text).toContain('0 selected');
+    expect(complete.text).toContain('>Change</a>');
     expect(complete.text).toContain('Finish and go to my dashboard');
     expect(complete.text).not.toContain('Laravel Blade route');
   });
