@@ -957,7 +957,7 @@ public sealed class MarketplacePaymentService(
                 await db.Database.ExecuteSqlInterpolatedAsync(
                     $"SELECT pg_advisory_xact_lock({order.TenantId}, {order.Id})", ct);
 
-            var delivery = await ClaimPaidDeliveryAsync(order, userId, "bell", ct);
+            var delivery = await ClaimNotificationDeliveryAsync(order, "paid", userId, "bell", ct);
             if (delivery is null) return;
 
             var user = await db.Users.IgnoreQueryFilters().AsNoTracking()
@@ -1021,7 +1021,7 @@ public sealed class MarketplacePaymentService(
             if (transaction is not null)
                 await db.Database.ExecuteSqlInterpolatedAsync(
                     $"SELECT pg_advisory_xact_lock({order.TenantId}, {order.Id})", ct);
-            delivery = await ClaimPaidDeliveryAsync(order, userId, "email", ct);
+            delivery = await ClaimNotificationDeliveryAsync(order, "paid", userId, "email", ct);
             if (delivery is null) return;
             await db.SaveChangesAsync(ct);
             if (transaction is not null) await transaction.CommitAsync(ct);
@@ -1098,8 +1098,9 @@ public sealed class MarketplacePaymentService(
             ct);
     }
 
-    private async Task<MarketplaceOrderNotificationDelivery?> ClaimPaidDeliveryAsync(
+    private async Task<MarketplaceOrderNotificationDelivery?> ClaimNotificationDeliveryAsync(
         MarketplaceOrder order,
+        string eventName,
         int userId,
         string channel,
         CancellationToken ct)
@@ -1108,7 +1109,7 @@ public sealed class MarketplacePaymentService(
         var delivery = await db.MarketplaceOrderNotificationDeliveries.IgnoreQueryFilters()
             .SingleOrDefaultAsync(row => row.TenantId == order.TenantId &&
                                          row.MarketplaceOrderId == order.Id &&
-                                         row.Event == "paid" &&
+                                         row.Event == eventName &&
                                          row.UserId == userId &&
                                          row.Channel == channel, ct);
         if (delivery is not null)
@@ -1130,7 +1131,7 @@ public sealed class MarketplacePaymentService(
         {
             TenantId = order.TenantId,
             MarketplaceOrderId = order.Id,
-            Event = "paid",
+            Event = eventName,
             UserId = userId,
             Channel = channel,
             Status = "claimed",
@@ -1225,6 +1226,165 @@ public sealed class MarketplacePaymentService(
                " " + normalized;
     }
 
+    private async Task DeliverRefundNotificationsAsync(
+        MarketplaceOrder order,
+        MarketplacePayment payment,
+        decimal refundAmount,
+        CancellationToken ct)
+    {
+        var listingTitle = await db.MarketplaceListings.IgnoreQueryFilters().AsNoTracking()
+            .Where(row => row.TenantId == order.TenantId && row.Id == order.MarketplaceListingId)
+            .Select(row => row.Title)
+            .SingleOrDefaultAsync(ct) ?? string.Empty;
+        var tenant = await db.Tenants.IgnoreQueryFilters().AsNoTracking()
+            .SingleOrDefaultAsync(row => row.Id == order.TenantId, ct);
+        var full = payment.Status == "refunded";
+        var currency = NormalizeCurrency(payment.Currency) ?? "EUR";
+        var amountFormatted = refundAmount.ToString(CurrencyExponent(currency) == 0 ? "0" : "0.00",
+            CultureInfo.InvariantCulture);
+        var amountWithCurrency = $"{amountFormatted} {currency}";
+        var link = $"/marketplace/orders/{order.Id}";
+        var bellEvent = $"refund_bell_{StableHash($"{full}:{amountWithCurrency}")}";
+
+        await DeliverRefundBellAsync(order, bellEvent, order.BuyerUserId, full, amountWithCurrency, link, ct);
+        await DeliverRefundBellAsync(order, bellEvent, order.SellerUserId, full, amountWithCurrency, link, ct);
+        await DeliverRefundEmailAsync(order, "refund", order.BuyerUserId, buyer: true, full,
+            amountFormatted, currency, listingTitle, tenant, link, ct);
+        await DeliverRefundEmailAsync(order, "refund", order.SellerUserId, buyer: false, full,
+            amountFormatted, currency, listingTitle, tenant, link, ct);
+    }
+
+    private async Task DeliverRefundBellAsync(
+        MarketplaceOrder order, string eventName, int userId, bool full, string amount,
+        string link, CancellationToken ct)
+    {
+        await using var transaction = db.Database.IsRelational()
+            ? await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted, ct)
+            : null;
+        if (transaction is not null)
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT pg_advisory_xact_lock({order.TenantId}, {order.Id})", ct);
+        var delivery = await ClaimNotificationDeliveryAsync(order, eventName, userId, "bell", ct);
+        if (delivery is null) return;
+        var user = await db.Users.IgnoreQueryFilters().AsNoTracking()
+            .SingleOrDefaultAsync(row => row.TenantId == order.TenantId && row.Id == userId, ct);
+        if (user is null)
+        {
+            MarkDeliverySkipped(delivery);
+        }
+        else
+        {
+            var message = (full
+                    ? "Refund of {{amount}} processed for order #{{order_number}}"
+                    : "Partial refund of {{amount}} processed for order #{{order_number}}")
+                .Replace("{{amount}}", amount, StringComparison.Ordinal)
+                .Replace("{{order_number}}", order.OrderNumber, StringComparison.Ordinal);
+            var notification = new Notification
+            {
+                TenantId = order.TenantId,
+                UserId = userId,
+                Type = "marketplace_order",
+                Title = "Marketplace order",
+                Body = message,
+                Link = link,
+                CreatedAt = DateTime.UtcNow
+            };
+            db.Notifications.Add(notification);
+            await db.SaveChangesAsync(ct);
+            MarkDeliveryDelivered(delivery, notification.Id.ToString(CultureInfo.InvariantCulture));
+        }
+        await db.SaveChangesAsync(ct);
+        if (transaction is not null) await transaction.CommitAsync(ct);
+    }
+
+    private async Task DeliverRefundEmailAsync(
+        MarketplaceOrder order, string eventName, int userId, bool buyer, bool full,
+        string amount, string currency, string listingTitle, Tenant? tenant, string link,
+        CancellationToken ct)
+    {
+        MarketplaceOrderNotificationDelivery? delivery;
+        await using (var transaction = db.Database.IsRelational()
+                         ? await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted, ct)
+                         : null)
+        {
+            if (transaction is not null)
+                await db.Database.ExecuteSqlInterpolatedAsync(
+                    $"SELECT pg_advisory_xact_lock({order.TenantId}, {order.Id})", ct);
+            delivery = await ClaimNotificationDeliveryAsync(order, eventName, userId, "email", ct);
+            if (delivery is null) return;
+            await db.SaveChangesAsync(ct);
+            if (transaction is not null) await transaction.CommitAsync(ct);
+        }
+
+        var user = await db.Users.IgnoreQueryFilters().AsNoTracking()
+            .SingleOrDefaultAsync(row => row.TenantId == order.TenantId && row.Id == userId, ct);
+        if (user is null || string.IsNullOrWhiteSpace(user.Email))
+        {
+            await SetPaidDeliveryOutcomeAsync(delivery.Id, "skipped", null, null, ct);
+            return;
+        }
+        if (emailService is null)
+        {
+            await SetPaidDeliveryOutcomeAsync(delivery.Id, "failed", null, "email_service_unavailable", ct);
+            return;
+        }
+
+        var copy = MarketplaceRefundNotificationCopy.For(user.PreferredLanguage, buyer, full);
+        var emailAmount = buyer && !full ? amount : $"{amount} {currency}";
+        var subject = RenderRefundText(copy.Subject, order.OrderNumber, emailAmount, currency, listingTitle, copy.Reason);
+        var body = RenderRefundText(copy.Body, WebUtility.HtmlEncode(order.OrderNumber),
+            WebUtility.HtmlEncode(emailAmount), WebUtility.HtmlEncode(currency),
+            WebUtility.HtmlEncode(listingTitle), WebUtility.HtmlEncode(copy.Reason));
+        var fullUrl = (tenant is null
+            ? (configuration["App:FrontendUrl"] ?? "https://app.project-nexus.ie").TrimEnd('/')
+            : BuildTenantFrontendBase(tenant)) + link;
+        var safeUrl = WebUtility.HtmlEncode(fullUrl);
+        var safeName = WebUtility.HtmlEncode(string.IsNullOrWhiteSpace(user.FirstName) ? "Member" : user.FirstName);
+        var html = $"<h1>{WebUtility.HtmlEncode(copy.Title)}</h1><p>Hello {safeName},</p><p>{body}</p><p><a href=\"{safeUrl}\">View Order</a></p>";
+        var text = $"{copy.Title}\n{WebUtility.HtmlDecode(body.Replace("<strong>", string.Empty).Replace("</strong>", string.Empty))}\nView Order: {fullUrl}";
+        EmailDeliveryResult result;
+        try
+        {
+            result = await emailService.SendEmailWithEvidenceAsync(user.Email, subject, html, text,
+                $"marketplace-order:{order.TenantId}:{order.Id}:{eventName}:{userId}:email", ct);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            await SetPaidDeliveryOutcomeAsync(delivery.Id, "failed", null, exception.Message, CancellationToken.None);
+            return;
+        }
+        await SetPaidDeliveryOutcomeAsync(delivery.Id, result.Accepted ? "delivered" : "failed",
+            result.Accepted ? result.ProviderMessageId ?? result.Provider : null,
+            result.Accepted ? null : result.FailureReason ?? "email_provider_rejected", ct);
+    }
+
+    private static string RenderRefundText(
+        string template, string orderNumber, string amount, string currency, string title, string reason) =>
+        template.Replace("{{order_number}}", orderNumber, StringComparison.Ordinal)
+            .Replace("{{amount}}", amount, StringComparison.Ordinal)
+            .Replace("{{currency}}", currency, StringComparison.Ordinal)
+            .Replace("{{title}}", title, StringComparison.Ordinal)
+            .Replace("{{reason}}", reason, StringComparison.Ordinal);
+
+    private async Task TryDeliverRefundNotificationsAsync(
+        MarketplaceOrder order, MarketplacePayment payment, decimal amount, CancellationToken ct)
+    {
+        try
+        {
+            await DeliverRefundNotificationsAsync(order, payment, amount, ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception,
+                "Marketplace refund notification dispatch failed for tenant {TenantId}, order {OrderId}.",
+                order.TenantId, order.Id);
+        }
+    }
+
     public async Task<MarketplacePaymentResult> ProcessRefundAsync(
         int tenantId,
         int orderId,
@@ -1257,7 +1417,17 @@ public sealed class MarketplacePaymentService(
         if (payment.Status == "refunded")
         {
             if (requestedAmount is null || Math.Abs(requestedAmount.Value - payment.Amount) <= 0.005m)
+            {
+                var latestRefund = await db.MarketplacePaymentRefunds.IgnoreQueryFilters().AsNoTracking()
+                    .Where(x => x.TenantId == tenantId && x.MarketplacePaymentId == payment.Id)
+                    .OrderByDescending(x => x.Id)
+                    .Select(x => new { x.Amount })
+                    .FirstOrDefaultAsync(ct);
+                if (transaction is not null) await transaction.CommitAsync(ct);
+                if (latestRefund is not null)
+                    await TryDeliverRefundNotificationsAsync(order, payment, latestRefund.Amount, ct);
                 return new(Projection(payment, detailed: true));
+            }
             return Error("VALIDATION_ERROR", "Refund amount is invalid.", 422, "refund_amount");
         }
         var refundAmount = RoundMajor(requestedAmount ?? remaining, currency);
@@ -1327,6 +1497,7 @@ public sealed class MarketplacePaymentService(
         await ApplyRefundLedgerAsync(payment, order, providerRefund.Id, refundAmount,
             feeReversal, payoutReversal, reason, currency, ct);
         if (transaction is not null) await transaction.CommitAsync(ct);
+        await TryDeliverRefundNotificationsAsync(order, payment, refundAmount, ct);
         return new(Projection(payment, detailed: true));
     }
 
@@ -1348,7 +1519,13 @@ public sealed class MarketplacePaymentService(
         if (await db.WebhookEvents.IgnoreQueryFilters().AsNoTracking().AnyAsync(x =>
                 x.TenantId == payment.TenantId && x.Provider == "stripe-marketplace" &&
                 x.ExternalEventId == externalEventId, ct))
+        {
+            var replayOrder = await db.MarketplaceOrders.IgnoreQueryFilters().AsNoTracking()
+                .SingleOrDefaultAsync(x => x.TenantId == payment.TenantId && x.Id == payment.MarketplaceOrderId, ct);
+            if (replayOrder is not null)
+                await TryDeliverRefundNotificationsAsync(replayOrder, payment, payment.RefundAmount ?? 0, ct);
             return new(new { received = true, applied = true });
+        }
 
         await using var transaction = db.Database.IsRelational() && db.Database.CurrentTransaction is null
             ? await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct)
@@ -1363,6 +1540,7 @@ public sealed class MarketplacePaymentService(
         var currency = NormalizeCurrency(payment.Currency);
         if (currency is null) return Error("RESOLUTION_FAILED", "Marketplace payment currency is invalid.", 409);
 
+        var refundApplied = false;
         foreach (var refund in refunds.OrderBy(x => x.Id, StringComparer.Ordinal))
         {
             if (string.IsNullOrWhiteSpace(refund.Id) || refund.AmountMinor <= 0 ||
@@ -1402,6 +1580,7 @@ public sealed class MarketplacePaymentService(
             }
             await ApplyRefundLedgerAsync(payment, order, refund.Id, refundAmount,
                 feeReversal, payoutReversal, "external_stripe_refund", currency, ct);
+            refundApplied = true;
         }
 
         var providerTotal = FromMinor(amountRefundedMinor, currency);
@@ -1426,6 +1605,8 @@ public sealed class MarketplacePaymentService(
         });
         await db.SaveChangesAsync(ct);
         if (transaction is not null) await transaction.CommitAsync(ct);
+        if (refundApplied)
+            await TryDeliverRefundNotificationsAsync(order, payment, payment.RefundAmount ?? 0, ct);
         return new(new { received = true, applied = true });
     }
 

@@ -136,7 +136,8 @@ public sealed class MarketplacePaymentServiceTests
     {
         await using var db = CreateDb();
         var gateway = new FakeGateway { Configured = true };
-        var service = CreateService(db, gateway);
+        var email = new RecordingEmailService();
+        var service = CreateService(db, gateway, email);
         var order = SeedPayableOrder(db);
         var listing = await db.MarketplaceListings.SingleAsync();
         var originalQuantity = listing.Quantity;
@@ -149,6 +150,8 @@ public sealed class MarketplacePaymentServiceTests
             LatestChargeId = "ch_refund_1"
         };
         (await service.ConfirmAsync(42, 11, gateway.Created.Id, CancellationToken.None)).Succeeded.Should().BeTrue();
+        email.Calls.Clear();
+        email.RejectAddress = "seller@example.test";
 
         (await service.ProcessRefundAsync(42, order.Id, 5m, "partial settlement", CancellationToken.None))
             .Succeeded.Should().BeTrue();
@@ -162,7 +165,15 @@ public sealed class MarketplacePaymentServiceTests
         gateway.RefundAmountMinor.Should().Be(500);
         gateway.RefundReverseTransfer.Should().BeTrue();
         gateway.RefundApplicationFee.Should().BeTrue();
+        email.Calls.Should().HaveCount(2);
+        email.Calls.Single(call => call.To == "buyer@example.test").Subject
+            .Should().Be($"Partial refund processed \u2014 {order.OrderNumber}");
+        email.Calls.Single(call => call.To == "seller@example.test").Subject
+            .Should().Be($"Teilweise R\u00fcckerstattung ausgestellt \u2013 {order.OrderNumber} bestellen");
+        (await db.MarketplaceOrderNotificationDeliveries.SingleAsync(row =>
+            row.Event == "refund" && row.UserId == 22 && row.Channel == "email")).Status.Should().Be("failed");
 
+        email.RejectAddress = null;
         (await service.ProcessRefundAsync(42, order.Id, null, "full settlement", CancellationToken.None))
             .Succeeded.Should().BeTrue();
         payment.Status.Should().Be("refunded");
@@ -174,6 +185,28 @@ public sealed class MarketplacePaymentServiceTests
         gateway.RefundCalls.Should().Be(2);
         (await db.MarketplacePaymentRefunds.CountAsync()).Should().Be(2);
         (await db.MarketplacePaymentRefunds.SumAsync(x => x.Amount)).Should().Be(25.99m);
+        email.Calls.Should().HaveCount(3, "the evidenced buyer email is not repeated and the failed seller email heals");
+        email.Calls.Last().To.Should().Be("seller@example.test");
+        email.Calls.Last().Subject.Should().Be($"Refund issued \u2014 Order {order.OrderNumber}");
+        (await db.Notifications.AsNoTracking().ToListAsync())
+            .Count(row => (row.Body ?? string.Empty).Contains("refund", StringComparison.OrdinalIgnoreCase)).Should().Be(4);
+        var refundDeliveries = await db.MarketplaceOrderNotificationDeliveries
+            .Where(row => row.Event.StartsWith("refund_")).ToListAsync();
+        refundDeliveries.Should().HaveCount(4, "each distinct partial/full bell message is delivered to both users");
+        refundDeliveries.Should().OnlyContain(row => row.Status == "delivered" && row.Channel == "bell");
+        var refundEmails = await db.MarketplaceOrderNotificationDeliveries
+            .Where(row => row.Event == "refund").ToListAsync();
+        refundEmails.Should().HaveCount(2);
+        refundEmails.Should().OnlyContain(row => row.Status == "delivered");
+        refundEmails.Single(row => row.UserId == 22).Attempts.Should().Be(2);
+
+        (await service.ProcessRefundAsync(42, order.Id, null, "full settlement", CancellationToken.None))
+            .Succeeded.Should().BeTrue();
+        email.Calls.Should().HaveCount(3, "delivered refund channels must not be repeated");
+        (await db.MarketplacePaymentRefunds.CountAsync()).Should().Be(2, "delivery replay must not repeat money movement");
+        refundDeliveries = await db.MarketplaceOrderNotificationDeliveries
+            .Where(row => row.Event.StartsWith("refund_")).ToListAsync();
+        refundDeliveries.Should().OnlyContain(row => row.Status == "delivered");
     }
 
     [Fact]
@@ -221,7 +254,8 @@ public sealed class MarketplacePaymentServiceTests
     {
         await using var db = CreateDb();
         var gateway = new FakeGateway { Configured = true };
-        var service = CreateService(db, gateway);
+        var email = new RecordingEmailService();
+        var service = CreateService(db, gateway, email);
         var order = SeedPayableOrder(db);
         (await service.CreateIntentAsync(42, 11, order.Id, CancellationToken.None)).Succeeded.Should().BeTrue();
         gateway.Retrieved = gateway.Created! with
@@ -231,23 +265,33 @@ public sealed class MarketplacePaymentServiceTests
             LatestChargeId = "ch_external_refund"
         };
         (await service.ConfirmAsync(42, 11, gateway.Created.Id, CancellationToken.None)).Succeeded.Should().BeTrue();
-        var refund = new MarketplaceStripeRefund(
-            "re_external_1", 500, "EUR", "succeeded", TransferReversed: true,
-            ApplicationFeeRefunded: true);
+        email.Calls.Clear();
+        MarketplaceStripeRefund[] refunds =
+        [
+            new("re_external_1", 200, "EUR", "succeeded", TransferReversed: true,
+                ApplicationFeeRefunded: true),
+            new("re_external_2", 300, "EUR", "succeeded", TransferReversed: true,
+                ApplicationFeeRefunded: true)
+        ];
 
         (await service.ReconcileChargeRefundedAsync(
-            gateway.Created.Id, "ch_external_refund", 500, [refund], "evt_refund_1", CancellationToken.None))
+            gateway.Created.Id, "ch_external_refund", 500, refunds, "evt_refund_1", CancellationToken.None))
             .Succeeded.Should().BeTrue();
         (await service.ReconcileChargeRefundedAsync(
-            gateway.Created.Id, "ch_external_refund", 500, [refund], "evt_refund_1", CancellationToken.None))
+            gateway.Created.Id, "ch_external_refund", 500, refunds, "evt_refund_1", CancellationToken.None))
             .Succeeded.Should().BeTrue();
 
         var payment = await db.MarketplacePayments.SingleAsync();
         payment.Status.Should().Be("partially_refunded");
         payment.RefundAmount.Should().Be(5m);
-        (await db.MarketplacePaymentRefunds.CountAsync()).Should().Be(1);
+        (await db.MarketplacePaymentRefunds.CountAsync()).Should().Be(2);
         (await db.WebhookEvents.CountAsync(x => x.ExternalEventId == "evt_refund_1")).Should().Be(1);
         gateway.RefundCalls.Should().Be(0, "the provider already created an external refund");
+        email.Calls.Should().HaveCount(2, "a multi-refund webhook emits one cumulative notification per recipient");
+        email.Calls.Should().OnlyContain(call => call.Subject.Contains("Partial refund processed", StringComparison.Ordinal) ||
+                                                call.Subject.Contains("Teilweise R\u00fcckerstattung", StringComparison.Ordinal));
+        (await db.Notifications.CountAsync(row => row.Type == "marketplace_order" &&
+                                                   (row.Body ?? string.Empty).Contains("5.00 EUR"))).Should().Be(2);
     }
 
     [Fact]
