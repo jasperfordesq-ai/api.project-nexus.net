@@ -167,6 +167,52 @@ public sealed class PodcastsCompatibilityService
         return HydrateShow(state, updated, userId);
     }
 
+    public async Task<PodcastShowCompatDto> UpdateShowArtworkAsync(
+        int tenantId, int id, int userId, bool isAdmin, string artworkUrl, CancellationToken ct)
+    {
+        var state = await LoadAsync(tenantId, ct);
+        var show = EnsureShow(state, id);
+        EnsureOwnerOrAdmin(show, userId, isAdmin);
+        var updated = show with
+        {
+            ArtworkUrl = artworkUrl,
+            ModerationStatus = show.ModerationStatus == "approved" ? "pending" : show.ModerationStatus,
+            UpdatedAt = DateTime.UtcNow
+        };
+        Replace(state.Shows, show, updated);
+        await SaveAsync(tenantId, state, ct);
+        return HydrateShow(state, updated, userId);
+    }
+
+    public async Task EnsureArtworkAccessAsync(
+        int tenantId, int showId, int? episodeId, int userId, bool isAdmin, CancellationToken ct)
+    {
+        var state = await LoadAsync(tenantId, ct);
+        var show = EnsureShow(state, showId);
+        EnsureOwnerOrAdmin(show, userId, isAdmin);
+        if (episodeId.HasValue)
+        {
+            _ = EnsureEpisode(state, showId, episodeId.Value);
+        }
+    }
+
+    public async Task<PodcastEpisodeCompatDto> UpdateEpisodeCoverAsync(
+        int tenantId, int showId, int episodeId, int userId, bool isAdmin, string coverUrl, CancellationToken ct)
+    {
+        var state = await LoadAsync(tenantId, ct);
+        var show = EnsureShow(state, showId);
+        EnsureOwnerOrAdmin(show, userId, isAdmin);
+        var episode = EnsureEpisode(state, showId, episodeId);
+        var updated = episode with
+        {
+            CoverImageUrl = coverUrl,
+            ModerationStatus = episode.ModerationStatus == "approved" ? "pending" : episode.ModerationStatus
+        };
+        Replace(state.Episodes, episode, updated);
+        await SaveAsync(tenantId, state, ct);
+        return HydrateEpisode(state, updated, userId);
+    }
+
     public Task<PodcastShowCompatDto> PublishShowAsync(int tenantId, int id, int userId, CancellationToken ct) =>
         SetShowStatusAsync(tenantId, id, userId, "published", ct);
 
@@ -698,6 +744,14 @@ public sealed class PodcastsCompatibilityService
         if (userId <= 0)
         {
             throw new PodcastsCompatibilityForbiddenException("Authentication required");
+        }
+    }
+
+    private static void EnsureOwnerOrAdmin(PodcastShowCompatDto show, int userId, bool isAdmin)
+    {
+        if (userId <= 0 || (!isAdmin && show.OwnerUserId != userId))
+        {
+            throw new PodcastsCompatibilityForbiddenException("You do not have permission to manage this podcast");
         }
     }
 

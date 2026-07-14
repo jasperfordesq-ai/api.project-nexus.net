@@ -43,6 +43,32 @@ Before any production deployment or production-container action, stop and read
 deployment or touching production containers. Never modify the Laravel repo or
 Laravel Edition containers from this worktree.
 
+## 2026-07-14 ASP.NET Podcast Artwork Checkpoint (Locally Verified)
+
+The canonical show-artwork and episode-cover uploads now have explicit owners at
+`POST /api/v2/podcasts/{id}/artwork` and
+`POST /api/v2/podcasts/{showId}/episodes/{episodeId}/cover`, with legacy aliases.
+Both accept the React client's `image` multipart field, persist an allow-listed image
+through the platform file service, return `{success,data:{url}}`, bind the stored file
+to the tenant and podcast subject, and save only the platform download URL. Missing or
+invalid images return Laravel-style 422 validation; foreign ownership returns 403;
+cross-tenant identifiers return 404; and failed state changes remove the staged file.
+Approved shows and episodes return to pending moderation when their artwork changes.
+
+A dedicated authenticated fixed-window policy enforces 10 uploads per 60 seconds.
+Focused controller/runtime proof passes 4/4; invalid, unauthorized, and cross-tenant
+attempts leave no file rows; route ownership passes 114/114; comparator fixtures pass;
+and Release API/test-project builds have zero errors. The live comparator reports 4,550
+ASP.NET operations and **2,598/2,608 matches (99.6%, 10 static misses)**.
+
+Current provisional global scores are **865/1000 implementation** and **740/1000
+certification confidence**. The honest combined finish-line estimate is **77%**, up
+from the goal baseline of 42% and the previous checkpoint of 76%. The remaining seven
+document-era vetting writes, two prerender operations, one group-auto-assignment
+operation, real fiat settlement, complete-suite/CI proof, unchanged-frontend browser
+proof, schema/localization depth, federation transport, and live-provider evidence
+remain open. No production resource or frontend source was touched by this slice.
+
 ## 2026-07-14 ASP.NET Atomic Notification Settings Checkpoint (Locally Verified)
 
 The canonical React member-settings save at
@@ -66,9 +92,8 @@ settings set passes 6/6; route ownership passes 114/114; comparator fixtures pas
 and Debug test-project plus Release API builds have zero errors. The live comparator
 reports 4,546 ASP.NET operations and **2,596/2,608 matches (99.5%, 12 static misses)**.
 
-Current provisional global scores are **860/1000 implementation** and **735/1000
-certification confidence**. The honest combined finish-line estimate is **76%**,
-up from the goal baseline of 42% and the previous checkpoint of 75%. The remaining
+At this checkpoint, provisional global scores were **860/1000 implementation** and
+**735/1000 certification confidence**, with a **76%** combined estimate. The remaining
 document-era vetting writes, podcast artwork, prerender, and group-auto-assignment
 routes, real fiat settlement, complete-suite/CI proof, unchanged-frontend browser
 proof, schema/localization depth, federation transport, and live-provider evidence

@@ -11,6 +11,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using Nexus.Api.Controllers;
 using Nexus.Api.Data;
 using Nexus.Api.Services;
@@ -42,12 +44,14 @@ public sealed class PodcastsCompatibilityControllerUnitTests
             "GET api/v2/podcasts/chapters/{tenantId:int}/{episodeId:int}.json",
             "POST api/v2/podcasts",
             "PUT api/v2/podcasts/{id:int}",
+            "POST api/v2/podcasts/{id:int}/artwork",
             "POST api/v2/podcasts/{id:int}/publish",
             "POST api/v2/podcasts/{id:int}/archive",
             "DELETE api/v2/podcasts/{id:int}",
             "POST api/v2/podcasts/{showId:int}/subscribe",
             "POST api/v2/podcasts/{showId:int}/episodes",
             "PUT api/v2/podcasts/{showId:int}/episodes/{episodeId:int}",
+            "POST api/v2/podcasts/{showId:int}/episodes/{episodeId:int}/cover",
             "POST api/v2/podcasts/{showId:int}/episodes/{episodeId:int}/publish",
             "POST api/v2/podcasts/{showId:int}/episodes/{episodeId:int}/archive",
             "DELETE api/v2/podcasts/{showId:int}/episodes/{episodeId:int}",
@@ -176,7 +180,11 @@ public sealed class PodcastsCompatibilityControllerUnitTests
         int userId)
     {
         var service = new PodcastsCompatibilityService(db);
-        return new PodcastsCompatibilityController(service, tenant)
+        var files = new FileUploadService(
+            db,
+            new ConfigurationBuilder().AddInMemoryCollection().Build(),
+            NullLogger<FileUploadService>.Instance);
+        return new PodcastsCompatibilityController(service, tenant, files)
         {
             ControllerContext = ControllerContextFor(userId, tenant.GetTenantIdOrThrow(), "admin")
         };

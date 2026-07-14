@@ -6,15 +6,14 @@ Canonical source: `C:\platforms\htdocs\staging` (read-only).
 
 ## Latest Verified Backend Slice
 
-The canonical React notification-settings save now uses one serialized tenant/user
-transaction across general/federation flags, exact match-notification columns, and the
-global digest ledger. Strict complete-input validation prevents partial writes,
-weekly values normalize to monthly, the canonical saved projection round-trips, and
-an authenticated 10-per-minute limiter matches Laravel. Migration 145 applies to
-upgraded and blank-chain PostgreSQL with clean model drift. Focused proof passes 2/2
-on each database, the affected set passes 6/6, route ownership passes 114/114, and
-Debug/Release builds are green. The live inventory is **2,596/2,608 (99.5%, 12
-missing)**. Document-era vetting writes, media/prerender and group-auto-assignment,
+The canonical React podcast studio now has owner/admin-bound show-artwork and
+episode-cover uploads under both API aliases. The platform image service validates and
+stores tenant/subject-bound files, only platform URLs persist, approved content returns
+to pending moderation, and failed validation/authorization/state persistence cleans up
+staged files. An authenticated 10-per-minute limiter matches Laravel. Focused proof
+passes 4/4, route ownership passes 114/114, comparator fixtures pass, and Release builds
+are green. The live inventory is **2,598/2,608 (99.6%, 10 missing)**. Document-era
+vetting writes, prerender and group-auto-assignment,
 real fiat settlement, complete-suite/CI proof, unchanged-frontend runtime proof,
 schema/localization depth, federation transport, and live-provider certification
 remain open.

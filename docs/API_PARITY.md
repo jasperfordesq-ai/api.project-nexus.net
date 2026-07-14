@@ -12,6 +12,18 @@ The legacy ASP.NET React copy at `apps/react-frontend/` is no longer the target
 for API design. ASP.NET API parity means the ASP.NET backend can satisfy the API
 calls made by the production Laravel React frontend.
 
+## 2026-07-14 Podcast Artwork Upload Refresh
+
+Show artwork and episode cover uploads now own both legacy and V2 routes used by the
+canonical React studio. Multipart `image` files pass through the platform image
+allowlist and become tenant/subject-bound file records; only platform download URLs
+enter podcast state. Creator/admin authorization, tenant-safe 404s, staged-file
+rollback, Laravel validation envelopes, approved-to-pending moderation reset, and an
+authenticated 10-per-minute bucket are covered. Focused controller/runtime proof
+passes 4/4, route ownership passes 114/114, comparator fixtures pass, and Release builds
+have zero errors. The refreshed live inventory is **2,598/2,608 matched (10 missing,
+99.6%)**.
+
 ## 2026-07-14 Atomic Notification Settings Refresh
 
 `PUT /api/v2/users/me/notification-settings` now atomically validates, normalizes,

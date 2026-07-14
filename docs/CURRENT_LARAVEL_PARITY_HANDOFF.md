@@ -12,7 +12,26 @@ parity job after a session interruption. The implementation branches may still
 be moving, so treat every numeric snapshot below as advisory. Regenerate the
 live state before editing code or claiming progress.
 
-## Latest Resume Point: Atomic Notification Settings
+## Latest Resume Point: Podcast Artwork Uploads
+
+The canonical React show-artwork and episode-cover multipart calls now have explicit
+legacy and V2 owners. Both require the `image` field, use the platform image allowlist,
+persist tenant/subject-bound files, return the canonical nested URL envelope, reset
+approved content to pending moderation, and roll back staged files after not-found,
+forbidden, validation, or persistence failures. Ownership is creator-or-admin, tenant
+lookups fail closed, and a dedicated authenticated policy matches Laravel's 10 uploads
+per 60 seconds.
+
+Focused controller/runtime proof passes 4/4; route ownership passes 114/114; comparator
+fixtures pass; and Release builds have zero errors. The live comparator reports 4,550
+ASP.NET operations and 2,598/2,608 matched with 10 static misses. Provisional global
+scores are 865/1000 implementation, 740/1000 certification, and 77% overall. Resume
+with prerender or group auto-assignment; keep the seven document-era vetting writes
+gated until their legacy-evidence safety contract is traced. Real fiat settlement,
+complete-suite/CI, unchanged canonical frontend smoke, schema/localization depth,
+federation transport, and live-provider certification remain open.
+
+## Previous Resume Point: Atomic Notification Settings
 
 The canonical React settings save now owns all three Laravel persistence domains in
 one serializable tenant/user transaction: general/federation flags on the user, match
@@ -27,8 +46,8 @@ upgraded and blank-chain disposable PostgreSQL. Model drift is clean; focused pr
 passes 2/2 on each database; the affected member-settings set passes 6/6; route
 ownership passes 114/114; comparator fixtures pass; and Debug/Release builds have zero
 errors. The live comparator reports 4,546 ASP.NET operations and 2,596/2,608 matched
-with 12 static misses. Provisional global scores are 860/1000 implementation, 735/1000
-certification, and 76% overall. Resume with podcast artwork, prerender, or group auto-
+with 12 static misses. Provisional global scores were 860/1000 implementation, 735/1000
+certification, and 76% overall. Resume was podcast artwork, prerender, or group auto-
 assignment; keep the seven document-era vetting writes gated until their legacy-
 evidence safety contract is traced. Real fiat settlement, complete-suite/CI, unchanged
 canonical frontend smoke, schema/localization depth, federation transport, and live-

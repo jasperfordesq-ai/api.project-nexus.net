@@ -8,7 +8,10 @@ using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Nexus.Api.Data;
+using Nexus.Api.Entities;
+using Nexus.Api.Middleware;
 using Nexus.Api.Services;
 
 namespace Nexus.Api.Controllers;
@@ -23,11 +26,13 @@ public sealed class PodcastsCompatibilityController : ControllerBase
 
     private readonly PodcastsCompatibilityService _podcasts;
     private readonly TenantContext _tenant;
+    private readonly FileUploadService _files;
 
-    public PodcastsCompatibilityController(PodcastsCompatibilityService podcasts, TenantContext tenant)
+    public PodcastsCompatibilityController(PodcastsCompatibilityService podcasts, TenantContext tenant, FileUploadService files)
     {
         _podcasts = podcasts;
         _tenant = tenant;
+        _files = files;
     }
 
     [AllowAnonymous]
@@ -168,6 +173,14 @@ public sealed class PodcastsCompatibilityController : ControllerBase
         RunAsync(() => _podcasts.UpdateShowAsync(_tenant.GetTenantIdOrThrow(), id, request, UserId(), ct));
 
     [Authorize]
+    [EnableRateLimiting(RateLimitingExtensions.PodcastArtworkPolicy)]
+    [RequestSizeLimit(10 * 1024 * 1024)]
+    [HttpPost("api/podcasts/{id:int}/artwork")]
+    [HttpPost("api/v2/podcasts/{id:int}/artwork")]
+    public async Task<IActionResult> UploadArtwork(int id, CancellationToken ct) =>
+        await UploadImageAsync(await ReadImageAsync(ct), id, null, ct);
+
+    [Authorize]
     [HttpPost("api/podcasts/{id:int}/publish")]
     [HttpPost("api/v2/podcasts/{id:int}/publish")]
     public Task<IActionResult> Publish(int id, CancellationToken ct) =>
@@ -209,6 +222,14 @@ public sealed class PodcastsCompatibilityController : ControllerBase
     [HttpPut("api/v2/podcasts/{showId:int}/episodes/{episodeId:int}")]
     public Task<IActionResult> UpdateEpisode(int showId, int episodeId, [FromBody] PodcastCompatEpisodeRequest request, CancellationToken ct) =>
         RunAsync(() => _podcasts.UpdateEpisodeAsync(_tenant.GetTenantIdOrThrow(), showId, episodeId, UserId(), request, ct));
+
+    [Authorize]
+    [EnableRateLimiting(RateLimitingExtensions.PodcastArtworkPolicy)]
+    [RequestSizeLimit(10 * 1024 * 1024)]
+    [HttpPost("api/podcasts/{showId:int}/episodes/{episodeId:int}/cover")]
+    [HttpPost("api/v2/podcasts/{showId:int}/episodes/{episodeId:int}/cover")]
+    public async Task<IActionResult> UploadEpisodeCover(int showId, int episodeId, CancellationToken ct) =>
+        await UploadImageAsync(await ReadImageAsync(ct), showId, episodeId, ct);
 
     [Authorize]
     [HttpPost("api/podcasts/{showId:int}/episodes/{episodeId:int}/publish")]
@@ -355,6 +376,74 @@ public sealed class PodcastsCompatibilityController : ControllerBase
         }
     }
 
+    private async Task<IActionResult> UploadImageAsync(IFormFile? image, int showId, int? episodeId, CancellationToken ct)
+    {
+        if (image is null || image.Length <= 0)
+        {
+            return StatusCode(StatusCodes.Status422UnprocessableEntity,
+                LaravelImageError("VALIDATION_FAILED", "No image uploaded"));
+        }
+
+        var tenantId = _tenant.GetTenantIdOrThrow();
+        var userId = UserId();
+        try
+        {
+            await _podcasts.EnsureArtworkAccessAsync(tenantId, showId, episodeId, userId, IsAdmin(), ct);
+        }
+        catch (Exception ex) when (ex is PodcastsCompatibilityNotFoundException or PodcastsCompatibilityForbiddenException)
+        {
+            return ErrorResult(ex);
+        }
+
+        await using var stream = image.OpenReadStream();
+        var (upload, error) = await _files.UploadAsync(
+            stream, image.FileName, image.ContentType, image.Length,
+            userId, tenantId, FileCategory.Podcast,
+            episodeId ?? showId, episodeId.HasValue ? "podcast_episode" : "podcast_show", ct);
+
+        if (error is not null || upload is null)
+        {
+            return StatusCode(StatusCodes.Status422UnprocessableEntity,
+                LaravelImageError("VALIDATION_FAILED", error ?? "Image upload failed"));
+        }
+
+        try
+        {
+            var url = _files.GetDownloadUrl(upload);
+            if (episodeId.HasValue)
+            {
+                await _podcasts.UpdateEpisodeCoverAsync(tenantId, showId, episodeId.Value, userId, IsAdmin(), url, ct);
+            }
+            else
+            {
+                await _podcasts.UpdateShowArtworkAsync(tenantId, showId, userId, IsAdmin(), url, ct);
+            }
+
+            return Ok(new { success = true, data = new { url } });
+        }
+        catch (Exception ex) when (ex is PodcastsCompatibilityValidationException or PodcastsCompatibilityNotFoundException or PodcastsCompatibilityForbiddenException)
+        {
+            await _files.DeleteAsync(upload.Id, userId);
+            return ErrorResult(ex);
+        }
+        catch
+        {
+            await _files.DeleteAsync(upload.Id, userId);
+            throw;
+        }
+    }
+
+    private async Task<IFormFile?> ReadImageAsync(CancellationToken ct)
+    {
+        if (!Request.HasFormContentType)
+        {
+            return null;
+        }
+
+        var form = await Request.ReadFormAsync(ct);
+        return form.Files.GetFile("image");
+    }
+
     private IActionResult ErrorResult(Exception ex) =>
         ex switch
         {
@@ -377,6 +466,8 @@ public sealed class PodcastsCompatibilityController : ControllerBase
         var id = UserId();
         return id <= 0 ? null : id;
     }
+
+    private bool IsAdmin() => User.IsInRole("admin") || User.HasClaim("role", "admin");
 
     private Task<IActionResult> StoreEpisodeRequestAsync(int showId, PodcastCompatEpisodeRequest request, CancellationToken ct) =>
         RunAsync(() => _podcasts.CreateEpisodeAsync(_tenant.GetTenantIdOrThrow(), showId, UserId(), request, ct), StatusCodes.Status201Created);
@@ -485,6 +576,14 @@ public sealed class PodcastsCompatibilityController : ControllerBase
         errors = new[]
         {
             new { code, message }
+        }
+    };
+
+    private static object LaravelImageError(string code, string message) => new
+    {
+        errors = new[]
+        {
+            new { code, message, field = "image" }
         }
     };
 }

@@ -5,6 +5,14 @@ Last reviewed: 2026-07-14
 Laravel source of truth: `C:\platforms\htdocs\staging\database\migrations` and
 `C:\platforms\htdocs\staging\app\Models`.
 
+## 2026-07-14 Podcast Artwork Persistence Evidence
+
+No schema migration is required. Podcast state already carries show artwork and
+episode cover URLs, while the existing `file_uploads` aggregate provides durable
+tenant, uploader, podcast subject, MIME, size, path, and timestamp evidence. Focused
+runtime proof confirms two successful images persist as podcast-category file rows and
+that invalid, foreign-owner, and cross-tenant attempts leave no staged rows behind.
+
 ## 2026-07-14 Atomic Notification Settings Schema Evidence
 
 Migration 145 adds `users.federation_notifications_enabled` plus

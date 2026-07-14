@@ -70,5 +70,6 @@ public enum FileCategory
     Event,
     Document,
     Message,
-    TenantLogo
+    TenantLogo,
+    Podcast
 }
