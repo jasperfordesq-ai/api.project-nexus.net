@@ -21,9 +21,12 @@ const ALLOWED_ATTRIBUTES = Object.freeze({
   blockquote: ['cite']
 });
 
-function sanitizeCmsHtml(value) {
+function sanitizeCmsHtml(value, { allowImages = true } = {}) {
+  const allowedTags = allowImages
+    ? [...ALLOWED_TAGS]
+    : ALLOWED_TAGS.filter((tag) => tag !== 'img');
   return sanitizeHtml(String(value || '').replaceAll('\0', ''), {
-    allowedTags: [...ALLOWED_TAGS],
+    allowedTags,
     allowedAttributes: ALLOWED_ATTRIBUTES,
     allowedSchemes: ['http', 'https', 'mailto', 'tel'],
     allowedSchemesByTag: { img: ['http', 'https', 'data'] },

@@ -6,6 +6,7 @@
 const express = require('express');
 
 const { ApiError, getLegalDocument } = require('../lib/api');
+const { sanitizeCmsHtml } = require('../lib/html-sanitizer');
 const { catalogFor, valueInCatalog } = require('../lib/localization');
 const { asyncRoute } = require('../lib/routeHelpers');
 
@@ -47,7 +48,7 @@ function normalizeDocument(result, docType, t) {
   return {
     type: trimmed(row.type || row.document_type) || docType,
     title: trimmed(row.title) || t(`legal.documents.${docType}.title`),
-    content: String(row.content || ''),
+    content: sanitizeCmsHtml(row.content, { allowImages: false }),
     updatedAt: row.effective_date || row.updated_at || '',
     versionNumber: trimmed(row.version_number)
   };

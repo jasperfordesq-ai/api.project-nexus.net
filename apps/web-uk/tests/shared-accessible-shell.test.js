@@ -1506,7 +1506,7 @@ describe('shared accessible frontend shell', () => {
       data: {
         id: 42,
         title: 'Using the repair library',
-        content: '<p>Keep your tools labelled.</p>',
+        content: '<p class="article" onclick="alert(1)">Keep your <strong>tools</strong> labelled.</p><script>alert(2)</script>',
         updated_at: '2026-07-06T12:30:00Z',
         author: { id: 5, name: 'Morgan Lee' },
         children: [
@@ -1528,7 +1528,9 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Last updated:');
     expect(response.text).toContain('Last updated: 2026-07-06');
     expect(response.text).not.toContain('Last updated: 6 July 2026');
-    expect(response.text).toContain('<p>Keep your tools labelled.</p>');
+    expect(response.text).toContain('<p class="article">Keep your <strong>tools</strong> labelled.</p>');
+    expect(response.text).not.toContain('onclick=');
+    expect(response.text).not.toContain('alert(2)');
     expect(response.text).toContain('Related articles');
     expect(response.text).toContain('href="/kb/43"');
     expect(response.text).toContain('Returning borrowed tools');
@@ -1634,7 +1636,7 @@ describe('shared accessible frontend shell', () => {
           id: 12,
           type: 'terms',
           title: 'Community Terms',
-          content: '<p>Use time credits fairly.</p>',
+          content: '<p class="terms" onclick="alert(1)">Use time credits fairly.</p><img src="/unsafe.jpg" alt=""><script>alert(2)</script>',
           version_number: '2.1',
           effective_date: '2026-07-01T00:00:00Z'
         }
@@ -1671,7 +1673,10 @@ describe('shared accessible frontend shell', () => {
     expect(terms.text).toContain('Last updated:');
     expect(terms.text).not.toContain('Last updated: 2026-07-01');
     expect(terms.text).toContain('Version 2.1');
-    expect(terms.text).toContain('<p>Use time credits fairly.</p>');
+    expect(terms.text).toContain('<p class="terms">Use time credits fairly.</p>');
+    expect(terms.text).not.toContain('<img');
+    expect(terms.text).not.toContain('onclick=');
+    expect(terms.text).not.toContain('alert(2)');
     expect(api.getLegalDocument).toHaveBeenNthCalledWith(1, 'terms');
 
     expect(privacy.status).toBe(200);
@@ -12750,7 +12755,7 @@ describe('shared accessible frontend shell', () => {
       slug: 'community-news',
       title: 'Community garden opens',
       excerpt: 'A new garden is now open for everyone.',
-      content: '<p>The community garden opened this week.</p>',
+      content: '<p class="article" onclick="alert(1)">The community <strong>garden</strong> opened this week.</p><script>alert(2)</script>',
       featured_image: '/images/garden.jpg',
       category: { id: 3, name: 'Community' },
       author: { id: 77, name: 'Ada Lovelace' },
@@ -12866,7 +12871,9 @@ describe('shared accessible frontend shell', () => {
     expect(detail.text).toContain('<script type="application/ld+json">');
     expect(detail.text).toContain('"@type":"Article"');
     expect(detail.text).toContain('Community garden opens');
-    expect(detail.text).toContain('The community garden opened this week.');
+    expect(detail.text).toContain('<p class="article">The community <strong>garden</strong> opened this week.</p>');
+    expect(detail.text).not.toContain('onclick=');
+    expect(detail.text).not.toContain('alert(2)');
     expect(detail.text).not.toContain(t('blog.author_label'));
     expect(detail.text).not.toContain('Ada Lovelace');
     expect(detail.text).toContain('&middot;');

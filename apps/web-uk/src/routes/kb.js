@@ -8,6 +8,7 @@ const {
   getKnowledgeBaseArticles,
   getKnowledgeBaseArticle
 } = require('../lib/api');
+const { sanitizeCmsHtml } = require('../lib/html-sanitizer');
 const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
@@ -79,7 +80,7 @@ function normalizeArticle(result, fallbackId, t) {
   return {
     id: positiveInteger(row.id) || fallbackId,
     title: trimmed(row.title) || t('kb.title'),
-    content: String(row.content || ''),
+    content: sanitizeCmsHtml(row.content),
     updatedAt: trimmed(row.updated_at ?? row.updatedAt ?? row.created_at ?? row.createdAt).split('T')[0],
     authorName: trimmed(author.name),
     children: children

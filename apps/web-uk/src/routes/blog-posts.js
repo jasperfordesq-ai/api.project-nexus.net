@@ -4,6 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 const express = require('express');
+const { sanitizeCmsHtml } = require('../lib/html-sanitizer');
 const { URL } = require('node:url');
 const {
   getBlogPosts,
@@ -136,7 +137,7 @@ function normalizePost(rawPost) {
     slug: trimmed(post.slug || post.id),
     title: trimmed(post.title),
     excerpt: trimmed(post.excerpt || post.summary),
-    content: String(post.content || post.body || ''),
+    content: sanitizeCmsHtml(post.content || post.body),
     featuredImage: trimmed(post.featured_image || post.featuredImage || post.image_url || post.image),
     category: {
       id: positiveInteger(category.id || post.category_id),
