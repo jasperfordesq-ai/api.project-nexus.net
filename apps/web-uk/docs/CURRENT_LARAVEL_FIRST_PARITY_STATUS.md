@@ -171,9 +171,9 @@ these numbers after either source moves.
 | Missing Laravel routes | 1 | Event offline check-in code generation |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 49/49 suites, 1,646/1,646 tests | Fresh green code gate |
+| Jest | 49/49 suites, 1,647/1,647 tests | Fresh green code gate |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
-| Static locale usage | 7,322 references, 5,602 unique keys, 0 unresolved | Current complete-reference audit |
+| Static locale usage | 7,328 references, 5,607 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
 | Blade marker check | Current 19/19 | Current-source public GET marker comparison; not screenshot or visual certification |
 | Automated accessibility | Not currently certified: 28 passed, login failed, 58 did not run | Full aggregate requires a disposable Laravel environment; manual AT review remains open |
@@ -204,7 +204,7 @@ the test asserts the full contract. These unresolved classifications are now a
 concrete reconciliation queue rather than hidden readiness debt.
 
 Focused generator proof passes 2/2 and the full Jest gate passes 49/49 suites,
-1,646/1,646 tests. Brand, lint, CSS, route matrix, ledger regeneration, locale
+1,647/1,647 tests. Brand, lint, CSS, route matrix, ledger regeneration, locale
 sync/shape, static-key resolution, and the 322-template zero-match audit are
 green. A fresh current-checkout `visual:blade` run passed all 19/19
 unauthenticated GET comparisons at the canonical `/hour-timebank/accessible`
@@ -356,6 +356,22 @@ Jest gate passes 49/49 suites and 1,646/1,646 tests; brand, lint, CSS, route,
 zero-match gates are green. The ledger remains 590 contracts: 371 OpenAPI
 matches, 202 unmatched, 17 dynamic, and 284 state-changing. No Laravel
 mutation, database access, upload, or download ran.
+
+## Marketplace Saved Items Refresh
+
+Saved items now uses Blade's exact default-English caption, title,
+description, empty state, remove action, and success-banner structure through
+the Laravel commerce catalog. The page accepts only Blade's `unsaved` outcome;
+unrelated marketplace query statuses no longer leak into this surface. The
+existing authenticated read remains Laravel's canonical
+`GET /api/v2/marketplace/listings/saved?limit=50`, and unsave retains the exact
+hidden `redirect_to=saved` contract.
+
+Focused populated/empty/status proof passes 2/2. The complete Jest gate passes
+49/49 suites and 1,647/1,647 tests; lint and the 7,328-reference /
+5,607-unique-key zero-unresolved locale and 322-template zero-match audits are
+green. The route matrix remains 688/689 and the ledger remains 590 contracts,
+with no untested consumer. No Laravel mutation or database access ran.
 
 ## Marketplace Offer Workflow Refresh
 

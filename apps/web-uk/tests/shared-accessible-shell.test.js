@@ -30482,6 +30482,8 @@ describe('shared accessible frontend shell', () => {
     expect(api.callMarketplaceApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/listings/saved?limit=50');
     expect(api.callMarketplaceApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/listings/free?limit=50');
     expect(saved.text).toContain('Saved items');
+    expect(saved.text).toContain('Your saved items at Project NEXUS Accessible');
+    expect(saved.text).toContain('role="region" aria-labelledby="commerce-saved-status"');
     expect(saved.text).toContain('Item removed from your saved list.');
     expect(saved.text).toContain('Saved bike');
     expect(saved.text).toContain('Remove from saved');
@@ -30489,6 +30491,20 @@ describe('shared accessible frontend shell', () => {
     expect(free.text).toContain('Items being given away for free');
     expect(free.text).toContain('Free table');
     expect(free.text).not.toContain('Laravel Blade route');
+  });
+
+  it('renders the exact marketplace saved empty state and ignores unrelated status tokens', async () => {
+    const api = require('../src/lib/api');
+    api.callMarketplaceApi.mockResolvedValueOnce({ data: [] });
+
+    const response = await request(app)
+      .get('/marketplace/saved?status=deleted')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('You have not saved any items yet. Select Save on a listing to keep it here.');
+    expect(response.text).not.toContain('Your listing was deleted.');
+    expect(response.text).not.toContain('commerce-saved-status');
   });
 
   it('renders the Laravel-backed marketplace category page', async () => {

@@ -700,6 +700,16 @@ matches, and a current 19/19 Blade marker comparison. The ledger records 590
 contracts: 371 OpenAPI matches, 202 unmatched, 17 dynamic, and 284
 state-changing. No live report or database access ran.
 
+2026-07-14 Marketplace saved-items follow-up: Web UK now uses Blade's exact
+default-English saved caption, title, description, empty state, remove action,
+and notice-banner structure. Only Blade's `unsaved` outcome is rendered on this
+page; unrelated marketplace status tokens are ignored. The authenticated
+Laravel saved-list read and `redirect_to=saved` unsave contract are unchanged.
+Focused populated/empty/status proof passes 2/2; the full gate passes 49/49
+suites and 1,647/1,647 tests, with 7,328 static references, 5,607 unique keys,
+zero unresolved or conservative template matches across 322 templates, and no
+Laravel mutation or database access.
+
 | Blade pattern | Laravel source | ASP.NET target | Status |
 | --- | --- | --- | --- |
 | Event moderation queue and decisions | `views/event-moderation-queue.blade.php`, `views/event-moderation-decision.blade.php`, `EventModerationParity`, `Api\AdminEventsController` | `src/routes/events.js`, `src/views/events/moderation-queue.njk`, `src/views/events/moderation-decision.njk`, `src/lib/api.js` | Partial. Signed tenant administrators can open the default-English queue and separate approve/reject confirmation pages through Laravel's current admin Event list/detail contracts. Queue status, count, cards, pagination, decision summaries, warnings, field-linked validation, mounted redirects, and private/no-store headers follow Blade. Approval requires explicit confirmation; rejection requires confirmation plus a bounded reason and submits only that reason to Laravel's canonical reject action. Non-admin or missing-event API responses fail closed. Focused mocked queue/validation/action and direct API-client proof pass; the full non-mutating gate is 48/48 suites and 1,635/1,635 tests, and the generated route matrix is 688/689. This is not contract-identical certification: Laravel's admin list does not join the moderation queue, orders by Event creation rather than queue submission, and omits Blade's `is_online`. Live moderation side effects, manual assistive-technology review, and unchanged ASP.NET runtime proof remain uncertified. |

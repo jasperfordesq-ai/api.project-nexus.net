@@ -1386,15 +1386,11 @@ router.get('/saved', asyncRoute(async (req, res) => {
     return res.render('marketplace/listing-list', {
       title: 'Saved items',
       titleKey: 'govuk_alpha_commerce.saved.title',
-      heading: 'Saved items',
-      caption: 'Your saved items',
-      description: 'Items you have saved to look at later.',
-      emptyMessage: 'You have not saved any items yet. Select Save on a listing to keep it here.',
       activeNav: 'explore',
       activeTab: 'saved',
       listings,
       mode: 'saved',
-      status: statusEntry(req, req.query.status)
+      status: trimmed(req.query.status) === 'unsaved' ? statusEntry(req, 'unsaved') : null
     });
   } catch (error) {
     return renderMarketplaceError(error, res, 'Saved items');
