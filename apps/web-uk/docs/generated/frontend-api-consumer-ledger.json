@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-14T22:27:51.977Z",
+  "generatedAt": "2026-07-14T22:32:19.121Z",
   "provenance": {
-    "generatedAt": "2026-07-14T22:27:51.977Z",
+    "generatedAt": "2026-07-14T22:32:19.121Z",
     "laravelRepositoryRoot": "C:\\platforms\\htdocs\\staging",
     "laravelCommitSha": "903d03d3db78bbf87129ad35728be3b72819acaf",
     "laravelWorkingTreeDirty": true,
     "webUkRepositoryRoot": "C:\\platforms\\htdocs\\asp.net-backend",
     "webUkPath": "apps/web-uk",
-    "webUkRepositoryCommitSha": "00740c8801f2cb4397f437af764855b190332202",
+    "webUkRepositoryCommitSha": "fd99edaabe4434684e76e8858439091c0cd03a8b",
     "webUkRepositoryWorkingTreeDirty": true,
     "caveat": "Laravel and Web UK repository working trees were dirty when generated. Commit SHAs identify HEAD only; generated content may include uncommitted changes from the dirty working trees."
   },
