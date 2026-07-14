@@ -84,14 +84,14 @@ published:
 | Signed held-escrow charge-dispute reconciliation | Implementation `027f35e6189eee13eb05396050a2995706597cad` | +3 semantic, +1 providers/operations = **676/1000** |
 | Paid-transfer charge-dispute recovery | Implementation `9875fb5dd33e3ab5c33ea77a83fcfb0b8c6c0b00` | +3 semantic, +1 providers/operations = **680/1000** |
 | Marketplace refund notification evidence | Implementation `b37a3cc5ed903394b67813a3e34304213b9e150d` | +3 semantic, +1 providers/operations = **684/1000** |
-| Secure SSO/OIDC authentication flow | Implementation `c20d064efc3028e0c95a8ee6f5214ed434e22e21` | +8 semantic, +3 schema, +3 security = **698/1000** |
+| Secure SSO/OIDC authentication flow | Implementation `c20d064e6adb99d3a585efd299650d5e913180ff` | +8 semantic, +3 schema, +3 security = **698/1000** |
 
 These named values form an audit trail. They are not competing current scores.
 
 ## Repository State At This Verification
 
 The product-source HEAD inspected for this page was
-`c20d064efc3028e0c95a8ee6f5214ed434e22e21`, which is also the last banked
+`c20d064e6adb99d3a585efd299650d5e913180ff`, which is also the last banked
 ASP.NET implementation, with
 Laravel frozen at `903d03d3db78bbf87129ad35728be3b72819acaf` on
 2026-07-14 23:50:46 +01:00. Web UK-only commits do not add ASP.NET points and

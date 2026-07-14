@@ -359,7 +359,7 @@ remaining deductions are 0, 59, 26, 10, 55, 115, and 51 points.
 
 Evidence snapshot: Laravel
 `903d03d3db78bbf87129ad35728be3b72819acaf`, ASP.NET implementation
-`c20d064efc3028e0c95a8ee6f5214ed434e22e21`, captured 2026-07-14
+`c20d064e6adb99d3a585efd299650d5e913180ff`, captured 2026-07-14
 23:50:46 +01:00. The former unsigned state and non-functional exchange stub are
 replaced by durable signed state, browser PKCE, server PKCE, OIDC nonce and JWKS
 validation, public-HTTPS endpoint pinning, tenant-qualified identity linking,
@@ -374,7 +374,7 @@ the intended authentication tables, indexes, and user invalidation column. The
 container-backed public-controller fixture timed out during database provisioning,
 so full-suite/CI and unchanged-client runtime points remain open.
 
-Published implementation `c20d064efc3028e0c95a8ee6f5214ed434e22e21`
+Published implementation `c20d064e6adb99d3a585efd299650d5e913180ff`
 banks 8 semantic, 3 schema, and 3 security points for **698/1000**: 100/100
 route, 299/350 semantic, 127/150 schema, 93/100 security/localization, 45/100
 build/test/CI, 10/125 unchanged-frontends, and 24/75 providers/ops/docs. Exact
