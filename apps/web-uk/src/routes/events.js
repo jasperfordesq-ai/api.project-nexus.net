@@ -1638,13 +1638,12 @@ router.post('/:id(\\d+)/safety', requireAuth, asyncRoute(async (req, res) => {
     return redirectTo(res, eventPath(id, '/safety?status=safety-failed'));
   }
 
-  let method = 'POST';
   let path;
   let payload = {};
+  let safetySubjectId = null;
   const expectedRevision = req.body.expected_revision === '' ? null : Number.parseInt(req.body.expected_revision, 10);
   const expectedVersion = Number.parseInt(req.body.expected_version, 10);
   if (action === 'save_requirements') {
-    method = 'PUT';
     path = `/${id}/safety/requirements`;
     payload = {
       minimum_age: req.body.minimum_age === '' ? null : Number.parseInt(req.body.minimum_age, 10),
@@ -1662,8 +1661,8 @@ router.post('/:id(\\d+)/safety', requireAuth, asyncRoute(async (req, res) => {
     path = `/${id}/safety/code-of-conduct/acknowledgements`;
     payload = { text_version: trimmed(req.body.text_version, 191), text_hash: trimmed(req.body.text_hash, 191) };
   } else if (action === 'withdraw_code') {
-    method = 'DELETE';
-    path = `/${id}/safety/code-of-conduct/acknowledgements/${positiveInteger(req.body.acknowledgement_id) || 0}`;
+    safetySubjectId = positiveInteger(req.body.acknowledgement_id) || 0;
+    path = `/${id}/safety/code-of-conduct/acknowledgements/${safetySubjectId}`;
   } else if (action === 'request_guardian_consent') {
     path = `/${id}/safety/guardian-consents`;
     payload = {
@@ -1673,8 +1672,8 @@ router.post('/:id(\\d+)/safety', requireAuth, asyncRoute(async (req, res) => {
       preferred_language: req.locale || 'en'
     };
   } else if (action === 'withdraw_guardian_consent') {
-    method = 'DELETE';
-    path = `/${id}/safety/guardian-consents/${positiveInteger(req.body.consent_id) || 0}`;
+    safetySubjectId = positiveInteger(req.body.consent_id) || 0;
+    path = `/${id}/safety/guardian-consents/${safetySubjectId}`;
   } else if (action === 'record_review') {
     path = `/${id}/safety/reviews`;
     payload = {
@@ -1686,8 +1685,8 @@ router.post('/:id(\\d+)/safety', requireAuth, asyncRoute(async (req, res) => {
       expected_version: req.body.expected_version === '' ? null : Number.parseInt(req.body.expected_version, 10)
     };
   } else {
-    method = 'DELETE';
-    path = `/${id}/safety/reviews/${positiveInteger(req.body.denial_id) || 0}`;
+    safetySubjectId = positiveInteger(req.body.denial_id) || 0;
+    path = `/${id}/safety/reviews/${safetySubjectId}`;
     payload = { expected_version: expectedVersion };
   }
 
@@ -1700,7 +1699,38 @@ router.post('/:id(\\d+)/safety', requireAuth, asyncRoute(async (req, res) => {
     return redirectTo(res, eventPath(id, '/safety?status=safety-failed'));
   }
   try {
-    await callEventMutation(tokenFrom(req), method, path, payload, idempotencyKey);
+    const token = tokenFrom(req);
+    switch (action) {
+      case 'save_requirements':
+        await callEventMutation(token, 'PUT', `/${id}/safety/requirements`, payload, idempotencyKey);
+        break;
+      case 'publish_requirements':
+        await callEventMutation(token, 'POST', `/${id}/safety/requirements/publish`, payload, idempotencyKey);
+        break;
+      case 'archive_requirements':
+        await callEventMutation(token, 'POST', `/${id}/safety/requirements/archive`, payload, idempotencyKey);
+        break;
+      case 'acknowledge_code':
+        await callEventMutation(token, 'POST', `/${id}/safety/code-of-conduct/acknowledgements`, payload, idempotencyKey);
+        break;
+      case 'withdraw_code':
+        await callEventMutation(token, 'DELETE', `/${id}/safety/code-of-conduct/acknowledgements/${safetySubjectId}`, payload, idempotencyKey);
+        break;
+      case 'request_guardian_consent':
+        await callEventMutation(token, 'POST', `/${id}/safety/guardian-consents`, payload, idempotencyKey);
+        break;
+      case 'withdraw_guardian_consent':
+        await callEventMutation(token, 'DELETE', `/${id}/safety/guardian-consents/${safetySubjectId}`, payload, idempotencyKey);
+        break;
+      case 'record_review':
+        await callEventMutation(token, 'POST', `/${id}/safety/reviews`, payload, idempotencyKey);
+        break;
+      case 'withdraw_review':
+        await callEventMutation(token, 'DELETE', `/${id}/safety/reviews/${safetySubjectId}`, payload, idempotencyKey);
+        break;
+      default:
+        return redirectTo(res, eventPath(id, '/safety?status=safety-failed'));
+    }
     return redirectTo(res, eventPath(id, '/safety?status=safety-updated'));
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
@@ -1786,8 +1816,6 @@ router.post('/:id(\\d+)/agenda', requireAuth, asyncRoute(async (req, res) => {
     || (action === 'withdraw' && !checked(req.body.confirm_destructive))) {
     return redirectTo(res, eventPath(id, '/agenda?status=agenda-failed'));
   }
-  let method = 'POST';
-  let path = `/${id}/agenda/sessions`;
   let payload = {};
   if (action === 'create' || action === 'update') {
     payload = agendaSessionPayload(req.body);
@@ -1795,21 +1823,15 @@ router.post('/:id(\\d+)/agenda', requireAuth, asyncRoute(async (req, res) => {
       return redirectTo(res, eventPath(id, '/agenda?status=agenda-failed'));
     }
     if (action === 'update') {
-      method = 'PUT';
-      path = `/${id}/agenda/sessions/${sessionId}`;
       payload.expected_version = positiveInteger(req.body.expected_version);
       if (payload.expected_version === null) return redirectTo(res, eventPath(id, '/agenda?status=agenda-failed'));
     }
   } else if (action === 'cancel') {
-    path = `/${id}/agenda/sessions/${sessionId}/cancel`;
     payload = { expected_version: positiveInteger(req.body.expected_version), reason: trimmed(req.body.reason, 500) };
     if (payload.expected_version === null || !payload.reason) return redirectTo(res, eventPath(id, '/agenda?status=agenda-failed'));
   } else if (action === 'register' || action === 'withdraw') {
-    path = `/${id}/agenda/sessions/${sessionId}/registration${action === 'withdraw' ? '/withdraw' : ''}`;
     payload = { expected_version: Math.max(0, Number.parseInt(req.body.expected_version, 10) || 0) };
   } else {
-    method = 'PUT';
-    path = `/${id}/agenda/order`;
     const ordered = arrayValues(req.body.ordered_session_ids).map(positiveInteger).filter(Boolean);
     const currentIndex = ordered.indexOf(sessionId);
     const swapIndex = action === 'move_up' ? currentIndex - 1 : currentIndex + 1;
@@ -1823,7 +1845,30 @@ router.post('/:id(\\d+)/agenda', requireAuth, asyncRoute(async (req, res) => {
     };
   }
   try {
-    await callEventMutation(tokenFrom(req), method, path, payload, idempotencyKey);
+    const token = tokenFrom(req);
+    switch (action) {
+      case 'create':
+        await callEventMutation(token, 'POST', `/${id}/agenda/sessions`, payload, idempotencyKey);
+        break;
+      case 'update':
+        await callEventMutation(token, 'PUT', `/${id}/agenda/sessions/${sessionId}`, payload, idempotencyKey);
+        break;
+      case 'cancel':
+        await callEventMutation(token, 'POST', `/${id}/agenda/sessions/${sessionId}/cancel`, payload, idempotencyKey);
+        break;
+      case 'register':
+        await callEventMutation(token, 'POST', `/${id}/agenda/sessions/${sessionId}/registration`, payload, idempotencyKey);
+        break;
+      case 'withdraw':
+        await callEventMutation(token, 'POST', `/${id}/agenda/sessions/${sessionId}/registration/withdraw`, payload, idempotencyKey);
+        break;
+      case 'move_up':
+      case 'move_down':
+        await callEventMutation(token, 'PUT', `/${id}/agenda/order`, payload, idempotencyKey);
+        break;
+      default:
+        return redirectTo(res, eventPath(id, '/agenda?status=agenda-failed'));
+    }
     const status = {
       create: 'agenda-created', update: 'agenda-updated', cancel: 'agenda-cancelled',
       move_up: 'agenda-reordered', move_down: 'agenda-reordered', register: 'agenda-session-registered', withdraw: 'agenda-session-withdrawn'
@@ -2537,8 +2582,12 @@ async function saveRegistrationForm(req, res) {
     rememberRegistrationForm(req, id, formId, replay, errorMessage);
     return redirectTo(res, eventPath(id, formId ? `/registration/forms/${formId}?status=invalid` : '/registration/forms/new?status=invalid'));
   }
-  const path = formId ? `/${id}/registration-product/forms/${formId}` : `/${id}/registration-product/forms`; const method = formId ? 'PUT' : 'POST'; const payload = { name, description, questions, expected_settings_revision: settingsRevision, ...(formId ? { expected_form_revision: formRevision } : {}) };
-  try { await callEventMutation(tokenFrom(req), method, path, payload, key); return redirectTo(res, eventPath(id, '/registration?status=form-saved')); }
+  const payload = { name, description, questions, expected_settings_revision: settingsRevision, ...(formId ? { expected_form_revision: formRevision } : {}) };
+  try {
+    if (formId) await callEventMutation(tokenFrom(req), 'PUT', `/${id}/registration-product/forms/${formId}`, payload, key);
+    else await callEventMutation(tokenFrom(req), 'POST', `/${id}/registration-product/forms`, payload, key);
+    return redirectTo(res, eventPath(id, '/registration?status=form-saved'));
+  }
   catch (error) { if (redirectOnAuthError(error, res)) return undefined; if (error instanceof ApiError && [400, 403, 404, 409, 422, 429, 503].includes(error.status)) { rememberRegistrationForm(req, id, formId, replay, errorMessage); return redirectTo(res, eventPath(id, formId ? `/registration/forms/${formId}?status=failed` : '/registration/forms/new?status=failed')); } throw error; }
 }
 router.post('/:id(\\d+)/registration/forms/new', requireAuth, asyncRoute(saveRegistrationForm));

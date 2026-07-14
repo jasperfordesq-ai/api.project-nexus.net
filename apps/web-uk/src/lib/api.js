@@ -1695,16 +1695,15 @@ async function dismissMatch(token, id, reason) {
 }
 
 async function performExchangeAction(token, id, action, data = {}) {
-  const encodedId = encodeURIComponent(id);
-  const endpoint = action === 'cancel'
-    ? `/api/v2/exchanges/${encodedId}`
-    : `/api/v2/exchanges/${encodedId}/${encodeURIComponent(action)}`;
-
-  return request(endpoint, {
-    method: action === 'cancel' ? 'DELETE' : 'POST',
-    headers: { Authorization: `Bearer ${token}` },
-    body: JSON.stringify(data)
-  });
+  switch (action) {
+    case 'accept': return acceptExchange(token, id);
+    case 'decline': return declineExchange(token, id, data);
+    case 'start': return startExchange(token, id);
+    case 'complete': return completeExchange(token, id);
+    case 'confirm': return confirmExchange(token, id, data);
+    case 'cancel': return cancelExchange(token, id, data);
+    default: throw new TypeError('Unsupported exchange action');
+  }
 }
 
 async function getExchangeConfig(token) {
@@ -1775,27 +1774,51 @@ async function createExchangeRequest(token, listingIdOrData, maybeData) {
 }
 
 async function acceptExchange(token, id) {
-  return performExchangeAction(token, id, 'accept');
+  return request(`/api/v2/exchanges/${encodeURIComponent(id)}/accept`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({})
+  });
 }
 
 async function declineExchange(token, id, data = {}) {
-  return performExchangeAction(token, id, 'decline', data);
+  return request(`/api/v2/exchanges/${encodeURIComponent(id)}/decline`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
 }
 
 async function startExchange(token, id) {
-  return performExchangeAction(token, id, 'start');
+  return request(`/api/v2/exchanges/${encodeURIComponent(id)}/start`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({})
+  });
 }
 
 async function completeExchange(token, id) {
-  return performExchangeAction(token, id, 'complete');
+  return request(`/api/v2/exchanges/${encodeURIComponent(id)}/complete`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({})
+  });
 }
 
 async function confirmExchange(token, id, data = {}) {
-  return performExchangeAction(token, id, 'confirm', data);
+  return request(`/api/v2/exchanges/${encodeURIComponent(id)}/confirm`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
 }
 
 async function cancelExchange(token, id, data = {}) {
-  return performExchangeAction(token, id, 'cancel', data);
+  return request(`/api/v2/exchanges/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
 }
 
 async function rateExchange(token, id, data) {
