@@ -171,7 +171,7 @@ Refresh the Laravel Blade/API source and Web UK implementation before relying on
 these numbers after either source moves.
 
 At this documentation audit, the product-source baseline was
-`31be5f793280a5727789efd42981ea58418d42d9`. The revoked-session confirmation,
+`2b9ba620dc08a422040c7039d4c5138437b28b91`. The revoked-session confirmation,
 Laravel method-spoof reconciliation, group-message contract, residual API-
 consumer correction, and backend-request timeout slices are above the frozen
 bank and remain **published and unscored**. The documentation remediation is
@@ -186,7 +186,7 @@ together from a clean published checkout.
   with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
   Only this fixed-rubric audit contributes to the current bank.
 - **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `31be5f79`, including the later identity/session confirmation,
+  baseline `2b9ba620`, including the later identity/session confirmation,
   method-spoof reconciliation, group-message contract, residual API-consumer
   correction, and backend-request timeout slices. Their evidence is useful, but they
   contribute zero points until one complete fixed-rubric re-audit explicitly
@@ -1389,3 +1389,18 @@ immediately preceding complete non-mutating gate remains 51/51 suites and
 download, cleanup, or production operation was performed. This remains an
 unscored component-audit improvement; the frozen bank stays 622/1,000 pending a
 complete fixed-rubric re-audit.
+
+## 2026-07-14 Knowledge Base Date Parity
+
+Frozen evidence at `2026-07-14T16:16:46.7902766+01:00` against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and Web UK product commit
+`2b9ba620dc08a422040c7039d4c5138437b28b91`. Knowledge Base article metadata
+now matches Blade by displaying the backend date substring before `T`; the
+former locale-formatted date and its inverse regression assertion are removed.
+
+Focused Knowledge Base rendering passes 2/2 with green lint,
+template-localization, and diff checks. The immediately preceding complete gate
+remains 51/51 suites and 1,668/1,668 tests. No Laravel source, database,
+migration, mutation, upload, download, cleanup, or production operation was
+performed. This is an unscored component-audit improvement; the frozen bank
+remains 622/1,000 pending a complete fixed-rubric re-audit.
