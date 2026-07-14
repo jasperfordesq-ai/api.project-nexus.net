@@ -518,6 +518,26 @@ The uninterrupted full rerun passes `49/49` suites and `1,659/1,659` tests.
 This strengthens a destructive identity boundary but does not change the
 banked `622/1000` score without a complete rubric re-audit.
 
+## Revoked-Session Success Confirmation Parity
+
+Checkpoint frozen at `2026-07-14T13:43:46.0480638+01:00` against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and published Web UK base
+`091de6c911e60f373da8ec04a563d87dd2ac51a5`; both matched `origin/main`
+before this Web UK-only slice.
+
+Password change and TOTP disable atomically revoke Laravel sessions, so Web UK
+must clear its local cookies and Express session. Their former success
+redirects targeted protected pages and therefore immediately collapsed into
+an auth-required redirect without showing the result. Both now use mounted
+signed-out login states while preserving Laravel's exact `Your password has
+been changed.` and `Two-step verification has been turned off.` success copy.
+Focused route/status proof passes `25/25` plus `2/2`. No Laravel credential
+mutation, request, database, or migration operation ran. This closes two
+observable default-English identity states but does not independently remove
+the complete component-state deduction, so the banked score remains
+`622/1000`. The uninterrupted complete gate passes `49/49` suites and
+`1,661/1,661` tests, and lint is green.
+
 ## Podcast Episode Visibility Labels
 
 Podcast studio episode visibility selects now follow Blade's exact catalog

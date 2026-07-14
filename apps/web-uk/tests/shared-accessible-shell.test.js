@@ -6429,6 +6429,17 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('govuk-notification-banner--success');
   });
 
+  it.each([
+    ['password-changed', 'Your password has been changed.'],
+    ['2fa-disabled', 'Two-step verification has been turned off.']
+  ])('renders the revoked-session %s confirmation on the signed-out login page', async (status, message) => {
+    const response = await request(app).get(`/login?status=${status}`);
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain(message);
+    expect(response.text).toContain('govuk-notification-banner--success');
+  });
+
   it('keeps Laravel public auth pages renderable for signed-in visitors', async () => {
     const cases = [
       { path: '/login', text: '<h1 class="govuk-heading-xl">Sign in</h1>' },
@@ -28986,7 +28997,7 @@ describe('shared accessible frontend shell', () => {
       new_password: 'correct horse battery staple',
       new_password_confirmation: 'correct horse battery staple'
     });
-    expect(passwordResponse.headers.location).toBe('/profile/settings?status=password-changed');
+    expect(passwordResponse.headers.location).toBe('/login?status=password-changed');
     expect(api.callUserSettingsApi).toHaveBeenLastCalledWith('test-token', 'POST', '/password', {
       current_password: 'current-password',
       new_password: 'correct horse battery staple'
@@ -29163,7 +29174,7 @@ describe('shared accessible frontend shell', () => {
     const disable2faResponse = await post('/profile/two-factor/disable', {
       password: 'current-password'
     });
-    expect(disable2faResponse.headers.location).toBe('/profile/two-factor?status=2fa-disabled');
+    expect(disable2faResponse.headers.location).toBe('/login?status=2fa-disabled');
     expect(api.callProfileApi).toHaveBeenLastCalledWith('test-token', 'POST', '/auth/2fa/disable', {
       password: 'current-password'
     });

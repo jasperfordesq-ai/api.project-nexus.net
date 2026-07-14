@@ -1286,7 +1286,7 @@ router.post('/password', asyncRoute(async (req, res) => {
     invalidateUserCache(token);
     await destroyRequestSession(req);
     clearAuthCookies(res);
-    return redirectTo(res, profileSettingsRedirect('password-changed'));
+    return redirectTo(res, '/login?status=password-changed');
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
     const code = apiErrorCode(error);
@@ -1752,7 +1752,7 @@ router.post('/two-factor/disable', asyncRoute(async (req, res) => {
     invalidateUserCache(token);
     await destroyRequestSession(req);
     clearAuthCookies(res);
-    return redirectTo(res, twoFactorRedirect('2fa-disabled'));
+    return redirectTo(res, '/login?status=2fa-disabled');
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
     return redirectTo(res, twoFactorRedirect('2fa-disable-failed'));

@@ -182,7 +182,7 @@ describe('request-scoped profile status localization', () => {
         new_password_confirmation: 'new-password-long-enough'
       });
 
-    expect(response.headers.location).toBe('/profile/settings?status=password-changed');
+    expect(response.headers.location).toBe('/login?status=password-changed');
     expect(api.callUserSettingsApi).toHaveBeenCalledWith('test-token', 'POST', '/password', {
       current_password: 'current-password',
       new_password: 'new-password-long-enough'
@@ -214,7 +214,7 @@ describe('request-scoped profile status localization', () => {
       .type('form')
       .send({ password: 'current-password' });
 
-    expect(response.headers.location).toBe('/profile/two-factor?status=2fa-disabled');
+    expect(response.headers.location).toBe('/login?status=2fa-disabled');
     expect(api.callProfileApi).toHaveBeenCalledWith('test-token', 'POST', '/auth/2fa/disable', {
       password: 'current-password'
     });

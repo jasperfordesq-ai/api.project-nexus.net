@@ -17,6 +17,8 @@ const LOGIN_SUCCESS_STATUS_KEYS = Object.freeze({
   'password-reset': 'auth.password_reset',
   'register-created': 'auth.register_created',
   'signed-out': 'auth.signed_out',
+  'password-changed': 'profile_settings.password_changed',
+  '2fa-disabled': 'security_2fa.disabled_success',
   'account-deletion-requested': 'delete_account.success',
   'passkey-removed': 'profile_settings.passkeys.removed'
 });
