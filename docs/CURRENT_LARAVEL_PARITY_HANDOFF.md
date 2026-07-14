@@ -12,7 +12,28 @@ parity job after a session interruption. The implementation branches may still
 be moving, so treat every numeric snapshot below as advisory. Regenerate the
 live state before editing code or claiming progress.
 
-## Latest Resume Point: Podcast Artwork Uploads
+## Latest Resume Point: Group Auto-Assignment Workflow
+
+Administrator group auto-assignment list/create/update/delete now use a typed
+`group_auto_assign_rules` aggregate rather than recorded-only compatibility writes.
+The workflow matches Laravel's partial update fields, allowed types, default active
+state, canonical list projection, statuses, and data/meta envelopes. Same-tenant group
+checks conceal foreign identifiers; list excludes poisoned cross-tenant joins; update
+and delete lock the tenant row; and every mutation writes actor/before/after audit data
+inside the same serializable transaction.
+
+Migration 146 applies on both maintained disposable PostgreSQL histories. Focused
+proof passes 2/2 on each, the focused plus route-ownership gate passes 116/116, model
+drift is clean, comparator fixtures pass, and Debug/Release builds have zero errors.
+The live comparator reports 4,551 ASP.NET operations and 2,599/2,608 matched with nine
+static misses. Provisional global scores are 870/1000 implementation, 745/1000
+certification, and 78% overall. Resume with the two prerender operations; keep the
+seven document-era vetting writes gated until their legacy-evidence safety contract is
+traced. Real fiat settlement, complete-suite/CI, unchanged canonical frontend smoke,
+schema/localization depth, federation transport, and live-provider certification
+remain open.
+
+## Previous Resume Point: Podcast Artwork Uploads
 
 The canonical React show-artwork and episode-cover multipart calls now have explicit
 legacy and V2 owners. Both require the `image` field, use the platform image allowlist,
@@ -25,7 +46,7 @@ per 60 seconds.
 Focused controller/runtime proof passes 4/4; route ownership passes 114/114; comparator
 fixtures pass; and Release builds have zero errors. The live comparator reports 4,550
 ASP.NET operations and 2,598/2,608 matched with 10 static misses. Provisional global
-scores are 865/1000 implementation, 740/1000 certification, and 77% overall. Resume
+scores were 865/1000 implementation, 740/1000 certification, and 77% overall. Resume
 with prerender or group auto-assignment; keep the seven document-era vetting writes
 gated until their legacy-evidence safety contract is traced. Real fiat settlement,
 complete-suite/CI, unchanged canonical frontend smoke, schema/localization depth,

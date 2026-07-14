@@ -6,14 +6,13 @@ Canonical source: `C:\platforms\htdocs\staging` (read-only).
 
 ## Latest Verified Backend Slice
 
-The canonical React podcast studio now has owner/admin-bound show-artwork and
-episode-cover uploads under both API aliases. The platform image service validates and
-stores tenant/subject-bound files, only platform URLs persist, approved content returns
-to pending moderation, and failed validation/authorization/state persistence cleans up
-staged files. An authenticated 10-per-minute limiter matches Laravel. Focused proof
-passes 4/4, route ownership passes 114/114, comparator fixtures pass, and Release builds
-are green. The live inventory is **2,598/2,608 (99.6%, 10 missing)**. Document-era
-vetting writes, prerender and group-auto-assignment,
+Administrator group auto-assignment list/create/update/delete now use a typed,
+tenant-filtered aggregate with canonical partial updates, same-tenant group validation,
+poisoned-row concealment, serialized locks, and transactional audit evidence. Migration
+146 applies on both maintained PostgreSQL histories with clean model drift. Focused
+proof passes 2/2 on each database, the combined ownership gate passes 116/116,
+comparator fixtures pass, and Debug/Release builds are green. The live inventory is
+**2,599/2,608 (99.7%, 9 missing)**. Document-era vetting writes and prerender,
 real fiat settlement, complete-suite/CI proof, unchanged-frontend runtime proof,
 schema/localization depth, federation transport, and live-provider certification
 remain open.

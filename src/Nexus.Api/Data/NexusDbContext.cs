@@ -218,6 +218,7 @@ public class NexusDbContext : DbContext
     public DbSet<GroupWelcomeSettings> GroupWelcomeSettings => Set<GroupWelcomeSettings>();
     public DbSet<GroupChatroomPin> GroupChatroomPins => Set<GroupChatroomPin>();
     public DbSet<GroupRecommendationEvent> GroupRecommendationEvents => Set<GroupRecommendationEvent>();
+    public DbSet<GroupAutoAssignRule> GroupAutoAssignRules => Set<GroupAutoAssignRule>();
 
     // Phase 22: Gamification expansion
     public DbSet<Challenge> Challenges => Set<Challenge>();

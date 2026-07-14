@@ -5,6 +5,15 @@ Last reviewed: 2026-07-14
 Laravel source of truth: `C:\platforms\htdocs\staging\database\migrations` and
 `C:\platforms\htdocs\staging\app\Models`.
 
+## 2026-07-14 Group Auto-Assignment Schema Evidence
+
+Migration 146 creates canonical `group_auto_assign_rules` storage with snake-case
+columns, allowed-type and nonblank-value checks, active/tenant and group indexes,
+tenant/group foreign keys, and EF tenant filtering. It applies on both maintained
+disposable PostgreSQL histories, the lifecycle/isolation suite passes 2/2 on each,
+cross-tenant poisoned rows are concealed, and `has-pending-model-changes` reports no
+drift.
+
 ## 2026-07-14 Podcast Artwork Persistence Evidence
 
 No schema migration is required. Podcast state already carries show artwork and

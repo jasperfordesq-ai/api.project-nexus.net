@@ -43,6 +43,33 @@ Before any production deployment or production-container action, stop and read
 deployment or touching production containers. Never modify the Laravel repo or
 Laravel Edition containers from this worktree.
 
+## 2026-07-14 ASP.NET Group Auto-Assignment Checkpoint (Locally Verified)
+
+All four canonical administrator auto-assignment routes now own a real typed workflow
+instead of the prior recorded-only placeholder. List joins only same-tenant groups and
+conceals poisoned cross-tenant rows. Create validates group ownership, rule type, and
+required value. Update supports Laravel's partial `group_id`, `rule_type`, `rule_value`,
+and `is_active` contract, locks the tenant-owned rule, rejects empty/invalid changes,
+and never moves a rule to a foreign group. Delete is locked and tenant-concealed.
+Create, update, and delete append durable actor/before/after audit evidence in the same
+serializable transaction and return the canonical data/meta envelopes.
+
+Migration 146 (`20260714054826_GroupAutoAssignmentParity`) adds the canonical
+snake-case table, rule/value constraints, indexes, tenant/group foreign keys, and
+tenant query filter. It applies on both maintained disposable PostgreSQL histories;
+focused lifecycle/isolation proof passes 2/2 on each; the combined focused/route-
+ownership gate passes 116/116; EF model drift is clean; comparator fixtures pass; and
+Debug test-project plus Release API builds have zero errors. The live comparator
+reports 4,551 ASP.NET operations and **2,599/2,608 matches (99.7%, 9 static misses)**.
+
+Current provisional global scores are **870/1000 implementation** and **745/1000
+certification confidence**. The honest combined finish-line estimate is **78%**, up
+from the goal baseline of 42% and the previous checkpoint of 77%. The remaining seven
+document-era vetting writes, two prerender operations, real fiat settlement, complete-
+suite/CI proof, unchanged-frontend browser proof, schema/localization depth, federation
+transport, and live-provider evidence remain open. No production resource or frontend
+source was touched by this backend slice.
+
 ## 2026-07-14 ASP.NET Podcast Artwork Checkpoint (Locally Verified)
 
 The canonical show-artwork and episode-cover uploads now have explicit owners at
@@ -61,8 +88,8 @@ attempts leave no file rows; route ownership passes 114/114; comparator fixtures
 and Release API/test-project builds have zero errors. The live comparator reports 4,550
 ASP.NET operations and **2,598/2,608 matches (99.6%, 10 static misses)**.
 
-Current provisional global scores are **865/1000 implementation** and **740/1000
-certification confidence**. The honest combined finish-line estimate is **77%**, up
+At this checkpoint, provisional global scores were **865/1000 implementation** and
+**740/1000 certification confidence**, with a **77%** combined estimate, up
 from the goal baseline of 42% and the previous checkpoint of 76%. The remaining seven
 document-era vetting writes, two prerender operations, one group-auto-assignment
 operation, real fiat settlement, complete-suite/CI proof, unchanged-frontend browser

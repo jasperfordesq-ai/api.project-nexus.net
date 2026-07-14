@@ -63,6 +63,32 @@ public class GroupConfiguration : TenantScopedConfiguration
         modelBuilder.Entity<GroupTemplate>().HasQueryFilter(e =>
             !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
 
+        modelBuilder.Entity<GroupAutoAssignRule>(entity =>
+        {
+            entity.ToTable("group_auto_assign_rules", table =>
+            {
+                table.HasCheckConstraint(
+                    "CK_group_auto_assign_rules_rule_type",
+                    "rule_type IN ('location', 'interest', 'role', 'attribute')");
+                table.HasCheckConstraint(
+                    "CK_group_auto_assign_rules_rule_value",
+                    "length(btrim(rule_value)) > 0");
+            });
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.TenantId).HasColumnName("tenant_id");
+            entity.Property(e => e.GroupId).HasColumnName("group_id");
+            entity.Property(e => e.RuleType).HasColumnName("rule_type").HasMaxLength(20).IsRequired();
+            entity.Property(e => e.RuleValue).HasColumnName("rule_value").HasMaxLength(255).IsRequired();
+            entity.Property(e => e.IsActive).HasColumnName("is_active").HasDefaultValue(true);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.HasIndex(e => new { e.TenantId, e.IsActive }).HasDatabaseName("IX_group_auto_assign_rules_tenant_active");
+            entity.HasIndex(e => e.GroupId).HasDatabaseName("IX_group_auto_assign_rules_group_id");
+            entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Group).WithMany().HasForeignKey(e => e.GroupId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+
         // GroupMember configuration with tenant filter
         modelBuilder.Entity<GroupMember>(entity =>
         {

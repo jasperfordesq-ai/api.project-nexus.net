@@ -12,6 +12,17 @@ The legacy ASP.NET React copy at `apps/react-frontend/` is no longer the target
 for API design. ASP.NET API parity means the ASP.NET backend can satisfy the API
 calls made by the production Laravel React frontend.
 
+## 2026-07-14 Group Auto-Assignment Workflow Refresh
+
+The administrator list/create/update/delete surface now uses a typed tenant-owned rule
+aggregate rather than generic recorded-only writes. It matches canonical partial
+updates and validation, conceals foreign groups/rules, excludes poisoned joins, locks
+updates/deletes, and appends durable mutation audit data transactionally. Migration
+146 applies on both maintained PostgreSQL histories, model drift is clean, focused
+proof passes 2/2 on each, the combined ownership gate passes 116/116, comparator
+fixtures pass, and Debug/Release builds have zero errors. The refreshed live inventory
+is **2,599/2,608 matched (9 missing, 99.7%)**.
+
 ## 2026-07-14 Podcast Artwork Upload Refresh
 
 Show artwork and episode cover uploads now own both legacy and V2 routes used by the

@@ -13,6 +13,7 @@ using Nexus.Api.Extensions;
 using Nexus.Api.Services;
 using Nexus.Api.Services.Federation;
 using System.Globalization;
+using System.Data;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -236,6 +237,7 @@ public class AdminExplicitParityController : ControllerBase
 
         return path switch
         {
+            _ when TryGetLastInt(path, "/api/v2/admin/group-auto-assign-rules/", out var autoAssignRuleId) => await DeleteGroupAutoAssignRule(autoAssignRuleId),
             _ when TryGetLastInt(path, "/api/v2/admin/federation/webhooks/", out var webhookId) => await DeleteFederationWebhook(webhookId),
             _ when TryGetLastInt(path, "/api/v2/admin/invite-codes/", out var inviteCodeId) => await DeactivateInviteCode(inviteCodeId),
             _ when TryGetLastInt(path, "/api/v2/admin/member-premium/tiers/", out var memberPremiumTierId) => await DeleteMemberPremiumAdminTier(memberPremiumTierId),
@@ -432,6 +434,7 @@ public class AdminExplicitParityController : ControllerBase
             "/api/v2/admin/federation/topics" => await GetFederationTopics(),
             "/api/v2/admin/federation/topics/mine" => await GetFederationTopicSubscriptions(),
             "/api/v2/admin/federation/webhooks" => await GetFederationWebhooks(),
+            "/api/v2/admin/group-auto-assign-rules" => await GetGroupAutoAssignRules(),
             "/api/v2/admin/help/faqs" => await GetFaqs(),
             "/api/v2/admin/invite-codes" => await GetInviteCodes(),
             "/api/v2/admin/jobs/interviews" => await GetJobInterviews(),
@@ -650,6 +653,7 @@ public class AdminExplicitParityController : ControllerBase
             "/api/v2/admin/users/bulk-approve" => await BulkApproveUsers(),
             "/api/v2/admin/users/bulk-suspend" => await BulkSuspendUsers(),
             "/api/v2/admin/feed/grant-announcer" => await GrantMunicipalityAnnouncer(),
+            "/api/v2/admin/group-auto-assign-rules" => await CreateGroupAutoAssignRule(),
             _ when TryGetIntBeforeSuffix(path, "/api/v2/admin/ad-campaigns/", "/approve", out var approveAdCampaignId) => await ApproveAdCampaign(approveAdCampaignId),
             _ when TryGetIntBeforeSuffix(path, "/api/v2/admin/ad-campaigns/", "/pause", out var pauseAdCampaignId) => await PauseAdCampaign(pauseAdCampaignId),
             _ when TryGetIntBeforeSuffix(path, "/api/v2/admin/ad-campaigns/", "/reject", out var rejectAdCampaignId) => await RejectAdCampaign(rejectAdCampaignId),
@@ -1209,6 +1213,7 @@ public class AdminExplicitParityController : ControllerBase
     [HttpPut("/api/v2/admin/reports/social-value/config")]
     [HttpPut("/api/v2/admin/support-reports/{id}")]
     [HttpPut("/api/v2/admin/super/identity/fee")]
+    [HttpPut("/api/v2/admin/group-auto-assign-rules/{id}")]
     [HttpPut("/api/v2/admin/volunteering/community-projects/{id}/review")]
     [HttpPut("/api/v2/admin/volunteering/custom-fields/{id}")]
     [HttpPut("/api/v2/admin/volunteering/expenses/{id}")]
@@ -1240,6 +1245,7 @@ public class AdminExplicitParityController : ControllerBase
             "/api/v2/admin/federation/topics/mine" => await PutFederationTopicSubscriptions(),
             "/api/v2/admin/member-premium/settings" => await PutMemberPremiumSettings(),
             "/api/v2/admin/moderation/settings" => await PutModerationSettings(),
+            _ when TryGetLastInt(path, "/api/v2/admin/group-auto-assign-rules/", out var autoAssignRuleId) => await UpdateGroupAutoAssignRule(autoAssignRuleId),
             _ when TryGetIntBeforeSuffix(
                 path,
                 "/api/v2/admin/volunteering/organizations/",
@@ -5604,6 +5610,228 @@ public class AdminExplicitParityController : ControllerBase
         ModuleConfigDefaults.TryGetValue(module, out var defaults)
             ? defaults
             : new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+
+    private async Task<IActionResult> GetGroupAutoAssignRules()
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        var rules = await _db.GroupAutoAssignRules
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(rule => rule.TenantId == tenantId
+                && rule.Group != null
+                && rule.Group.TenantId == tenantId)
+            .OrderBy(rule => rule.GroupId)
+            .ThenBy(rule => rule.Id)
+            .Select(rule => new
+            {
+                id = rule.Id,
+                group_id = rule.GroupId,
+                rule_type = rule.RuleType,
+                rule_value = rule.RuleValue,
+                is_active = rule.IsActive,
+                created_at = rule.CreatedAt,
+                group_name = rule.Group!.Name
+            })
+            .ToListAsync();
+
+        return GroupAutoAssignData(rules);
+    }
+
+    private async Task<IActionResult> CreateGroupAutoAssignRule()
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+        var payload = await ReadJsonObjectPayloadAsync();
+        var groupId = JsonInt(payload, "group_id", 0, 0, int.MaxValue);
+        var ruleType = JsonString(payload, "rule_type") ?? string.Empty;
+        var ruleValue = JsonString(payload, "rule_value") ?? string.Empty;
+
+        if (groupId < 1 || string.IsNullOrEmpty(ruleType) || string.IsNullOrEmpty(ruleValue))
+        {
+            return GroupAutoAssignError("VALIDATION_ERROR", "Invalid input", StatusCodes.Status422UnprocessableEntity, "group_id");
+        }
+        if (!IsGroupAutoAssignRuleType(ruleType))
+        {
+            return GroupAutoAssignError("VALIDATION_ERROR", "Invalid input", StatusCodes.Status422UnprocessableEntity, "rule_type");
+        }
+        if (!await TenantGroupExistsAsync(tenantId, groupId))
+        {
+            return GroupAutoAssignError("NOT_FOUND", "Group not found", StatusCodes.Status404NotFound);
+        }
+
+        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+        var rule = new GroupAutoAssignRule
+        {
+            TenantId = tenantId,
+            GroupId = groupId,
+            RuleType = ruleType,
+            RuleValue = ruleValue,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+        _db.GroupAutoAssignRules.Add(rule);
+        await _db.SaveChangesAsync();
+        AddGroupAutoAssignAudit(
+            tenantId,
+            "admin_create_group_auto_assign_rule",
+            rule,
+            oldValues: null,
+            newValues: GroupAutoAssignSnapshot(rule));
+        await _db.SaveChangesAsync();
+        await transaction.CommitAsync();
+
+        return GroupAutoAssignData(new { id = rule.Id }, StatusCodes.Status201Created);
+    }
+
+    private async Task<IActionResult> UpdateGroupAutoAssignRule(int id)
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+        var payload = await ReadJsonObjectPayloadAsync();
+        var hasGroupId = TryGetPayloadProperty(payload, "group_id", out _);
+        var hasRuleType = TryGetPayloadProperty(payload, "rule_type", out _);
+        var hasRuleValue = TryGetPayloadProperty(payload, "rule_value", out _);
+        var hasIsActive = TryGetPayloadProperty(payload, "is_active", out var activeValue);
+        if (!hasGroupId && !hasRuleType && !hasRuleValue && !hasIsActive)
+        {
+            return GroupAutoAssignError("VALIDATION_ERROR", "Invalid input", StatusCodes.Status422UnprocessableEntity);
+        }
+
+        var groupId = hasGroupId ? JsonInt(payload, "group_id", 0, 0, int.MaxValue) : 0;
+        if (hasGroupId && (groupId < 1 || !await TenantGroupExistsAsync(tenantId, groupId)))
+        {
+            return GroupAutoAssignError("NOT_FOUND", "Group not found", StatusCodes.Status404NotFound);
+        }
+
+        var ruleType = hasRuleType ? JsonString(payload, "rule_type") ?? string.Empty : null;
+        if (hasRuleType && !IsGroupAutoAssignRuleType(ruleType!))
+        {
+            return GroupAutoAssignError("VALIDATION_ERROR", "Invalid input", StatusCodes.Status422UnprocessableEntity, "rule_type");
+        }
+
+        var ruleValue = hasRuleValue ? JsonString(payload, "rule_value") ?? string.Empty : null;
+        if (hasRuleValue && string.IsNullOrWhiteSpace(ruleValue))
+        {
+            return GroupAutoAssignError("VALIDATION_ERROR", "Invalid input", StatusCodes.Status422UnprocessableEntity, "rule_value");
+        }
+
+        var isActive = false;
+        if (hasIsActive && !TryReadBoolean(activeValue, out isActive))
+        {
+            return GroupAutoAssignError("VALIDATION_ERROR", "Invalid input", StatusCodes.Status422UnprocessableEntity, "is_active");
+        }
+
+        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+        var rule = await _db.GroupAutoAssignRules
+            .FromSqlInterpolated($"SELECT * FROM group_auto_assign_rules WHERE id = {id} AND tenant_id = {tenantId} FOR UPDATE")
+            .IgnoreQueryFilters()
+            .SingleOrDefaultAsync();
+        if (rule is null)
+        {
+            await transaction.RollbackAsync();
+            return GroupAutoAssignError("NOT_FOUND", "Auto-assign rule not found", StatusCodes.Status404NotFound);
+        }
+
+        var oldValues = GroupAutoAssignSnapshot(rule);
+        if (hasGroupId) rule.GroupId = groupId;
+        if (hasRuleType) rule.RuleType = ruleType!;
+        if (hasRuleValue) rule.RuleValue = ruleValue!;
+        if (hasIsActive) rule.IsActive = isActive;
+        AddGroupAutoAssignAudit(
+            tenantId,
+            "admin_update_group_auto_assign_rule",
+            rule,
+            oldValues,
+            GroupAutoAssignSnapshot(rule));
+        await _db.SaveChangesAsync();
+        await transaction.CommitAsync();
+
+        return GroupAutoAssignData(new { id });
+    }
+
+    private async Task<IActionResult> DeleteGroupAutoAssignRule(int id)
+    {
+        if (!TryRequireTenant(out var tenantId, out var tenantError)) return tenantError!;
+
+        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+        var rule = await _db.GroupAutoAssignRules
+            .FromSqlInterpolated($"SELECT * FROM group_auto_assign_rules WHERE id = {id} AND tenant_id = {tenantId} FOR UPDATE")
+            .IgnoreQueryFilters()
+            .SingleOrDefaultAsync();
+        if (rule is null)
+        {
+            await transaction.RollbackAsync();
+            return GroupAutoAssignError("NOT_FOUND", "Auto-assign rule not found", StatusCodes.Status404NotFound);
+        }
+
+        AddGroupAutoAssignAudit(
+            tenantId,
+            "admin_delete_group_auto_assign_rule",
+            rule,
+            GroupAutoAssignSnapshot(rule),
+            new { deleted = true });
+        _db.GroupAutoAssignRules.Remove(rule);
+        await _db.SaveChangesAsync();
+        await transaction.CommitAsync();
+
+        return GroupAutoAssignData(new { message = "Auto-assign rule deleted" });
+    }
+
+    private async Task<bool> TenantGroupExistsAsync(int tenantId, int groupId) =>
+        await _db.Groups.IgnoreQueryFilters().AnyAsync(group => group.Id == groupId && group.TenantId == tenantId);
+
+    private void AddGroupAutoAssignAudit(
+        int tenantId,
+        string action,
+        GroupAutoAssignRule rule,
+        object? oldValues,
+        object? newValues)
+    {
+        _db.AuditLogs.Add(new AuditLog
+        {
+            TenantId = tenantId,
+            UserId = GetCurrentAdminUserId(),
+            Action = action,
+            EntityType = "group_auto_assign_rule",
+            EntityId = rule.Id,
+            OldValues = oldValues is null ? null : JsonSerializer.Serialize(oldValues, StoreJsonOptions),
+            NewValues = newValues is null ? null : JsonSerializer.Serialize(newValues, StoreJsonOptions),
+            IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
+            UserAgent = Request.Headers.UserAgent.ToString(),
+            Metadata = JsonSerializer.Serialize(new { source = "laravel_react_admin_groups" }, StoreJsonOptions),
+            Severity = AuditSeverity.Info,
+            CreatedAt = DateTime.UtcNow
+        });
+    }
+
+    private static object GroupAutoAssignSnapshot(GroupAutoAssignRule rule) => new
+    {
+        id = rule.Id,
+        group_id = rule.GroupId,
+        rule_type = rule.RuleType,
+        rule_value = rule.RuleValue,
+        is_active = rule.IsActive,
+        created_at = rule.CreatedAt
+    };
+
+    private static bool IsGroupAutoAssignRuleType(string value) =>
+        value is "location" or "interest" or "role" or "attribute";
+
+    private IActionResult GroupAutoAssignData(object data, int status = StatusCodes.Status200OK)
+    {
+        var baseUrl = $"{Request.Scheme}://{Request.Host}{Request.PathBase}".TrimEnd('/');
+        return StatusCode(status, new { data, meta = new { base_url = baseUrl } });
+    }
+
+    private IActionResult GroupAutoAssignError(string code, string message, int status, string? field = null)
+    {
+        var error = new Dictionary<string, object?>
+        {
+            ["code"] = code,
+            ["message"] = message
+        };
+        if (field is not null) error["field"] = field;
+        return StatusCode(status, new { errors = new[] { error } });
+    }
 
     private async Task<IActionResult> GetPersistedCompatibilityRead(string path)
     {
