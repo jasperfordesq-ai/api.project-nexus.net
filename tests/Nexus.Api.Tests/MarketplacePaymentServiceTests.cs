@@ -217,6 +217,66 @@ public sealed class MarketplacePaymentServiceTests
     }
 
     [Fact]
+    public async Task ChargeRefunded_ReconcilesProviderEvidenceAndReplaysExactlyOnce()
+    {
+        await using var db = CreateDb();
+        var gateway = new FakeGateway { Configured = true };
+        var service = CreateService(db, gateway);
+        var order = SeedPayableOrder(db);
+        (await service.CreateIntentAsync(42, 11, order.Id, CancellationToken.None)).Succeeded.Should().BeTrue();
+        gateway.Retrieved = gateway.Created! with
+        {
+            Status = "succeeded",
+            AmountReceivedMinor = 2599,
+            LatestChargeId = "ch_external_refund"
+        };
+        (await service.ConfirmAsync(42, 11, gateway.Created.Id, CancellationToken.None)).Succeeded.Should().BeTrue();
+        var refund = new MarketplaceStripeRefund(
+            "re_external_1", 500, "EUR", "succeeded", TransferReversed: true,
+            ApplicationFeeRefunded: true);
+
+        (await service.ReconcileChargeRefundedAsync(
+            gateway.Created.Id, "ch_external_refund", 500, [refund], "evt_refund_1", CancellationToken.None))
+            .Succeeded.Should().BeTrue();
+        (await service.ReconcileChargeRefundedAsync(
+            gateway.Created.Id, "ch_external_refund", 500, [refund], "evt_refund_1", CancellationToken.None))
+            .Succeeded.Should().BeTrue();
+
+        var payment = await db.MarketplacePayments.SingleAsync();
+        payment.Status.Should().Be("partially_refunded");
+        payment.RefundAmount.Should().Be(5m);
+        (await db.MarketplacePaymentRefunds.CountAsync()).Should().Be(1);
+        (await db.WebhookEvents.CountAsync(x => x.ExternalEventId == "evt_refund_1")).Should().Be(1);
+        gateway.RefundCalls.Should().Be(0, "the provider already created an external refund");
+    }
+
+    [Fact]
+    public async Task ChargeRefunded_DestinationChargeFailsClosedWithoutReversalEvidence()
+    {
+        await using var db = CreateDb();
+        var gateway = new FakeGateway { Configured = true };
+        var service = CreateService(db, gateway);
+        var order = SeedPayableOrder(db);
+        (await service.CreateIntentAsync(42, 11, order.Id, CancellationToken.None)).Succeeded.Should().BeTrue();
+        gateway.Retrieved = gateway.Created! with
+        {
+            Status = "succeeded",
+            AmountReceivedMinor = 2599,
+            LatestChargeId = "ch_external_unsafe"
+        };
+        (await service.ConfirmAsync(42, 11, gateway.Created.Id, CancellationToken.None)).Succeeded.Should().BeTrue();
+
+        var result = await service.ReconcileChargeRefundedAsync(
+            gateway.Created.Id, "ch_external_unsafe", 500,
+            [new MarketplaceStripeRefund("re_external_unsafe", 500, "EUR", "succeeded")],
+            "evt_refund_unsafe", CancellationToken.None);
+
+        result.Error!.Code.Should().Be("RESOLUTION_FAILED");
+        (await db.MarketplacePaymentRefunds.CountAsync()).Should().Be(0);
+        (await db.WebhookEvents.CountAsync()).Should().Be(0);
+    }
+
+    [Fact]
     public async Task StripeGateway_SeparateChargeOmitsDestinationAndApplicationFee()
     {
         var handler = new RecordingHandler();

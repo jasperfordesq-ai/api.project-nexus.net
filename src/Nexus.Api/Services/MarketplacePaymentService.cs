@@ -86,7 +86,9 @@ public sealed record MarketplaceStripeRefund(
     string Id,
     long AmountMinor,
     string Currency,
-    string Status);
+    string Status,
+    bool TransferReversed = false,
+    bool ApplicationFeeRefunded = false);
 
 public interface IMarketplaceStripeGateway
 {
@@ -1309,54 +1311,109 @@ public sealed class MarketplacePaymentService(
             return Error("RESOLUTION_FAILED", "Marketplace refund failed.", 409);
         }
 
-        if (await db.MarketplacePaymentRefunds.IgnoreQueryFilters().AnyAsync(x => x.StripeRefundId == providerRefund.Id, ct))
-        {
-            if (transaction is not null) await transaction.CommitAsync(ct);
-            return new(Projection(payment, detailed: true));
-        }
-
-        db.MarketplacePaymentRefunds.Add(new MarketplacePaymentRefund
-        {
-            TenantId = tenantId,
-            MarketplacePaymentId = payment.Id,
-            StripeRefundId = providerRefund.Id,
-            Amount = refundAmount,
-            PlatformFeeReversal = feeReversal,
-            SellerPayoutReversal = payoutReversal,
-            Reason = reason[..Math.Min(reason.Length, 500)]
-        });
-        var isFull = cumulative >= payment.Amount - 0.005m;
-        payment.RefundAmount = Math.Min(payment.Amount, cumulative);
-        payment.RefundReason = reason;
-        payment.RefundedAt = DateTime.UtcNow;
-        payment.Status = isFull ? "refunded" : "partially_refunded";
-        payment.PlatformFee = isFull ? 0 : Math.Max(0, RoundMajor(payment.PlatformFee - feeReversal, currency));
-        payment.SellerPayout = isFull ? 0 : Math.Max(0, RoundMajor(payment.SellerPayout - payoutReversal, currency));
-        if (isFull && payment.FundsFlow == "separate_charge_transfer") payment.PayoutStatus = "failed";
-        payment.UpdatedAt = DateTime.UtcNow;
-
-        var escrow = await db.MarketplaceEscrows.IgnoreQueryFilters()
-            .SingleOrDefaultAsync(x => x.TenantId == tenantId && x.MarketplaceOrderId == orderId, ct);
-        if (escrow is not null)
-        {
-            escrow.Amount = payment.SellerPayout;
-            if (isFull)
-            {
-                escrow.Status = "refunded";
-                escrow.ReleasedAt = DateTime.UtcNow;
-                escrow.ReleaseTrigger = null;
-            }
-            escrow.UpdatedAt = DateTime.UtcNow;
-        }
-        if (isFull && order.Status != "refunded")
-        {
-            order.Status = "refunded";
-            await RestoreInventoryForRefundAsync(order, ct);
-        }
-        order.UpdatedAt = DateTime.UtcNow;
-        await db.SaveChangesAsync(ct);
+        await ApplyRefundLedgerAsync(payment, order, providerRefund.Id, refundAmount,
+            feeReversal, payoutReversal, reason, currency, ct);
         if (transaction is not null) await transaction.CommitAsync(ct);
         return new(Projection(payment, detailed: true));
+    }
+
+    public async Task<MarketplacePaymentResult> ReconcileChargeRefundedAsync(
+        string paymentIntentId,
+        string chargeId,
+        long amountRefundedMinor,
+        IReadOnlyCollection<MarketplaceStripeRefund> refunds,
+        string? externalEventId,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(externalEventId) || externalEventId.Length > 200)
+            return Error("VALIDATION_ERROR", "Stripe event id is required.", 422, "event_id");
+        var payment = await db.MarketplacePayments.IgnoreQueryFilters()
+            .SingleOrDefaultAsync(x => x.StripePaymentIntentId == paymentIntentId, ct);
+        if (payment is null) return new(new { received = true, applied = false });
+        if (!string.Equals(payment.StripeChargeId, chargeId, StringComparison.Ordinal))
+            return Error("PAYMENT_ERROR", "Stripe refund charge does not match the marketplace payment.", 409);
+        if (await db.WebhookEvents.IgnoreQueryFilters().AsNoTracking().AnyAsync(x =>
+                x.TenantId == payment.TenantId && x.Provider == "stripe-marketplace" &&
+                x.ExternalEventId == externalEventId, ct))
+            return new(new { received = true, applied = true });
+
+        await using var transaction = db.Database.IsRelational() && db.Database.CurrentTransaction is null
+            ? await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct)
+            : null;
+        if (transaction is not null)
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT pg_advisory_xact_lock({payment.TenantId}, {payment.MarketplaceOrderId})", ct);
+        await db.Entry(payment).ReloadAsync(ct);
+        var order = await db.MarketplaceOrders.IgnoreQueryFilters()
+            .SingleOrDefaultAsync(x => x.TenantId == payment.TenantId && x.Id == payment.MarketplaceOrderId, ct);
+        if (order is null) return Error("RESOLUTION_FAILED", "Marketplace order not found.", 409);
+        var currency = NormalizeCurrency(payment.Currency);
+        if (currency is null) return Error("RESOLUTION_FAILED", "Marketplace payment currency is invalid.", 409);
+
+        foreach (var refund in refunds.OrderBy(x => x.Id, StringComparer.Ordinal))
+        {
+            if (string.IsNullOrWhiteSpace(refund.Id) || refund.AmountMinor <= 0 ||
+                await db.MarketplacePaymentRefunds.IgnoreQueryFilters().AnyAsync(x => x.StripeRefundId == refund.Id, ct))
+                continue;
+            if (!string.Equals(refund.Currency, currency, StringComparison.Ordinal))
+                return Error("PAYMENT_ERROR", "Stripe refund currency does not match the marketplace payment.", 409);
+            var remaining = RoundMajor(payment.Amount - (payment.RefundAmount ?? 0), currency);
+            var refundAmount = Math.Min(remaining, FromMinor(refund.AmountMinor, currency));
+            if (refundAmount <= 0) continue;
+            var feeReversal = remaining > 0
+                ? Math.Min(payment.PlatformFee, RoundMajor(payment.PlatformFee * (refundAmount / remaining), currency))
+                : 0;
+            var payoutReversal = Math.Min(payment.SellerPayout,
+                Math.Max(0, RoundMajor(refundAmount - feeReversal, currency)));
+
+            if (payment.FundsFlow == "destination_charge" &&
+                ((payoutReversal > 0 && !refund.TransferReversed) ||
+                 (feeReversal > 0 && !refund.ApplicationFeeRefunded)))
+                return Error("RESOLUTION_FAILED", "Stripe refund reversal evidence is incomplete.", 409);
+            if (payment.FundsFlow == "separate_charge_transfer" && payment.PayoutStatus == "paid" && payoutReversal > 0)
+            {
+                if (string.IsNullOrWhiteSpace(payment.PayoutId) ||
+                    !TryToMinor(payoutReversal, currency, out var reversalMinor))
+                    return Error("RESOLUTION_FAILED", "Marketplace payout reversal evidence is unavailable.", 409);
+                try
+                {
+                    await stripe.ReverseTransferAsync(payment.PayoutId, reversalMinor,
+                        $"marketplace-external-transfer-reversal-{StableHash(refund.Id)}", ct);
+                }
+                catch (Exception exception) when (exception is not OperationCanceledException || !ct.IsCancellationRequested)
+                {
+                    logger.LogCritical(exception,
+                        "External marketplace refund {RefundId} awaits transfer reversal recovery.", refund.Id);
+                    return Error("RESOLUTION_FAILED", "Marketplace payout reversal failed.", 409);
+                }
+            }
+            await ApplyRefundLedgerAsync(payment, order, refund.Id, refundAmount,
+                feeReversal, payoutReversal, "external_stripe_refund", currency, ct);
+        }
+
+        var providerTotal = FromMinor(amountRefundedMinor, currency);
+        if (providerTotal > (payment.RefundAmount ?? 0) + 0.005m)
+            return Error("RESOLUTION_FAILED", "Stripe refund detail is incomplete.", 409);
+        db.WebhookEvents.Add(new WebhookEvent
+        {
+            TenantId = payment.TenantId,
+            EventType = "charge.refunded",
+            Source = "stripe",
+            Provider = "stripe-marketplace",
+            ExternalEventId = externalEventId,
+            PayloadJson = JsonSerializer.Serialize(new
+            {
+                payment_intent_id = paymentIntentId,
+                charge_id = chargeId,
+                amount_refunded = amountRefundedMinor,
+                refund_ids = refunds.Select(x => x.Id).ToArray()
+            }),
+            Status = "processed",
+            ReceivedAt = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync(ct);
+        if (transaction is not null) await transaction.CommitAsync(ct);
+        return new(new { received = true, applied = true });
     }
 
     public async Task<MarketplacePaymentResult> ConfirmDeliveryAsync(
@@ -1963,6 +2020,62 @@ public sealed class MarketplacePaymentService(
             ReleaseAfter = now.AddDays(Math.Clamp(
                 configuration.GetValue("Marketplace:EscrowAutoReleaseDays", 14), 1, 90))
         };
+    }
+    private async Task ApplyRefundLedgerAsync(
+        MarketplacePayment payment,
+        MarketplaceOrder order,
+        string stripeRefundId,
+        decimal refundAmount,
+        decimal feeReversal,
+        decimal payoutReversal,
+        string reason,
+        string currency,
+        CancellationToken ct)
+    {
+        if (await db.MarketplacePaymentRefunds.IgnoreQueryFilters()
+            .AnyAsync(x => x.StripeRefundId == stripeRefundId, ct)) return;
+        db.MarketplacePaymentRefunds.Add(new MarketplacePaymentRefund
+        {
+            TenantId = payment.TenantId,
+            MarketplacePaymentId = payment.Id,
+            StripeRefundId = stripeRefundId,
+            Amount = refundAmount,
+            PlatformFeeReversal = feeReversal,
+            SellerPayoutReversal = payoutReversal,
+            Reason = reason[..Math.Min(reason.Length, 500)]
+        });
+        var cumulative = Math.Min(payment.Amount,
+            RoundMajor((payment.RefundAmount ?? 0) + refundAmount, currency));
+        var isFull = cumulative >= payment.Amount - 0.005m;
+        payment.RefundAmount = cumulative;
+        payment.RefundReason = reason;
+        payment.RefundedAt = DateTime.UtcNow;
+        payment.Status = isFull ? "refunded" : "partially_refunded";
+        payment.PlatformFee = isFull ? 0 : Math.Max(0, RoundMajor(payment.PlatformFee - feeReversal, currency));
+        payment.SellerPayout = isFull ? 0 : Math.Max(0, RoundMajor(payment.SellerPayout - payoutReversal, currency));
+        if (isFull && payment.FundsFlow == "separate_charge_transfer") payment.PayoutStatus = "failed";
+        payment.UpdatedAt = DateTime.UtcNow;
+
+        var escrow = await db.MarketplaceEscrows.IgnoreQueryFilters()
+            .SingleOrDefaultAsync(x => x.TenantId == payment.TenantId && x.MarketplaceOrderId == order.Id, ct);
+        if (escrow is not null)
+        {
+            escrow.Amount = payment.SellerPayout;
+            if (isFull)
+            {
+                escrow.Status = "refunded";
+                escrow.ReleasedAt = DateTime.UtcNow;
+                escrow.ReleaseTrigger = null;
+            }
+            escrow.UpdatedAt = DateTime.UtcNow;
+        }
+        if (isFull && order.Status != "refunded")
+        {
+            order.Status = "refunded";
+            await RestoreInventoryForRefundAsync(order, ct);
+        }
+        order.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync(ct);
     }
     private static bool IdentityMetadataMatches(IReadOnlyDictionary<string, string> metadata, MarketplaceOrder order) =>
         metadata.TryGetValue("nexus_type", out var type) && type == "marketplace" &&

@@ -1772,6 +1772,40 @@ public class MarketplaceController : ControllerBase
             {
                 result = await _paymentService.ReconcileSucceededIntentAsync(intentIdElement.GetString()!, eventId, ct);
             }
+            else if (eventType == "charge.refunded")
+            {
+                if (!stripeObject.TryGetProperty("payment_intent", out var paymentIntentElement) ||
+                    paymentIntentElement.ValueKind != JsonValueKind.String ||
+                    !stripeObject.TryGetProperty("amount_refunded", out var amountRefundedElement) ||
+                    !amountRefundedElement.TryGetInt64(out var amountRefunded))
+                    return BadRequest(new { error = "missing_refund_economics" });
+                var refunds = new List<MarketplaceStripeRefund>();
+                if (stripeObject.TryGetProperty("refunds", out var refundsObject) &&
+                    refundsObject.TryGetProperty("data", out var refundData) &&
+                    refundData.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var refund in refundData.EnumerateArray())
+                    {
+                        if (!refund.TryGetProperty("id", out var refundId) || refundId.ValueKind != JsonValueKind.String ||
+                            !refund.TryGetProperty("amount", out var refundAmount) || !refundAmount.TryGetInt64(out var amount) ||
+                            !refund.TryGetProperty("currency", out var refundCurrency) || refundCurrency.ValueKind != JsonValueKind.String)
+                            return BadRequest(new { error = "invalid_refund_detail" });
+                        var status = refund.TryGetProperty("status", out var refundStatus) && refundStatus.ValueKind == JsonValueKind.String
+                            ? refundStatus.GetString()!
+                            : "succeeded";
+                        var transferReversed = refund.TryGetProperty("transfer_reversal", out var transferReversal) &&
+                                               transferReversal.ValueKind != JsonValueKind.Null;
+                        var applicationFeeRefunded = refund.TryGetProperty("application_fee_refund", out var feeRefund) &&
+                                                     feeRefund.ValueKind != JsonValueKind.Null;
+                        refunds.Add(new MarketplaceStripeRefund(
+                            refundId.GetString()!, amount, refundCurrency.GetString()!.ToUpperInvariant(), status,
+                            transferReversed, applicationFeeRefunded));
+                    }
+                }
+                result = await _paymentService.ReconcileChargeRefundedAsync(
+                    paymentIntentElement.GetString()!, intentIdElement.GetString()!, amountRefunded,
+                    refunds, eventId, ct);
+            }
             else if (eventType == "account.updated")
             {
                 if (!TryStripeBoolean(stripeObject, "details_submitted", out var detailsSubmitted) ||
