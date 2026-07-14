@@ -7,7 +7,7 @@ Status: **Maintained reference — detailed evidence and gap map, not a current 
 Evidence provenance: the latest published-backend summary was reviewed on
 2026-07-14 against Laravel
 `903d03d3db78bbf87129ad35728be3b72819acaf` and ASP.NET implementation
-`93417bd17e886e8d05e054ec2f679a4851c6ae26`; dirty backend work is excluded.
+`4f7b9f202322d792574f2003274fadfda9e7037d`; dirty backend work is excluded.
 Every older inventory lacking its own exact source pair is historical and
 provenance-incomplete, regardless of words such as “latest” retained inside a
 checkpoint.
@@ -43,6 +43,14 @@ an hourly job creates a source-charge-bound Connect transfer only after all
 release gates pass and emits one localized seller payout bell. Refund execution,
 provider-backed dispute resolution and webhook reconciliation, live-provider,
 full-suite/CI, and unchanged-frontend runtime certification remain open.
+
+Admin buyer dispute resolution now also executes full or partial provider
+refunds. Destination charges request transfer and application-fee reversal;
+paid separate-charge payouts reverse only the seller share under stable
+idempotency. `20260714165402_MarketplaceRefundReconciliationParity` adds the
+durable refund ledger and refund-aware economic constraints and applies cleanly
+to disposable upgraded PostgreSQL. Signed external-refund/charge-dispute event
+reconciliation, refund notifications, and live-provider proof remain open.
 
 The seven apparent document-era vetting gaps are retired OpenAPI-only artifacts:
 Laravel live routes omit them, the controller prohibits them, feature tests assert

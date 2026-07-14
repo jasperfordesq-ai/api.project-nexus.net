@@ -230,6 +230,37 @@ security/localization, 45/100 build/test/CI, 10/125 unchanged-frontends, and
 19/75 providers/ops/docs. Exact remaining deductions are 0, 76, 29, 10, 55,
 115, and 56 points.
 
+### 2026-07-14 Marketplace Provider Refunds (Published)
+
+Evidence snapshot: Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf`, ASP.NET implementation
+`4f7b9f202322d792574f2003274fadfda9e7037d`, captured 2026-07-14
+18:27:08 +01:00. Admin buyer dispute resolution now performs real full or
+partial Stripe refunds instead of unconditionally failing fiat settlement.
+Destination charges request Stripe transfer/application-fee reversal; a paid
+separate-charge payout receives an explicit, stably idempotent transfer
+reversal for only the seller share. Cumulative refund identity is stable across
+retries, provider economics are revalidated, and full refunds restore inventory
+and close order/escrow state while partial refunds retain the remaining seller
+economics.
+
+Migration `20260714165402_MarketplaceRefundReconciliationParity` adds a durable
+tenant/payment-bound refund ledger with globally unique Stripe refund identity,
+provider-dispute evidence columns, refund-aware payment economics, and a fail-
+closed preflight for legacy refunded rows without ledger evidence. It applies
+to disposable upgraded PostgreSQL and EF reports no model drift. The Release
+API build passes with zero errors and three known unrelated warnings; the full
+marketplace payment plus dispute gate passes 24/24. Signed external-refund and
+charge-dispute reconciliation, refund notification delivery, live Stripe proof,
+full-suite/CI, and unchanged-client runtime certification remain open.
+
+Published implementation `4f7b9f202322d792574f2003274fadfda9e7037d`
+banks 5 semantic, 3 schema, and 1 provider/operations point for **668/1000**:
+100/100 route, 279/350 semantic, 124/150 schema, 90/100
+security/localization, 45/100 build/test/CI, 10/125 unchanged-frontends, and
+20/75 providers/ops/docs. Exact remaining deductions are 0, 71, 26, 10, 55,
+115, and 55 points.
+
 ## Historical Checkpoints
 
 Everything in this section is dated implementation evidence. Its older
