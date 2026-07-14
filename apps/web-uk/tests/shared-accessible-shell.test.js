@@ -6599,6 +6599,10 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('−2.00');
     expect(response.text).toContain('+3.00');
     expect(response.text).toContain('href="/wallet?filter=spent&amp;cursor=next-page#transactions"');
+    expect(response.text).toContain('<nav class="govuk-pagination" aria-label="Transaction history">');
+    expect(response.text).toContain('<span class="govuk-pagination__link-title">Next</span>');
+    expect(response.text).toContain('class="govuk-pagination__icon govuk-pagination__icon--next"');
+    expect(response.text).not.toContain('govuk-pagination govuk-pagination--block');
     expect(response.text).toContain('aria-current="page">Spent');
   });
 
