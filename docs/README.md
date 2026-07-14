@@ -30,6 +30,7 @@ configuration only, with Laravel defining the contract ASP.NET must satisfy.
 | [../apps/web-uk/docs/CURRENT_WEB_UK_HANDOFF.md](../apps/web-uk/docs/CURRENT_WEB_UK_HANDOFF.md) | Chronological Web UK implementation history and detailed legacy commands. Its old counts and scores are superseded by the Laravel-first status document above. |
 | [SCHEMA_PARITY.md](SCHEMA_PARITY.md) | Database table/entity/migration parity inventory and generated report policy. |
 | [FRONTEND_PARITY.md](FRONTEND_PARITY.md) | React and accessible frontend route parity inventory and generated report policy. |
+| [generated/canonical-react-contracts/README.md](generated/canonical-react-contracts/README.md) | Exact-SHA canonical React API call-site matrix against Laravel and ASP.NET route/method ownership; static evidence only, not a parity score. |
 | [LOCALIZATION_PARITY.md](LOCALIZATION_PARITY.md) | Historical frozen-React catalog comparator. It is not the current backend localization ledger or a Web UK status source. |
 | [database-migrations.md](database-migrations.md) | EF Core migration workflow and drift prevention. |
 | [REGISTRATION_POLICY_ENGINE.md](REGISTRATION_POLICY_ENGINE.md) | Registration and identity-verification architecture. |

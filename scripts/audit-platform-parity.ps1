@@ -1052,7 +1052,12 @@ function Get-RouteTemplateMatches {
 }
 
 function Export-FrontendApiMatrix {
-    param([object[]]$ApiStrings, [hashtable]$AspNetIndex, [string]$Destination)
+    param(
+        [object[]]$ApiStrings,
+        [hashtable]$AspNetIndex,
+        [hashtable]$LaravelIndex,
+        [string]$Destination
+    )
 
     $rows = New-Object System.Collections.Generic.List[object]
 
@@ -1113,10 +1118,40 @@ function Export-FrontendApiMatrix {
             }
         }
 
+        $laravelMatches = @()
+        $laravelStatus = 'missing'
+        if (Test-UnresolvedTemplate $path) {
+            $laravelStatus = 'dynamic-unresolved'
+        } elseif ($methodHint -and $LaravelIndex.ByMethodPath.ContainsKey($methodKey)) {
+            $laravelMatches = Get-RouteIndexMatches $LaravelIndex 'ByMethodPath' $methodKey
+            $laravelStatus = 'exists'
+        } elseif ($methodHint -and $LaravelIndex.ByMethodShape.ContainsKey($methodShapeKey)) {
+            $laravelMatches = Get-RouteIndexMatches $LaravelIndex 'ByMethodShape' $methodShapeKey
+            $laravelStatus = 'exists'
+        } elseif ($LaravelIndex.ByPath.ContainsKey($path)) {
+            $laravelMatches = Get-RouteIndexMatches $LaravelIndex 'ByPath' $path
+            $laravelMethods = @($laravelMatches | ForEach-Object { $_.method } | Sort-Object -Unique)
+            $laravelStatus = if ($methodHint) { 'method-mismatch' } elseif ($laravelMethods.Count -eq 1) { 'exists-unambiguous-method' } else { 'exists-any-method' }
+        } elseif ($LaravelIndex.ByShape.ContainsKey((Convert-ToRouteShape $path))) {
+            $laravelMatches = Get-RouteIndexMatches $LaravelIndex 'ByShape' (Convert-ToRouteShape $path)
+            $laravelMethods = @($laravelMatches | ForEach-Object { $_.method } | Sort-Object -Unique)
+            $laravelStatus = if ($methodHint) { 'method-mismatch' } elseif ($laravelMethods.Count -eq 1) { 'exists-unambiguous-method' } else { 'exists-any-method' }
+        } else {
+            $laravelMatches = Get-RouteTemplateMatches $LaravelIndex $path $methodHint
+            if ($laravelMatches.Count -gt 0) {
+                $laravelMethods = @($laravelMatches | ForEach-Object { $_.method } | Sort-Object -Unique)
+                $laravelStatus = if ($methodHint) { 'exists' } elseif ($laravelMethods.Count -eq 1) { 'exists-unambiguous-method' } else { 'exists-any-method' }
+            }
+        }
+
         $rows.Add([pscustomobject]@{
             app = $apiString.app
+            method_hint = $methodHint
             raw = $apiString.raw
             normalized = $path
+            laravel_status = $laravelStatus
+            laravel_methods = (($laravelMatches | ForEach-Object { $_.method } | Sort-Object -Unique) -join ';')
+            laravel_handlers = (($laravelMatches | ForEach-Object { $_.handler } | Sort-Object -Unique) -join ';')
             status = $status
             aspnet_methods = (($routeMatches | ForEach-Object { $_.method } | Sort-Object -Unique) -join ';')
             aspnet_controllers = (($routeMatches | ForEach-Object { $_.controller } | Sort-Object -Unique) -join ';')
@@ -1208,8 +1243,9 @@ $v15ReactRoutes = Export-ReactRoutes (Join-Path $SourceRoot 'react-frontend\src\
 $frontendApiStrings = Export-FrontendApiStrings $TargetRoot (Join-Path $OutDir 'frontend-api-strings.csv')
 $v15FrontendApiStrings = Export-V15FrontendApiStrings $SourceRoot (Join-Path $OutDir 'v15-frontend-api-strings.csv')
 $aspNetIndex = New-RouteIndex $aspNetRoutes
-$frontendApiMatrix = Export-FrontendApiMatrix $frontendApiStrings $aspNetIndex (Join-Path $OutDir 'frontend-api-to-aspnet-matrix.csv')
-$v15FrontendApiMatrix = Export-FrontendApiMatrix $v15FrontendApiStrings $aspNetIndex (Join-Path $OutDir 'v15-frontend-api-to-aspnet-matrix.csv')
+$laravelIndex = New-RouteIndex $laravelRoutes
+$frontendApiMatrix = Export-FrontendApiMatrix $frontendApiStrings $aspNetIndex $laravelIndex (Join-Path $OutDir 'frontend-api-to-aspnet-matrix.csv')
+$v15FrontendApiMatrix = Export-FrontendApiMatrix $v15FrontendApiStrings $aspNetIndex $laravelIndex (Join-Path $OutDir 'v15-frontend-api-to-aspnet-matrix.csv')
 $laravelMatrix = Export-LaravelToAspNetMatrix $laravelRoutes $aspNetIndex (Join-Path $OutDir 'v15-laravel-to-aspnet-matrix.csv')
 $routeParityMatrix = Export-FrontendRouteParityMatrix $v15ReactRoutes $currentReactRoutes (Join-Path $OutDir 'frontend-route-parity-matrix.csv')
 
@@ -1226,6 +1262,7 @@ $summary = [pscustomobject]@{
     frontend_api_dynamic_unresolved = @($frontendApiMatrix | Where-Object { $_.status -eq 'dynamic-unresolved' }).Count
     v15_frontend_api_strings = $v15FrontendApiStrings.Count
     v15_frontend_api_missing = @($v15FrontendApiMatrix | Where-Object { $_.status -eq 'missing' }).Count
+    v15_frontend_laravel_missing = @($v15FrontendApiMatrix | Where-Object { $_.laravel_status -eq 'missing' }).Count
     v15_frontend_api_dynamic_unresolved = @($v15FrontendApiMatrix | Where-Object { $_.status -eq 'dynamic-unresolved' }).Count
     v15_laravel_missing = @($laravelMatrix | Where-Object { $_.status -eq 'missing' }).Count
     v15_routes_missing = @($routeParityMatrix | Where-Object { $_.status -eq 'missing' }).Count

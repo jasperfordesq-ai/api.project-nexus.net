@@ -117,7 +117,28 @@ backend source, tests, migrations, schema, fixtures, or runtime data.
 
 ## Generated Artifacts
 
-The repeatable static comparison script writes these ignored artifacts by
+The maintained canonical React backend-contract inventory is generated from the
+unchanged frontend at `C:\platforms\htdocs\staging\react-frontend` and records
+both Laravel and ASP.NET route/method evidence:
+
+```text
+docs/generated/canonical-react-contracts/README.md
+docs/generated/canonical-react-contracts/canonical-react-api-contract-matrix.csv
+docs/generated/canonical-react-contracts/canonical-react-api-contract-summary.json
+```
+
+Regenerate it at named source SHAs with:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\generate-canonical-react-contract-matrix.ps1
+```
+
+This inventory is static evidence only. Rows with inferred or unresolved methods
+still require payload, envelope, status, auth, tenant, upload, side-effect, and
+unchanged-client runtime verification before they can bank semantic or
+certification points.
+
+The older frontend route-only comparator writes these ignored artifacts by
 default:
 
 ```text
