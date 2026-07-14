@@ -166,7 +166,11 @@ public class MarketplaceOrder : ITenantEntity
     public string? TrackingUrl { get; set; }
     public DateTime? ShippedAt { get; set; }
     public DateTime? DeliveredAt { get; set; }
+    public DateTime? BuyerConfirmedAt { get; set; }
+    public DateTime? AutoCompleteAt { get; set; }
+    public DateTime? EscrowReleasedAt { get; set; }
     public DateTime? CancelledAt { get; set; }
+    public string? CancellationReason { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 
@@ -234,6 +238,23 @@ public class MarketplaceOrderNotificationDelivery : ITenantEntity
     public DateTime? FailedAt { get; set; }
     public string? EvidenceId { get; set; }
     public string? LastError { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+
+public class MarketplaceEscrow : ITenantEntity
+{
+    public long Id { get; set; }
+    public int TenantId { get; set; }
+    public int MarketplaceOrderId { get; set; }
+    public long MarketplacePaymentId { get; set; }
+    public decimal Amount { get; set; }
+    public string Currency { get; set; } = "EUR";
+    public string Status { get; set; } = "held";
+    public DateTime HeldAt { get; set; } = DateTime.UtcNow;
+    public DateTime? ReleaseAfter { get; set; }
+    public DateTime? ReleasedAt { get; set; }
+    public string? ReleaseTrigger { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }

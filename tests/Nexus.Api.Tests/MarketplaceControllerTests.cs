@@ -1333,6 +1333,8 @@ public class MarketplaceControllerTests : IntegrationTestBase
         delivered.GetProperty("tracking_number").GetString().Should().Be("TRACK-123");
         delivered.GetProperty("tracking_url").GetString().Should().Be("https://carrier.example/track/TRACK-123");
         delivered.GetProperty("delivered_at").GetString().Should().NotBeNullOrWhiteSpace();
+        delivered.GetProperty("buyer_confirmed_at").GetString().Should().NotBeNullOrWhiteSpace();
+        delivered.GetProperty("auto_complete_at").GetString().Should().NotBeNullOrWhiteSpace();
     }
 
     [Fact]

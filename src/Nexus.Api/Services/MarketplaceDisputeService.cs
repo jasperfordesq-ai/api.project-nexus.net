@@ -41,6 +41,13 @@ public sealed class MarketplaceDisputeService(NexusDbContext db)
         var now = DateTime.UtcNow;
         var dispute = new MarketplaceDispute { TenantId = tenant, MarketplaceOrderId = orderId, OpenedByUserId = actorId, Reason = reason, Description = description, EvidenceUrlsJson = evidenceUrls is { Count: > 0 } ? JsonSerializer.Serialize(evidenceUrls) : null, Status = "open", PriorOrderStatus = order.Status, CreatedAt = now, UpdatedAt = now };
         order.Status = "disputed"; order.UpdatedAt = now; db.MarketplaceDisputes.Add(dispute);
+        var escrow = await db.MarketplaceEscrows.IgnoreQueryFilters()
+            .SingleOrDefaultAsync(x => x.TenantId == tenant && x.MarketplaceOrderId == orderId, ct);
+        if (escrow is { Status: "held" })
+        {
+            escrow.Status = "disputed";
+            escrow.UpdatedAt = now;
+        }
         await db.SaveChangesAsync(ct);
         Notify(tenant, actorId, "marketplace_dispute_opened", "Marketplace dispute opened", orderId, dispute.Id);
         await db.SaveChangesAsync(ct); await tx.CommitAsync(ct);
@@ -103,6 +110,18 @@ public sealed class MarketplaceDisputeService(NexusDbContext db)
             order.Status = "refunded";
         }
         else if (order.Status == "disputed") order.Status = string.IsNullOrWhiteSpace(dispute.PriorOrderStatus) ? "paid" : dispute.PriorOrderStatus;
+
+        if (resolution != "buyer")
+        {
+            var escrow = await db.MarketplaceEscrows.IgnoreQueryFilters()
+                .SingleOrDefaultAsync(x => x.TenantId == tenant && x.MarketplaceOrderId == order.Id, ct);
+            if (escrow is { Status: "disputed" })
+            {
+                escrow.Status = "held";
+                escrow.ReleaseAfter = DateTime.UtcNow;
+                escrow.UpdatedAt = DateTime.UtcNow;
+            }
+        }
 
         var now = DateTime.UtcNow;
         dispute.Status = resolution switch { "buyer" => "resolved_buyer", "seller" => "resolved_seller", _ => "closed" };

@@ -625,7 +625,16 @@ public class MarketplaceController : ControllerBase
 
     [HttpPut("orders/{id:int}/confirm-delivery")]
     [Authorize]
-    public Task<IActionResult> ConfirmDelivery(int id) => OrderStatus(id, "delivered");
+    public async Task<IActionResult> ConfirmDelivery(int id, CancellationToken ct)
+    {
+        if (_paymentService is null)
+            return StatusCode(503, new { success = false, errors = new[] { new { code = "PAYMENT_ERROR", message = "Marketplace payment service is unavailable.", field = (string?)null } } });
+        var result = await _paymentService.ConfirmDeliveryAsync(
+            User.GetTenantId() ?? throw new UnauthorizedAccessException(), RequireUserId(), id, ct);
+        if (!result.Succeeded) return PaymentResult(result);
+        var order = await BuildOrderQuery().SingleAsync(row => row.Id == id, ct);
+        return Ok(new { success = true, data = await MapMarketplaceOrderAsync(order) });
+    }
 
     [HttpPut("orders/{id:int}/cancel")]
     [Authorize]
@@ -2096,14 +2105,14 @@ public class MarketplaceController : ControllerBase
         shipping_address = order.ShippingAddress,
         tracking_number = order.TrackingNumber,
         tracking_url = order.TrackingUrl,
-        buyer_confirmed_at = order.DeliveredAt,
+        buyer_confirmed_at = order.BuyerConfirmedAt,
         seller_confirmed_at = order.ShippedAt,
-        auto_complete_at = (DateTime?)null,
+        auto_complete_at = order.AutoCompleteAt,
         shipped_at = order.ShippedAt,
         delivered_at = order.DeliveredAt,
         cancelled_at = order.CancelledAt,
-        cancellation_reason = (string?)null,
-        escrow_released_at = (DateTime?)null,
+        cancellation_reason = order.CancellationReason,
+        escrow_released_at = order.EscrowReleasedAt,
         created_at = order.CreatedAt,
         updated_at = order.UpdatedAt,
         listing = order.Listing == null ? null : new

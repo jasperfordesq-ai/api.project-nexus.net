@@ -61,6 +61,130 @@ public sealed class MarketplacePaymentServiceTests
     }
 
     [Fact]
+    public async Task EscrowCapture_DelaysPayoutUntilBuyerWindowAndReleasesExactlyOnce()
+    {
+        await using var db = CreateDb();
+        var gateway = new FakeGateway { Configured = true };
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Marketplace:PlatformFeePercent"] = "5",
+            ["Marketplace:EscrowEnabled"] = "true",
+            ["Marketplace:EscrowAutoReleaseDays"] = "14",
+            ["Marketplace:EscrowDisputeWindowDays"] = "14"
+        }).Build();
+        var service = new MarketplacePaymentService(
+            db, gateway, configuration, NullLogger<MarketplacePaymentService>.Instance);
+        var order = SeedPayableOrder(db);
+
+        (await service.CreateIntentAsync(42, 11, order.Id, CancellationToken.None)).Succeeded.Should().BeTrue();
+        gateway.FundsFlow.Should().Be("separate_charge_transfer");
+        gateway.Created!.ApplicationFeeMinor.Should().BeNull();
+        gateway.Created.DestinationAccountId.Should().BeNull();
+        gateway.Metadata["nexus_funds_flow"].Should().Be("separate_charge_transfer");
+        gateway.Retrieved = gateway.Created with
+        {
+            Status = "succeeded",
+            AmountReceivedMinor = 2599,
+            LatestChargeId = "ch_escrow_1"
+        };
+
+        (await service.ConfirmAsync(42, 11, gateway.Created.Id, CancellationToken.None)).Succeeded.Should().BeTrue();
+
+        var payment = await db.MarketplacePayments.SingleAsync();
+        var escrow = await db.MarketplaceEscrows.SingleAsync();
+        payment.FundsFlow.Should().Be("separate_charge_transfer");
+        payment.PayoutStatus.Should().Be("pending");
+        payment.PayoutId.Should().BeNull();
+        escrow.Status.Should().Be("held");
+        escrow.Amount.Should().Be(24.69m);
+        gateway.TransferCalls.Should().Be(0);
+
+        (await service.ConfirmDeliveryAsync(42, 22, order.Id, CancellationToken.None))
+            .Error!.Code.Should().Be("FORBIDDEN");
+        (await service.ConfirmDeliveryAsync(42, 11, order.Id, CancellationToken.None))
+            .Succeeded.Should().BeTrue();
+        order.Status.Should().Be("delivered");
+        order.BuyerConfirmedAt.Should().NotBeNull();
+        order.AutoCompleteAt.Should().BeAfter(order.BuyerConfirmedAt!.Value);
+        gateway.TransferCalls.Should().Be(0, "delivery confirmation starts the dispute window");
+
+        escrow.ReleaseAfter = DateTime.UtcNow.AddMinutes(-1);
+        order.AutoCompleteAt = DateTime.UtcNow.AddMinutes(-1);
+        await db.SaveChangesAsync();
+
+        (await service.ProcessEligibleEscrowReleasesAsync(CancellationToken.None)).Should().Be(1);
+        (await service.ReleaseEscrowAsync(42, escrow.Id, "auto_timeout", CancellationToken.None))
+            .Succeeded.Should().BeTrue();
+
+        gateway.TransferCalls.Should().Be(1);
+        payment.PayoutStatus.Should().Be("paid");
+        payment.PayoutId.Should().Be("tr_marketplace_1");
+        escrow.Status.Should().Be("released");
+        escrow.ReleaseTrigger.Should().Be("auto_timeout");
+        order.Status.Should().Be("completed");
+        order.EscrowReleasedAt.Should().NotBeNull();
+        var payoutBell = await db.Notifications.SingleAsync(row => row.Type == "marketplace_payout");
+        payoutBell.UserId.Should().Be(22);
+        payoutBell.Body.Should().Be($"Deine Auszahlung von 24.69 für Bestellung #{order.Id} wurde freigegeben.");
+        payoutBell.Link.Should().Be($"/marketplace/orders/{order.Id}");
+        (await db.MarketplaceOrderNotificationDeliveries.CountAsync(row => row.Event == "payout_released"))
+            .Should().Be(1);
+    }
+
+    [Fact]
+    public async Task StripeGateway_SeparateChargeOmitsDestinationAndApplicationFee()
+    {
+        var handler = new RecordingHandler();
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Stripe:SecretKey"] = "sk_test_redacted",
+            ["Stripe:ApiBaseUrl"] = "https://stripe.test"
+        }).Build();
+        var gateway = new MarketplaceStripeGateway(new SingleClientFactory(new HttpClient(handler)), configuration,
+            NullLogger<MarketplaceStripeGateway>.Instance);
+        var metadata = new Dictionary<string, string> { ["nexus_order_id"] = "77", ["nexus_tenant_id"] = "42" };
+
+        await gateway.CreateIntentAsync(2599, "EUR", "acct_123", 130, "separate_charge_transfer", metadata,
+            "market-order-42-77", CancellationToken.None);
+
+        handler.Body.Should().Contain("transfer_group=marketplace_order_77");
+        handler.Body.Should().NotContain("application_fee_amount");
+        handler.Body.Should().NotContain("transfer_data%5Bdestination%5D");
+    }
+
+    [Fact]
+    public async Task StripeGateway_CreatesSourceBoundTransferWithStableIdempotency()
+    {
+        var handler = new RecordingHandler();
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Stripe:SecretKey"] = "sk_test_redacted",
+            ["Stripe:ApiBaseUrl"] = "https://stripe.test"
+        }).Build();
+        var gateway = new MarketplaceStripeGateway(new SingleClientFactory(new HttpClient(handler)), configuration,
+            NullLogger<MarketplaceStripeGateway>.Instance);
+
+        var transfer = await gateway.CreateTransferAsync(
+            2469,
+            "EUR",
+            "acct_123",
+            "ch_escrow_1",
+            "marketplace_order_77",
+            new Dictionary<string, string> { ["nexus_order_id"] = "77", ["nexus_type"] = "marketplace_payout" },
+            "marketplace-payout-42-9",
+            CancellationToken.None);
+
+        transfer.Should().Be(new MarketplaceStripeTransfer("tr_provider_77", 2469, "EUR", "acct_123", "ch_escrow_1"));
+        handler.Uri.Should().Be("https://stripe.test/v1/transfers");
+        handler.IdempotencyKey.Should().Be("marketplace-payout-42-9");
+        handler.Body.Should().Contain("amount=2469");
+        handler.Body.Should().Contain("destination=acct_123");
+        handler.Body.Should().Contain("source_transaction=ch_escrow_1");
+        handler.Body.Should().Contain("transfer_group=marketplace_order_77");
+        handler.Body.Should().Contain("metadata%5Bnexus_type%5D=marketplace_payout");
+    }
+
+    [Fact]
     public async Task ConfirmPaid_DeliversLocalizedBuyerAndSellerEmailAndBellExactlyOnce()
     {
         await using var db = CreateDb();
@@ -172,7 +296,7 @@ public sealed class MarketplacePaymentServiceTests
             NullLogger<MarketplaceStripeGateway>.Instance);
         var metadata = new Dictionary<string, string> { ["nexus_order_id"] = "77", ["nexus_tenant_id"] = "42" };
 
-        var result = await gateway.CreateIntentAsync(2599, "EUR", "acct_123", 130, metadata, "market-order-42-77", CancellationToken.None);
+        var result = await gateway.CreateIntentAsync(2599, "EUR", "acct_123", 130, "destination_charge", metadata, "market-order-42-77", CancellationToken.None);
 
         result.Id.Should().Be("pi_provider_77");
         handler.Method.Should().Be(HttpMethod.Post);
@@ -643,19 +767,25 @@ public sealed class MarketplacePaymentServiceTests
         public string? ConnectIdempotencyKey { get; private set; }
         public string? RefreshUrl { get; private set; }
         public string? ReturnUrl { get; private set; }
+        public string? FundsFlow { get; private set; }
+        public int TransferCalls { get; private set; }
+        public MarketplaceStripeTransfer? Transfer { get; set; }
 
         public Task<MarketplaceStripeIntent> CreateIntentAsync(long amountMinor, string currency, string connectedAccountId,
-            long platformFeeMinor, IReadOnlyDictionary<string, string> metadata, string idempotencyKey, CancellationToken ct)
+            long platformFeeMinor, string fundsFlow, IReadOnlyDictionary<string, string> metadata, string idempotencyKey, CancellationToken ct)
         {
             CreateCalls++;
             AmountMinor = amountMinor;
             PlatformFeeMinor = platformFeeMinor;
             ConnectedAccountId = connectedAccountId;
             IdempotencyKey = idempotencyKey;
+            FundsFlow = fundsFlow;
             Metadata = new Dictionary<string, string>(metadata);
             if (CorruptCreateMetadata) Metadata = Metadata.Where(x => x.Key != "nexus_order_id").ToDictionary();
             Created = new("pi_marketplace_1", "pi_marketplace_1_secret", "requires_payment_method", amountMinor, 0,
-                currency, null, "card", Metadata, platformFeeMinor, connectedAccountId);
+                currency, null, "card", Metadata,
+                fundsFlow == "destination_charge" ? platformFeeMinor : null,
+                fundsFlow == "destination_charge" ? connectedAccountId : null);
             return Task.FromResult(Created);
         }
 
@@ -666,6 +796,16 @@ public sealed class MarketplacePaymentServiceTests
         }
 
         public Task CancelIntentAsync(string paymentIntentId, string idempotencyKey, CancellationToken ct) => Task.CompletedTask;
+
+        public Task<MarketplaceStripeTransfer> CreateTransferAsync(
+            long amountMinor, string currency, string connectedAccountId, string sourceTransactionId,
+            string transferGroup, IReadOnlyDictionary<string, string> metadata, string idempotencyKey,
+            CancellationToken ct)
+        {
+            TransferCalls++;
+            return Task.FromResult(Transfer ?? new MarketplaceStripeTransfer(
+                "tr_marketplace_1", amountMinor, currency, connectedAccountId, sourceTransactionId));
+        }
 
         public Task<MarketplaceStripeAccount> CreateExpressAccountAsync(
             string email, int tenantId, int userId, string idempotencyKey, CancellationToken ct)
@@ -708,7 +848,17 @@ public sealed class MarketplacePaymentServiceTests
             Authorization = request.Headers.Authorization?.ToString();
             IdempotencyKey = request.Headers.TryGetValues("Idempotency-Key", out var values) ? values.Single() : null;
             Body = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
-            const string json = """
+            var json = request.RequestUri?.AbsolutePath == "/v1/transfers"
+                ? """
+                {
+                  "id":"tr_provider_77",
+                  "amount":2469,
+                  "currency":"eur",
+                  "destination":"acct_123",
+                  "source_transaction":"ch_escrow_1"
+                }
+                """
+                : """
                 {
                   "id":"pi_provider_77",
                   "client_secret":"pi_provider_77_secret",

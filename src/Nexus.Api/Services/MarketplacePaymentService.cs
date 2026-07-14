@@ -73,6 +73,13 @@ public sealed record MarketplaceStripeAccount(
     bool ChargesEnabled,
     bool PayoutsEnabled);
 
+public sealed record MarketplaceStripeTransfer(
+    string Id,
+    long AmountMinor,
+    string Currency,
+    string DestinationAccountId,
+    string? SourceTransactionId);
+
 public interface IMarketplaceStripeGateway
 {
     bool IsConfigured { get; }
@@ -81,11 +88,21 @@ public interface IMarketplaceStripeGateway
         string currency,
         string connectedAccountId,
         long platformFeeMinor,
+        string fundsFlow,
         IReadOnlyDictionary<string, string> metadata,
         string idempotencyKey,
         CancellationToken ct);
     Task<MarketplaceStripeIntent> RetrieveIntentAsync(string paymentIntentId, CancellationToken ct);
     Task CancelIntentAsync(string paymentIntentId, string idempotencyKey, CancellationToken ct);
+    Task<MarketplaceStripeTransfer> CreateTransferAsync(
+        long amountMinor,
+        string currency,
+        string connectedAccountId,
+        string sourceTransactionId,
+        string transferGroup,
+        IReadOnlyDictionary<string, string> metadata,
+        string idempotencyKey,
+        CancellationToken ct);
     Task<MarketplaceStripeAccount> CreateExpressAccountAsync(
         string email,
         int tenantId,
@@ -114,6 +131,7 @@ public sealed class MarketplaceStripeGateway(
         string currency,
         string connectedAccountId,
         long platformFeeMinor,
+        string fundsFlow,
         IReadOnlyDictionary<string, string> metadata,
         string idempotencyKey,
         CancellationToken ct)
@@ -122,10 +140,17 @@ public sealed class MarketplaceStripeGateway(
         {
             new("amount", amountMinor.ToString(CultureInfo.InvariantCulture)),
             new("currency", currency.ToLowerInvariant()),
-            new("application_fee_amount", platformFeeMinor.ToString(CultureInfo.InvariantCulture)),
-            new("transfer_data[destination]", connectedAccountId),
             new("description", $"NEXUS marketplace order {metadata["nexus_order_id"]}")
         };
+        if (string.Equals(fundsFlow, "separate_charge_transfer", StringComparison.Ordinal))
+        {
+            values.Add(new("transfer_group", $"marketplace_order_{metadata["nexus_order_id"]}"));
+        }
+        else
+        {
+            values.Add(new("application_fee_amount", platformFeeMinor.ToString(CultureInfo.InvariantCulture)));
+            values.Add(new("transfer_data[destination]", connectedAccountId));
+        }
         values.AddRange(metadata.Select(pair => new KeyValuePair<string, string>($"metadata[{pair.Key}]", pair.Value)));
         return SendAsync(HttpMethod.Post, "/v1/payment_intents", values, idempotencyKey, ct);
     }
@@ -136,6 +161,37 @@ public sealed class MarketplaceStripeGateway(
     public async Task CancelIntentAsync(string paymentIntentId, string idempotencyKey, CancellationToken ct) =>
         _ = await SendAsync(HttpMethod.Post, $"/v1/payment_intents/{Uri.EscapeDataString(paymentIntentId)}/cancel",
             Array.Empty<KeyValuePair<string, string>>(), idempotencyKey, ct);
+
+    public async Task<MarketplaceStripeTransfer> CreateTransferAsync(
+        long amountMinor,
+        string currency,
+        string connectedAccountId,
+        string sourceTransactionId,
+        string transferGroup,
+        IReadOnlyDictionary<string, string> metadata,
+        string idempotencyKey,
+        CancellationToken ct)
+    {
+        var values = new List<KeyValuePair<string, string>>
+        {
+            new("amount", amountMinor.ToString(CultureInfo.InvariantCulture)),
+            new("currency", currency.ToLowerInvariant()),
+            new("destination", connectedAccountId),
+            new("source_transaction", sourceTransactionId),
+            new("transfer_group", transferGroup)
+        };
+        values.AddRange(metadata.Select(pair => new KeyValuePair<string, string>($"metadata[{pair.Key}]", pair.Value)));
+        using var document = await SendDocumentAsync(HttpMethod.Post, "/v1/transfers", values, idempotencyKey, ct);
+        var root = document.RootElement;
+        var id = Text(root, "id");
+        var returnedCurrency = Text(root, "currency");
+        var destination = Text(root, "destination");
+        var sourceTransaction = Text(root, "source_transaction");
+        if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(returnedCurrency) ||
+            string.IsNullOrWhiteSpace(destination))
+            throw new InvalidOperationException("Stripe returned an incomplete Transfer.");
+        return new(id, Integer(root, "amount"), returnedCurrency.ToUpperInvariant(), destination, sourceTransaction);
+    }
 
     public async Task<MarketplaceStripeAccount> CreateExpressAccountAsync(
         string email,
@@ -467,8 +523,9 @@ public sealed class MarketplacePaymentService(
             return Error("VALIDATION_ERROR", "Order is already bound to a different Stripe checkout mode.", 422, "order_id");
         if ((order.TotalAmount ?? 0) <= 0 || (order.TimeCreditTotal ?? 0) > 0)
             return Error("VALIDATION_ERROR", "Card payment is not required for this order.", 422, "order_id");
-        if (configuration.GetValue("Marketplace:EscrowEnabled", false))
-            return Error("PAYMENT_ERROR", "Stripe escrow settlement is not yet available.", 409);
+        var fundsFlow = configuration.GetValue("Marketplace:EscrowEnabled", false)
+            ? "separate_charge_transfer"
+            : "destination_charge";
 
         var seller = await db.MarketplaceSellerProfiles.IgnoreQueryFilters()
             .SingleOrDefaultAsync(x => x.TenantId == tenantId && x.UserId == order.SellerUserId, ct);
@@ -493,7 +550,7 @@ public sealed class MarketplacePaymentService(
             ["nexus_buyer_id"] = order.BuyerUserId.ToString(CultureInfo.InvariantCulture),
             ["nexus_seller_id"] = order.SellerUserId.ToString(CultureInfo.InvariantCulture),
             ["nexus_type"] = "marketplace",
-            ["nexus_funds_flow"] = "destination_charge",
+            ["nexus_funds_flow"] = fundsFlow,
             ["nexus_currency"] = currency,
             ["nexus_amount_minor"] = amountMinor.ToString(CultureInfo.InvariantCulture),
             ["nexus_platform_fee_minor"] = feeMinor.ToString(CultureInfo.InvariantCulture),
@@ -527,8 +584,8 @@ public sealed class MarketplacePaymentService(
                 if (!string.Equals(existingIntent.Id, order.PaymentIntentId, StringComparison.Ordinal) ||
                     string.IsNullOrWhiteSpace(existingIntent.ClientSecret) || existingIntent.AmountMinor != amountMinor ||
                     !string.Equals(existingIntent.Currency, currency, StringComparison.Ordinal) ||
-                    !SameEconomics(existingIntent, metadata) || existingIntent.ApplicationFeeMinor != feeMinor ||
-                    !string.Equals(existingIntent.DestinationAccountId, seller.StripeAccountId, StringComparison.Ordinal))
+                    !SameEconomics(existingIntent, metadata) ||
+                    !ProviderFlowMatches(existingIntent, fundsFlow, feeMinor, seller.StripeAccountId!))
                     return Error("PAYMENT_ERROR", "Stripe PaymentIntent economics do not match the order.", 400);
                 return new(new { client_secret = existingIntent.ClientSecret, payment_intent_id = existingIntent.Id });
             }
@@ -546,7 +603,7 @@ public sealed class MarketplacePaymentService(
         MarketplaceStripeIntent intent;
         try
         {
-            intent = await stripe.CreateIntentAsync(amountMinor, currency, seller.StripeAccountId!, feeMinor, metadata,
+            intent = await stripe.CreateIntentAsync(amountMinor, currency, seller.StripeAccountId!, feeMinor, fundsFlow, metadata,
                 $"market-order-{tenantId}-{order.Id}", ct);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -560,8 +617,7 @@ public sealed class MarketplacePaymentService(
         }
         if (string.IsNullOrWhiteSpace(intent.ClientSecret) || intent.AmountMinor != amountMinor ||
             !string.Equals(intent.Currency, currency, StringComparison.Ordinal) || !SameEconomics(intent, metadata) ||
-            intent.ApplicationFeeMinor != feeMinor ||
-            !string.Equals(intent.DestinationAccountId, seller.StripeAccountId, StringComparison.Ordinal))
+            !ProviderFlowMatches(intent, fundsFlow, feeMinor, seller.StripeAccountId!))
         {
             await TryCancelUnboundIntentAsync(intent.Id, tenantId, order.Id, ct);
             return Error("PAYMENT_ERROR", "Stripe PaymentIntent economics do not match the order.", 400);
@@ -705,15 +761,15 @@ public sealed class MarketplacePaymentService(
             return Error("PAYMENT_ERROR", "Stripe payment amount does not match the order.", 400);
         var feeMinor = ParseMinor(metadata, "nexus_platform_fee_minor");
         var payoutMinor = ParseMinor(metadata, "nexus_seller_payout_minor");
-        if (feeMinor < 0 || payoutMinor < 0 || feeMinor + payoutMinor != amountMinor ||
-            !metadata.TryGetValue("nexus_funds_flow", out var fundsFlow) || fundsFlow != "destination_charge" ||
-            intent.ApplicationFeeMinor != feeMinor)
-            return Error("PAYMENT_ERROR", "Stripe settlement economics are invalid.", 400);
         var seller = await db.MarketplaceSellerProfiles.IgnoreQueryFilters().AsNoTracking()
             .SingleOrDefaultAsync(x => x.TenantId == tenantId && x.UserId == order.SellerUserId, ct);
-        if (seller is null || string.IsNullOrWhiteSpace(seller.StripeAccountId) ||
-            !string.Equals(intent.DestinationAccountId, seller.StripeAccountId, StringComparison.Ordinal))
-            return Error("PAYMENT_ERROR", "Stripe destination account does not match the seller.", 400);
+        if (seller is null || string.IsNullOrWhiteSpace(seller.StripeAccountId))
+            return Error("PAYMENT_ERROR", "Stripe seller account is unavailable.", 400);
+        if (feeMinor < 0 || payoutMinor < 0 || feeMinor + payoutMinor != amountMinor ||
+            !metadata.TryGetValue("nexus_funds_flow", out var fundsFlow) ||
+            fundsFlow is not ("destination_charge" or "separate_charge_transfer") ||
+            !ProviderFlowMatches(intent, fundsFlow, feeMinor, seller.StripeAccountId))
+            return Error("PAYMENT_ERROR", "Stripe settlement economics are invalid.", 400);
 
         MarketplacePayment payment;
         await using (var transaction = db.Database.IsRelational()
@@ -730,6 +786,13 @@ public sealed class MarketplacePaymentService(
             if (existing is not null)
             {
                 payment = existing;
+                if (existing.FundsFlow == "separate_charge_transfer" &&
+                    !await db.MarketplaceEscrows.IgnoreQueryFilters().AnyAsync(x =>
+                        x.TenantId == tenantId && x.MarketplaceOrderId == order.Id, ct))
+                {
+                    db.MarketplaceEscrows.Add(NewEscrow(order, existing));
+                    await db.SaveChangesAsync(ct);
+                }
             }
             else
             {
@@ -740,21 +803,26 @@ public sealed class MarketplacePaymentService(
                     MarketplaceOrderId = order.Id,
                     StripePaymentIntentId = intent.Id,
                     StripeChargeId = intent.LatestChargeId,
-                    FundsFlow = "destination_charge",
+                    FundsFlow = fundsFlow,
                     Amount = FromMinor(amountMinor, currency),
                     Currency = currency,
                     PlatformFee = FromMinor(feeMinor, currency),
                     SellerPayout = FromMinor(payoutMinor, currency),
                     PaymentMethod = intent.PaymentMethod,
                     Status = "succeeded",
-                    PayoutStatus = "paid",
-                    PaidOutAt = DateTime.UtcNow
+                    PayoutStatus = fundsFlow == "destination_charge" ? "paid" : "pending",
+                    PaidOutAt = fundsFlow == "destination_charge" ? DateTime.UtcNow : null
                 };
                 db.MarketplacePayments.Add(payment);
                 order.Status = "paid";
                 order.PaymentExpiresAt = null;
                 order.UpdatedAt = DateTime.UtcNow;
                 await db.SaveChangesAsync(ct);
+                if (fundsFlow == "separate_charge_transfer")
+                {
+                    db.MarketplaceEscrows.Add(NewEscrow(order, payment));
+                    await db.SaveChangesAsync(ct);
+                }
             }
             if (transaction is not null) await transaction.CommitAsync(ct);
         }
@@ -1081,6 +1149,332 @@ public sealed class MarketplacePaymentService(
                " " + normalized;
     }
 
+    public async Task<MarketplacePaymentResult> ConfirmDeliveryAsync(
+        int tenantId,
+        int buyerId,
+        int orderId,
+        CancellationToken ct)
+    {
+        await using var transaction = db.Database.IsRelational()
+            ? await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted, ct)
+            : null;
+        if (transaction is not null)
+            await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock({tenantId}, {orderId})", ct);
+
+        var order = await db.MarketplaceOrders.IgnoreQueryFilters()
+            .SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Id == orderId, ct);
+        if (order is null) return Error("NOT_FOUND", "Marketplace order not found.", 404);
+        if (order.BuyerUserId != buyerId)
+            return Error("FORBIDDEN", "Only the buyer can confirm delivery.", 403);
+        if (order.Status is not ("shipped" or "paid" or "delivered"))
+            return Error("VALIDATION_ERROR", "Order is not eligible for delivery confirmation.", 422, "status");
+
+        if (order.Status != "delivered")
+        {
+            var now = DateTime.UtcNow;
+            order.Status = "delivered";
+            order.DeliveredAt = now;
+            order.BuyerConfirmedAt = now;
+            order.AutoCompleteAt = now.AddDays(Math.Clamp(
+                configuration.GetValue("Marketplace:EscrowDisputeWindowDays", 14), 1, 90));
+            order.UpdatedAt = now;
+            await db.SaveChangesAsync(ct);
+        }
+        if (transaction is not null) await transaction.CommitAsync(ct);
+        return new(new
+        {
+            order_id = order.Id,
+            status = order.Status,
+            buyer_confirmed_at = Iso(order.BuyerConfirmedAt),
+            auto_complete_at = Iso(order.AutoCompleteAt)
+        });
+    }
+
+    public async Task<MarketplacePaymentResult> ReleaseEscrowAsync(
+        int tenantId,
+        long escrowId,
+        string trigger,
+        CancellationToken ct)
+    {
+        if (trigger is not ("buyer_confirmed" or "auto_timeout" or "admin_override" or "dispute_resolved"))
+            return Error("VALIDATION_ERROR", "Invalid escrow release trigger.", 422, "trigger");
+
+        MarketplaceEscrow escrow;
+        MarketplacePayment payment;
+        MarketplaceOrder order;
+        MarketplaceSellerProfile seller;
+        await using (var claim = db.Database.IsRelational()
+            ? await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted, ct)
+            : null)
+        {
+            if (claim is not null)
+                await db.Database.ExecuteSqlInterpolatedAsync(
+                    $"SELECT pg_advisory_xact_lock({tenantId}, {unchecked((int)(escrowId % int.MaxValue))})", ct);
+            var escrowRow = await db.MarketplaceEscrows.IgnoreQueryFilters()
+                .SingleOrDefaultAsync(x => x.TenantId == tenantId && x.Id == escrowId, ct);
+            if (escrowRow is null) return Error("NOT_FOUND", "Marketplace escrow was not found.", 404);
+            escrow = escrowRow;
+            payment = await db.MarketplacePayments.IgnoreQueryFilters()
+                .SingleAsync(x => x.TenantId == tenantId && x.Id == escrow.MarketplacePaymentId, ct);
+            order = await db.MarketplaceOrders.IgnoreQueryFilters()
+                .SingleAsync(x => x.TenantId == tenantId && x.Id == escrow.MarketplaceOrderId, ct);
+            var sellerRow = await db.MarketplaceSellerProfiles.IgnoreQueryFilters().AsNoTracking()
+                .SingleOrDefaultAsync(x => x.TenantId == tenantId && x.UserId == order.SellerUserId, ct);
+            if (sellerRow is null) return Error("PAYOUT_ERROR", "Seller payout account is unavailable.", 409);
+            seller = sellerRow;
+
+            if (escrow.Status == "released" && payment.PayoutStatus == "paid" && !string.IsNullOrWhiteSpace(payment.PayoutId))
+            {
+                await DeliverPayoutReleasedAsync(order, escrow, ct);
+                if (claim is not null) await claim.CommitAsync(ct);
+                return new(Projection(payment, detailed: true));
+            }
+            if (escrow.Status != "held")
+                return Error("VALIDATION_ERROR", $"Escrow is not held ({escrow.Status}).", 422, "status");
+            if (payment.PayoutStatus == "scheduled")
+                return Error("PAYOUT_PROCESSING", "Marketplace payout is already processing.", 409);
+            if (payment.FundsFlow != "separate_charge_transfer" ||
+                payment.Status is not ("succeeded" or "partially_refunded") ||
+                string.IsNullOrWhiteSpace(payment.StripeChargeId))
+                return Error("PAYOUT_ERROR", "Marketplace escrow is not backed by a captured separate charge.", 409);
+            if (string.IsNullOrWhiteSpace(seller.StripeAccountId) || !seller.StripeOnboardingComplete)
+                return Error("PAYOUT_ERROR", "Seller payout account is unavailable.", 409);
+            if (await db.MarketplaceDisputes.IgnoreQueryFilters().AnyAsync(x =>
+                    x.TenantId == tenantId && x.MarketplaceOrderId == order.Id &&
+                    (x.Status == "open" || x.Status == "under_review" || x.Status == "escalated"), ct))
+                return Error("VALIDATION_ERROR", "An active dispute blocks escrow release.", 422, "status");
+            if (trigger == "auto_timeout" &&
+                (order.Status != "delivered" || order.AutoCompleteAt is null || order.AutoCompleteAt > DateTime.UtcNow ||
+                 escrow.ReleaseAfter is null || escrow.ReleaseAfter > DateTime.UtcNow))
+                return Error("VALIDATION_ERROR", "Escrow is not eligible for automatic release.", 422, "status");
+
+            if (payment.PayoutStatus == "paid" && !string.IsNullOrWhiteSpace(payment.PayoutId))
+            {
+                CompleteEscrowRelease(escrow, payment, order, trigger);
+                await db.SaveChangesAsync(ct);
+                if (claim is not null) await claim.CommitAsync(ct);
+                await DeliverPayoutReleasedAsync(order, escrow, ct);
+                return new(Projection(payment, detailed: true));
+            }
+
+            payment.PayoutStatus = "scheduled";
+            payment.UpdatedAt = DateTime.UtcNow;
+            await db.SaveChangesAsync(ct);
+            if (claim is not null) await claim.CommitAsync(ct);
+        }
+
+        MarketplaceStripeTransfer transfer;
+        try
+        {
+            if (!TryToMinor(escrow.Amount, escrow.Currency, out var amountMinor, allowZero: false))
+                return Error("PAYOUT_ERROR", "Escrow payout amount is invalid.", 409);
+            var metadata = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["nexus_tenant_id"] = tenantId.ToString(CultureInfo.InvariantCulture),
+                ["nexus_order_id"] = order.Id.ToString(CultureInfo.InvariantCulture),
+                ["nexus_payment_id"] = payment.Id.ToString(CultureInfo.InvariantCulture),
+                ["nexus_type"] = "marketplace_payout"
+            };
+            transfer = await stripe.CreateTransferAsync(
+                amountMinor,
+                escrow.Currency,
+                seller.StripeAccountId!,
+                payment.StripeChargeId!,
+                $"marketplace_order_{order.Id}",
+                metadata,
+                $"marketplace-payout-{tenantId}-{payment.Id}",
+                ct);
+            if (transfer.AmountMinor != amountMinor ||
+                !string.Equals(transfer.Currency, escrow.Currency, StringComparison.Ordinal) ||
+                !string.Equals(transfer.DestinationAccountId, seller.StripeAccountId, StringComparison.Ordinal) ||
+                !string.Equals(transfer.SourceTransactionId, payment.StripeChargeId, StringComparison.Ordinal))
+                throw new InvalidOperationException("Stripe transfer economics do not match escrow.");
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "Marketplace escrow payout failed for payment {PaymentId}.", payment.Id);
+            await db.MarketplacePayments.IgnoreQueryFilters()
+                .Where(x => x.TenantId == tenantId && x.Id == payment.Id && x.PayoutStatus == "scheduled")
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(x => x.PayoutStatus, "failed")
+                    .SetProperty(x => x.UpdatedAt, DateTime.UtcNow), CancellationToken.None);
+            return Error("PAYOUT_ERROR", "Marketplace payout failed.", 409);
+        }
+
+        await using (var complete = db.Database.IsRelational()
+            ? await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted, ct)
+            : null)
+        {
+            if (complete is not null)
+                await db.Database.ExecuteSqlInterpolatedAsync(
+                    $"SELECT pg_advisory_xact_lock({tenantId}, {unchecked((int)(escrowId % int.MaxValue))})", ct);
+            escrow = await db.MarketplaceEscrows.IgnoreQueryFilters()
+                .SingleAsync(x => x.TenantId == tenantId && x.Id == escrowId, ct);
+            payment = await db.MarketplacePayments.IgnoreQueryFilters()
+                .SingleAsync(x => x.TenantId == tenantId && x.Id == escrow.MarketplacePaymentId, ct);
+            order = await db.MarketplaceOrders.IgnoreQueryFilters()
+                .SingleAsync(x => x.TenantId == tenantId && x.Id == escrow.MarketplaceOrderId, ct);
+            payment.PayoutStatus = "paid";
+            payment.PayoutId = transfer.Id;
+            payment.PaidOutAt = DateTime.UtcNow;
+            payment.UpdatedAt = DateTime.UtcNow;
+            if (escrow.Status != "held")
+            {
+                await db.SaveChangesAsync(ct);
+                if (complete is not null) await complete.CommitAsync(ct);
+                return Error("PAYOUT_RECONCILIATION_REQUIRED", "Escrow state changed after provider transfer.", 409);
+            }
+            CompleteEscrowRelease(escrow, payment, order, trigger);
+            await db.SaveChangesAsync(ct);
+            if (complete is not null) await complete.CommitAsync(ct);
+        }
+        await DeliverPayoutReleasedAsync(order, escrow, ct);
+        return new(Projection(payment, detailed: true));
+    }
+
+    public async Task<int> ProcessEligibleEscrowReleasesAsync(CancellationToken ct)
+    {
+        var now = DateTime.UtcNow;
+        var candidates = await db.MarketplaceEscrows.IgnoreQueryFilters().AsNoTracking()
+            .Where(x => x.Status == "held" && x.ReleaseAfter != null && x.ReleaseAfter <= now)
+            .OrderBy(x => x.ReleaseAfter).ThenBy(x => x.Id)
+            .Take(100)
+            .Select(x => new { x.TenantId, x.Id })
+            .ToListAsync(ct);
+        var released = 0;
+        foreach (var candidate in candidates)
+        {
+            var result = await ReleaseEscrowAsync(candidate.TenantId, candidate.Id, "auto_timeout", ct);
+            if (result.Succeeded) released++;
+        }
+        return released;
+    }
+
+    private static void CompleteEscrowRelease(
+        MarketplaceEscrow escrow,
+        MarketplacePayment payment,
+        MarketplaceOrder order,
+        string trigger)
+    {
+        var now = DateTime.UtcNow;
+        escrow.Status = "released";
+        escrow.ReleasedAt = now;
+        escrow.ReleaseTrigger = trigger;
+        escrow.UpdatedAt = now;
+        payment.PayoutStatus = "paid";
+        payment.PaidOutAt ??= now;
+        payment.UpdatedAt = now;
+        order.Status = "completed";
+        order.EscrowReleasedAt = now;
+        order.UpdatedAt = now;
+    }
+
+    private async Task DeliverPayoutReleasedAsync(
+        MarketplaceOrder order,
+        MarketplaceEscrow escrow,
+        CancellationToken ct)
+    {
+        try
+        {
+            var delivery = await db.MarketplaceOrderNotificationDeliveries.IgnoreQueryFilters()
+                .SingleOrDefaultAsync(x => x.TenantId == order.TenantId &&
+                                           x.MarketplaceOrderId == order.Id &&
+                                           x.Event == "payout_released" &&
+                                           x.UserId == order.SellerUserId &&
+                                           x.Channel == "bell", ct);
+            if (delivery is { Status: "delivered" or "skipped" }) return;
+
+            var now = DateTime.UtcNow;
+            if (delivery is null)
+            {
+                delivery = new MarketplaceOrderNotificationDelivery
+                {
+                    TenantId = order.TenantId,
+                    MarketplaceOrderId = order.Id,
+                    Event = "payout_released",
+                    UserId = order.SellerUserId,
+                    Channel = "bell",
+                    Status = "claimed",
+                    Attempts = 1,
+                    ClaimedAt = now,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                };
+                db.MarketplaceOrderNotificationDeliveries.Add(delivery);
+            }
+            else
+            {
+                delivery.Status = "claimed";
+                delivery.Attempts++;
+                delivery.ClaimedAt = now;
+                delivery.UpdatedAt = now;
+            }
+
+            var seller = await db.Users.IgnoreQueryFilters().AsNoTracking()
+                .SingleOrDefaultAsync(x => x.TenantId == order.TenantId && x.Id == order.SellerUserId, ct);
+            if (seller is null)
+            {
+                MarkDeliverySkipped(delivery);
+                await db.SaveChangesAsync(ct);
+                return;
+            }
+
+            var amount = escrow.Amount.ToString(
+                CurrencyExponent(NormalizeCurrency(escrow.Currency) ?? "EUR") == 0 ? "0" : "0.00",
+                CultureInfo.InvariantCulture);
+            var message = MarketplacePayoutNotificationCopy.For(seller.PreferredLanguage)
+                .Replace("{{amount}}", amount, StringComparison.Ordinal)
+                .Replace("{{order}}", order.Id.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal);
+            var notification = new Notification
+            {
+                TenantId = order.TenantId,
+                UserId = order.SellerUserId,
+                Type = "marketplace_payout",
+                Title = "Marketplace payout",
+                Body = message,
+                Link = $"/marketplace/orders/{order.Id}",
+                CreatedAt = now
+            };
+            db.Notifications.Add(notification);
+            await db.SaveChangesAsync(ct);
+            MarkDeliveryDelivered(delivery, notification.Id.ToString(CultureInfo.InvariantCulture));
+            await db.SaveChangesAsync(ct);
+
+            if (pushNotifications is not null)
+            {
+                try
+                {
+                    await pushNotifications.SendPushAsync(
+                        order.SellerUserId,
+                        "Marketplace payout",
+                        message,
+                        JsonSerializer.Serialize(new { link = notification.Link, type = notification.Type }),
+                        order.TenantId);
+                }
+                catch (Exception pushException)
+                {
+                    logger.LogWarning(pushException,
+                        "Marketplace payout push failed for tenant {TenantId}, order {OrderId}.",
+                        order.TenantId, order.Id);
+                }
+            }
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception,
+                "Marketplace payout bell failed for tenant {TenantId}, order {OrderId}.",
+                order.TenantId, order.Id);
+        }
+    }
+
     public async Task<MarketplacePaymentResult> StatusAsync(int tenantId, int userId, long paymentId, CancellationToken ct)
     {
         var payment = await db.MarketplacePayments.IgnoreQueryFilters().AsNoTracking()
@@ -1335,6 +1729,31 @@ public sealed class MarketplacePaymentService(
 
     private static bool SameEconomics(MarketplaceStripeIntent intent, IReadOnlyDictionary<string, string> expected) =>
         expected.All(pair => intent.Metadata.TryGetValue(pair.Key, out var actual) && actual == pair.Value);
+    private static bool ProviderFlowMatches(
+        MarketplaceStripeIntent intent,
+        string fundsFlow,
+        long platformFeeMinor,
+        string connectedAccountId) =>
+        fundsFlow == "separate_charge_transfer"
+            ? intent.ApplicationFeeMinor is null && string.IsNullOrWhiteSpace(intent.DestinationAccountId)
+            : intent.ApplicationFeeMinor == platformFeeMinor &&
+              string.Equals(intent.DestinationAccountId, connectedAccountId, StringComparison.Ordinal);
+    private MarketplaceEscrow NewEscrow(MarketplaceOrder order, MarketplacePayment payment)
+    {
+        var now = DateTime.UtcNow;
+        return new MarketplaceEscrow
+        {
+            TenantId = order.TenantId,
+            MarketplaceOrderId = order.Id,
+            MarketplacePaymentId = payment.Id,
+            Amount = payment.SellerPayout,
+            Currency = payment.Currency,
+            Status = "held",
+            HeldAt = now,
+            ReleaseAfter = now.AddDays(Math.Clamp(
+                configuration.GetValue("Marketplace:EscrowAutoReleaseDays", 14), 1, 90))
+        };
+    }
     private static bool IdentityMetadataMatches(IReadOnlyDictionary<string, string> metadata, MarketplaceOrder order) =>
         metadata.TryGetValue("nexus_type", out var type) && type == "marketplace" &&
         metadata.TryGetValue("nexus_order_id", out var orderId) && orderId == order.Id.ToString(CultureInfo.InvariantCulture) &&

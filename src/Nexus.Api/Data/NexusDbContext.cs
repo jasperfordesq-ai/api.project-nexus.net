@@ -570,6 +570,7 @@ public class NexusDbContext : DbContext
     public DbSet<MarketplaceOffer> MarketplaceOffers => Set<MarketplaceOffer>();
     public DbSet<MarketplaceOrder> MarketplaceOrders => Set<MarketplaceOrder>();
     public DbSet<MarketplacePayment> MarketplacePayments => Set<MarketplacePayment>();
+    public DbSet<MarketplaceEscrow> MarketplaceEscrows => Set<MarketplaceEscrow>();
     public DbSet<MarketplaceOrderNotificationDelivery> MarketplaceOrderNotificationDeliveries => Set<MarketplaceOrderNotificationDelivery>();
     public DbSet<MarketplaceDispute> MarketplaceDisputes => Set<MarketplaceDispute>();
     public DbSet<MarketplaceReport> MarketplaceReports => Set<MarketplaceReport>();
@@ -851,6 +852,7 @@ public class NexusDbContext : DbContext
             entity.ToTable("marketplace_orders");
             entity.HasAlternateKey(e => new { e.TenantId, e.Id });
             entity.Property(e => e.OrderNumber).HasMaxLength(100);
+            entity.Property(e => e.CancellationReason).HasMaxLength(500);
             entity.HasIndex(e => new { e.TenantId, e.OrderNumber })
                 .IsUnique()
                 .HasDatabaseName("uk_marketplace_order_number");
@@ -860,9 +862,11 @@ public class NexusDbContext : DbContext
             entity.HasCheckConstraint("chk_marketplace_order_checkout_mode", "\"StripeCheckoutMode\" IS NULL OR \"StripeCheckoutMode\" IN ('payment_intent','checkout_session')");
             entity.HasIndex(e => new { e.TenantId, e.PaymentIntentId }).IsUnique().HasFilter("\"PaymentIntentId\" IS NOT NULL");
             entity.HasIndex(e => new { e.TenantId, e.Status, e.PaymentExpiresAt });
+            entity.HasIndex(e => new { e.TenantId, e.Status, e.AutoCompleteAt });
         });
         modelBuilder.Entity<MarketplacePayment>(entity =>
         {
+            entity.HasAlternateKey(e => new { e.TenantId, e.Id });
             entity.ToTable("marketplace_payments", table =>
             {
                 table.HasCheckConstraint("chk_marketplace_payment_status", "\"Status\" IN ('pending','succeeded','failed','refunded','partially_refunded')");
@@ -888,6 +892,37 @@ public class NexusDbContext : DbContext
             entity.HasOne<MarketplaceOrder>()
                 .WithMany()
                 .HasForeignKey(e => new { e.TenantId, e.MarketplaceOrderId })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+        modelBuilder.Entity<MarketplaceEscrow>(entity =>
+        {
+            entity.ToTable("marketplace_escrow", table =>
+            {
+                table.HasCheckConstraint("chk_marketplace_escrow_status", "\"Status\" IN ('held','released','refunded','disputed')");
+                table.HasCheckConstraint("chk_marketplace_escrow_amount", "\"Amount\" >= 0");
+                table.HasCheckConstraint("chk_marketplace_escrow_release_trigger", "\"ReleaseTrigger\" IS NULL OR \"ReleaseTrigger\" IN ('buyer_confirmed','auto_timeout','admin_override','dispute_resolved')");
+            });
+            entity.Property(e => e.Amount).HasPrecision(18, 2);
+            entity.Property(e => e.Currency).HasMaxLength(3);
+            entity.Property(e => e.Status).HasMaxLength(32);
+            entity.Property(e => e.ReleaseTrigger).HasMaxLength(32);
+            entity.HasIndex(e => new { e.TenantId, e.MarketplaceOrderId })
+                .IsUnique()
+                .HasDatabaseName("uk_marketplace_escrow_order");
+            entity.HasIndex(e => new { e.TenantId, e.MarketplacePaymentId })
+                .IsUnique()
+                .HasDatabaseName("uk_marketplace_escrow_payment");
+            entity.HasIndex(e => new { e.TenantId, e.Status, e.ReleaseAfter })
+                .HasDatabaseName("idx_marketplace_escrow_release");
+            entity.HasOne<MarketplaceOrder>()
+                .WithMany()
+                .HasForeignKey(e => new { e.TenantId, e.MarketplaceOrderId })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<MarketplacePayment>()
+                .WithMany()
+                .HasForeignKey(e => new { e.TenantId, e.MarketplacePaymentId })
                 .HasPrincipalKey(e => new { e.TenantId, e.Id })
                 .OnDelete(DeleteBehavior.Cascade);
         });
@@ -1116,6 +1151,14 @@ public class NexusDbContext : DbContext
     /// </summary>
     private void SetTenantIdOnInsert()
     {
+        foreach (var entry in ChangeTracker.Entries<MarketplaceOrder>())
+        {
+            if (entry.State == EntityState.Added && string.IsNullOrWhiteSpace(entry.Entity.OrderNumber))
+            {
+                entry.Entity.OrderNumber = MarketplaceOrder.GenerateOrderNumber();
+            }
+        }
+
         if (!_tenantContext.IsResolved) return;
 
         var tenantId = _tenantContext.GetTenantIdOrThrow();
@@ -1125,14 +1168,6 @@ public class NexusDbContext : DbContext
             if (entry.State == EntityState.Added && entry.Entity.TenantId == 0)
             {
                 entry.Entity.TenantId = tenantId;
-            }
-        }
-
-        foreach (var entry in ChangeTracker.Entries<MarketplaceOrder>())
-        {
-            if (entry.State == EntityState.Added && string.IsNullOrWhiteSpace(entry.Entity.OrderNumber))
-            {
-                entry.Entity.OrderNumber = MarketplaceOrder.GenerateOrderNumber();
             }
         }
     }

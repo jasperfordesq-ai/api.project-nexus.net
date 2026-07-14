@@ -15,7 +15,6 @@
  *     ApplyCaringCommunityPreset, AuditAgorisCaringContent,
  *     CivicDigestDispatch -- Caring Community scheduled jobs are tracked
  *     parity gaps.
- *   - Marketplace-specific cron tasks -- tracked parity gaps.
  *   - Seed* and Test* commands — not real cron, dev-only utilities.
  *
  * Future ports (Phase 67+ infrastructure) — stubs ready in this file:
