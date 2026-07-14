@@ -186,7 +186,7 @@ together from a clean published checkout.
   with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
   Only this fixed-rubric audit contributes to the current bank.
 - **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `d158964e`, including the later identity/session confirmation,
+  baseline `beb7285e`, including the later identity/session confirmation,
   method-spoof reconciliation, group-message contract, residual API-consumer
   correction, and backend-request timeout slices. Their evidence is useful, but they
   contribute zero points until one complete fixed-rubric re-audit explicitly
@@ -205,13 +205,13 @@ together from a clean published checkout.
 | Missing Laravel routes | 1 | Event offline check-in code generation |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 51/51 suites, 1,666/1,666 tests | Latest recorded uninterrupted full gate after the frozen score; later improvements remain unscored until a complete rubric re-audit |
+| Jest | 51/51 suites, 1,667/1,667 tests | Latest recorded uninterrupted full gate after the frozen score; later improvements remain unscored until a complete rubric re-audit |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
 | Static locale usage | 7,341 references, 5,620 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
 | Blade marker check | Current 19/19 | Current-source public GET marker comparison; not screenshot or visual certification |
 | Automated accessibility | Not currently certified: 28 passed, login failed, 58 did not run | Full aggregate requires a disposable Laravel environment; manual AT review remains open |
-| Frontend API consumer ledger | 663 contracts: 448 OpenAPI matches, 215 unmatched, 0 dynamic | Static method/path and ownership evidence; unmatched rows are not parity claims; generated from dirty working trees and therefore unscored |
+| Frontend API consumer ledger | 663 contracts: 448 OpenAPI matches, 215 unmatched, 0 dynamic; the unmatched set is 210 direct Laravel route declarations omitted from OpenAPI plus 5 without a resolved direct declaration | Static method/path and ownership evidence; declaration classification is not runtime certification and remains unscored |
 
 ### Frozen Completion Baseline
 
@@ -281,9 +281,10 @@ when a concrete regression requires an independently publishable fix.
 8. **P0 - Event check-in boundary:** obtain a safe Laravel offline signed-code
    contract or an explicit source-contract decision for
    `POST /events/{id}/check-in/code`. Owner: Laravel backend/API workstream.
-9. **P1 - API ledger closure:** reconcile all 215 currently unmatched consumer rows,
-   adding focused assertions for concrete gaps. Owner:
-   Web UK; Laravel API owner for genuine source omissions.
+9. **P1 - API ledger closure:** reconcile the five consumers still lacking a
+   resolved direct Laravel declaration and decide whether the 210 declared
+   routes require OpenAPI publication. Add focused assertions for concrete
+   gaps. Owner: Web UK; Laravel API owner for OpenAPI/source omissions.
 10. **P1 - Component-audit closure:** finish the remaining default-English
     significant-state rows and mark each closed, upstream-blocked, or
     certification-only with evidence. Owner: Web UK.
@@ -1214,10 +1215,10 @@ After the localization P0, the remaining priority order is:
    normalized marker check only.
 5. Complete manual keyboard, screen-reader, focus-order, error-summary, no-JS,
    zoom/reflow, forced-colour, and disabled-user evidence.
-6. Maintain the generated frontend-consumer API ledger and reconcile its 215
-   unmatched rows against Laravel routes/controllers and real
-   consumers. Do not count an OpenAPI match or test-file reference as behavioral
-   certification.
+6. Reconcile the five frontend consumers still lacking a resolved direct
+   Laravel declaration and track the 210 direct route declarations omitted
+   from OpenAPI. Do not count either classification or a test-file reference as
+   behavioral certification.
 7. Harden production concerns separately: persistent sessions,
    production-only secrets/configuration, and deployed timeout proof.
 
@@ -1303,3 +1304,24 @@ the implementation part of the timeout/abort subgap but does not certify
 production deployment behavior or change the frozen 622/1,000 bank without a
 complete rubric re-audit; persistent-session and production-secret proof remain
 open in package 12.
+
+## 2026-07-14 Laravel Route-Declaration Classification
+
+Frozen evidence at 2026-07-14 15:25 +01:00: Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf`; published Web UK
+`beb7285e` with its parent `1731e755` already on `origin/main`. The frontend
+consumer ledger now hashes and indexes uncommented direct method/path
+declarations from Laravel `routes/api.php` separately from OpenAPI. It does not
+promote those declarations to OpenAPI matches or behavioral certification.
+
+The 663-contract denominator is unchanged: 448 exact OpenAPI matches, 215
+OpenAPI-unmatched consumers, zero dynamic consumers, and zero consumers without
+detected tests. The 215 are now finitely split into 210 exact direct Laravel
+route declarations omitted from OpenAPI and five consumers whose path-builder
+shape still prevents a direct declaration match. Focused generator proof passes
+5/5; the complete non-mutating gate passes 51/51 suites and 1,667/1,667 tests,
+with green lint, brand, CSS, route, localization, 19/19 Blade marker, and diff
+checks. No Laravel source, database, migration, mutation, upload, download,
+cleanup, or production operation was performed. This improves evidence
+classification only; the frozen bank remains 622/1,000 pending a complete
+rubric re-audit.

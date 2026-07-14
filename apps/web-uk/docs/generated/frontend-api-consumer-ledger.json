@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-14T14:06:54.759Z",
+  "generatedAt": "2026-07-14T14:20:28.473Z",
   "provenance": {
-    "generatedAt": "2026-07-14T14:06:54.759Z",
+    "generatedAt": "2026-07-14T14:20:28.473Z",
     "laravelRepositoryRoot": "C:\\platforms\\htdocs\\staging",
     "laravelCommitSha": "903d03d3db78bbf87129ad35728be3b72819acaf",
     "laravelWorkingTreeDirty": true,
     "webUkRepositoryRoot": "C:\\platforms\\htdocs\\asp.net-backend",
     "webUkPath": "apps/web-uk",
-    "webUkRepositoryCommitSha": "d158964e6d61f0306d9773926f2c281e150cab3b",
+    "webUkRepositoryCommitSha": "beb7285e250bc92e7fa1492123325ee18effe30d",
     "webUkRepositoryWorkingTreeDirty": true,
     "caveat": "Laravel and Web UK repository working trees were dirty when generated. Commit SHAs identify HEAD only; generated content may include uncommitted changes from the dirty working trees."
   },
@@ -16,12 +16,16 @@
     "api": "src/lib/api.js",
     "apiSha256": "4391da86812c0d082dea722683c181087942e9873dd6921c75582cb7842b6083",
     "laravelOpenApi": "C:\\platforms\\htdocs\\staging\\openapi.json",
-    "laravelOpenApiSha256": "0f62bf532901e6925b630d6a8ed0add7cd2c2bd9395b773c6a1a6581c0d38722"
+    "laravelOpenApiSha256": "0f62bf532901e6925b630d6a8ed0add7cd2c2bd9395b773c6a1a6581c0d38722",
+    "laravelApiRoutes": "C:\\platforms\\htdocs\\staging\\routes\\api.php",
+    "laravelApiRoutesSha256": "acbff7276a6480855e89cec7a9c3971ff839b51ed536c8d48ee621bcb48b694f"
   },
   "summary": {
     "contracts": 663,
     "matchedOpenApi": 448,
     "missingOpenApi": 215,
+    "routeDeclaredOpenApiOmissions": 210,
+    "withoutLaravelRouteDeclaration": 5,
     "dynamicUnresolved": 0,
     "stateChanging": 370,
     "withoutTests": 0
@@ -43,8 +47,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/ai/chat",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -74,8 +78,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/ai/conversations",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -105,8 +109,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/ai/conversations/{id}",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -136,8 +140,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/auth/forgot-password",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -170,8 +174,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/auth/login",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -181,6 +185,7 @@
       ],
       "tests": [
         "tests/accessibility/public-pages.spec.js",
+        "tests/api-consumer-ledger.test.js",
         "tests/api-timeout.test.js",
         "tests/api.test.js",
         "tests/auth-localization.test.js",
@@ -243,8 +248,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/auth/logout",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -285,8 +290,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/auth/refresh-token",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -318,8 +323,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/auth/resend-verification-by-email",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -352,8 +357,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/auth/reset-password",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -386,8 +391,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/auth/validate-token",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -421,8 +426,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/auth/verify-email",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -453,8 +458,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/gdpr/delete-account",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -489,8 +494,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/social/likers",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -520,8 +525,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/totp/verify",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -788,8 +793,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/appreciations",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -819,8 +824,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/appreciations/{id}/react",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -1067,8 +1072,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/auth/registration-info",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -1176,8 +1181,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/bookmarks",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -1208,8 +1213,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/bookmarks",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -1349,8 +1354,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/clubs",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -1648,8 +1653,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/connections/{id}/decline",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -1821,8 +1826,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/conversations/{id}/messages",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -1852,8 +1857,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/conversations/{id}/messages",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -1883,8 +1888,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/conversations/{id}/participants",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -1914,8 +1919,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/conversations/{id}/participants",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -1945,8 +1950,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/conversations/{id}/participants/{userId}",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -1976,8 +1981,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/conversations/groups",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -2007,8 +2012,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/conversations/groups",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -2038,8 +2043,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/coupons",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -2068,8 +2073,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/coupons/{id}",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -2098,8 +2103,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/courses",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -2130,8 +2135,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/courses/{id}",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -2162,8 +2167,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/courses/{idOrSlug}",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -2194,8 +2199,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/courses/{id}",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -2226,8 +2231,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/courses/{id}/analytics",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -2258,8 +2263,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/courses/{id}/certificate",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -2290,8 +2295,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/courses/{id}/enroll",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -2322,8 +2327,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/courses/{courseId}/grading",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -2354,8 +2359,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/courses/{courseId}/lessons",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -2386,8 +2391,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/courses/{courseId}/lessons/{lessonId}",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -2418,8 +2423,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/courses/{courseId}/lessons/{lessonId}",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -2450,8 +2455,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/courses/{id}/lessons/{lessonId}/complete",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -2482,8 +2487,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/courses/{id}/publish",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -2514,8 +2519,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/courses/{id}/reviews",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -2546,8 +2551,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/courses/{courseId}/sections",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -2578,8 +2583,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/courses/{courseId}/sections/{sectionId}",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -2610,8 +2615,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/courses/{courseId}/sections/{sectionId}",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -2642,8 +2647,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/courses/{id}/unpublish",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -2674,8 +2679,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/courses/attempts/{attemptId}/grade",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -2706,8 +2711,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/courses/categories",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -2738,8 +2743,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/courses/mine",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -2771,8 +2776,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/courses/quizzes/{quizId}",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -2803,8 +2808,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/courses/quizzes/{quizId}/attempt",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -7017,8 +7022,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/exchanges/needs-attention-count",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -7084,8 +7089,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/federation/connections",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -7118,8 +7123,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/federation/connections",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -7152,8 +7157,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/federation/connections/{id}",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -7186,8 +7191,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/federation/connections/{id}/accept",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -7218,8 +7223,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/federation/connections/{id}/reject",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -7292,8 +7297,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/federation/groups",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -7436,8 +7441,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/federation/members/{id}/reviews",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -7542,8 +7547,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/federation/messages/{id}/translate",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -7574,8 +7579,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/federation/messages/mark-read-batch",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -7680,8 +7685,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/federation/partners/{id}",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -7859,8 +7864,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/federation/transactions",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -8031,8 +8036,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/feed/items/{type}/{id}",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -8064,8 +8069,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/feed/items/{type}/{id}/report",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -8205,8 +8210,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/feed/posts/{id}",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -8237,8 +8242,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/feed/posts/{id}",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -8269,8 +8274,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/feed/posts/{id}",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -8336,8 +8341,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/feed/posts/{id}/not-interested",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -8642,8 +8647,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/gamification/community-dashboard",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -8742,8 +8747,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/gamification/engagement-history",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -8806,8 +8811,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/gamification/member-spotlight",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -8836,8 +8841,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/gamification/nexus-score",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -8866,8 +8871,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/gamification/personal-journey",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -9355,8 +9360,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/goals/{id}/buddy/nudge",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -9531,8 +9536,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/goals/{id}/insights",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -10629,8 +10634,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/groups/{id}/files",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -10660,8 +10665,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/groups/{id}/files",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -10691,8 +10696,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/groups/{id}/files/{fileId}",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -10722,8 +10727,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/groups/{id}/files/{fileId}/download",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -10787,8 +10792,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/groups/{id}/invites",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -10818,8 +10823,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/groups/{id}/invites/{inviteId}",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -10849,8 +10854,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/groups/{id}/invites/email",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -10880,8 +10885,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/groups/{id}/invites/link",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -11088,8 +11093,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/groups/{id}/notification-prefs",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -11119,8 +11124,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/groups/{id}/notification-prefs",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -12818,8 +12823,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/jobs/{id}/applications/export-csv",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -12965,8 +12970,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/jobs/{id}/predictions",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -13385,8 +13390,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/jobs/applications/{id}/cv",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -13455,8 +13460,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/jobs/employer-reviews/{userId}",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -13489,8 +13494,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/jobs/interviews/{id}/accept",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -13523,8 +13528,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/jobs/interviews/{id}/decline",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -13595,8 +13600,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/jobs/my-interviews",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -13629,8 +13634,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/jobs/my-offers",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -13663,8 +13668,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/jobs/my-postings",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -13697,8 +13702,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/jobs/offers/{id}/accept",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -13731,8 +13736,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/jobs/offers/{id}/reject",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -13765,8 +13770,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/jobs/talent-search/{id}",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -14260,8 +14265,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/listings/{id}/report",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -14396,8 +14401,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/listings/generate-description",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -14496,8 +14501,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/marketplace/categories",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -14531,8 +14536,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/marketplace/listings",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -14566,8 +14571,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/marketplace/listings/{id}",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -14601,8 +14606,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/marketplace/listings/{id}",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -14637,8 +14642,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/marketplace/listings/{id}",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -14672,8 +14677,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/marketplace/listings/{id}/offers",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -14707,8 +14712,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/marketplace/listings/{id}/pickup-slots",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -14742,8 +14747,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/marketplace/listings/{id}/renew",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -14777,8 +14782,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/marketplace/listings/{id}/report",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -14812,8 +14817,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/marketplace/listings/{id}/save",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -14847,8 +14852,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/marketplace/listings/{id}/save",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -14882,8 +14887,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/marketplace/me/pickups",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -14917,8 +14922,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/marketplace/my-offers/sent",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -14952,8 +14957,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/marketplace/offers/{id}",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -14989,8 +14994,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/marketplace/offers/{id}/accept",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -15024,8 +15029,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/marketplace/offers/{id}/decline",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -15103,8 +15108,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/marketplace/orders/{id}/cancel",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -15138,8 +15143,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/marketplace/orders/{id}/confirm-delivery",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -15173,8 +15178,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/marketplace/orders/{id}/rate",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -15208,8 +15213,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/marketplace/orders/{id}/ship",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -15243,8 +15248,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/marketplace/seller/coupons",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -15278,8 +15283,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/marketplace/seller/coupons",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -15313,8 +15318,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/marketplace/seller/coupons/{id}",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -15348,8 +15353,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/marketplace/seller/coupons/{id}",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -15383,8 +15388,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/marketplace/seller/pickup-scan",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -15418,8 +15423,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/marketplace/seller/pickup-slots",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -15453,8 +15458,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/marketplace/seller/pickup-slots",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -15488,8 +15493,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/marketplace/seller/pickup-slots/{id}",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -15523,8 +15528,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/marketplace/seller/pickup-slots/{id}",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -15558,8 +15563,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/marketplace/sellers/{id}",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -15593,8 +15598,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/marketplace/sellers/{id}/listings",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -15628,8 +15633,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/marketplace/sellers/{id}/shipping-options",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -15730,8 +15735,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/me/collections",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -15764,8 +15769,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/me/collections",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -15798,8 +15803,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/me/collections/{id}",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -15832,8 +15837,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/me/collections/{id}",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -15866,8 +15871,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/me/collections/{id}/items",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -15897,8 +15902,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/me/courses",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -15928,8 +15933,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/me/saved-items",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -15960,8 +15965,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/me/saved-items",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -15991,8 +15996,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/me/saved-items/{id}",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -16022,8 +16027,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/me/saved-items/check",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -16053,8 +16058,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/member-premium/billing-portal",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -16084,8 +16089,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/member-premium/cancel",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -16115,8 +16120,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/member-premium/checkout",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -16146,8 +16151,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/member-premium/me",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -16177,8 +16182,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/member-premium/tiers",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -16350,8 +16355,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/merchant-onboarding/complete",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -16382,8 +16387,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/merchant-onboarding/status",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -16414,8 +16419,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/merchant-onboarding/step-1",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -16446,8 +16451,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/merchant-onboarding/step-2",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -16688,8 +16693,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/messages/{id}/translate",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -16897,8 +16902,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/newsletter/unsubscribe",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -17107,8 +17112,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/notifications/group/read",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -17138,8 +17143,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/notifications/grouped",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -17204,8 +17209,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/notifications/settings",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -17243,8 +17248,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/notifications/settings",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -17351,8 +17356,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/onboarding/config",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -17381,8 +17386,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/onboarding/safeguarding",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -17413,8 +17418,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/onboarding/safeguarding-options",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -18379,8 +18384,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/reactions",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -18415,8 +18420,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/reactions/{type}/{id}",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -18450,8 +18455,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/reactions/{type}/{id}/users/{reactionType}",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -18551,8 +18556,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/resources/{id}",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -18583,8 +18588,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/resources/{id}/download",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -18827,8 +18832,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/reviews/given",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -18965,8 +18970,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/safeguarding/confirm-policy-review",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -19004,8 +19009,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/safeguarding/my-preferences",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -19043,8 +19048,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/safeguarding/my-vetting-status",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -19082,8 +19087,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/safeguarding/revoke",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -19121,8 +19126,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/safeguarding/vetting-review-request",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -19338,8 +19343,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/shares",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -19437,8 +19442,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/skills/members",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -19467,8 +19472,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/support/reports",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -19580,8 +19585,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/ugc-translate",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -19753,8 +19758,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/users/{userId}/appreciations",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -19818,8 +19823,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/users/{id}/block",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -19850,8 +19855,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/users/{id}/block",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -19881,8 +19886,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/users/{id}/block-status",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -19948,8 +19953,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/users/{userId}/public-collections",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -20048,8 +20053,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/users/blocked",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -21458,8 +21463,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/users/search",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -21523,8 +21528,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/volunteering/accessibility-needs",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -21557,8 +21562,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/volunteering/accessibility-needs",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -21822,8 +21827,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/volunteering/community-projects",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -21971,8 +21976,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/volunteering/credentials/{id}/download",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -22002,8 +22007,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/volunteering/donations",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -22038,8 +22043,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/volunteering/donations",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -22113,8 +22118,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/volunteering/expenses",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -22148,8 +22153,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/volunteering/expenses",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -22183,8 +22188,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/volunteering/giving-days",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -22524,8 +22529,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/volunteering/incidents",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -22559,8 +22564,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/volunteering/incidents",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -23011,8 +23016,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/volunteering/organisations/{id}",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -23084,8 +23089,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/volunteering/organisations/{id}/applications",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -23118,8 +23123,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/volunteering/organisations/{id}/hours/pending",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -23152,8 +23157,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/volunteering/organisations/{id}/stats",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -23186,8 +23191,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/volunteering/organisations/{id}/volunteers",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -23220,8 +23225,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/volunteering/organisations/{id}/wallet",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -23254,8 +23259,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/volunteering/organisations/{id}/wallet/deposit",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -23288,8 +23293,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/volunteering/organisations/{id}/wallet/transactions",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -23363,8 +23368,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/volunteering/reviews/organization/{id}",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -23702,8 +23707,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/volunteering/training",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -23737,8 +23742,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/volunteering/training",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -24132,8 +24137,8 @@
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/webauthn/credentials",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -24170,8 +24175,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/webauthn/remove",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -24208,8 +24213,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/webauthn/rename",
         "operationId": "",
         "controllerAction": "",
         "tags": []
@@ -24246,8 +24251,8 @@
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
+        "status": "route-declared-openapi-omission",
+        "path": "/api/webauthn/security-confirm",
         "operationId": "",
         "controllerAction": "",
         "tags": []
