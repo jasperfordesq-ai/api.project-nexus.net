@@ -1191,11 +1191,7 @@ router.get('/:id(\\d+)/report', asyncRoute(async (req, res) => {
   const ownerId = listingOwnerId(listing);
   const currentUserId = positiveInteger(currentUser.id);
   if (ownerId !== null && currentUserId !== null && ownerId === currentUserId) {
-    return res.status(403).render('static-page', {
-      title: 'Cannot report listing',
-      heading: 'Cannot report listing',
-      body: 'You cannot report your own listing.'
-    });
+    return renderForbidden(res);
   }
 
   const t = res.locals.t;

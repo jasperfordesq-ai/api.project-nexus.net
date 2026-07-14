@@ -27001,6 +27001,24 @@ describe('shared accessible frontend shell', () => {
     expect(replay.text).toContain('>Unsafe wiring near the entrance</textarea>');
   });
 
+  it('uses the standard Laravel-aligned 403 surface for owner Listing reports', async () => {
+    const api = require('../src/lib/api');
+    api.getProfile.mockResolvedValueOnce({ data: { id: 77, name: 'Listing owner' } });
+    api.callListingApi.mockResolvedValueOnce({
+      data: { id: 42, title: 'Bike trailer loan', user_id: 77 }
+    });
+
+    const response = await request(app)
+      .get('/listings/42/report')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(403);
+    expect(response.text).toContain('You do not have permission to view this page');
+    expect(response.text).toContain('This page is not available to your account. If you think this is wrong, contact your community organisers.');
+    expect(response.text).not.toContain('Cannot report listing');
+    expect(response.text).not.toContain('name="reason"');
+  });
+
   it('renders the Laravel-backed listing exchange request form', async () => {
     const api = require('../src/lib/api');
     api.getProfile.mockResolvedValueOnce({ data: { id: 101, name: 'Signed in member' } });
