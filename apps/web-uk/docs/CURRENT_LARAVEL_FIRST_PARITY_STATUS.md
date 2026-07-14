@@ -171,7 +171,7 @@ Refresh the Laravel Blade/API source and Web UK implementation before relying on
 these numbers after either source moves.
 
 At this documentation audit, the product-source baseline was
-`c60f9cf78762f094fa0eacfe65f708dd894eb096`. The revoked-session confirmation,
+`a742239483c6bc6c5837bd586e5f03be8c7afe91`. The revoked-session confirmation,
 Laravel method-spoof reconciliation, group-message contract, residual API-
 consumer correction, and backend-request timeout slices are above the frozen
 bank and remain **published and unscored**. The documentation remediation is
@@ -186,7 +186,7 @@ together from a clean published checkout.
   with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
   Only this fixed-rubric audit contributes to the current bank.
 - **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `c60f9cf7`, including the later identity/session confirmation,
+  baseline `a7422394`, including the later identity/session confirmation,
   method-spoof reconciliation, group-message contract, residual API-consumer
   correction, and backend-request timeout slices. Their evidence is useful, but they
   contribute zero points until one complete fixed-rubric re-audit explicitly
@@ -1329,6 +1329,24 @@ checks. No Laravel source, database, migration, mutation, upload, download,
 cleanup, or production operation was performed. This improves evidence
 classification only; the frozen bank remains 622/1,000 pending a complete
 rubric re-audit.
+
+## 2026-07-14 Premium Currency Display Parity
+
+Frozen evidence at `2026-07-14T19:20:56.0397627+01:00` against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and published Web UK product commit
+`a742239483c6bc6c5837bd586e5f03be8c7afe91`. Premium tier prices now match
+Blade's tenant-currency contract: EUR, USD, and GBP use their source symbols,
+other valid ISO codes use a code prefix, and the default is EUR. The monthly
+and yearly summary also uses Blade's same-line middle-dot separator.
+
+Focused premium workflow proof passes 6/6, including configured GBP and EUR
+fallback rendering. The complete non-mutating gate passes 52/52 suites and
+1,675/1,675 tests; brand, lint, CSS, route, API-ledger, locale, 322-template
+zero-match, 19/19 canonical Blade-marker, and diff checks are green. No Laravel
+database, migration, mutation, upload, download, container, or production
+operation was performed. This published component-audit improvement remains
+unscored, so the frozen bank remains 622/1,000 pending a complete fixed-rubric
+re-audit.
 
 ## 2026-07-14 Blog RSS Contract Parity
 
