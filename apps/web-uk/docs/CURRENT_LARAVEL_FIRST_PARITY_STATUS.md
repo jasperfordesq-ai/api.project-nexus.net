@@ -171,7 +171,7 @@ Refresh the Laravel Blade/API source and Web UK implementation before relying on
 these numbers after either source moves.
 
 At this documentation audit, the product-source baseline was
-`35f182804d4eeaf9d7d15384b0d345dee887151f`. The post-bank implementation,
+`c8d997d2718b8d637dbf8bcc8fa43b55144d4406`. The post-bank implementation,
 contract, resilience, component-audit, attached Event-poll, and Listing-
 analytics slices are above the frozen bank and remain **published and
 unscored**. The documentation remediation is
@@ -186,7 +186,7 @@ together from a clean published checkout.
   with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
   Only this fixed-rubric audit contributes to the current bank.
 - **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `35f18280`, including the later implementation, contract,
+  baseline `c8d997d2`, including the later implementation, contract,
   resilience, and component-audit slices. Their evidence is useful, but they
   contribute zero points until one complete fixed-rubric re-audit explicitly
   replaces the baseline.
@@ -1473,6 +1473,26 @@ zero-match, 19/19 canonical Blade-marker, and diff checks are green. No Laravel
 request, database, migration, mutation, container, or production operation was
 performed. This published component-audit improvement remains unscored, so the
 frozen bank remains 622/1,000 pending a complete fixed-rubric re-audit.
+
+## 2026-07-14 Listing Report Validation Replay
+
+Frozen evidence at `2026-07-14T20:31:13.4148895+01:00` against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and published Web UK product commit
+`c8d997d2718b8d637dbf8bcc8fa43b55144d4406`. Listing report POST now enforces
+authentication before validation, matches Blade's exact request-locale reason
+labels and validation copy, and preserves bounded reason/details input through
+a one-use session replay. The error summary and field error share the source
+`#reason-inappropriate` destination; invalid input never reaches Laravel's
+report API.
+
+Focused signed, unsigned, rendered-error, and replay proof passes 2/2. The
+uninterrupted complete non-mutating gate passes 52/52 suites and 1,677/1,677
+tests. Lint, branding, CSS, the 7,462-reference / 5,697-unique-key zero-
+unresolved locale audit, the 322-template zero-match audit, and diff checks are
+green. No Laravel request, database, migration, mutation, container, or
+production operation was performed. This published component-audit improvement
+remains unscored, so the frozen bank remains 622/1,000 pending a complete
+fixed-rubric re-audit.
 
 ## 2026-07-14 Listing Exchange-Request Catalog Parity
 
