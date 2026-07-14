@@ -171,6 +171,26 @@ describe('Laravel account and settings contract parity', () => {
     expect(hrefs).not.toContain('/messages');
   });
 
+  it('builds every current Blade account destination when its tenant facility is enabled', () => {
+    const links = buildAccountLinks({
+      tenant: {
+        modules: { wallet: true, notifications: true, listings: true },
+        features: { connections: true, reviews: true, job_vacancies: true, group_exchanges: true, gamification: true }
+      },
+      directMessagingEnabled: true,
+      unreadMessageCount: 3,
+      t: createTranslator('en')
+    });
+
+    expect(links.map(({ href }) => href)).toEqual([
+      '/wallet', '/messages', '/connections', '/notifications', '/reviews',
+      '/activity', '/saved', '/jobs', '/matches', '/group-exchanges',
+      '/achievements', '/leaderboard', '/nexus-score', '/profile',
+      '/profile/settings', '/settings/linked-accounts', '/settings/appearance'
+    ]);
+    expect(links.find(({ href }) => href === '/messages')).toMatchObject({ badge: 3 });
+  });
+
   it('renders appearance settings from the exact Laravel catalog and ignores unknown statuses', async () => {
     const response = await request(settingsApp()).get('/settings/appearance?status=appearance-saved');
     const unknownStatusResponse = await request(settingsApp()).get('/settings/appearance?status=untrusted');
