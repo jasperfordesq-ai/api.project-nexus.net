@@ -48,6 +48,9 @@ try {
     "/api/v2/missing-feature": {
       "post": {}
     },
+    "/api/v2/admin/vetting/{id}/verify": {
+      "post": {}
+    },
     "/api/v2/events/{id}/registration-product": {
       "get": {}
     },
@@ -166,7 +169,8 @@ public sealed class ConstantRouteController : ControllerBase
     $matrix = @($report.matrix)
 
     Assert-True ($report.summary.aspnet_operations -eq 12) 'Expected twelve ASP.NET operations.'
-    Assert-True ($report.summary.laravel_openapi_operations -eq 7) 'Expected seven Laravel OpenAPI operations.'
+    Assert-True ($report.summary.laravel_openapi_operations -eq 8) 'Expected eight raw Laravel OpenAPI operations.'
+    Assert-True ($report.summary.retired_openapi_operations -eq 1) 'Expected one removed OpenAPI-only operation.'
     Assert-True ($report.summary.supplemental_route_operations -eq 2) 'Expected two supplemental route operations.'
     Assert-True ($report.summary.matched_operations -eq 7) 'Expected seven matched operations.'
     Assert-True ($report.summary.missing_operations -eq 2) 'Expected two missing operations.'
@@ -179,12 +183,29 @@ public sealed class ConstantRouteController : ControllerBase
     Assert-True ($supplementalRow.source_file.Contains('api.php')) 'Expected duplicate supplemental source evidence to include api.php.'
     Assert-True ($supplementalRow.source_file.Contains('supplemental-routes.txt')) 'Expected duplicate supplemental source evidence to include supplemental-routes.txt.'
     Assert-True (@($matrix | Where-Object { $_.source -eq 'openapi' -and $_.method -eq 'DELETE' -and $_.normalized_path -eq '/api/listings/{id}' -and $_.status -eq 'missing' }).Count -eq 1) 'Expected DELETE /api/listings/{id} to be missing.'
+    Assert-True (@($matrix | Where-Object { $_.normalized_path -eq '/api/admin/vetting/{id}/verify' }).Count -eq 0) 'Expected the removed vetting operation to be excluded while no Laravel route declares it.'
     $actionRow = @($matrix | Where-Object { $_.source -eq 'supplemental-route' -and $_.method -eq 'POST' -and $_.normalized_path -eq '/api/admin/federation/credit-agreements/{id}/{action}' })[0]
     Assert-True ($actionRow.status -eq 'matched') 'Expected the constrained Laravel action route to match all six ASP.NET literal owners.'
     Assert-True (($actionRow.aspnet_actions -split ';').Count -eq 6) 'Expected evidence from all six literal credit-agreement actions.'
 
     $markdown = Get-Content -Raw -LiteralPath $markdownPath
     Assert-True ($markdown.Contains('/api/missing-feature')) 'Expected markdown report to include missing-feature gap.'
+
+    Add-Content -LiteralPath (Join-Path $sourceRoot 'routes\api.php') -Value @'
+Route::post('/v2/admin/vetting/{id}/verify', [AdminVettingController::class, 'verify']);
+'@
+
+    & powershell -NoProfile -ExecutionPolicy Bypass -File $scriptPath -TargetRoot $targetRoot -SourceRoot $sourceRoot -OutDir $outDir
+    if ($LASTEXITCODE -ne 0) {
+        throw "compare-laravel-api-parity.ps1 reintroduction check exited with $LASTEXITCODE"
+    }
+
+    $reintroducedReport = Get-Content -Raw -LiteralPath $jsonPath | ConvertFrom-Json
+    $reintroducedMatrix = @($reintroducedReport.matrix)
+    Assert-True ($reintroducedReport.summary.retired_openapi_operations -eq 0) 'Expected a live Laravel declaration to reactivate the OpenAPI operation.'
+    Assert-True ($reintroducedReport.summary.matched_operations -eq 7) 'Expected reintroduction not to change existing matches.'
+    Assert-True ($reintroducedReport.summary.missing_operations -eq 3) 'Expected the reintroduced Laravel operation to become an active missing contract.'
+    Assert-True (@($reintroducedMatrix | Where-Object { $_.source -eq 'openapi' -and $_.method -eq 'POST' -and $_.normalized_path -eq '/api/admin/vetting/{id}/verify' -and $_.status -eq 'missing' }).Count -eq 1) 'Expected the reintroduced vetting operation to return to the active gate.'
 
     Write-Host 'compare-laravel-api-parity tests passed.'
 } finally {

@@ -138,6 +138,43 @@ public sealed class SafeguardingVettingControllerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task RemovedDocumentEraRoutes_MatchLaravel404Or405AndCannotMutateVettingState()
+    {
+        await AuthenticateAsAdminAsync();
+        int legacyBefore = 0;
+        int currentBefore = 0;
+        await WithDbAsync(async db =>
+        {
+            legacyBefore = await db.VettingRecords.IgnoreQueryFilters().CountAsync();
+            currentBefore = await db.MemberVettingAttestations.IgnoreQueryFilters().CountAsync();
+        });
+
+        (await Client.PostAsJsonAsync("/api/v2/admin/vetting", new { user_id = TestData.MemberUser.Id }))
+            .StatusCode.Should().Be(HttpStatusCode.MethodNotAllowed);
+        (await Client.PostAsJsonAsync("/api/v2/admin/vetting/bulk", new { user_ids = new[] { TestData.MemberUser.Id } }))
+            .StatusCode.Should().Be(HttpStatusCode.MethodNotAllowed);
+        (await Client.PutAsJsonAsync("/api/v2/admin/vetting/1", new { status = "verified" }))
+            .StatusCode.Should().Be(HttpStatusCode.MethodNotAllowed);
+        (await Client.DeleteAsync("/api/v2/admin/vetting/1"))
+            .StatusCode.Should().Be(HttpStatusCode.MethodNotAllowed);
+        (await Client.PostAsJsonAsync("/api/v2/admin/vetting/1/verify", new { }))
+            .StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await Client.PostAsJsonAsync("/api/v2/admin/vetting/1/reject", new { notes = "prohibited" }))
+            .StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        using var upload = new MultipartFormDataContent();
+        upload.Add(new ByteArrayContent(Encoding.UTF8.GetBytes("prohibited evidence")), "file", "certificate.pdf");
+        (await Client.PostAsync("/api/v2/admin/vetting/1/upload", upload))
+            .StatusCode.Should().Be(HttpStatusCode.NotFound);
+
+        await WithDbAsync(async db =>
+        {
+            (await db.VettingRecords.IgnoreQueryFilters().CountAsync()).Should().Be(legacyBefore);
+            (await db.MemberVettingAttestations.IgnoreQueryFilters().CountAsync()).Should().Be(currentBefore);
+        });
+    }
+
+    [Fact]
     public async Task MemberReviewRequest_IsEmptyBodyOnlyAndIdempotent()
     {
         await AuthenticateAsAdminAsync();

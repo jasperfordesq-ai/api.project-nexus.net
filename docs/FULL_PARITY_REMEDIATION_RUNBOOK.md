@@ -43,6 +43,35 @@ Before any production deployment or production-container action, stop and read
 deployment or touching production containers. Never modify the Laravel repo or
 Laravel Edition containers from this worktree.
 
+## 2026-07-14 Retired Vetting OpenAPI Reconciliation (Locally Verified)
+
+The final seven apparent static gaps were stale OpenAPI-only document-era vetting
+writes, not live Laravel contracts. Laravel's current route table deliberately omits
+generic create/bulk/update/delete/upload/verify/reject operations; its controller says
+there is intentionally no evidence, certificate, arbitrary-status, upload, bulk, or
+delete endpoint; Laravel feature tests assert the removed routes return 404/405; and
+the canonical React client calls only metadata-only list/show/policy/confirm/revoke/
+review operations. Adding ASP.NET owners would therefore have broken parity and revived
+a prohibited sensitive-evidence model.
+
+The comparator now reports raw and retired OpenAPI operations separately. A retired
+candidate is excluded only while no live Laravel route file declares the same method/
+path, so any future reintroduction automatically returns to the active gate. Its fixture
+passes with that conditional behavior. The refreshed live result is **2,601/2,601
+active operations matched, 0 missing**, with seven retired OpenAPI-only operations
+reported separately. ASP.NET runtime proof confirms the same seven methods return
+Laravel-compatible 404/405 and cannot mutate either legacy `vetting_records` or current
+`member_vetting_attestations`; the full safeguarding controller class passes 11/11.
+The Release API/test build is green with zero errors and only the two pre-existing
+Event Safety nullable warnings plus four pre-existing xUnit blocking warnings.
+
+Implementation remains **875/1000** because no prohibited write was added.
+Certification confidence advances to **755/1000**, and the honest combined finish-line
+estimate is **80%**, up from 79%. Static route parity is now closed, but it is still not
+the 1000/1000 gate: real fiat settlement, complete-suite/CI proof, unchanged-frontend
+browser proof, schema/localization depth, federation transport, and live-provider
+evidence remain open. No production resource or frontend source was touched.
+
 ## 2026-07-14 ASP.NET Prerender Control-Plane Checkpoint (Locally Verified)
 
 The external `POST /api/v2/prerender/invalidate` hook and administrator

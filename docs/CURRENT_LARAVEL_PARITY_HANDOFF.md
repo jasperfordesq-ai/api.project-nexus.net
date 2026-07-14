@@ -12,7 +12,24 @@ parity job after a session interruption. The implementation branches may still
 be moving, so treat every numeric snapshot below as advisory. Regenerate the
 live state before editing code or claiming progress.
 
-## Latest Resume Point: Prerender Invalidation And Reset-All
+## Latest Resume Point: Zero Active Static Gaps And Retired Vetting Writes
+
+The seven apparent remaining gaps were stale OpenAPI-only document-era vetting writes,
+not current Laravel routes. Laravel deliberately removed generic create/bulk/update/
+delete/upload/verify/reject, its controller prohibits sensitive evidence, its feature
+tests assert 404/405, and canonical React uses only the replacement metadata workflow.
+The comparator now conditionally retires those entries only while live Laravel route
+files omit them. Fixture proof passes, and the live result is 2,601/2,601 active
+operations matched with zero missing plus seven retired OpenAPI-only operations.
+
+ASP.NET runtime proof confirms all seven removed methods return Laravel-compatible
+404/405 without changing either legacy or current vetting rows. Implementation remains
+875/1000; certification is 755/1000; the combined estimate is 80%. Static route parity
+is closed, but the goal remains active. Resume with real fiat settlement and the
+broader complete-suite/CI, unchanged-frontend runtime, schema/localization, federation-
+transport, and live-provider certification queue.
+
+## Previous Resume Point: Prerender Invalidation And Reset-All
 
 The external invalidation alias now matches Laravel's bearer/HMAC/platform-super-admin
 authentication modes, timestamp and replay protection, route canonicalization and

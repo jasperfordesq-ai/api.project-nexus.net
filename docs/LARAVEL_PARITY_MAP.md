@@ -6,16 +6,15 @@ Canonical source: `C:\platforms\htdocs\staging` (read-only).
 
 ## Latest Verified Backend Slice
 
-External prerender invalidation now implements bearer/HMAC/platform-super-admin auth,
-raw-body signature and replay protection, canonical bounded routes, safe real bundle
-deletion, and durable-before-destructive recache ordering. Reset-all confirms, rate-
-limits, serializes, fences old jobs, creates one authoritative global force rebuild,
-transactionally audits it, and returns 202. Focused PostgreSQL proof passes 7/7, the
-combined admin ownership gate passes 121/121, comparator fixtures pass, and Debug/
-Release builds are green. The live inventory is **2,601/2,608 (99.7%, 7 missing)**,
-all document-era vetting writes. Legacy-evidence safety, real fiat settlement,
-complete-suite/CI proof, unchanged-frontend runtime proof, schema/localization depth,
-federation transport, and live-provider certification remain open.
+The seven apparent document-era vetting gaps are retired OpenAPI-only artifacts:
+Laravel live routes omit them, the controller prohibits them, feature tests assert
+404/405, and canonical React uses the metadata-only replacement. The comparator now
+conditionally retires them only while Laravel routes omit them; fixture and live proof
+pass at **2,601/2,601 active operations matched, 0 missing**, with seven retired entries
+reported separately. ASP.NET runtime proof matches the removal responses and preserves
+both legacy and current vetting rows. Static route parity is closed. Real fiat
+settlement, complete-suite/CI proof, unchanged-frontend runtime proof, schema/
+localization depth, federation transport, and live-provider certification remain open.
 
 ## Inventory Baseline
 

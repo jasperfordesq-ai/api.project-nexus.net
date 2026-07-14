@@ -265,6 +265,28 @@ function Get-AspNetRoutes {
     return @($rows | Sort-Object method, path, controller, action)
 }
 
+function Get-LaravelDeclaredRouteKeys {
+    param([string]$Root)
+
+    $keys = @{}
+    $routeRoot = Join-Path $Root 'routes'
+    if (-not (Test-Path -LiteralPath $routeRoot)) { return $keys }
+
+    $routePattern = 'Route::(get|post|put|patch|delete|options|head)\s*\(\s*[''"]([^''"]+)[''"]'
+    Get-ChildItem -LiteralPath $routeRoot -Recurse -Include '*.php','*.txt' -File | ForEach-Object {
+        $text = Get-Content -Raw -LiteralPath $_.FullName
+        foreach ($match in [regex]::Matches($text, $routePattern, 'IgnoreCase')) {
+            $method = $match.Groups[1].Value.ToUpperInvariant()
+            $normalized = Normalize-RoutePath $match.Groups[2].Value
+            if ($normalized -notmatch '^/api(/|$)') {
+                $normalized = Normalize-RoutePath "/api/$($match.Groups[2].Value)"
+            }
+            $keys["$method $normalized"] = $true
+        }
+    }
+    return $keys
+}
+
 function Get-LaravelOpenApiOperations {
     param([string]$Root)
 
@@ -275,6 +297,20 @@ function Get-LaravelOpenApiOperations {
 
     $document = Get-Content -Raw -LiteralPath $openApiPath | ConvertFrom-Json
     $rows = New-Object System.Collections.Generic.List[object]
+    $retired = New-Object System.Collections.Generic.List[object]
+    $declaredRouteKeys = Get-LaravelDeclaredRouteKeys $Root
+    # Laravel deliberately removed these document-era writes when it adopted
+    # metadata-only safeguarding attestations. They remain retired only while
+    # no live Laravel route declaration reintroduces them.
+    $retiredCandidates = @{
+        'POST /api/admin/vetting' = $true
+        'POST /api/admin/vetting/bulk' = $true
+        'PUT /api/admin/vetting/{id}' = $true
+        'DELETE /api/admin/vetting/{id}' = $true
+        'POST /api/admin/vetting/{id}/upload' = $true
+        'POST /api/admin/vetting/{id}/verify' = $true
+        'POST /api/admin/vetting/{id}/reject' = $true
+    }
 
     foreach ($pathProperty in $document.paths.PSObject.Properties) {
         foreach ($operationProperty in $pathProperty.Value.PSObject.Properties) {
@@ -284,18 +320,28 @@ function Get-LaravelOpenApiOperations {
             }
 
             $normalized = Normalize-RoutePath $pathProperty.Name
-            $rows.Add([pscustomobject]@{
+            $row = [pscustomobject]@{
                 source = 'openapi'
                 method = $method
                 path = $normalized
                 shape = Convert-ToRouteShape $normalized
                 source_file = $openApiPath
                 handler = ''
-            })
+            }
+            $key = "$method $normalized"
+            if ($retiredCandidates.ContainsKey($key) -and -not $declaredRouteKeys.ContainsKey($key)) {
+                $retired.Add($row)
+            } else {
+                $rows.Add($row)
+            }
         }
     }
 
-    return @($rows | Sort-Object method, path)
+    return [pscustomobject]@{
+        all_count = $rows.Count + $retired.Count
+        active = @($rows | Sort-Object method, path)
+        retired = @($retired | Sort-Object method, path)
+    }
 }
 
 function Get-LaravelSupplementalRoutes {
@@ -503,6 +549,7 @@ function Write-MarkdownReport {
     $lines.Add('| --- | ---: |')
     $lines.Add("| ASP.NET operations | $($Summary.aspnet_operations) |")
     $lines.Add("| Laravel OpenAPI operations | $($Summary.laravel_openapi_operations) |")
+    $lines.Add("| Retired OpenAPI-only operations | $($Summary.retired_openapi_operations) |")
     $lines.Add("| Supplemental route operations | $($Summary.supplemental_route_operations) |")
     $lines.Add("| Matched operations | $($Summary.matched_operations) |")
     $lines.Add("| Missing operations | $($Summary.missing_operations) |")
@@ -529,7 +576,9 @@ try {
     Ensure-Directory $OutDir
 
     $aspNetRoutes = @(Get-AspNetRoutes $TargetRoot)
-    $openApiOperations = @(Get-LaravelOpenApiOperations $SourceRoot)
+    $openApiInventory = Get-LaravelOpenApiOperations $SourceRoot
+    $openApiOperations = @($openApiInventory.active)
+    $retiredOpenApiOperations = @($openApiInventory.retired)
     $supplementalOperations = @(Get-LaravelSupplementalRoutes $SourceRoot $openApiOperations)
     $sourceOperations = @($openApiOperations + $supplementalOperations)
     $aspNetIndex = New-AspNetRouteIndex $aspNetRoutes
@@ -540,7 +589,8 @@ try {
         target_root = $TargetRoot
         source_root = $SourceRoot
         aspnet_operations = $aspNetRoutes.Count
-        laravel_openapi_operations = $openApiOperations.Count
+        laravel_openapi_operations = $openApiInventory.all_count
+        retired_openapi_operations = $retiredOpenApiOperations.Count
         supplemental_route_operations = $supplementalOperations.Count
         total_source_operations = $sourceOperations.Count
         matched_operations = @($matrix | Where-Object { $_.status -eq 'matched' }).Count
