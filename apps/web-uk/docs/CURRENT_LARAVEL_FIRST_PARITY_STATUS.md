@@ -172,10 +172,10 @@ these numbers after either source moves.
 
 At this documentation audit, the product-source baseline was
 `327984b02de82350b8f17b6cb885a3a27c7d95be`. The revoked-session confirmation,
-Laravel method-spoof reconciliation, group-message contract, and residual API-
-consumer correction slices are above the frozen bank and remain **published and
-unscored** once pushed. The documentation remediation and unrelated ASP.NET
-backend work are uncommitted and contribute zero banked points. The table below
+Laravel method-spoof reconciliation, group-message contract, residual API-
+consumer correction, and backend-request timeout slices are above the frozen
+bank and remain **published and unscored**. The documentation remediation is
+published; unrelated ASP.NET backend work remains outside this score. The table below
 records the latest individually
 verified non-mutating gates; it is not a claim that every gate was rerun
 together from a clean published checkout.
@@ -186,14 +186,14 @@ together from a clean published checkout.
   with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
   Only this fixed-rubric audit contributes to the current bank.
 - **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `327984b0`, including the later identity/session confirmation,
-  method-spoof reconciliation, group-message contract, and residual API-
-  consumer correction slices. Their chronological evidence is useful, but they
+  baseline `d158964e`, including the later identity/session confirmation,
+  method-spoof reconciliation, group-message contract, residual API-consumer
+  correction, and backend-request timeout slices. Their evidence is useful, but they
   contribute zero points until one complete fixed-rubric re-audit explicitly
   replaces the baseline.
-- **Dirty and uncommitted:** the current documentation/provenance remediation
-  and unrelated ASP.NET backend work are outside the bank. Recheck `git status`
-  before every report; no dirty file earns estimated points.
+- **Dirty and uncommitted:** generated artifacts refreshed while the timeout
+  slice was in flight plus unrelated ASP.NET backend work are outside the bank.
+  Recheck `git status` before every report; no dirty file earns estimated points.
 
 ### Latest Recorded Gates
 
@@ -205,7 +205,7 @@ together from a clean published checkout.
 | Missing Laravel routes | 1 | Event offline check-in code generation |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 50/50 suites, 1,663/1,663 tests | Latest recorded uninterrupted full gate after the frozen score; later improvements remain unscored until a complete rubric re-audit |
+| Jest | 51/51 suites, 1,666/1,666 tests | Latest recorded uninterrupted full gate after the frozen score; later improvements remain unscored until a complete rubric re-audit |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
 | Static locale usage | 7,341 references, 5,620 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
@@ -1214,12 +1214,12 @@ After the localization P0, the remaining priority order is:
    normalized marker check only.
 5. Complete manual keyboard, screen-reader, focus-order, error-summary, no-JS,
    zoom/reflow, forced-colour, and disabled-user evidence.
-6. Maintain the generated frontend-consumer API ledger and reconcile its 219
+6. Maintain the generated frontend-consumer API ledger and reconcile its 215
    unmatched rows against Laravel routes/controllers and real
    consumers. Do not count an OpenAPI match or test-file reference as behavioral
    certification.
-7. Harden production concerns separately: persistent sessions, production-only
-   secrets/configuration, and request timeouts/abort handling.
+7. Harden production concerns separately: persistent sessions,
+   production-only secrets/configuration, and deployed timeout proof.
 
 ASP.NET proof is a separate later gate, not remaining frontend implementation
 work. First certify the frontend against Laravel. When the separate backend
@@ -1281,3 +1281,25 @@ Laravel routes, not demonstrated runtime defects. No Laravel source, database,
 migration, mutation, upload, download, cleanup, or production operation was
 performed. This published slice remains unscored: the fixed bank is 622/1,000
 until a complete rubric re-audit explicitly replaces that baseline.
+
+## 2026-07-14 Backend Request Timeout Hardening
+
+Frozen evidence at 2026-07-14 15:06 +01:00: Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf`; published Web UK
+`d158964e6d61f0306d9773926f2c281e150cab3b` and `origin/main` at the same
+commit. Web UK's shared JSON and binary backend transports now enforce one
+configurable 15-second deadline, bounded to 1-120 seconds, compose with an
+existing caller abort signal, abort response-body reads as well as connection
+setup, clear completed deadlines, and map timeout failures into the established
+safe `ApiOfflineError` 503 path. `API_REQUEST_TIMEOUT_MS` is recorded in the
+example environment.
+
+Focused transport proof passes 217/217 tests. The complete non-mutating gate
+passes 51/51 suites and 1,666/1,666 tests, plus green brand, lint, CSS,
+route-matrix, API-ledger, locale-structure, template-localization, 19/19 Blade
+marker, and diff checks. No Laravel source, database, migration, mutation,
+upload, download, cleanup, or production operation was performed. This closes
+the implementation part of the timeout/abort subgap but does not certify
+production deployment behavior or change the frozen 622/1,000 bank without a
+complete rubric re-audit; persistent-session and production-secret proof remain
+open in package 12.
