@@ -534,6 +534,12 @@ The group index now follows Blade's full-width card list, 48-pixel group avatar
 or initial placeholder, distinct disabled/restricted banners, initialized status
 and create controls, and updated-time fallback for groups without a last message;
 focused default-English/restriction proof passes `2/2`.
+Advanced search listing thumbnails and member avatars now also resolve Laravel-
+relative paths against the configured backend origin while preserving the
+frozen Blade partials' image fields, alternatives, dimensions, and surrounding
+card hierarchy. Focused advanced-search proof passes `1/1`; the complete non-
+mutating gate remains green at `52/52` suites and `1,681/1,681` tests with lint,
+brand, CSS, and both localization audits passing.
 This certifies broad historical read/auth/gate/body coverage, not every
 mutation, upload, download, destructive side effect, or manual assistive-
 technology state. Saved-collection create/update/delete and collection-
