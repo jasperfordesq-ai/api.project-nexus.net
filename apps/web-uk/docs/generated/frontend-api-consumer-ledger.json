@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-14T22:56:44.480Z",
+  "generatedAt": "2026-07-14T23:03:18.045Z",
   "provenance": {
-    "generatedAt": "2026-07-14T22:56:44.480Z",
+    "generatedAt": "2026-07-14T23:03:18.045Z",
     "laravelRepositoryRoot": "C:\\platforms\\htdocs\\staging",
     "laravelCommitSha": "903d03d3db78bbf87129ad35728be3b72819acaf",
     "laravelWorkingTreeDirty": true,
     "webUkRepositoryRoot": "C:\\platforms\\htdocs\\asp.net-backend",
     "webUkPath": "apps/web-uk",
-    "webUkRepositoryCommitSha": "87a7903ef8e9e4a1ab65244fdbb73e0bafb9d7ef",
+    "webUkRepositoryCommitSha": "67f219086277f0d99ff40c49a0b8029937f0d806",
     "webUkRepositoryWorkingTreeDirty": true,
     "caveat": "Laravel and Web UK repository working trees were dirty when generated. Commit SHAs identify HEAD only; generated content may include uncommitted changes from the dirty working trees."
   },
@@ -21,10 +21,10 @@
     "laravelApiRoutesSha256": "acbff7276a6480855e89cec7a9c3971ff839b51ed536c8d48ee621bcb48b694f"
   },
   "summary": {
-    "contracts": 667,
+    "contracts": 668,
     "matchedOpenApi": 451,
-    "missingOpenApi": 216,
-    "routeDeclaredOpenApiOmissions": 216,
+    "missingOpenApi": 217,
+    "routeDeclaredOpenApiOmissions": 217,
     "withoutLaravelRouteDeclaration": 0,
     "dynamicUnresolved": 0,
     "stateChanging": 370,
@@ -16633,7 +16633,7 @@
       "method": "POST",
       "path": "/api/v2/messages",
       "apiHelper": "callMessageApi",
-      "source": "src/routes/messages.js:1088",
+      "source": "src/routes/messages.js:1130",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
       "requestShape": "JSON caller payload; validate against Laravel operation",
@@ -16929,6 +16929,37 @@
         "tags": [
           "Messages"
         ]
+      },
+      "frontendConsumers": [
+        "src/routes/messages.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "GET /api/v2/messages/reactions/batch?ids={param} [callMessageApi]",
+      "method": "GET",
+      "path": "/api/v2/messages/reactions/batch?ids={param}",
+      "apiHelper": "callMessageApi",
+      "source": "src/routes/messages.js:955",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "query/path parameters; no request body expected",
+      "responseShape": "JSON/text response via ApiError-aware request",
+      "statusCodes": [],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/messages.js",
+      "sideEffects": "read-only by HTTP method",
+      "cleanup": "not applicable",
+      "laravel": {
+        "status": "route-declared-openapi-omission",
+        "path": "/api/v2/messages/reactions/batch",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": []
       },
       "frontendConsumers": [
         "src/routes/messages.js"

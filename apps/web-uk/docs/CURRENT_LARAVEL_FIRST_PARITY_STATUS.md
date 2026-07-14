@@ -186,7 +186,7 @@ together from a clean published checkout.
   with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
   Only this fixed-rubric audit contributes to the current bank.
 - **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `87a7903e`, including the later implementation, contract,
+  baseline `67f21908`, including the later implementation, contract,
   resilience, and component-audit slices. Their evidence is useful, but they
   contribute zero points until one complete fixed-rubric re-audit explicitly
   replaces the baseline.
@@ -205,13 +205,13 @@ together from a clean published checkout.
 | Missing Laravel routes | 1 | Event offline check-in code generation |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 52/52 suites, 1,694/1,694 tests | Latest uninterrupted complete non-mutating gate at product baseline `87a7903e` |
+| Jest | 52/52 suites, 1,694/1,694 tests | Latest uninterrupted complete non-mutating gate at product baseline `67f21908` |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
 | Static locale usage | 7,580 references, 5,784 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
 | Blade marker check | Current 19/19 | Current-source public GET marker comparison; not screenshot or visual certification |
 | Automated accessibility | Not currently certified: 28 passed, login failed, 58 did not run | Full aggregate requires a disposable Laravel environment; manual AT review remains open |
-| Frontend API consumer ledger | 667 contracts: 451 OpenAPI matches, 216 unmatched, 0 dynamic; every unmatched contract resolves to a direct Laravel route declaration omitted from OpenAPI | Static method/path and ownership evidence; declaration classification is not runtime certification and remains unscored |
+| Frontend API consumer ledger | 668 contracts: 451 OpenAPI matches, 217 unmatched, 0 dynamic; every unmatched contract resolves to a direct Laravel route declaration omitted from OpenAPI | Static method/path and ownership evidence; declaration classification is not runtime certification and remains unscored |
 
 ### Frozen Completion Baseline
 
@@ -1649,6 +1649,26 @@ database, migration, mutation, upload, download, container, or production
 operation was performed. This published authorization improvement remains
 unscored, so the frozen bank remains `622/1,000` pending a complete fixed-rubric
 re-audit.
+
+## 2026-07-15 Group Conversation Reaction Projection
+
+Frozen evidence refreshed at `2026-07-15T00:03:36.8597012+01:00` against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and Web UK product commit
+`67f21908`. Group detail now performs Laravel's best-effort
+`GET /api/v2/messages/reactions/batch` read for the rendered message IDs,
+shows the returned aggregate emoji counts, and marks the signed-in viewer's
+reported reactions as primary remove controls with the exact accessible copy.
+Other emoji controls remain secondary add actions, and a reaction-read failure
+does not take down the conversation page.
+
+Focused group-detail proof passes `1/1`; the uninterrupted complete
+non-mutating gate passes `52/52` suites and `1,694/1,694` tests. Lint, route
+matrix, and API ledger are green. The API's direct-message authorization query
+does not certify complete group-participant reaction visibility, so that
+runtime limitation remains explicit. No Laravel database, migration, mutation,
+upload, download, container, or production operation was performed. This
+published component-audit improvement remains unscored, so the frozen bank
+remains `622/1,000` pending a complete fixed-rubric re-audit.
 
 ## 2026-07-14 Listing Report Validation Replay
 

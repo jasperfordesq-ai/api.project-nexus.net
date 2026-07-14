@@ -5,16 +5,16 @@ Status: **Generated snapshot — static consumer inventory, not certification**
 Generated from `src/lib/api.js`, routed Web UK consumers, tests, and Laravel `openapi.json`.
 This is static evidence: an OpenAPI match or test reference does not prove runtime behavior, role policy, side effects, cleanup, or frontend parity.
 
-- Generated: 2026-07-14T22:56:44.480Z
+- Generated: 2026-07-14T23:03:18.045Z
 - Laravel commit SHA: `903d03d3db78bbf87129ad35728be3b72819acaf`
-- Web UK repository commit SHA: `87a7903ef8e9e4a1ab65244fdbb73e0bafb9d7ef`
+- Web UK repository commit SHA: `67f219086277f0d99ff40c49a0b8029937f0d806`
 - Laravel working tree dirty: yes
 - Web UK repository working tree dirty: yes
 - Provenance caveat: Laravel and Web UK repository working trees were dirty when generated. Commit SHAs identify HEAD only; generated content may include uncommitted changes from the dirty working trees.
-- Contracts: 667
+- Contracts: 668
 - Laravel OpenAPI matches: 451
-- Missing OpenAPI matches: 216
-- Direct Laravel route declarations omitted from OpenAPI: 216
+- Missing OpenAPI matches: 217
+- Direct Laravel route declarations omitted from OpenAPI: 217
 - Without a direct Laravel route declaration: 0
 - Dynamic unresolved contracts: 0
 - State-changing contracts: 370
@@ -493,6 +493,7 @@ The JSON companion contains the full request/response, status/error, redirect, s
 | POST | `/api/v2/messages/{param}/translate` | `callMessageApi` | route-declared-openapi-omission | state-changing; disposable-environment runtime proof required<br>fixture-specific cleanup and final absence/equality proof required | src/routes/messages.js | tests/api.test.js<br>tests/shared-accessible-shell.test.js |
 | DELETE | `/api/v2/messages/conversations/{param}` | `callMessageApi` | documented | state-changing; disposable-environment runtime proof required<br>fixture-specific cleanup and final absence/equality proof required | src/routes/messages.js | tests/api.test.js<br>tests/shared-accessible-shell.test.js |
 | POST | `/api/v2/messages/conversations/{param}/restore` | `callMessageApi` | documented | state-changing; disposable-environment runtime proof required<br>fixture-specific cleanup and final absence/equality proof required | src/routes/messages.js | tests/api.test.js<br>tests/shared-accessible-shell.test.js |
+| GET | `/api/v2/messages/reactions/batch?ids={param}` | `callMessageApi` | route-declared-openapi-omission | read-only by HTTP method<br>not applicable | src/routes/messages.js | tests/api.test.js<br>tests/shared-accessible-shell.test.js |
 | GET | `/api/v2/messages/restriction-status` | `callMessageApi` | documented | read-only by HTTP method<br>not applicable | src/routes/messages.js | tests/api.test.js<br>tests/shared-accessible-shell.test.js |
 | GET | `/api/v2/messages/unread-count` | `getUnreadCount` | documented | read-only by HTTP method<br>not applicable | src/routes/messages.js<br>src/server.js | tests/api.test.js<br>tests/localization.test.js<br>tests/routes.test.js<br>tests/shared-accessible-shell.test.js |
 | POST | `/api/v2/messages/voice` | `uploadVoiceMessage` | documented | state-changing; disposable-environment runtime proof required<br>fixture-specific cleanup and final absence/equality proof required | src/routes/messages.js | tests/api.test.js<br>tests/shared-accessible-shell.test.js |
