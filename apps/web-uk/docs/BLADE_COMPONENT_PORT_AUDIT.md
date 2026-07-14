@@ -623,6 +623,13 @@ form; earlier image-upload lifecycle evidence remains historical API proof, not
 current accessible-form behavior. Focused proof and the full `48/48`,
 `1,632/1,632` aggregate pass with green lint, brand, and localization gates.
 
+2026-07-14 accessibility safety correction: the accessibility row below retains
+historical successful evidence, but the complete runner includes a real login
+and is not an ordinary read-only gate. A current attempt stopped at 28 passed,
+one failed, and 58 not run after invalid-login limiter writes; the database was
+restored wholesale. Future complete runs require a separately verified
+disposable Laravel environment.
+
 | Blade pattern | Laravel source | ASP.NET target | Status |
 | --- | --- | --- | --- |
 | Event moderation queue and decisions | `views/event-moderation-queue.blade.php`, `views/event-moderation-decision.blade.php`, `EventModerationParity`, `Api\AdminEventsController` | `src/routes/events.js`, `src/views/events/moderation-queue.njk`, `src/views/events/moderation-decision.njk`, `src/lib/api.js` | Partial. Signed tenant administrators can open the default-English queue and separate approve/reject confirmation pages through Laravel's current admin Event list/detail contracts. Queue status, count, cards, pagination, decision summaries, warnings, field-linked validation, mounted redirects, and private/no-store headers follow Blade. Approval requires explicit confirmation; rejection requires confirmation plus a bounded reason and submits only that reason to Laravel's canonical reject action. Non-admin or missing-event API responses fail closed. Focused mocked queue/validation/action and direct API-client proof pass; the full non-mutating gate is 48/48 suites and 1,635/1,635 tests, and the generated route matrix is 688/689. This is not contract-identical certification: Laravel's admin list does not join the moderation queue, orders by Event creation rather than queue submission, and omits Blade's `is_online`. Live moderation side effects, manual assistive-technology review, and unchanged ASP.NET runtime proof remain uncertified. |

@@ -578,17 +578,19 @@ npm --prefix apps/web-uk run locales:sync
 npm --prefix apps/web-uk run locales:audit
 npm --prefix apps/web-uk run locales:audit-keys
 npm --prefix apps/web-uk run locales:audit-templates -- --summary
-npm --prefix apps/web-uk run test:accessibility
 npm --prefix apps/web-uk run visual:blade
 git diff --check -- apps/web-uk
 ```
 
-The command above is the ordinary non-mutating gate. Do not run
-`smoke:laravel:local`, any `*:mutation:*` command, authenticated settings
-journeys, upload/download checks, or `smoke:federation:local` against the
-ordinary Laravel environment. Those commands can authenticate or mutate state
-and may run only when `LARAVEL_BASE_URL` points to a separately provisioned,
-verified disposable Laravel environment.
+The command block above is the ordinary static/read-only gate. Do not run the
+complete `test:accessibility` aggregate, `smoke:laravel:local`, any
+`*:mutation:*` command, authenticated settings journey, upload/download check,
+or `smoke:federation:local` against the ordinary Laravel environment. Those
+commands can authenticate or mutate state and may run only when
+`LARAVEL_BASE_URL` points to a separately provisioned, verified disposable
+Laravel environment. A browser subset is ordinary-environment safe only after
+its request paths and methods have been inspected and proved not to change
+server-side state.
 
 Record the exact Laravel and Web UK SHAs, fixture identity, commands, pass/fail
 counts, retained failures, and cleanup result. Route equality, a focused test,

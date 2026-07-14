@@ -351,7 +351,7 @@ nexus-uk-frontend/
 | `npm run visual:blade` | Compare scoped Web UK and Laravel Blade text markers |
 | `npm run smoke:laravel:local` | Run the core Laravel smoke against a fresh ephemeral Web UK listener |
 | `npm run smoke:federation:local` | Traverse federation onboarding, read settings back, and restore the E2E fixture |
-| `npm run test:accessibility` | Run the Playwright/axe public-page browser gate against a fresh listener |
+| `npm run test:accessibility` | Run the public/authenticated Playwright/axe gate against a separately verified disposable Laravel environment; never use the ordinary production-derived local database |
 
 ## Docker
 

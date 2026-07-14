@@ -1,10 +1,20 @@
 # Web UK accessibility verification
 
-This repository has an automated browser accessibility gate for a representative set of public Laravel-first Web UK pages. It is a release signal, not a certificate of complete WCAG conformance.
+This repository has an automated browser accessibility gate for representative
+public and authenticated Laravel-first Web UK pages. It is a release signal,
+not a certificate of complete WCAG conformance.
+
+> **Data-safety boundary:** the complete gate performs a real login. Failed
+> logins write Laravel limiter/audit state, and successful authenticated cases
+> may exercise additional stateful endpoints. Run the complete gate only
+> against a separately provisioned, verified disposable Laravel environment.
+> Never point it at the ordinary local Laravel database, which is a confidential
+> production-derived read-only snapshot.
 
 ## Run the gate
 
-From `apps/web-uk`:
+From `apps/web-uk`, after verifying `LARAVEL_BASE_URL` identifies the disposable
+environment:
 
 ```powershell
 npm install
@@ -14,15 +24,15 @@ npm run test:accessibility
 
 The runner builds the current Sass, loads `src/server.js` from the current checkout, and binds it to an operating-system-assigned loopback port. It does not trust or reuse a process on port 5180.
 
-The Laravel API defaults to `http://127.0.0.1:8088`. Override it when required:
+Set the disposable Laravel API explicitly; do not rely on the default:
 
 ```powershell
-$env:LARAVEL_BASE_URL = 'http://127.0.0.1:8088'
+$env:LARAVEL_BASE_URL = 'http://127.0.0.1:<disposable-port>'
 $env:ACCESSIBILITY_TENANT_SLUG = 'alpha'
 npm run test:accessibility
 ```
 
-Latest verification on 2026-07-12 exercised the complete 87-case Chromium scope
+The latest fully successful historical verification on 2026-07-12 exercised the complete 87-case Chromium scope
 against a fresh current-checkout listener and Laravel at
 `http://127.0.0.1:8088`. After a missing bearer token on member-only Knowledge
 Base calls was corrected and focused proof passed, the uninterrupted aggregate
@@ -30,6 +40,12 @@ passed `87/87` in `1,344.8` seconds with no skipped or failed cases. This is an
 automated release signal, not manual keyboard or assistive-technology
 certification. Generated evidence remains below the ignored
 `artifacts/accessibility/` directory.
+
+On 2026-07-14 an attempted current aggregate against ordinary local Laravel was
+stopped after 28 passes when its invalid login wrote failed-login limiter state;
+one case failed and 58 did not run. The database was subsequently restored
+wholesale from the verified production safety dump. That attempt is neither a
+green accessibility result nor an authorized ordinary-environment workflow.
 
 ## Current automated scope
 
