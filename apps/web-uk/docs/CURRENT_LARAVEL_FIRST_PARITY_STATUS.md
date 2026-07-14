@@ -186,7 +186,7 @@ together from a clean published checkout.
   with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
   Only this fixed-rubric audit contributes to the current bank.
 - **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `0072e7e7`, including the later implementation, contract,
+  baseline `286e2fff`, including the later implementation, contract,
   resilience, and component-audit slices. Their evidence is useful, but they
   contribute zero points until one complete fixed-rubric re-audit explicitly
   replaces the baseline.
@@ -205,7 +205,7 @@ together from a clean published checkout.
 | Missing Laravel routes | 1 | Event offline check-in code generation |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 52/52 suites, 1,695/1,695 tests | Latest uninterrupted complete non-mutating gate at product baseline `0072e7e7` |
+| Jest | 52/52 suites, 1,695/1,695 tests | Latest uninterrupted complete non-mutating gate at product baseline `286e2fff` |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
 | Static locale usage | 7,580 references, 5,784 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
@@ -1687,22 +1687,25 @@ migration, mutation, upload, download, container, or production operation was
 performed. This published contract improvement remains unscored, so the frozen
 bank remains `622/1,000` pending a complete fixed-rubric re-audit.
 
-## 2026-07-15 Feed Compose Error States
+## 2026-07-15 Feed Error States
 
-Frozen evidence refreshed at `2026-07-15T00:14:34.4743950+01:00` against Laravel
+Frozen evidence refreshed at `2026-07-15T00:24:47.7982953+01:00` against Laravel
 `903d03d3db78bbf87129ad35728be3b72819acaf` and Web UK product commit
-`0072e7e7`. Feed `post-empty` and `post-failed` states now match Blade's single
+`286e2fff`. Feed `post-empty` and `post-failed` states now match Blade's single
 field-linked error summary, inline content error, error textarea styling, and
 `aria-describedby` relationship. Other Feed action failures use Blade's
 localized error title instead of the shared partial's non-source `Important`
-heading.
+heading. Collection failures now use Blade's localized load-error banner in
+the results position and suppress the false empty-feed result that Web UK
+previously rendered beneath the failure.
 
-Focused three-state render proof passes `1/1`; the uninterrupted complete
-non-mutating gate passes `52/52` suites and `1,695/1,695` tests. Lint, route
-matrix, and API ledger are green. No Laravel request, database, migration,
-mutation, upload, download, container, or production operation was performed.
-This published component-audit improvement remains unscored, so the frozen
-bank remains `622/1,000` pending a complete fixed-rubric re-audit.
+Focused compose proof and focused load-failure proof each pass `1/1`; the
+uninterrupted complete non-mutating gate passes `52/52` suites and
+`1,695/1,695` tests. Lint, route matrix, and API ledger are green. No Laravel
+request, database, migration, mutation, upload, download, container, or
+production operation was performed. This published component-audit improvement
+remains unscored, so the frozen bank remains `622/1,000` pending a complete
+fixed-rubric re-audit.
 
 ## 2026-07-14 Listing Report Validation Replay
 
