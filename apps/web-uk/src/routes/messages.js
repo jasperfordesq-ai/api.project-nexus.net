@@ -800,7 +800,7 @@ router.get('/groups', requireAuth, asyncRoute(async (req, res) => {
     const result = await callConversation(req.token, 'GET', '/groups');
     groups = listFrom(dataFrom(result));
   } catch {
-    error = 'There was a problem loading your group conversations.';
+    error = res.locals.t('govuk_alpha.states.error_title');
   }
 
   res.render('messages/groups', {

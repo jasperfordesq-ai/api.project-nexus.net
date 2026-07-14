@@ -26875,10 +26875,24 @@ describe('shared accessible frontend shell', () => {
 
     expect(list.status).toBe(200);
     expect(list.text).not.toContain('href="/messages/groups/new"');
+    expect(list.text).toContain('Your messaging access is currently restricted. You can still read existing messages.');
     expect(create.status).toBe(200);
-    expect(create.text).toContain('Direct messaging is currently disabled for this community.');
-    expect(create.text).not.toContain('Your messaging access is currently restricted. You can still read existing messages.');
+    expect(create.text).toContain('Your messaging access is currently restricted. You can still read existing messages.');
+    expect(create.text).not.toContain('Direct messaging is currently disabled for this community.');
     expect(create.text).toMatch(/<button class="govuk-button" data-module="govuk-button" disabled aria-disabled="true">Create group conversation<\/button>/);
+  });
+
+  it('uses Blade localized error copy when group conversations fail to load', async () => {
+    const api = require('../src/lib/api');
+    api.callConversationApi.mockRejectedValueOnce(new Error('Unavailable'));
+
+    const response = await request(app)
+      .get('/messages/groups')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toMatch(/<div class="govuk-inset-text">\s*<p class="govuk-body">There is a problem<\/p>/);
+    expect(response.text).not.toContain('There was a problem loading your group conversations.');
   });
 
   it('renders Laravel group-message failures as error summaries', async () => {

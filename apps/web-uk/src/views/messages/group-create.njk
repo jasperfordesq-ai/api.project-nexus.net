@@ -36,7 +36,7 @@
       {% if not directMessagingEnabled or restricted %}
         <div class="govuk-notification-banner" data-module="govuk-notification-banner" role="region" aria-labelledby="create-disabled-title">
           <div class="govuk-notification-banner__header"><h2 class="govuk-notification-banner__title" id="create-disabled-title">{{ t("govuk_alpha.messages.disabled_title") }}</h2></div>
-          <div class="govuk-notification-banner__content"><p class="govuk-body">{{ t("govuk_alpha.messages.disabled_detail") }}</p></div>
+          <div class="govuk-notification-banner__content"><p class="govuk-body">{% if restricted %}{{ t("govuk_alpha.messages.restricted_detail") }}{% else %}{{ t("govuk_alpha.messages.disabled_detail") }}{% endif %}</p></div>
         </div>
       {% endif %}
 
