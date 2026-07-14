@@ -1389,15 +1389,22 @@ app.post('/organisations/register', formLimiter, doubleCsrfProtection, handleOrg
 app.get('/organisations/manage', requireOrganisationAuth, (req, res) => {
   const token = req.signedCookies.token;
   const renderManage = ({ organisations = [], error = false, authRequired = false } = {}) => {
-    const manageableOrganisations = organisations.filter((organisation) => {
-      const status = String(organisation.status || '');
-      const role = String(organisation.member_role || organisation.role || '');
+    const normalizedOrganisations = organisations
+      .filter((organisation) => organisation && typeof organisation === 'object' && organisation.id)
+      .map((organisation) => ({
+        ...organisation,
+        name: String(organisation.name ?? '').trim()
+          || res.locals.t('govuk_alpha_organisations.manage.title'),
+        status: String(organisation.status ?? ''),
+        member_role: String(organisation.member_role ?? 'member')
+      }));
+    const manageableOrganisations = normalizedOrganisations.filter((organisation) => {
+      const status = organisation.status;
+      const role = organisation.member_role;
       return ['approved', 'active'].includes(status) && ['owner', 'admin'].includes(role);
     });
-    const pendingOrganisations = organisations.filter((organisation) => {
-      const status = String(organisation.status || '');
-      return status === 'pending';
-    });
+    const pendingOrganisations = normalizedOrganisations
+      .filter((organisation) => organisation.status === 'pending');
 
     res.render('organisations-manage', {
       title: res.locals.t('govuk_alpha_organisations.manage.title'),

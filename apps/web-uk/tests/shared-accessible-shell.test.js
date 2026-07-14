@@ -16775,6 +16775,35 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('This organisation is awaiting administrator approval.');
   });
 
+  it('matches Blade manage-row identity, name, and member-role boundaries', async () => {
+    const api = require('../src/lib/api');
+    const t = createTranslator('en');
+    api.getMyVolunteerOrganisations.mockResolvedValueOnce({
+      items: [
+        { id: 88, name: '   ', status: 'active', member_role: 'admin' },
+        { id: 89, name: 'Alias Owner', status: 'approved', role: 'owner' },
+        { id: 0, name: 'Missing identity', status: 'approved', member_role: 'owner' },
+        { name: 'Pending without identity', status: 'pending', member_role: 'owner' }
+      ]
+    });
+
+    const response = await request(app)
+      .get('/organisations/manage')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain(t('govuk_alpha_organisations.manage.title'));
+    expect(response.text).toContain(t('govuk_alpha_organisations.manage.role_admin'));
+    expect(response.text).toContain('href="/volunteering/organisations/88/manage"');
+    expect(response.text).toContain('href="/organisations/88"');
+    expect(response.text).not.toContain('Alias Owner');
+    expect(response.text).not.toContain('Missing identity');
+    expect(response.text).not.toContain('Pending without identity');
+    expect(response.text).not.toContain('/volunteering/organisations/89/manage');
+    expect(response.text).not.toContain('/volunteering/organisations/0/manage');
+    expect(response.text).not.toContain('/volunteering/organisations/undefined/manage');
+  });
+
   it('redirects signed-out Laravel organisation detail pages before data lookup', async () => {
     const api = require('../src/lib/api');
 

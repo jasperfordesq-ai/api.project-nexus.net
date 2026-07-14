@@ -47,11 +47,11 @@
       <div class="nexus-alpha-card-list">
         {% for organisation in manageableOrganisations %}
           <article class="nexus-alpha-card">
-            <h2 class="govuk-heading-s govuk-!-margin-bottom-1">{{ organisation.name or t("govuk_alpha_organisations.manage.title") }}</h2>
+            <h2 class="govuk-heading-s govuk-!-margin-bottom-1">{{ organisation.name }}</h2>
             <dl class="nexus-alpha-inline-list nexus-alpha-meta">
               <div>
                 <dt>{{ t("govuk_alpha_organisations.manage.role_label") }}</dt>
-                <dd>{{ roleLabel(organisation.member_role or organisation.role or "member") }}</dd>
+                <dd>{{ roleLabel(organisation.member_role) }}</dd>
               </div>
             </dl>
             <div class="nexus-alpha-actions">
@@ -68,7 +68,7 @@
       <div class="nexus-alpha-card-list">
         {% for organisation in pendingOrganisations %}
           <article class="nexus-alpha-card">
-            <h3 class="govuk-heading-s govuk-!-margin-bottom-1">{{ organisation.name or t("govuk_alpha_organisations.manage.title") }}</h3>
+            <h3 class="govuk-heading-s govuk-!-margin-bottom-1">{{ organisation.name }}</h3>
             <p class="govuk-body govuk-!-margin-bottom-0">
               <strong class="govuk-tag govuk-tag--yellow">{{ t("govuk_alpha_organisations.manage.status_pending") }}</strong>
             </p>
