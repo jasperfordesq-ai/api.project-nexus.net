@@ -17,6 +17,7 @@ const {
 const { requireAuth } = require('../middleware/auth');
 const { asyncRoute } = require('../lib/routeHelpers');
 const { getRequestIntlLocale } = require('../lib/request-intl-locale');
+const { resolveBackendAssetUrl } = require('../lib/accessible-shell');
 
 const router = express.Router();
 
@@ -249,8 +250,18 @@ function groupedSearchResults(rows) {
   for (const row of Array.isArray(rows) ? rows : []) {
     const item = objectFrom(row);
     const type = textFrom(item.type);
-    if (type === 'listing') grouped.listings.push(item);
-    if (type === 'user') grouped.users.push(item);
+    if (type === 'listing') {
+      grouped.listings.push({
+        ...item,
+        imageAssetUrl: resolveBackendAssetUrl(item.image_url || item.imageUrl)
+      });
+    }
+    if (type === 'user') {
+      grouped.users.push({
+        ...item,
+        avatarAssetUrl: resolveBackendAssetUrl(item.avatar || item.avatar_url || item.avatarUrl)
+      });
+    }
     if (type === 'event') grouped.events.push(item);
     if (type === 'group') grouped.groups.push(item);
   }

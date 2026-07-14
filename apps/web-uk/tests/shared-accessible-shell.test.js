@@ -10109,7 +10109,7 @@ describe('shared accessible frontend shell', () => {
           description: 'Help with raised beds and compost.',
           listing_type: 'offer',
           hours_estimate: 2,
-          image_url: 'https://cdn.example.test/garden.jpg',
+          image_url: '/uploads/search/garden.jpg',
           is_featured: true
         },
         { type: 'listing', id: 43, title: 'Tool sharing', listing_type: 'offer' },
@@ -10123,7 +10123,7 @@ describe('shared accessible frontend shell', () => {
           name: 'Avery Stone',
           bio: 'Gardening mentor',
           location: 'Town',
-          avatar_url: 'https://cdn.example.test/avery.jpg'
+          avatar_url: '/uploads/search/avery.jpg'
         },
         {
           type: 'event',
@@ -10236,10 +10236,12 @@ describe('shared accessible frontend shell', () => {
     expect(signed.text).not.toContain('Different town filtered out');
     expect(signed.text).not.toContain('Old event filtered out');
     expect(signed.text).toContain(t('govuk_alpha_search.results.image_alt', { title: 'Garden help' }));
+    expect(signed.text).toContain(`src="${getApiBaseUrl()}/uploads/search/garden.jpg"`);
     expect(signed.text).toContain(t('govuk_alpha_search.results.hours_estimate', { hours: 2 }));
     expect(signed.text).toContain(t('govuk_alpha_search.results.listing_offering'));
     expect(signed.text).toContain('Avery Stone');
     expect(signed.text).toContain(t('govuk_alpha_search.results.image_alt', { title: 'Avery Stone' }));
+    expect(signed.text).toContain(`src="${getApiBaseUrl()}/uploads/search/avery.jpg"`);
     expect(signed.text).toContain('Seed swap');
     expect(signed.text).toContain('Garden circle');
     expect(signed.text).toContain(t('govuk_alpha_search.results.view_group'));
