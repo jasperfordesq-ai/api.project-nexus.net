@@ -545,6 +545,11 @@ signed-in member's Laravel-relative avatar path against the configured backend
 origin while retaining Blade's existing current-photo presentation. Focused
 settings and onboarding proof passes `2/2`; the same complete non-mutating and
 static gates remain green.
+Volunteer opportunity detail now resolves the nested Laravel organisation-logo
+path against the configured backend origin while retaining Blade's logo
+alternative, dimensions, and organisation-name fallback. Focused opportunity
+proof passes `1/1`; after correcting one misplaced test assertion, the complete
+non-mutating gate passes `52/52` suites and `1,681/1,681` tests.
 This certifies broad historical read/auth/gate/body coverage, not every
 mutation, upload, download, destructive side effect, or manual assistive-
 technology state. Saved-collection create/update/delete and collection-
