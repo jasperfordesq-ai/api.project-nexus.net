@@ -310,6 +310,9 @@ Double-brace Laravel catalogue placeholders interpolate without visible braces.
 Organizer submission, campaign, and guest collections now expose Blade's
 previous/next navigation while preserving sibling collection parameters and
 returning to the matching section anchor.
+Submission review/export, campaign, attendance, and retention controls now use
+Blade's GOV.UK form groups, module hooks, explicit submit semantics, and checkbox
+modules; incomplete policy status fails closed to localized copy.
 The full non-mutating gate passes 48/48 suites and 1,628/1,628 tests with green lint,
 brand, CSS, route, and localization gates. No Laravel runtime or database
 mutation was run.

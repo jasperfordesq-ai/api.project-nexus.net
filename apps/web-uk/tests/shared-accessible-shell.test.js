@@ -23224,6 +23224,8 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('/events/42/registration?submissions_page=1&amp;campaigns_per_page=10&amp;guests_page=3#registration-submissions');
     expect(response.text).toContain('/events/42/registration?submissions_page=2&amp;campaigns_per_page=10&amp;guests_page=3&amp;campaigns_page=4#registration-campaigns');
     expect(response.text).toContain('/events/42/registration?submissions_page=2&amp;campaigns_per_page=10&amp;guests_page=2#registration-guests');
+    expect(response.text).toContain('<div class="govuk-form-group"><label class="govuk-label" for="campaign-type">');
+    expect(response.text).toContain('<button class="govuk-button" data-module="govuk-button" type="submit">Preview recipients</button>');
     expect(api.callEventApi).toHaveBeenNthCalledWith(3, 'test-token', 'GET', '/42/registration-product/manage?submissions_page=2&campaigns_per_page=10&guests_page=3');
   });
 
@@ -23394,6 +23396,9 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(200);
     expect(response.text).toContain('/events/42/registration/campaigns/61/issue');
     expect(response.text).toContain('/events/42/registration/campaigns/61/schedule');
+    expect(response.text).toContain('data-module="govuk-button" type="submit">Send now</button>');
+    expect(response.text).toContain('data-module="govuk-button" type="submit">Schedule</button>');
+    expect(response.text).not.toContain('event_registration.statuses.undefined');
     expect(api.callEventApi).toHaveBeenNthCalledWith(1, 'test-token', 'POST', '/42/registration-product/campaigns/preview', { campaign_type: 'member', source: { member_ids: [7, 8, 9] }, default_locale: 'en' }, { headers: { 'Idempotency-Key': 'campaign-preview-123' } });
   });
 
@@ -23445,6 +23450,8 @@ describe('shared accessible frontend shell', () => {
       .mockResolvedValueOnce({ data: { settings: { revision: 3 }, forms: [], campaigns: [], permissions: { manage_retention: true } } });
     const preview = await agent.post('/events/42/registration/retention/preview').set('Cookie', signedCookieHeader()).type('form').send({ _csrf: csrf, idempotency_key: 'retention-preview-123', as_of: '2026-07-13' });
     expect(preview.status).toBe(200); expect(preview.text).toContain('/events/42/registration/retention/71/apply');
+    expect(preview.text).toContain('govuk-checkboxes govuk-!-margin-bottom-4" data-module="govuk-checkboxes"');
+    expect(preview.text).toContain('govuk-button govuk-button--warning" data-module="govuk-button" type="submit"');
     expect(api.callEventApi).toHaveBeenNthCalledWith(1, 'test-token', 'POST', '/42/registration-product/retention/dry-run', { as_of: '2026-07-13' }, { headers: { 'Idempotency-Key': 'retention-preview-123' } });
     const rejected = await agent.post('/events/42/registration/retention/71/apply').set('Cookie', signedCookieHeader()).type('form').send({ _csrf: csrf, idempotency_key: 'retention-apply-123' });
     expect(rejected.headers.location).toBe('/events/42/registration?status=invalid');

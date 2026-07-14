@@ -8,7 +8,7 @@
 <h3 class="govuk-heading-m">{{ t("event_registration.settings.title") }}</h3>
 <p class="govuk-body">{{ t("event_registration.settings.description") }}</p>
 <p class="govuk-body">
-  <strong class="govuk-tag">{{ t("event_registration.statuses." + settings.status) if organizer.settings else t("event_registration.settings.not_created") }}</strong>
+  <strong class="govuk-tag">{{ t("event_registration.statuses." + settings.status) if organizer.settings and settings.status else t("event_registration.settings.not_created") }}</strong>
   {% if organizer.settings %}{{ t("event_registration.settings.revision", { revision: settings.revision }) }}{% endif %}
 </p>
 <form method="post" action="{{ urlFor('/events/' + (event.id | string) + '/registration/settings') }}" novalidate>
