@@ -309,6 +309,29 @@ route, 285/350 semantic, 124/150 schema, 90/100 security/localization, 45/100
 build/test/CI, 10/125 unchanged-frontends, and 22/75 providers/ops/docs. Exact
 remaining deductions are 0, 65, 26, 10, 55, 115, and 53 points.
 
+### 2026-07-14 Paid-Transfer Charge-Dispute Recovery (Published)
+
+Evidence snapshot: Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf`, ASP.NET implementation
+`9875fb5dd33e3ab5c33ea77a83fcfb0b8c6c0b00`, captured 2026-07-14
+19:36:08 +01:00. Paid separate-charge disputes now reverse the proportional
+seller exposure once and persist that reversal in the dispute ledger; a provider
+win recreates exactly the recorded seller share under a stable reimbursement
+idempotency key. Destination-charge losses retrieve the transfer identity from
+the Stripe charge when no local payout id exists and reverse the same proportional
+seller exposure. Subsequent events reuse the ledger and cannot double-move funds.
+
+The Release API build passes with zero errors and three known unrelated warnings;
+the complete marketplace payment/dispute gate passes 30/30. Localized refund
+notification evidence, live Stripe proof, full-suite/CI, and unchanged-client
+runtime certification remain open.
+
+Published implementation `9875fb5dd33e3ab5c33ea77a83fcfb0b8c6c0b00`
+banks 3 semantic and 1 provider/operations point for **680/1000**: 100/100
+route, 288/350 semantic, 124/150 schema, 90/100 security/localization, 45/100
+build/test/CI, 10/125 unchanged-frontends, and 23/75 providers/ops/docs. Exact
+remaining deductions are 0, 62, 26, 10, 55, 115, and 52 points.
+
 ## Historical Checkpoints
 
 Everything in this section is dated implementation evidence. Its older
