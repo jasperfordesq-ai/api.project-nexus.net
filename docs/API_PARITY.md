@@ -1,6 +1,6 @@
 # API Parity Map
 
-Last reviewed: 2026-07-13
+Last reviewed: 2026-07-14
 
 Laravel source of truth: `C:\platforms\htdocs\staging\openapi.json` plus route
 files under `C:\platforms\htdocs\staging\routes`.
@@ -12,15 +12,20 @@ The legacy ASP.NET React copy at `apps/react-frontend/` is no longer the target
 for API design. ASP.NET API parity means the ASP.NET backend can satisfy the API
 calls made by the production Laravel React frontend.
 
-## 2026-07-13 Event Recurrence V2 Refresh
+## 2026-07-14 Event Recurrence And Series Lifecycle Refresh
 
 All six recurrence capability, revision, and definition-blueprint route shapes now
 have explicit owners under both API aliases, and `/events/recurring` uses the real
 v2 workflow rather than the shallow parity handler. Finite and rolling series use
 stable identities, signed/idempotent mutations, bounded tenant-safe materialization,
 effective revision inheritance, future-only definition propagation, canonical
-manifest hashes, immutable evidence, and DST gap/fold conflicts. The migrated
-PostgreSQL suite passes 8/8 and the scheduler is registered. The refreshed live
+manifest hashes, immutable evidence, and DST gap/fold conflicts. Custom rules cover
+the reviewed Laravel RRULE subset plus normalized EXDATE/RDATE and local wall-time
+DST semantics. Publication converges the complete series; operational lifecycle
+changes converge the root and future occurrences and emit one authoritative root
+fact. Member/admin cancellation and deletion are transactional and non-destructive.
+The recurrence, lifecycle, and route-ownership suites pass 9/9, 11/11, and 114/114,
+and the scheduler is registered. The refreshed live
 inventory is **2,579/2,608 matched (29 missing, 98.9%)**. This remains static route
 representation plus focused workflow proof, not global frontend certification.
 

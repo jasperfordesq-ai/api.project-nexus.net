@@ -1,6 +1,6 @@
 # Full Laravel Parity Remediation Runbook
 
-Last reviewed: 2026-07-13
+Last reviewed: 2026-07-14
 
 This is the maintained execution map for completing both parity workstreams:
 
@@ -42,6 +42,39 @@ Before any production deployment or production-container action, stop and read
 `.claude/production-containers.md`. This runbook does not authorize production
 deployment or touching production containers. Never modify the Laravel repo or
 Laravel Edition containers from this worktree.
+
+## 2026-07-14 ASP.NET Custom Recurrence And Series Lifecycle Checkpoint (Locally Verified)
+
+ASP.NET now accepts the reviewed Laravel custom RRULE subset (`FREQ`, `INTERVAL`,
+`BYDAY`, `BYMONTHDAY`, `BYMONTH`, `WKST`, `COUNT`, and `UNTIL`) with canonical
+ordering, DTSTART-derived defaults, WKST-aware weekly intervals, negative month
+days, a 20-year horizon, UTC EXDATE/RDATE normalization, EXDATE precedence, and
+local wall-time preservation across DST. Invalid or contradictory rules fail
+closed, and the rolling materializer uses the same canonical generator.
+
+Recurring lifecycle mutations now operate at series scope. Publication decisions
+made through a child resolve to the root and propagate to all occurrences;
+operational cancel/archive/postpone/complete/restore/reschedule on a template update
+the root and future occurrences. One serializable transaction and root advisory
+lock preserve immutable per-member history, consolidate recipients and moderation,
+emit one authoritative root outbox fact, and cascade terminal RSVP, waitlist, and
+reminder effects. Member, compatibility-alias, and admin cancel/delete routes use
+this lifecycle instead of direct flag writes or physical deletion, and
+`/api/v2/admin/events` has a concrete owner.
+
+The migrated recurrence suite passes 9/9 and the lifecycle suite passes 11/11.
+The admin route-ownership suite passes 114/114. Debug and Release builds have zero
+errors, EF model drift is clean, and comparator fixture/live refresh remain green
+at 2,579/2,608 operations (98.9%, 29 static misses). A legacy admin-controller test
+attempt was environment-blocked before application assertions because Testcontainers
+could not initialize its resource reaper; it is unknown rather than green.
+
+Current provisional global scores are **815/1000 implementation** and **690/1000
+certification confidence**. The honest combined finish-line estimate is **70%**,
+up from the goal baseline of 42% and the previous published checkpoint of 68%.
+The 29 remaining route shapes, complete-suite/CI proof, unchanged canonical-
+frontend-on-ASP.NET browser proof, broader schema/localization depth, and live-
+provider evidence remain open. No production resource or frontend file was touched.
 
 ## 2026-07-13 ASP.NET Event Recurrence V2 Checkpoint (Locally Verified)
 

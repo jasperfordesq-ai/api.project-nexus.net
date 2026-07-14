@@ -1,6 +1,6 @@
 # Current Laravel Backend Parity Handoff
 
-Last reviewed: 2026-07-13
+Last reviewed: 2026-07-14
 
 > **Current audit notice (2026-07-12):** Read the verified slice below and
 > `docs/FULL_PARITY_REMEDIATION_RUNBOOK.md` before using the historical numeric
@@ -12,19 +12,21 @@ parity job after a session interruption. The implementation branches may still
 be moving, so treat every numeric snapshot below as advisory. Regenerate the
 live state before editing code or claiming progress.
 
-## Latest Resume Point: Event Recurrence V2
+## Latest Resume Point: Custom Recurrence And Series Lifecycle
 
-The locally verified backend slice owns recurrence capabilities, finite/never
-creation, signed effective revisions, immutable definition blueprints, and a
-registered rolling materializer under both API aliases. Migration 140 and the full
-chain replay cleanly; model drift, Debug/Release build, comparator fixture, and 8/8
-migrated-PostgreSQL recurrence tests pass. New occurrences inherit effective
-revisions and eligible blueprints exactly once, with bounded resume watermarks,
-canonical manifest hashes, immutable ledgers, and DST gap/fold rejection. The live
-route inventory is 2,579/2,608 with 29 misses. Provisional global scores are
-800/1000 implementation, 675/1000 certification, and 68% overall. Resume with
-custom RRULE/exdate/rdate create input and full recurring-series lifecycle
-propagation, then continue through the remaining route/runtime queue.
+The locally verified backend slice owns finite/never/custom RRULE creation,
+normalized EXDATE/RDATE behavior, signed effective revisions, immutable definition
+blueprints, and rolling materialization under both API aliases. Migration 140 and
+the full chain replay cleanly; model drift, Debug/Release build, comparator fixture,
+9/9 recurrence tests, 11/11 lifecycle tests, and 114/114 route-ownership tests pass.
+Recurring publication converges the complete series; operational lifecycle changes
+converge the root and future occurrences, emit one authoritative root fact, and
+preserve immutable per-member evidence. Member/admin cancel and delete routes no
+longer use direct flags or physical deletion. The live inventory is 2,579/2,608
+with 29 misses. Provisional global scores are 815/1000 implementation, 690/1000
+certification, and 70% overall. Resume with the 29-route/runtime queue, then the
+complete suite/CI, unchanged canonical frontend smoke, schema/localization depth,
+and live-provider certification.
 
 ## Objective
 

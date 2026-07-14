@@ -18,6 +18,7 @@ namespace Nexus.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/admin/events")]
+[Route("api/v2/admin/events")]
 [Authorize(Policy = "AdminOnly")]
 public class AdminEventsController : ControllerBase
 {
@@ -72,29 +73,13 @@ public class AdminEventsController : ControllerBase
     }
 
     [HttpPut("{id:int}/cancel")]
-    public async Task<IActionResult> CancelEvent(int id)
-    {
-        var evt = await _db.Events.FirstOrDefaultAsync(x => x.Id == id);
-        if (evt == null) return NotFound(new { error = "Event not found" });
-
-        evt.IsCancelled = true;
-        evt.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
-        return Ok(new { data = new { evt.Id, is_cancelled = evt.IsCancelled } });
-    }
+    [HttpPost("{id:int}/cancel")]
+    public Task<IActionResult> CancelEvent(int id, [FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] JsonElement? body, CancellationToken ct)
+        => Transition(id, "cancel", body, ct);
 
     [HttpDelete("{id:int}")]
-    public async Task<IActionResult> DeleteEvent(int id)
-    {
-        var evt = await _db.Events.FirstOrDefaultAsync(x => x.Id == id);
-        if (evt == null) return NotFound(new { error = "Event not found" });
-
-        var rsvps = await _db.EventRsvps.Where(r => r.EventId == id).ToListAsync();
-        _db.EventRsvps.RemoveRange(rsvps);
-        _db.Events.Remove(evt);
-        await _db.SaveChangesAsync();
-        return Ok(new { message = "Event deleted" });
-    }
+    public Task<IActionResult> DeleteEvent(int id, [FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] JsonElement? body, CancellationToken ct)
+        => Transition(id, "archive", body, ct);
 
     [HttpPost("{id:int}/approve")]
     public Task<IActionResult> Approve(int id, [FromBody] JsonElement? body, CancellationToken ct) => Transition(id, "approve", body, ct);

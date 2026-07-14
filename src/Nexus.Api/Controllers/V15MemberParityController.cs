@@ -46,6 +46,7 @@ public class V15MemberParityController : ControllerBase
     private readonly PersonalWalletTransferEffectsService _transferEffects;
     private readonly OrganisationService _organisationService;
     private readonly OrgWalletService _orgWalletService;
+    private readonly EventLifecycleService _eventLifecycle;
     private static readonly ConcurrentDictionary<Guid, object> PartnerRateLocks = new();
 
     public V15MemberParityController(
@@ -56,7 +57,8 @@ public class V15MemberParityController : ControllerBase
         PersonalWalletLedgerService personalWallet,
         PersonalWalletTransferEffectsService transferEffects,
         OrganisationService organisationService,
-        OrgWalletService orgWalletService)
+        OrgWalletService orgWalletService,
+        EventLifecycleService eventLifecycle)
     {
         _db = db;
         _tenantContext = tenantContext;
@@ -66,6 +68,7 @@ public class V15MemberParityController : ControllerBase
         _transferEffects = transferEffects;
         _organisationService = organisationService;
         _orgWalletService = orgWalletService;
+        _eventLifecycle = eventLifecycle;
     }
 
     [HttpGet("api/v2/events")]
@@ -162,25 +165,55 @@ public class V15MemberParityController : ControllerBase
     }
 
     [HttpDelete("api/v2/events/{id:int}")]
-    public async Task<IActionResult> V2DeleteEvent(int id)
+    public async Task<IActionResult> V2DeleteEvent(int id, [FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] JsonElement? body, CancellationToken ct)
     {
-        var ev = await _db.Events.FirstOrDefaultAsync(e => e.Id == id);
-        if (ev == null) return NotFound(new { error = "Event not found" });
-        _db.Events.Remove(ev);
-        await _db.SaveChangesAsync();
-        return Ok(new { success = true });
+        var tenantId = TenantId();
+        var userId = CurrentUserId() ?? throw new UnauthorizedAccessException();
+        var before = await _db.Events.IgnoreQueryFilters().AsNoTracking()
+            .SingleOrDefaultAsync(e => e.TenantId == tenantId && e.Id == id, ct);
+        if (before == null) return NotFound(new { success = false, code = "NOT_FOUND", message = "Event not found" });
+        var reason = body is { ValueKind: JsonValueKind.Object } value ? GetString(value, "reason") : null;
+        var result = await _eventLifecycle.TransitionAsync(tenantId, id, userId, "archive", reason, ct);
+        if (!result.Succeeded) return LifecycleFailure(result.Error!);
+        var after = await _db.Events.IgnoreQueryFilters().AsNoTracking()
+            .SingleAsync(e => e.TenantId == tenantId && e.Id == id, ct);
+        var changed = after.LifecycleVersion != before.LifecycleVersion;
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                action = "archive",
+                requested_action = "delete",
+                outcome = changed ? "archived" : "already_archived",
+                event_id = id,
+                changed,
+                replayed = !changed,
+                idempotent_replay = !changed,
+                archived = true,
+                already_archived = !changed,
+                deleted = false,
+                publication_status = after.PublicationStatus,
+                operational_status = after.OperationalStatus,
+                lifecycle_version = after.LifecycleVersion,
+                reason = after.LifecycleReason
+            }
+        });
     }
 
     [HttpPost("api/v2/events/{id:int}/cancel")]
-    public async Task<IActionResult> V2CancelEvent(int id)
+    public async Task<IActionResult> V2CancelEvent(int id, [FromBody] JsonElement body, CancellationToken ct)
     {
-        var ev = await _db.Events.FirstOrDefaultAsync(e => e.Id == id);
-        if (ev == null) return NotFound(new { error = "Event not found" });
-        ev.IsCancelled = true;
-        ev.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
-        return Ok(new { success = true, data = EventDto(ev) });
+        var reason = GetString(body, "reason")?.Trim();
+        if (string.IsNullOrEmpty(reason))
+            return UnprocessableEntity(new { success = false, code = "VALIDATION_REQUIRED_FIELD", message = "Reason is required", errors = new[] { new { code = "VALIDATION_REQUIRED_FIELD", message = "Reason is required", field = "reason" } } });
+        var result = await _eventLifecycle.TransitionAsync(TenantId(), id, CurrentUserId() ?? throw new UnauthorizedAccessException(), "cancel", reason, ct);
+        if (!result.Succeeded) return LifecycleFailure(result.Error!);
+        return Ok(new { success = true, data = new { cancelled = true, event_id = id, reason } });
     }
+
+    private IActionResult LifecycleFailure(EventLifecycleError error)
+        => StatusCode(error.Status, new { success = false, code = error.Code, message = error.Message, errors = new[] { new { code = error.Code, message = error.Message, field = error.Field } } });
 
     [HttpGet("api/v2/events/{id:int}/attendees")]
     [HttpGet("api/v2/events/{id:int}/attendance")]

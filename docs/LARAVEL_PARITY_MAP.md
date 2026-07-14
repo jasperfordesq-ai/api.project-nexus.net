@@ -1,20 +1,22 @@
 # Laravel Full-Parity Map
 
-Last reviewed: 2026-07-13
+Last reviewed: 2026-07-14
 
 Canonical source: `C:\platforms\htdocs\staging` (read-only).
 
 ## Latest Verified Backend Slice
 
-Event recurrence v2 parity now includes capability discovery, finite/never-series
-creation, signed effective revisions, immutable definition-blueprint capture, and
-an observable hourly rolling materializer. New occurrences inherit the latest
-effective revision and eligible blueprint exactly once inside tenant-safe bounded
-transactions; paused roots do not grow and Dublin DST gaps/folds fail closed.
-Migration 140 replays from an empty PostgreSQL database, model drift is clear, and
-the migrated-schema suite passes 8/8. The current route inventory is 2,579/2,608
-(98.9%); custom RRULE inputs, full series lifecycle propagation, and 29 route
-shapes remain open.
+Event recurrence v2 parity now includes capability discovery, finite/never/custom
+RRULE creation, normalized EXDATE/RDATE behavior, signed effective revisions,
+immutable definition-blueprint capture, and an observable hourly materializer.
+New occurrences inherit the latest effective revision and eligible blueprint once
+inside tenant-safe bounded transactions; paused roots do not grow and Dublin DST
+gaps/folds fail closed. Publication converges the complete series while operational
+lifecycle changes converge the root and future occurrences, preserve immutable
+member evidence, and emit one authoritative root fact. Migration 140 replays from
+an empty PostgreSQL database, model drift is clear, and recurrence/lifecycle/route-
+ownership proof passes 9/9, 11/11, and 114/114. The current inventory is
+2,579/2,608 (98.9%); 29 route shapes and broader runtime certification remain open.
 
 ## Inventory Baseline
 

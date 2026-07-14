@@ -69,6 +69,76 @@ public sealed class EventRecurrenceParityTests(NexusWebApplicationFactory factor
     }
 
     [Fact]
+    public async Task CustomRule_PreservesCanonicalRuleExceptionsAdditionsAndLocalWallTime()
+    {
+        await AuthenticateAsMemberAsync();
+        var response = await Client.PostAsJsonAsync("/api/v2/events/recurring", new
+        {
+            title = "Month-end custom series", description = "Custom recurrence contract", location = "Hall A",
+            start_time = "2027-01-31T09:00:00Z", end_time = "2027-01-31T10:00:00Z", timezone = "UTC",
+            recurrence_frequency = "custom", recurrence_rrule = "BYMONTHDAY=-1;COUNT=3;FREQ=MONTHLY",
+            recurrence_exdates = new[] { "2027-02-28 09:00:00" }, recurrence_additions = new[] { "2027-02-27 09:00:00", "2027-02-28 09:00:00" }
+        });
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var rootId = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data").GetProperty("template").GetProperty("id").GetInt32();
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var rule = await db.EventRecurrenceRules.IgnoreQueryFilters().SingleAsync(x => x.EventId == rootId);
+            rule.RRule.Should().Be("FREQ=MONTHLY;BYMONTHDAY=-1;COUNT=3");
+            JsonSerializer.Deserialize<string[]>(rule.ExDates).Should().Equal("20270228T090000Z");
+            JsonSerializer.Deserialize<string[]>(rule.RDates).Should().Equal("20270227T090000Z", "20270228T090000Z");
+            (await db.Events.IgnoreQueryFilters().Where(x => x.ParentEventId == rootId).OrderBy(x => x.StartsAt).Select(x => x.StartsAt).ToListAsync())
+                .Should().Equal(new DateTime(2027, 1, 31, 9, 0, 0, DateTimeKind.Utc), new DateTime(2027, 2, 27, 9, 0, 0, DateTimeKind.Utc), new DateTime(2027, 3, 31, 9, 0, 0, DateTimeKind.Utc));
+        }
+
+        var dst = await Client.PostAsJsonAsync("/api/v2/events/recurring", new
+        {
+            title = "Dublin wall-time series", description = "DST-safe recurrence contract", location = "Hall A",
+            start_time = "2027-03-27T09:00:00Z", end_time = "2027-03-27T10:00:00Z", timezone = "Europe/Dublin",
+            recurrence_frequency = "daily", recurrence_ends_type = "after_count", recurrence_ends_after_count = 2
+        });
+        dst.StatusCode.Should().Be(HttpStatusCode.Created);
+        var dstRoot = (await dst.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data").GetProperty("template").GetProperty("id").GetInt32();
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            (await db.Events.IgnoreQueryFilters().Where(x => x.ParentEventId == dstRoot).OrderBy(x => x.StartsAt).Select(x => x.StartsAt).ToListAsync())
+                .Should().Equal(new DateTime(2027, 3, 27, 9, 0, 0, DateTimeKind.Utc), new DateTime(2027, 3, 28, 8, 0, 0, DateTimeKind.Utc));
+        }
+
+        var weekStart = await Client.PostAsJsonAsync("/api/v2/events/recurring", new
+        {
+            title = "Sunday anchored biweekly series", start_time = "2027-01-03T09:00:00Z", timezone = "UTC",
+            recurrence_rrule = "COUNT=4;BYDAY=MO,SU;WKST=SU;INTERVAL=2;FREQ=WEEKLY"
+        });
+        weekStart.StatusCode.Should().Be(HttpStatusCode.Created);
+        var weekStartRoot = (await weekStart.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data").GetProperty("template").GetProperty("id").GetInt32();
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            (await db.EventRecurrenceRules.IgnoreQueryFilters().SingleAsync(x => x.EventId == weekStartRoot)).RRule
+                .Should().Be("FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,SU;WKST=SU;COUNT=4");
+            (await db.Events.IgnoreQueryFilters().Where(x => x.ParentEventId == weekStartRoot).OrderBy(x => x.StartsAt).Select(x => x.StartsAt.Date).ToListAsync())
+                .Should().Equal(new DateTime(2027, 1, 3), new DateTime(2027, 1, 4), new DateTime(2027, 1, 17), new DateTime(2027, 1, 18));
+        }
+
+        var invalid = await Client.PostAsJsonAsync("/api/v2/events/recurring", new
+        {
+            title = "Invalid custom series", start_time = "2027-01-31T09:00:00Z", timezone = "UTC",
+            recurrence_frequency = "custom", recurrence_rrule = "FREQ=MONTHLY;COUNT=3;UNTIL=20271231T235959Z"
+        });
+        invalid.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+
+        var invalidAddition = await Client.PostAsJsonAsync("/api/v2/events/recurring", new
+        {
+            title = "Invalid custom addition", start_time = "2027-01-31T09:00:00Z", timezone = "UTC",
+            recurrence_rrule = "FREQ=MONTHLY;COUNT=2", recurrence_rdates = new[] { "2027-01-30 09:00:00" }
+        });
+        invalidAddition.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+    }
+
+    [Fact]
     public async Task Revision_IsBoundaryScopedSignedDurableAndExactlyIdempotent()
     {
         var created = await CreateSeries(3);

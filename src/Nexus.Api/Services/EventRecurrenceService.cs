@@ -70,18 +70,37 @@ public sealed class EventRecurrenceService(
         if (start is null) return Validation("start_time");
         var end = Date(body, "end_time") ?? Date(body, "ends_at");
         if (end is not null && end <= start) return Validation("end_time");
-        var frequency = Text(body, "recurrence_frequency")?.Trim().ToLowerInvariant();
-        if (frequency is null || !Frequencies.Contains(frequency)) return Validation("recurrence_frequency");
-        var interval = Int(body, "recurrence_interval") ?? 1;
-        if (interval is < 1 or > 366) return Validation("recurrence_interval");
-        var endsType = Text(body, "recurrence_ends_type")?.Trim().ToLowerInvariant() ?? "after_count";
-        if (endsType is not ("after_count" or "on_date" or "never")) return Validation("recurrence_ends_type");
-        var requestedCount = Int(body, "recurrence_ends_after_count") ?? 10;
-        if (endsType == "after_count" && (requestedCount < 1 || requestedCount > MaxOccurrences)) return Validation("recurrence_ends_after_count");
-        var onDate = Date(body, "recurrence_ends_on_date");
-        if (endsType == "on_date" && onDate is null) return Validation("recurrence_ends_on_date");
-        var count = endsType == "after_count" ? requestedCount : MaxOccurrences;
-        var dates = Generate(start.Value, frequency, interval, count, onDate, Text(body, "recurrence_days"));
+        var timezone = Text(body, "timezone")?.Trim() ?? "UTC";
+        RuleSpec ruleSpec;
+        var rawRRule = Text(body, "recurrence_rrule")?.Trim();
+        if (!string.IsNullOrEmpty(rawRRule))
+        {
+            if (!TryParseRRule(rawRRule, start.Value, timezone, MaxOccurrences, out ruleSpec)) return Validation("recurrence_rrule");
+        }
+        else
+        {
+            var frequency = Text(body, "recurrence_frequency")?.Trim().ToLowerInvariant();
+            if (frequency is null || !Frequencies.Contains(frequency)) return Validation("recurrence_frequency");
+            var interval = Int(body, "recurrence_interval") ?? 1;
+            if (interval is < 1 or > 365) return Validation("recurrence_interval");
+            var endsType = Text(body, "recurrence_ends_type")?.Trim().ToLowerInvariant() ?? "after_count";
+            if (endsType is not ("after_count" or "on_date" or "never")) return Validation("recurrence_ends_type");
+            var requestedCount = Int(body, "recurrence_ends_after_count") ?? 10;
+            if (endsType == "after_count" && (requestedCount < 1 || requestedCount > MaxOccurrences)) return Validation("recurrence_ends_after_count");
+            var onDate = Date(body, "recurrence_ends_on_date");
+            if (endsType == "on_date" && onDate is null) return Validation("recurrence_ends_on_date");
+            var rrule = BuildRRule(frequency, interval, endsType, requestedCount, onDate, Text(body, "recurrence_days"));
+            if (!TryParseRRule(rrule, start.Value, timezone, MaxOccurrences, out ruleSpec)) return Validation("recurrence_rrule");
+        }
+        if (!TryDateList(body, ["recurrence_exdates", "exdates"], start.Value, timezone, MaxOccurrences, out var exdates, out var dateField)) return Validation(dateField!);
+        if (!TryDateList(body, ["recurrence_rdates", "recurrence_additions", "rdates"], start.Value, timezone, MaxOccurrences, out var rdates, out dateField)) return Validation(dateField!);
+        var recurrenceHorizon = start.Value.ToUniversalTime().AddYears(MaxHorizonYears);
+        if (rdates.Any(x => x < start.Value.ToUniversalTime() || x > recurrenceHorizon)) return Validation("recurrence_rdates");
+        var generated = GenerateRule(start.Value, timezone, ruleSpec, MaxOccurrences, MaxHorizonYears);
+        var excluded = exdates.ToHashSet();
+        var dates = generated.Where(x => !excluded.Contains(x))
+            .Concat(rdates.Where(x => !excluded.Contains(x)))
+            .Distinct().OrderBy(x => x).ToList();
         if (dates.Count == 0 || dates.Count > MaxOccurrences) return new(null, Error: new("EVENT_RECURRENCE_LIMIT_EXCEEDED", "Invalid input", 413));
         var duration = end is null ? (TimeSpan?)null : end.Value - start.Value;
         var now = DateTime.UtcNow;
@@ -95,7 +114,7 @@ public sealed class EventRecurrenceService(
             ImageUrl = Text(body, "image_url") ?? Text(body, "cover_image"), CategoryId = Int(body, "category_id"),
             IsOnline = Bool(body, "is_online"), AllowRemoteAttendance = Bool(body, "allow_remote_attendance"),
             OnlineLink = Text(body, "online_link"), VideoUrl = Text(body, "video_url"),
-            Timezone = Text(body, "timezone")?.Trim() ?? "UTC", AllDay = Bool(body, "all_day"),
+            Timezone = timezone, AllDay = Bool(body, "all_day"),
             GroupId = Int(body, "group_id"), SeriesId = Int(body, "series_id"),
             PublicationStatus = "draft", OperationalStatus = "scheduled", Status = "draft",
             IsRecurringTemplate = true, RecurrenceEngine = Engine, RecurrenceEngineVersion = EngineVersion,
@@ -106,16 +125,19 @@ public sealed class EventRecurrenceService(
         db.Events.Add(root);
         await db.SaveChangesAsync(ct);
 
-        var rrule = BuildRRule(frequency, interval, endsType, requestedCount, onDate, Text(body, "recurrence_days"));
+        var canonicalExDates = exdates.Select(CanonicalDate).ToArray();
+        var canonicalRDates = rdates.Select(CanonicalDate).ToArray();
+        var ruleHash = Hash(string.Join('|', Engine, EngineVersion, timezone, start.Value.ToUniversalTime().ToString("O"), ruleSpec.RRule, string.Join(',', canonicalExDates), string.Join(',', canonicalRDates)));
         var rule = new EventRecurrenceRule
         {
-            TenantId = tenantId, EventId = root.Id, Frequency = frequency, Interval = interval,
-            DaysOfWeek = Text(body, "recurrence_days"), EndsType = endsType,
-            EndsAfterCount = endsType == "after_count" ? requestedCount : null,
-            EndsOnDate = endsType == "on_date" ? onDate : null, RRule = rrule,
-            RuleHash = Hash(rrule), MaterializedSetVersion = 1,
+            TenantId = tenantId, EventId = root.Id, Frequency = ruleSpec.Frequency, Interval = ruleSpec.Interval,
+            DaysOfWeek = ruleSpec.ByDays.Count == 0 ? null : string.Join(',', ruleSpec.ByDays),
+            DayOfMonth = ruleSpec.ByMonthDays.Count == 1 ? ruleSpec.ByMonthDays[0] : null,
+            EndsType = ruleSpec.EndsType, EndsAfterCount = ruleSpec.Count, EndsOnDate = ruleSpec.UntilUtc,
+            RRule = ruleSpec.RRule, ExDates = JsonSerializer.Serialize(canonicalExDates), RDates = JsonSerializer.Serialize(canonicalRDates),
+            RuleHash = ruleHash, MaterializedSetVersion = 1,
             MaterializedThroughAt = dates[^1], MaterializationLastAttemptedAt = now,
-            MaterializationLastSucceededAt = now, MaterializationTruncated = endsType == "never" && dates.Count == MaxOccurrences,
+            MaterializationLastSucceededAt = now, MaterializationTruncated = ruleSpec.EndsType == "never" && dates.Count == MaxOccurrences,
             CreatedAt = now, UpdatedAt = now
         };
         db.EventRecurrenceRules.Add(rule);
@@ -253,6 +275,7 @@ public sealed class EventRecurrenceService(
 
     private int MaxOccurrences => Math.Clamp(configuration.GetValue<int?>("Events:Recurrence:MaxOccurrences") ?? 366, 1, 5000);
     private int MaxRevisionAffected => Math.Clamp(configuration.GetValue<int?>("Events:Recurrence:MaxRevisionAffected") ?? 500, 1, 5000);
+    private int MaxHorizonYears => Math.Clamp(configuration.GetValue<int?>("Events:Recurrence:MaxHorizonYears") ?? 20, 1, 50);
 
     private async Task<SeriesContext> LoadContext(int tenantId, int eventId, int actorId, CancellationToken ct)
     {
@@ -467,9 +490,181 @@ public sealed class EventRecurrenceService(
         var parts = new List<string> { $"FREQ={frequency.ToUpperInvariant()}", $"INTERVAL={interval}" };
         if (frequency == "weekly" && !string.IsNullOrWhiteSpace(days)) parts.Add("BYDAY=" + string.Join(',', ParseWeekdays(days).OrderBy(x => x).Select(DayCode)));
         if (endsType == "after_count") parts.Add($"COUNT={count}");
-        if (endsType == "on_date" && until is not null) parts.Add($"UNTIL={until.Value.ToUniversalTime():yyyyMMdd'T'HHmmss'Z'}");
+        if (endsType == "on_date" && until is not null) parts.Add($"UNTIL={until.Value:yyyyMMdd}");
         return string.Join(';', parts);
     }
+
+    private bool TryParseRRule(string raw, DateTime startUtc, string timezone, int maxOccurrences, out RuleSpec spec)
+        => TryParseRRule(raw, startUtc, timezone, maxOccurrences, MaxHorizonYears, out spec);
+
+    private static bool TryParseRRule(string raw, DateTime startUtc, string timezone, int maxOccurrences, int maxHorizonYears, out RuleSpec spec)
+    {
+        spec = default!;
+        raw = raw.Trim();
+        if (raw.StartsWith("RRULE:", StringComparison.OrdinalIgnoreCase)) raw = raw[6..];
+        if (raw.Length is < 1 or > 2048 || raw.IndexOfAny(['\r', '\n']) >= 0) return false;
+        TimeZoneInfo zone;
+        try { zone = TimeZoneInfo.FindSystemTimeZoneById(timezone); } catch { return false; }
+        var allowed = new HashSet<string>(["FREQ", "INTERVAL", "COUNT", "UNTIL", "BYDAY", "BYMONTHDAY", "BYMONTH", "WKST"], StringComparer.Ordinal);
+        var parts = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var segment in raw.Split(';'))
+        {
+            var separator = segment.IndexOf('=');
+            if (separator <= 0 || separator == segment.Length - 1) return false;
+            var name = segment[..separator].Trim().ToUpperInvariant();
+            var value = segment[(separator + 1)..].Trim().ToUpperInvariant();
+            if (!allowed.Contains(name) || !parts.TryAdd(name, value)) return false;
+        }
+        if (!parts.TryGetValue("FREQ", out var frequency) || frequency is not ("DAILY" or "WEEKLY" or "MONTHLY" or "YEARLY")) return false;
+        var interval = 1;
+        if (parts.TryGetValue("INTERVAL", out var rawInterval) && (!int.TryParse(rawInterval, out interval) || interval is < 1 or > 365)) return false;
+        int? count = null;
+        if (parts.TryGetValue("COUNT", out var rawCount))
+        {
+            if (!int.TryParse(rawCount, out var parsed) || parsed < 1 || parsed > maxOccurrences) return false;
+            count = parsed;
+        }
+        if (count is not null && parts.ContainsKey("UNTIL")) return false;
+        DateTime? untilUtc = null;
+        if (parts.TryGetValue("UNTIL", out var rawUntil))
+        {
+            if (DateTime.TryParseExact(rawUntil, "yyyyMMdd'T'HHmmss'Z'", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var exact)) untilUtc = exact;
+            else if (DateTime.TryParseExact(rawUntil, "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
+            {
+                var wall = DateTime.SpecifyKind(date.Date.AddHours(23).AddMinutes(59).AddSeconds(59), DateTimeKind.Unspecified);
+                if (zone.IsInvalidTime(wall) || zone.IsAmbiguousTime(wall)) return false;
+                untilUtc = TimeZoneInfo.ConvertTimeToUtc(wall, zone);
+            }
+            else return false;
+            if (untilUtc < startUtc.ToUniversalTime() || untilUtc > startUtc.ToUniversalTime().AddYears(maxHorizonYears)) return false;
+        }
+        if (!TryDayList(parts.GetValueOrDefault("BYDAY"), out var byDays) || !TryIntegerList(parts.GetValueOrDefault("BYMONTHDAY"), -31, 31, true, out var byMonthDays) || !TryIntegerList(parts.GetValueOrDefault("BYMONTH"), 1, 12, false, out var byMonths)) return false;
+        var weekStart = parts.GetValueOrDefault("WKST");
+        if (weekStart is not null && !WeekdayCodes.ContainsKey(weekStart)) return false;
+        if (frequency == "WEEKLY" && (byMonthDays.Count > 0 || byMonths.Count > 0) ||
+            frequency == "MONTHLY" && (byMonths.Count > 0 || weekStart is not null) ||
+            frequency == "YEARLY" && (weekStart is not null || (byMonthDays.Count > 0 || byDays.Count > 0) && byMonths.Count == 0) ||
+            frequency == "DAILY" && (byMonthDays.Count > 0 || weekStart is not null)) return false;
+        var localStart = TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(startUtc.ToUniversalTime(), DateTimeKind.Utc), zone);
+        if (frequency == "WEEKLY" && byDays.Count == 0) byDays.Add(DayCode(localStart.DayOfWeek));
+        if (frequency == "MONTHLY" && byDays.Count == 0 && byMonthDays.Count == 0) byMonthDays.Add(localStart.Day);
+        if (frequency == "YEARLY")
+        {
+            if (byMonths.Count == 0) byMonths.Add(localStart.Month);
+            if (byDays.Count == 0 && byMonthDays.Count == 0) byMonthDays.Add(localStart.Day);
+        }
+        var canonical = new List<string> { $"FREQ={frequency}" };
+        if (parts.ContainsKey("INTERVAL")) canonical.Add($"INTERVAL={interval}");
+        if (byDays.Count > 0) canonical.Add("BYDAY=" + string.Join(',', byDays));
+        if (byMonthDays.Count > 0) canonical.Add("BYMONTHDAY=" + string.Join(',', byMonthDays));
+        if (byMonths.Count > 0) canonical.Add("BYMONTH=" + string.Join(',', byMonths));
+        if (weekStart is not null) canonical.Add($"WKST={weekStart}");
+        if (count is int countValue) canonical.Add($"COUNT={countValue}");
+        if (untilUtc is DateTime until) canonical.Add($"UNTIL={until:yyyyMMdd'T'HHmmss'Z'}");
+        spec = new(string.Join(';', canonical), frequency.ToLowerInvariant(), interval, count, untilUtc,
+            count is not null ? "after_count" : untilUtc is not null ? "on_date" : "never", byDays, byMonthDays, byMonths, weekStart ?? "MO");
+        return true;
+    }
+
+    internal static List<DateTime> GenerateCanonicalRule(DateTime startUtc, string timezone, string rrule, int maxOccurrences, int maxHorizonYears = 50)
+    {
+        if (!TryParseRRule(rrule, startUtc, timezone, maxOccurrences, maxHorizonYears, out var spec)) throw new InvalidOperationException("event_recurrence_rule_invalid");
+        return GenerateRule(startUtc, timezone, spec, maxOccurrences, maxHorizonYears);
+    }
+
+    private static List<DateTime> GenerateRule(DateTime startUtc, string timezone, RuleSpec spec, int maxOccurrences, int maxHorizonYears)
+    {
+        var zone = TimeZoneInfo.FindSystemTimeZoneById(timezone);
+        var normalizedStart = DateTime.SpecifyKind(startUtc.ToUniversalTime(), DateTimeKind.Utc);
+        var localStart = TimeZoneInfo.ConvertTimeFromUtc(normalizedStart, zone);
+        var results = new List<DateTime> { normalizedStart };
+        if (spec.Count == 1) return results;
+        var horizon = localStart.Date.AddYears(maxHorizonYears);
+        for (var date = localStart.Date.AddDays(1); date <= horizon && results.Count < maxOccurrences; date = date.AddDays(1))
+        {
+            if (!MatchesRuleDate(localStart.Date, date, spec)) continue;
+            var wall = DateTime.SpecifyKind(date.Add(localStart.TimeOfDay), DateTimeKind.Unspecified);
+            if (zone.IsInvalidTime(wall)) continue;
+            var occurrence = TimeZoneInfo.ConvertTimeToUtc(wall, zone);
+            if (spec.UntilUtc is DateTime until && occurrence > until) break;
+            results.Add(occurrence);
+            if (spec.Count is int count && results.Count >= count) break;
+        }
+        return results;
+    }
+
+    private static bool MatchesRuleDate(DateTime anchor, DateTime date, RuleSpec spec)
+    {
+        var dayMatches = spec.ByDays.Count == 0 || spec.ByDays.Contains(DayCode(date.DayOfWeek));
+        return spec.Frequency switch
+        {
+            "daily" => (date - anchor).Days % spec.Interval == 0 && dayMatches
+                && (spec.ByMonths.Count == 0 || spec.ByMonths.Contains(date.Month)),
+            "weekly" => WeeksBetween(anchor, date, WeekdayCodes[spec.WeekStart]) % spec.Interval == 0 && dayMatches,
+            "monthly" => MonthsBetween(anchor, date) % spec.Interval == 0 &&
+                (spec.ByMonthDays.Count > 0 ? spec.ByMonthDays.Any(x => MonthDayMatches(date, x)) : spec.ByDays.Count > 0 ? dayMatches : date.Day == anchor.Day),
+            "yearly" => (date.Year - anchor.Year) % spec.Interval == 0 &&
+                (spec.ByMonths.Count > 0 ? spec.ByMonths.Contains(date.Month) : date.Month == anchor.Month) &&
+                (spec.ByMonthDays.Count > 0 ? spec.ByMonthDays.Any(x => MonthDayMatches(date, x)) : spec.ByDays.Count > 0 ? dayMatches : date.Day == anchor.Day),
+            _ => false
+        };
+    }
+    private static int MonthsBetween(DateTime anchor, DateTime date) => (date.Year - anchor.Year) * 12 + date.Month - anchor.Month;
+    private static int WeeksBetween(DateTime anchor, DateTime date, DayOfWeek weekStart)
+        => (int)((StartOfWeek(date, weekStart) - StartOfWeek(anchor, weekStart)).TotalDays / 7);
+    private static DateTime StartOfWeek(DateTime date, DayOfWeek weekStart)
+    {
+        var offset = ((int)date.DayOfWeek - (int)weekStart + 7) % 7;
+        return date.Date.AddDays(-offset);
+    }
+    private static bool MonthDayMatches(DateTime date, int value) => value > 0 ? date.Day == value : date.Day == DateTime.DaysInMonth(date.Year, date.Month) + value + 1;
+    private static readonly Dictionary<string, DayOfWeek> WeekdayCodes = new(StringComparer.Ordinal) { ["MO"] = DayOfWeek.Monday, ["TU"] = DayOfWeek.Tuesday, ["WE"] = DayOfWeek.Wednesday, ["TH"] = DayOfWeek.Thursday, ["FR"] = DayOfWeek.Friday, ["SA"] = DayOfWeek.Saturday, ["SU"] = DayOfWeek.Sunday };
+    private static bool TryDayList(string? raw, out List<string> days)
+    {
+        days = [];
+        if (raw is null) return true;
+        foreach (var value in raw.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)) if (!WeekdayCodes.ContainsKey(value)) return false; else if (!days.Contains(value, StringComparer.Ordinal)) days.Add(value);
+        days = days.OrderBy(x => (int)WeekdayCodes[x] == 0 ? 7 : (int)WeekdayCodes[x]).ToList();
+        return days.Count > 0;
+    }
+    private static bool TryIntegerList(string? raw, int minimum, int maximum, bool rejectZero, out List<int> values)
+    {
+        values = [];
+        if (raw is null) return true;
+        foreach (var item in raw.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)) if (!int.TryParse(item, out var value) || value < minimum || value > maximum || rejectZero && value == 0) return false; else if (!values.Contains(value)) values.Add(value);
+        values.Sort(); return values.Count > 0;
+    }
+
+    private static bool TryDateList(JsonElement body, string[] names, DateTime startUtc, string timezone, int maximum, out List<DateTime> values, out string? field)
+    {
+        values = []; field = null; JsonElement raw = default; string? selected = null;
+        foreach (var name in names) if (body.TryGetProperty(name, out raw)) { selected = name; break; }
+        if (selected is null || raw.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined || raw.ValueKind == JsonValueKind.String && string.IsNullOrWhiteSpace(raw.GetString())) return true;
+        IEnumerable<string?> inputs;
+        if (raw.ValueKind == JsonValueKind.String) inputs = raw.GetString()!.Split(',', StringSplitOptions.TrimEntries);
+        else if (raw.ValueKind == JsonValueKind.Array && raw.GetArrayLength() <= maximum) inputs = raw.EnumerateArray().Select(x => x.ValueKind == JsonValueKind.String ? x.GetString() : null).ToArray();
+        else { field = selected; return false; }
+        foreach (var input in inputs)
+        {
+            if (string.IsNullOrWhiteSpace(input) || !TryDateValue(input.Trim(), startUtc, timezone, out var date)) { field = selected; values = []; return false; }
+            if (!values.Contains(date)) values.Add(date);
+        }
+        values.Sort(); return values.Count <= maximum;
+    }
+    private static bool TryDateValue(string value, DateTime startUtc, string timezone, out DateTime result)
+    {
+        result = default;
+        if (DateTime.TryParseExact(value.ToUpperInvariant(), "yyyyMMdd'T'HHmmss'Z'", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out result)) return true;
+        if (DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AllowWhiteSpaces, out var offset) && (value.EndsWith("Z", StringComparison.OrdinalIgnoreCase) || System.Text.RegularExpressions.Regex.IsMatch(value, "[+-]\\d{2}:?\\d{2}$"))) { result = offset.UtcDateTime; return true; }
+        TimeZoneInfo zone; try { zone = TimeZoneInfo.FindSystemTimeZoneById(timezone); } catch { return false; }
+        var localStart = TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(startUtc.ToUniversalTime(), DateTimeKind.Utc), zone);
+        if (DateTime.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dateOnly)) result = dateOnly.Date.Add(localStart.TimeOfDay);
+        else if (!DateTime.TryParseExact(value.Replace('T', ' '), "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out result)) return false;
+        result = DateTime.SpecifyKind(result, DateTimeKind.Unspecified);
+        if (zone.IsInvalidTime(result) || zone.IsAmbiguousTime(result)) return false;
+        result = TimeZoneInfo.ConvertTimeToUtc(result, zone); return true;
+    }
+    private static string CanonicalDate(DateTime value) => value.ToUniversalTime().ToString("yyyyMMdd'T'HHmmss'Z'");
 
     private static string DayCode(DayOfWeek day) => day switch { DayOfWeek.Monday => "MO", DayOfWeek.Tuesday => "TU", DayOfWeek.Wednesday => "WE", DayOfWeek.Thursday => "TH", DayOfWeek.Friday => "FR", DayOfWeek.Saturday => "SA", _ => "SU" };
 
@@ -586,6 +781,7 @@ public sealed class EventRecurrenceService(
     private static int ReadImpactCount(string json, string field) { try { using var doc = JsonDocument.Parse(json); return doc.RootElement.TryGetProperty(field, out var value) && value.TryGetInt32(out var count) ? count : 0; } catch { return 0; } }
 
     private sealed record RevisionToken(string Kind, int TenantId, int ActorId, int SelectedEventId, int RootEventId, string RecurrenceId, string PatchHash, long RuleVersion, long MaterializedSetVersion, string Checksum, DateTime ExpiresAt);
+    private sealed record RuleSpec(string RRule, string Frequency, int Interval, int? Count, DateTime? UntilUtc, string EndsType, List<string> ByDays, List<int> ByMonthDays, List<int> ByMonths, string WeekStart);
     private sealed record SeriesContext(Event? Source = null, Event? Root = null, EventRecurrenceRule? Rule = null, EventRecurrenceError? Error = null);
     private sealed record ImpactEvent(Event Event, string[] SkippedFields);
     private sealed record RevisionImpact(List<ImpactEvent> Affected, List<ImpactEvent> Changed, List<object> Customized, List<object> Blocking, bool TooLarge, int RegistrationsCount = 0, int WaitlistCount = 0, int TicketCount = 0, int ReminderCount = 0, List<int>? RecipientIds = null)

@@ -83,7 +83,8 @@ public sealed class EventRecurrenceMaterializationService(
             var scanLimit = Math.Clamp(configuration.GetValue<int?>("Events:Recurrence:Materialization:ScanLimit") ?? 20000, limit + 1, 100000);
             var startWindow = rule.MaterializationResumeAt ?? rule.MaterializedThroughAt?.AddTicks(1) ?? root.StartsAt;
             if (startWindow < root.StartsAt) startWindow = root.StartsAt;
-            var dates = ExpandWindow(root.StartsAt, rule, startWindow, target, scanLimit);
+            var horizonYears = Math.Clamp(configuration.GetValue<int?>("Events:Recurrence:MaxHorizonYears") ?? 20, 1, 50);
+            var dates = ExpandWindow(root.StartsAt, root.Timezone, rule, startWindow, target, scanLimit, horizonYears);
             var isTruncated = dates.Count > limit;
             if (isTruncated) dates = dates.Take(limit).ToList();
             var existingIdList = await db.Events.IgnoreQueryFilters().AsNoTracking()
@@ -156,9 +157,9 @@ public sealed class EventRecurrenceMaterializationService(
         }
     }
 
-    private static List<DateTime> ExpandWindow(DateTime rootStart, EventRecurrenceRule rule, DateTime windowStart, DateTime target, int scanLimit)
+    private static List<DateTime> ExpandWindow(DateTime rootStart, string timezone, EventRecurrenceRule rule, DateTime windowStart, DateTime target, int scanLimit, int horizonYears)
     {
-        var generated = EventRecurrenceService.Generate(rootStart, rule.Frequency, rule.Interval, scanLimit, target, rule.DaysOfWeek);
+        var generated = EventRecurrenceService.GenerateCanonicalRule(rootStart, timezone, rule.RRule, scanLimit, horizonYears);
         var excluded = ReadDates(rule.ExDates);
         var additions = ReadDates(rule.RDates);
         return generated.Concat(additions).Select(x => x.ToUniversalTime()).Where(x => x >= windowStart && x <= target && !excluded.Contains(x))

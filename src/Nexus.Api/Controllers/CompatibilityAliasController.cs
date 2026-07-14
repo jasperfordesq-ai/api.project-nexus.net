@@ -50,6 +50,7 @@ public class CompatibilityAliasController : ControllerBase
     private readonly AdminVolunteerApprovalService _volunteerApprovals;
     private readonly ILogger<CompatibilityAliasController> _logger;
     private readonly DirectMessageTypingService _messageTyping;
+    private readonly EventLifecycleService _eventLifecycle;
 
     public CompatibilityAliasController(
         NexusDbContext db,
@@ -61,6 +62,7 @@ public class CompatibilityAliasController : ControllerBase
         IRealTimeMessagingService realTimeMessaging,
         AdminVolunteerApprovalService volunteerApprovals,
         DirectMessageTypingService messageTyping,
+        EventLifecycleService eventLifecycle,
         ILogger<CompatibilityAliasController> logger)
     {
         _db = db;
@@ -72,6 +74,7 @@ public class CompatibilityAliasController : ControllerBase
         _realTimeMessaging = realTimeMessaging;
         _volunteerApprovals = volunteerApprovals;
         _messageTyping = messageTyping;
+        _eventLifecycle = eventLifecycle;
         _logger = logger;
     }
 
@@ -911,21 +914,18 @@ public class CompatibilityAliasController : ControllerBase
     /// POST /api/events/{id}/cancel — Cancel event (alias for PUT).
     /// </summary>
     [HttpPost("api/events/{id:int}/cancel")]
-    public async Task<IActionResult> CancelEventAlias(int id)
+    public async Task<IActionResult> CancelEventAlias(int id, [FromBody] JsonElement body, CancellationToken ct)
     {
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
-
-        var evt = await _db.Events.FirstOrDefaultAsync(e => e.Id == id);
-        if (evt == null) return NotFound(new { error = "Event not found" });
-        if (evt.CreatedById != userId.Value)
-            return StatusCode(403, new { error = "Only the event creator can cancel" });
-
-        evt.IsCancelled = true;
-        evt.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
-
-        return Ok(new { success = true, message = "Event cancelled" });
+        var reason = ReadString(body, "reason")?.Trim();
+        if (string.IsNullOrEmpty(reason))
+            return UnprocessableEntity(new { success = false, code = "VALIDATION_REQUIRED_FIELD", message = "Reason is required", errors = new[] { new { code = "VALIDATION_REQUIRED_FIELD", message = "Reason is required", field = "reason" } } });
+        var tenantId = User.GetTenantId() ?? throw new UnauthorizedAccessException();
+        var result = await _eventLifecycle.TransitionAsync(tenantId, id, userId.Value, "cancel", reason, ct);
+        if (!result.Succeeded)
+            return StatusCode(result.Error!.Status, new { success = false, code = result.Error.Code, message = result.Error.Message, errors = new[] { new { code = result.Error.Code, message = result.Error.Message, field = result.Error.Field } } });
+        return Ok(new { success = true, data = new { cancelled = true, event_id = id, reason } });
     }
 
     // ──────────────────────────────────────────────

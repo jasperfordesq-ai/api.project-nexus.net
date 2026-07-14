@@ -3558,7 +3558,6 @@ public class ReactFrontendCompatibilityController : ControllerBase
     }
 
     [HttpGet("api/admin/crm/export/{id:int}")]
-    [HttpPost("api/admin/events/{id:int}/cancel")]
     [HttpPost("api/exchanges/{id:int}/accept")]
     [HttpPost("api/exchanges/{id:int}/complete")]
     [HttpPost("api/listings/{id:int}/renew")]
