@@ -186,7 +186,7 @@ together from a clean published checkout.
   with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
   Only this fixed-rubric audit contributes to the current bank.
 - **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `286e2fff`, including the later implementation, contract,
+  baseline `732b05e4`, including the later implementation, contract,
   resilience, and component-audit slices. Their evidence is useful, but they
   contribute zero points until one complete fixed-rubric re-audit explicitly
   replaces the baseline.
@@ -205,7 +205,7 @@ together from a clean published checkout.
 | Missing Laravel routes | 1 | Event offline check-in code generation |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 52/52 suites, 1,695/1,695 tests | Latest uninterrupted complete non-mutating gate at product baseline `286e2fff` |
+| Jest | 52/52 suites, 1,695/1,695 tests | Latest uninterrupted complete non-mutating gate at product baseline `732b05e4` |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
 | Static locale usage | 7,580 references, 5,784 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
@@ -1689,9 +1689,9 @@ bank remains `622/1,000` pending a complete fixed-rubric re-audit.
 
 ## 2026-07-15 Feed Error States
 
-Frozen evidence refreshed at `2026-07-15T00:24:47.7982953+01:00` against Laravel
+Frozen evidence refreshed at `2026-07-15T00:29:43.2652967+01:00` against Laravel
 `903d03d3db78bbf87129ad35728be3b72819acaf` and Web UK product commit
-`286e2fff`. Feed `post-empty` and `post-failed` states now match Blade's single
+`732b05e4`. Feed `post-empty` and `post-failed` states now match Blade's single
 field-linked error summary, inline content error, error textarea styling, and
 `aria-describedby` relationship. Other Feed action failures use Blade's
 localized error title instead of the shared partial's non-source `Important`
@@ -1699,8 +1699,15 @@ heading. Collection failures now use Blade's localized load-error banner in
 the results position and suppress the false empty-feed result that Web UK
 previously rendered beneath the failure.
 
-Focused compose proof and focused load-failure proof each pass `1/1`; the
-uninterrupted complete non-mutating gate passes `52/52` suites and
+Signed-out Feed POSTs now reach the explicit per-action checks instead of a
+mount-level login redirect overriding Laravel's workflow. Post creation returns
+to the public Feed without a mutation, while engagement actions preserve the
+anchored Feed-local `auth-required` state. The public Feed renders only its
+normal authentication banner for that state, and every Feed POST handler still
+fails before an API call when no signed token exists.
+
+Focused compose, load-failure, and signed-out workflow proofs each pass `1/1`;
+the uninterrupted complete non-mutating gate passes `52/52` suites and
 `1,695/1,695` tests. Lint, route matrix, and API ledger are green. No Laravel
 request, database, migration, mutation, upload, download, container, or
 production operation was performed. This published component-audit improvement
