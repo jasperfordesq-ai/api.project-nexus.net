@@ -13445,6 +13445,39 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('Page not found');
   });
 
+  it('renders Blade field-linked feed compose errors and localized action failures', async () => {
+    const api = require('../src/lib/api');
+    api.getFeedPosts.mockResolvedValue({ data: [], meta: { has_more: false } });
+
+    const empty = await request(app)
+      .get('/feed?status=post-empty')
+      .set('Cookie', signedCookieHeader());
+    const failed = await request(app)
+      .get('/feed?status=post-failed')
+      .set('Cookie', signedCookieHeader());
+    const updateFailed = await request(app)
+      .get('/feed?status=post-update-failed')
+      .set('Cookie', signedCookieHeader());
+
+    for (const response of [empty, failed]) {
+      expect(response.status).toBe(200);
+      expect(response.text).toContain('class="govuk-error-summary"');
+      expect(response.text).toContain('<a href="#content">Post content</a> —');
+      expect(response.text).toContain('class="govuk-form-group govuk-form-group--error"');
+      expect(response.text).toContain('id="content-error" class="govuk-error-message"');
+      expect(response.text).toContain('class="govuk-textarea govuk-textarea--error"');
+      expect(response.text).toContain('aria-describedby="content-hint content-error"');
+      expect(response.text).not.toContain('>Important</h2>');
+    }
+    expect(empty.text).toContain('Enter a post before submitting.');
+    expect(failed.text).toContain('The post could not be created. Try again.');
+    expect(updateFailed.status).toBe(200);
+    expect(updateFailed.text).toContain('id="feed-action-error-title">There is a problem</h2>');
+    expect(updateFailed.text).toContain('Your post could not be updated. Try again.');
+    expect(updateFailed.text).not.toContain('class="govuk-error-summary"');
+    expect(updateFailed.text).not.toContain('>Important</h2>');
+  });
+
   it('renders the signed Laravel feed hashtag detail page with post cards', async () => {
     const api = require('../src/lib/api');
 

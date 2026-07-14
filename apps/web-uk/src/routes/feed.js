@@ -568,6 +568,8 @@ router.get('/', asyncRoute(withTokenRefresh(async (req, res) => {
   }
   const meta = collectionMeta(feedResult);
   const tenant = req.accessibleRouting?.tenant || res.locals.tenant || {};
+  const status = trimmed(req.query.status);
+  const statusMessage = feedIndexStatusMessage(status, req.t || res.locals.t);
 
   res.render('feed/index', {
     title: 'Feed',
@@ -578,14 +580,17 @@ router.get('/', asyncRoute(withTokenRefresh(async (req, res) => {
     selectedMode,
     selectedSubtype,
     cursor,
-    status: trimmed(req.query.status),
+    status,
+    postErrorMessage: ['post-empty', 'post-failed'].includes(status) && statusMessage
+      ? statusMessage.text
+      : '',
     perPage,
     requiresAuth: !token,
     listingsEnabled: flagEnabled(tenant, 'listings', 'modules', true),
     communityName: res.locals.tenantName || res.locals.serviceName || 'this community',
     nextHref: feedNextHref(meta, perPage, selectedType, selectedMode, selectedSubtype),
     csrfToken: req.csrfToken ? req.csrfToken() : '',
-    statusMessage: feedIndexStatusMessage(trimmed(req.query.status), req.t || res.locals.t),
+    statusMessage,
     successMessage: req.flash ? req.flash('success')[0] : null,
     errorMessage: feedErrorMessage || (req.flash ? req.flash('error')[0] : null)
   });
