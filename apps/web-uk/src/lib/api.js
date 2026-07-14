@@ -11,6 +11,9 @@ const { getRequestLocale } = require('./request-locale-context');
 const { getRequestTenantSlug, normalizeTenantSlug } = require('./request-tenant-context');
 
 const API_BASE_URL = getApiBaseUrl();
+const DEFAULT_API_REQUEST_TIMEOUT_MS = 15000;
+const MIN_API_REQUEST_TIMEOUT_MS = 1000;
+const MAX_API_REQUEST_TIMEOUT_MS = 120000;
 
 // Cache TTL for different types of data (in milliseconds)
 const CACHE_TTL = {
@@ -39,6 +42,58 @@ class ApiOfflineError extends Error {
     this.name = 'ApiOfflineError';
     this.status = 503;
   }
+}
+
+function apiRequestTimeoutMs() {
+  const configured = Number.parseInt(process.env.API_REQUEST_TIMEOUT_MS || '', 10);
+  if (!Number.isFinite(configured)) return DEFAULT_API_REQUEST_TIMEOUT_MS;
+  return Math.min(MAX_API_REQUEST_TIMEOUT_MS, Math.max(MIN_API_REQUEST_TIMEOUT_MS, configured));
+}
+
+function withRequestTimeout(options, headers) {
+  const controller = new AbortController();
+  const externalSignal = options.signal;
+  let timedOut = false;
+
+  const abortFromCaller = () => controller.abort(externalSignal.reason);
+  if (externalSignal) {
+    if (externalSignal.aborted) {
+      abortFromCaller();
+    } else {
+      externalSignal.addEventListener('abort', abortFromCaller, { once: true });
+    }
+  }
+
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, apiRequestTimeoutMs());
+  if (typeof timeout.unref === 'function') timeout.unref();
+
+  return {
+    config: {
+      ...options,
+      headers,
+      signal: controller.signal
+    },
+    didTimeOut: () => timedOut,
+    cleanup: () => {
+      clearTimeout(timeout);
+      if (externalSignal) externalSignal.removeEventListener('abort', abortFromCaller);
+    }
+  };
+}
+
+function connectionError(error, timedOut) {
+  if (timedOut || (error && error.name === 'AbortError')) {
+    return new ApiOfflineError('The service took too long to respond');
+  }
+
+  const message = error && typeof error.message === 'string' ? error.message : '';
+  if (error && (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND')) {
+    return new ApiOfflineError();
+  }
+  return message.includes('fetch failed') ? new ApiOfflineError() : null;
 }
 
 function hasHeader(headers, expectedName) {
@@ -95,42 +150,37 @@ async function request(endpoint, options = {}) {
     ...options.headers
   }));
 
-  const config = {
-    ...options,
-    headers
-  };
+  const timedRequest = withRequestTimeout(options, headers);
 
-  let response;
   try {
-    response = await fetch(url, config);
-  } catch (error) {
-    // Network error - API is offline or unreachable
-    if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND' || error.message.includes('fetch failed')) {
-      throw new ApiOfflineError();
+    const response = await fetch(url, timedRequest.config);
+    let data;
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      data = await response.json();
+    } else {
+      data = await response.text();
     }
+
+    if (!response.ok) {
+      const errorMessage = Array.isArray(data.errors)
+        ? data.errors.map(error => error && error.message).filter(Boolean).join('; ')
+        : '';
+      throw new ApiError(
+        errorMessage || data.error || data.message || data.title || 'API request failed',
+        response.status,
+        data
+      );
+    }
+
+    return data;
+  } catch (error) {
+    const mappedError = connectionError(error, timedRequest.didTimeOut());
+    if (mappedError) throw mappedError;
     throw error;
+  } finally {
+    timedRequest.cleanup();
   }
-
-  let data;
-  const contentType = response.headers.get('content-type');
-  if (contentType && contentType.includes('application/json')) {
-    data = await response.json();
-  } else {
-    data = await response.text();
-  }
-
-  if (!response.ok) {
-    const errorMessage = Array.isArray(data.errors)
-      ? data.errors.map(error => error && error.message).filter(Boolean).join('; ')
-      : '';
-    throw new ApiError(
-      errorMessage || data.error || data.message || data.title || 'API request failed',
-      response.status,
-      data
-    );
-  }
-
-  return data;
 }
 
 async function downloadRequest(endpoint, options = {}) {
@@ -140,52 +190,48 @@ async function downloadRequest(endpoint, options = {}) {
     ...options.headers
   }));
 
-  const config = {
-    ...options,
-    headers
-  };
+  const timedRequest = withRequestTimeout(options, headers);
 
-  let response;
   try {
-    response = await fetch(url, config);
+    const response = await fetch(url, timedRequest.config);
+    const contentType = response.headers.get('content-type') || '';
+
+    if (!response.ok) {
+      let data;
+      if (contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        data = await response.text();
+      }
+
+      throw new ApiError(
+        data.error || data.message || data.title || 'API request failed',
+        response.status,
+        data
+      );
+    }
+
+    return {
+      status: response.status,
+      body: Buffer.from(await response.arrayBuffer()),
+      headers: {
+        'content-type': contentType,
+        'content-disposition': response.headers.get('content-disposition') || '',
+        'content-length': response.headers.get('content-length') || '',
+        'cache-control': response.headers.get('cache-control') || '',
+        pragma: response.headers.get('pragma') || '',
+        expires: response.headers.get('expires') || '',
+        etag: response.headers.get('etag') || '',
+        'last-modified': response.headers.get('last-modified') || ''
+      }
+    };
   } catch (error) {
-    if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND' || error.message.includes('fetch failed')) {
-      throw new ApiOfflineError();
-    }
+    const mappedError = connectionError(error, timedRequest.didTimeOut());
+    if (mappedError) throw mappedError;
     throw error;
+  } finally {
+    timedRequest.cleanup();
   }
-
-  const contentType = response.headers.get('content-type') || '';
-
-  if (!response.ok) {
-    let data;
-    if (contentType.includes('application/json')) {
-      data = await response.json();
-    } else {
-      data = await response.text();
-    }
-
-    throw new ApiError(
-      data.error || data.message || data.title || 'API request failed',
-      response.status,
-      data
-    );
-  }
-
-  return {
-    status: response.status,
-    body: Buffer.from(await response.arrayBuffer()),
-    headers: {
-      'content-type': contentType,
-      'content-disposition': response.headers.get('content-disposition') || '',
-      'content-length': response.headers.get('content-length') || '',
-      'cache-control': response.headers.get('cache-control') || '',
-      pragma: response.headers.get('pragma') || '',
-      expires: response.headers.get('expires') || '',
-      etag: response.headers.get('etag') || '',
-      'last-modified': response.headers.get('last-modified') || ''
-    }
-  };
 }
 
 // Auth
