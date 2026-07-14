@@ -17786,8 +17786,12 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Candidates are grouped by stage');
     expect(response.text).toContain('Candidate moved to the new stage.');
     expect(response.text).toContain('View full applicant list');
+    expect(response.text).toContain('class="govuk-link" href="/jobs/501/applications"');
+    expect(response.text).not.toContain('class="govuk-button govuk-button--secondary" data-module="govuk-button" href="/jobs/501/applications"');
     expect(response.text).toContain('Applied');
     expect(response.text).toContain('Screening');
+    expect(response.text).toContain('id="pl-col-screening"');
+    expect(response.text).toContain('1 candidate');
     expect(response.text).toContain('Interview');
     expect(response.text).toContain('Offer');
     expect(response.text).toContain('Alex Morgan');
@@ -17797,6 +17801,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Alex_Morgan_CV.pdf');
     expect(response.text).toContain('action="/jobs/501/applications/91/status"');
     expect(response.text).toContain('Move to stage');
+    expect(response.text).toContain('id="pl-status-91"');
     expect(response.text).toContain('value="offer"');
     expect(response.text).not.toContain('Laravel Blade route');
   });

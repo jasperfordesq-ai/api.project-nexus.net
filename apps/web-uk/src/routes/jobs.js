@@ -1044,14 +1044,18 @@ function decoratePredictions(result) {
   };
 }
 
-function decorateApplicant(application) {
+function decorateApplicant(application, req = null) {
   const applicant = application.applicant || application.user || {};
   const status = allowed(application.stage || application.status, JOB_APPLICANT_STAGE_OPTIONS, 'applied');
 
   return {
     ...application,
     id: positiveInteger(application.id) || 0,
-    applicantName: personName(applicant) || 'Candidate',
+    applicantName: personName(applicant) || translateStatusMessage(
+      req,
+      'govuk_alpha_jobs.shared.anonymous',
+      'Anonymous candidate'
+    ),
     status,
     statusLabel: JOB_APPLICATION_LABELS[status] || status,
     appliedOnLabel: formatDateOnlyLong(application.created_at || application.applied_at),
@@ -1060,7 +1064,7 @@ function decorateApplicant(application) {
   };
 }
 
-function groupPipeline(applications) {
+function groupPipeline(applications, req) {
   const grouped = new Map();
   JOB_PIPELINE_COLUMNS.forEach((stage) => grouped.set(stage, []));
 
@@ -1074,9 +1078,13 @@ function groupPipeline(applications) {
     .filter(([stage, rows]) => stage !== 'other' || rows.length > 0)
     .map(([stage, rows]) => ({
       stage,
-      label: JOB_PIPELINE_LABELS[stage] || statusTitle(stage) || 'Other',
+      label: translateStatusMessage(
+        req,
+        `govuk_alpha_jobs.pipeline.column_${stage}`,
+        JOB_PIPELINE_LABELS[stage] || statusTitle(stage) || 'Other'
+      ),
       applications: rows,
-      countLabel: countLabel(rows.length, 'candidate', 'candidates', 'No candidates')
+      count: rows.length
     }));
 }
 
@@ -2296,21 +2304,25 @@ router.get('/:id(\\d+)/pipeline', asyncRoute(async (req, res) => {
     return res.status(503).render('errors/503', { title: 'Service unavailable' });
   }
 
-  const applications = collectionItems(applicationsResult).map(decorateApplicant);
+  const applications = collectionItems(applicationsResult).map((application) => decorateApplicant(application, req));
 
   return res.render('jobs/pipeline', {
     title: 'Application pipeline',
     titleKey: 'govuk_alpha_jobs.pipeline.title',
     activeNav: 'explore',
     job: decorateJob(job),
-    pipelineColumns: groupPipeline(applications),
+    pipelineColumns: groupPipeline(applications, req),
     hasApplications: applications.length > 0,
     status: req.query.status || '',
     successMessage: pipelineSuccessMessage(req, req.query.status),
     errorMessage: pipelineErrorMessage(req, req.query.status),
     statusOptions: JOB_PIPELINE_COLUMNS.map((status) => ({
       value: status,
-      label: JOB_PIPELINE_LABELS[status] || status
+      label: translateStatusMessage(
+        req,
+        `govuk_alpha_jobs.stage.${status}`,
+        JOB_PIPELINE_LABELS[status] || status
+      )
     })),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
@@ -2367,7 +2379,7 @@ router.get('/:id(\\d+)/applications', asyncRoute(async (req, res) => {
     titleKey: 'jobs_t3.applicants_title',
     activeNav: 'explore',
     job: decorateJob(job),
-    applications: collectionItems(applicationsResult).map(decorateApplicant),
+    applications: collectionItems(applicationsResult).map((application) => decorateApplicant(application, req)),
     analytics: analyticsFrom(analyticsResult),
     status: req.query.status || '',
     successMessage: applicantSuccessMessage(req, req.query.status),
