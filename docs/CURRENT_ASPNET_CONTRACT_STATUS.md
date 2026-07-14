@@ -89,11 +89,12 @@ These named values form an audit trail. They are not competing current scores.
 
 ## Repository State At This Verification
 
-The product-source baseline inspected for this page was
-`b37a3cc5ed903394b67813a3e34304213b9e150d`, with Laravel frozen at
-`903d03d3db78bbf87129ad35728be3b72819acaf` on 2026-07-14 20:35:12 +01:00.
-Web UK-only commits do not add ASP.NET points and belong in the Web UK status
-report.
+The product-source HEAD inspected for this page was
+`5fbcf36dedf320c0ca81ac77f8b4771d891f7331`, with the last banked ASP.NET
+implementation remaining `b37a3cc5ed903394b67813a3e34304213b9e150d` and
+Laravel frozen at `903d03d3db78bbf87129ad35728be3b72819acaf` on
+2026-07-14 22:57:32 +01:00. Web UK-only commits do not add ASP.NET points and
+belong in the Web UK status report.
 
 ### Published But Not Rescored
 
@@ -110,12 +111,26 @@ Laravel `903d03d3db78bbf87129ad35728be3b72819acaf` and ASP.NET
 inventory generation does not prove payload, envelope, auth, tenant, side-effect,
 or runtime correctness.
 
+Published commit `5fbcf36dedf320c0ca81ac77f8b4771d891f7331` makes an
+explicit tenant-bootstrap slug authoritative and fail-closed, adds custom-Host
+then shared-Host Origin resolution, and prevents header/default fallback after
+an unknown slug. Release builds for the API and test project passed. In the
+first focused runtime run, three bootstrap tests passed and the host/Origin test
+reached an assertion that exposed an invalid master-tenant fixture assumption;
+after correcting that fixture, two clean reruns were blocked before application
+execution because the Testcontainers PostgreSQL process was OOM-killed during
+`EnsureCreatedAsync` (`exit 137`). Its provisional movement is **+2 semantic
+and +1 security/tenant isolation**, but it adds **zero banked points** until the
+corrected four-test bootstrap set and containing public-compatibility suite pass.
+
 ### Dirty And In Flight
 
-The refund-notification marketplace slice is committed and banked. The separate
-event-safety migration and concurrent Web UK work remain outside this checkpoint;
-neither contributes ASP.NET points here. Dirty files never increase the banked
-score.
+The refund-notification marketplace slice is committed and banked. Tenant
+bootstrap commit `5fbcf36dedf320c0ca81ac77f8b4771d891f7331` is published
+but remains a **+3 provisional / +0 banked** slice pending the runtime proof
+described above. The separate dirty event-safety migration remains outside this
+checkpoint and contributes zero ASP.NET points here. Dirty files never increase
+the banked score.
 
 Re-run `git status --short`, compare the published checkpoint with `HEAD`, and
 refresh this section before every status report. Do not infer points from file
