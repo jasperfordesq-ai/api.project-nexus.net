@@ -171,7 +171,7 @@ Refresh the Laravel Blade/API source and Web UK implementation before relying on
 these numbers after either source moves.
 
 At this documentation audit, the product-source baseline was
-`99a754d24e0c93272743ce495f39772dff191dd2`. The revoked-session confirmation,
+`77adb9ea5d7dec23a8b53564d8664fa65d0dac6c`. The revoked-session confirmation,
 Laravel method-spoof reconciliation, group-message contract, residual API-
 consumer correction, and backend-request timeout slices are above the frozen
 bank and remain **published and unscored**. The documentation remediation is
@@ -186,7 +186,7 @@ together from a clean published checkout.
   with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
   Only this fixed-rubric audit contributes to the current bank.
 - **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `99a754d2`, including the later identity/session confirmation,
+  baseline `77adb9ea`, including the later identity/session confirmation,
   method-spoof reconciliation, group-message contract, residual API-consumer
   correction, and backend-request timeout slices. Their evidence is useful, but they
   contribute zero points until one complete fixed-rubric re-audit explicitly
@@ -1465,3 +1465,20 @@ root-owned checker was not changed. No Laravel source, database, migration,
 mutation, container, or production operation was performed. Deployed proof
 remains operations-owned, so the frozen bank remains 622/1,000 pending a
 complete fixed-rubric re-audit.
+
+## 2026-07-14 Connection Removal Confirmation Parity
+
+Frozen evidence at `2026-07-14T16:49:21.2457718+01:00` against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and Web UK product commit
+`77adb9ea5d7dec23a8b53564d8664fa65d0dac6c`. Accepted-connection removal and
+sent-request cancellation on both canonical Connections views now follow
+Blade's no-JavaScript destructive-action pattern: a closed details disclosure,
+visible irreversible-action warning, localized warning prefix, and warning-
+styled final submit control.
+
+Focused default-English rendering passes 2/2. The complete non-mutating Jest
+gate passes 52/52 suites and 1,672/1,672 tests; lint, the 322-template zero-match
+localization audit, and diff checks are green. No Laravel source, database,
+migration, mutation, container, or production operation was performed. This
+published component-audit improvement remains unscored, so the frozen bank
+remains 622/1,000 pending a complete fixed-rubric re-audit.
