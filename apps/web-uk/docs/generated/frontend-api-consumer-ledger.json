@@ -7,11 +7,11 @@
     "laravelOpenApiSha256": "0f62bf532901e6925b630d6a8ed0add7cd2c2bd9395b773c6a1a6581c0d38722"
   },
   "summary": {
-    "contracts": 593,
-    "matchedOpenApi": 381,
-    "missingOpenApi": 205,
-    "dynamicUnresolved": 7,
-    "stateChanging": 285,
+    "contracts": 645,
+    "matchedOpenApi": 419,
+    "missingOpenApi": 223,
+    "dynamicUnresolved": 3,
+    "stateChanging": 349,
     "withoutTests": 0
   },
   "rows": [
@@ -551,43 +551,6 @@
         "tests/auth-route-localization.test.js",
         "tests/auth-tenant-authority.test.js",
         "tests/registration-contract.test.js",
-        "tests/shared-accessible-shell.test.js"
-      ],
-      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
-    },
-    {
-      "id": "DYNAMIC /api/v2/{param} [callIdeationApi]",
-      "method": "DYNAMIC",
-      "path": "/api/v2/{param}",
-      "apiHelper": "callIdeationApi",
-      "source": "src/routes/ideation-actions.js:90",
-      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
-      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
-      "requestShape": "JSON caller payload; validate against Laravel operation",
-      "responseShape": "JSON/text response via ApiError-aware request",
-      "statusCodes": [],
-      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
-      "redirects": "consumer-controlled: src/routes/ideation-actions.js",
-      "sideEffects": "method dynamic; classify every callsite before runtime",
-      "cleanup": "unresolved until method is concrete",
-      "laravel": {
-        "status": "dynamic-unresolved",
-        "path": "",
-        "operationId": "",
-        "controllerAction": "",
-        "tags": []
-      },
-      "frontendConsumers": [
-        "src/routes/ideation-actions.js"
-      ],
-      "tests": [
-        "tests/api-consumer-ledger.test.js",
-        "tests/api.test.js",
-        "tests/backend-contract.test.js",
-        "tests/blade-visual-spotcheck.test.js",
-        "tests/laravel-runtime-smoke.test.js",
-        "tests/runtime/ideation-campaign-mutation.spec.js",
-        "tests/runtime/podcasts-mutation.spec.js",
         "tests/shared-accessible-shell.test.js"
       ],
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
@@ -2242,7 +2205,7 @@
       "method": "GET",
       "path": "/api/v2/courses/{param}",
       "apiHelper": "callCourseApi",
-      "source": "src/routes/courses.js:510",
+      "source": "src/routes/courses.js:587",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
       "requestShape": "query/path parameters; no request body expected",
@@ -2558,70 +2521,6 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/courses/{param}/prerequisites [callCourseApi]",
-      "method": "GET",
-      "path": "/api/v2/courses/{param}/prerequisites",
-      "apiHelper": "callCourseApi",
-      "source": "src/routes/courses.js:511",
-      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
-      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
-      "requestShape": "query/path parameters; no request body expected",
-      "responseShape": "JSON/text response via ApiError-aware request",
-      "statusCodes": [],
-      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
-      "redirects": "consumer-controlled: src/routes/courses.js",
-      "sideEffects": "read-only by HTTP method",
-      "cleanup": "not applicable",
-      "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
-        "operationId": "",
-        "controllerAction": "",
-        "tags": []
-      },
-      "frontendConsumers": [
-        "src/routes/courses.js"
-      ],
-      "tests": [
-        "tests/api.test.js",
-        "tests/runtime/courses-mutation.spec.js",
-        "tests/shared-accessible-shell.test.js"
-      ],
-      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
-    },
-    {
-      "id": "GET /api/v2/courses/{param}/progress [callCourseApi]",
-      "method": "GET",
-      "path": "/api/v2/courses/{param}/progress",
-      "apiHelper": "callCourseApi",
-      "source": "src/routes/courses.js:513",
-      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
-      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
-      "requestShape": "query/path parameters; no request body expected",
-      "responseShape": "JSON/text response via ApiError-aware request",
-      "statusCodes": [],
-      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
-      "redirects": "consumer-controlled: src/routes/courses.js",
-      "sideEffects": "read-only by HTTP method",
-      "cleanup": "not applicable",
-      "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
-        "operationId": "",
-        "controllerAction": "",
-        "tags": []
-      },
-      "frontendConsumers": [
-        "src/routes/courses.js"
-      ],
-      "tests": [
-        "tests/api.test.js",
-        "tests/runtime/courses-mutation.spec.js",
-        "tests/shared-accessible-shell.test.js"
-      ],
-      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
-    },
-    {
       "id": "POST /api/v2/courses/{param}/publish [callCourseApi]",
       "method": "POST",
       "path": "/api/v2/courses/{param}/publish",
@@ -2636,38 +2535,6 @@
       "redirects": "consumer-controlled: src/routes/courses.js",
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
-      "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
-        "operationId": "",
-        "controllerAction": "",
-        "tags": []
-      },
-      "frontendConsumers": [
-        "src/routes/courses.js"
-      ],
-      "tests": [
-        "tests/api.test.js",
-        "tests/runtime/courses-mutation.spec.js",
-        "tests/shared-accessible-shell.test.js"
-      ],
-      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
-    },
-    {
-      "id": "GET /api/v2/courses/{param}/reviews [callCourseApi]",
-      "method": "GET",
-      "path": "/api/v2/courses/{param}/reviews",
-      "apiHelper": "callCourseApi",
-      "source": "src/routes/courses.js:512",
-      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
-      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
-      "requestShape": "query/path parameters; no request body expected",
-      "responseShape": "JSON/text response via ApiError-aware request",
-      "statusCodes": [],
-      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
-      "redirects": "consumer-controlled: src/routes/courses.js",
-      "sideEffects": "read-only by HTTP method",
-      "cleanup": "not applicable",
       "laravel": {
         "status": "missing-openapi-match",
         "path": "",
@@ -2882,7 +2749,7 @@
       "method": "GET",
       "path": "/api/v2/courses/categories",
       "apiHelper": "callCourseApi",
-      "source": "src/routes/courses.js:505",
+      "source": "src/routes/courses.js:588",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
       "requestShape": "query/path parameters; no request body expected",
@@ -3377,7 +3244,7 @@
       "method": "DYNAMIC",
       "path": "/api/v2/events/{param}",
       "apiHelper": "callEventApi",
-      "source": "src/routes/events.js:767",
+      "source": "src/routes/events.js:1703",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
       "requestShape": "JSON caller payload; validate against Laravel operation",
@@ -3409,7 +3276,7 @@
       "method": "GET",
       "path": "/api/v2/events/{param}",
       "apiHelper": "callEventApi",
-      "source": "src/routes/events.js:702",
+      "source": "src/routes/events.js:895",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
       "requestShape": "path:id",
@@ -3488,26 +3355,35 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "POST /api/v2/events/{param} [callEventApi]",
-      "method": "POST",
+      "id": "PUT /api/v2/events/{param} [callEventApi]",
+      "method": "PUT",
       "path": "/api/v2/events/{param}",
       "apiHelper": "callEventApi",
-      "source": "src/routes/events.js:1522",
+      "source": "src/routes/events.js:2786",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
-      "requestShape": "JSON caller payload; validate against Laravel operation",
-      "responseShape": "JSON/text response via ApiError-aware request",
-      "statusCodes": [],
+      "requestShape": "path:id",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200",
+        "401",
+        "403",
+        "404",
+        "422",
+        "429"
+      ],
       "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
       "redirects": "consumer-controlled: src/routes/events.js",
       "sideEffects": "state-changing; disposable-environment runtime proof required",
       "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
-        "operationId": "",
-        "controllerAction": "",
-        "tags": []
+        "status": "matched-openapi",
+        "path": "/api/v2/events/{id}",
+        "operationId": "Events_update",
+        "controllerAction": "App\\Http\\Controllers\\Api\\EventsController@update",
+        "tags": [
+          "Events"
+        ]
       },
       "frontendConsumers": [
         "src/routes/events.js"
@@ -3723,6 +3599,48 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
+      "id": "POST /api/v2/events/{param}/attendees/{param}/check-in [callEventApi]",
+      "method": "POST",
+      "path": "/api/v2/events/{param}/attendees/{param}/check-in",
+      "apiHelper": "callEventApi",
+      "source": "src/routes/events.js:2754",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "path:id; path:attendeeId",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200",
+        "201",
+        "401",
+        "403",
+        "404",
+        "422",
+        "429"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/events.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/events/{id}/attendees/{attendeeId}/check-in",
+        "operationId": "Events_checkIn",
+        "controllerAction": "App\\Http\\Controllers\\Api\\EventsController@checkIn",
+        "tags": [
+          "Events"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/events.js"
+      ],
+      "tests": [
+        "tests/api-consumer-ledger.test.js",
+        "tests/api.test.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
       "id": "POST /api/v2/events/{param}/broadcasts [callEventApi]",
       "method": "POST",
       "path": "/api/v2/events/{param}/broadcasts",
@@ -3750,47 +3668,6 @@
         "path": "/api/v2/events/{eventId}/broadcasts",
         "operationId": "EventBroadcast_store",
         "controllerAction": "App\\Http\\Controllers\\Api\\EventBroadcastController@store",
-        "tags": [
-          "Event Broadcasts"
-        ]
-      },
-      "frontendConsumers": [
-        "src/routes/events.js"
-      ],
-      "tests": [
-        "tests/api-consumer-ledger.test.js",
-        "tests/api.test.js",
-        "tests/shared-accessible-shell.test.js"
-      ],
-      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
-    },
-    {
-      "id": "GET /api/v2/events/{param}/broadcasts?page={param}&per_page=20 [callEventApi]",
-      "method": "GET",
-      "path": "/api/v2/events/{param}/broadcasts?page={param}&per_page=20",
-      "apiHelper": "callEventApi",
-      "source": "src/routes/events.js:1945",
-      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
-      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
-      "requestShape": "path:eventId",
-      "responseShape": "successful Laravel response envelope",
-      "statusCodes": [
-        "200",
-        "401",
-        "403",
-        "404",
-        "422",
-        "429"
-      ],
-      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
-      "redirects": "consumer-controlled: src/routes/events.js",
-      "sideEffects": "read-only by HTTP method",
-      "cleanup": "not applicable",
-      "laravel": {
-        "status": "matched-openapi",
-        "path": "/api/v2/events/{eventId}/broadcasts",
-        "operationId": "EventBroadcast_index",
-        "controllerAction": "App\\Http\\Controllers\\Api\\EventBroadcastController@index",
         "tags": [
           "Event Broadcasts"
         ]
@@ -4177,47 +4054,6 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/events/{param}/offline-checkin/credentials/me [callEventApi]",
-      "method": "GET",
-      "path": "/api/v2/events/{param}/offline-checkin/credentials/me",
-      "apiHelper": "callEventApi",
-      "source": "src/routes/events.js:704",
-      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
-      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
-      "requestShape": "path:id",
-      "responseShape": "successful Laravel response envelope",
-      "statusCodes": [
-        "200",
-        "401",
-        "403",
-        "404",
-        "422",
-        "429"
-      ],
-      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
-      "redirects": "consumer-controlled: src/routes/events.js",
-      "sideEffects": "read-only by HTTP method",
-      "cleanup": "not applicable",
-      "laravel": {
-        "status": "matched-openapi",
-        "path": "/api/v2/events/{id}/offline-checkin/credentials/me",
-        "operationId": "EventOfflineCheckin_myCredential",
-        "controllerAction": "App\\Http\\Controllers\\Api\\EventOfflineCheckinController@myCredential",
-        "tags": [
-          "Event Offline Check-in"
-        ]
-      },
-      "frontendConsumers": [
-        "src/routes/events.js"
-      ],
-      "tests": [
-        "tests/api-consumer-ledger.test.js",
-        "tests/api.test.js",
-        "tests/shared-accessible-shell.test.js"
-      ],
-      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
-    },
-    {
       "id": "GET /api/v2/events/{param}/people??{param} [callEventApi]",
       "method": "GET",
       "path": "/api/v2/events/{param}/people??{param}",
@@ -4331,80 +4167,6 @@
         "tags": [
           "Events"
         ]
-      },
-      "frontendConsumers": [
-        "src/routes/events.js"
-      ],
-      "tests": [
-        "tests/api-consumer-ledger.test.js",
-        "tests/api.test.js",
-        "tests/shared-accessible-shell.test.js"
-      ],
-      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
-    },
-    {
-      "id": "POST /api/v2/events/{param}/publish [callEventApi]",
-      "method": "POST",
-      "path": "/api/v2/events/{param}/publish",
-      "apiHelper": "callEventApi",
-      "source": "src/routes/events.js:1508",
-      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
-      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
-      "requestShape": "path:id",
-      "responseShape": "successful Laravel response envelope",
-      "statusCodes": [
-        "200",
-        "201",
-        "401",
-        "403",
-        "404",
-        "422",
-        "429"
-      ],
-      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
-      "redirects": "consumer-controlled: src/routes/events.js",
-      "sideEffects": "state-changing; disposable-environment runtime proof required",
-      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
-      "laravel": {
-        "status": "matched-openapi",
-        "path": "/api/v2/events/{id}/publish",
-        "operationId": "Events_publish",
-        "controllerAction": "App\\Http\\Controllers\\Api\\EventsController@publish",
-        "tags": [
-          "Events"
-        ]
-      },
-      "frontendConsumers": [
-        "src/routes/events.js"
-      ],
-      "tests": [
-        "tests/api-consumer-ledger.test.js",
-        "tests/api.test.js",
-        "tests/shared-accessible-shell.test.js"
-      ],
-      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
-    },
-    {
-      "id": "GET /api/v2/events/{param}/recurrence-definition-blueprints{param} [callEventApi]",
-      "method": "GET",
-      "path": "/api/v2/events/{param}/recurrence-definition-blueprints{param}",
-      "apiHelper": "callEventApi",
-      "source": "src/routes/events.js:1426",
-      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
-      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
-      "requestShape": "query/path parameters; no request body expected",
-      "responseShape": "JSON/text response via ApiError-aware request",
-      "statusCodes": [],
-      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
-      "redirects": "consumer-controlled: src/routes/events.js",
-      "sideEffects": "read-only by HTTP method",
-      "cleanup": "not applicable",
-      "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
-        "operationId": "",
-        "controllerAction": "",
-        "tags": []
       },
       "frontendConsumers": [
         "src/routes/events.js"
@@ -4634,7 +4396,7 @@
       "method": "GET",
       "path": "/api/v2/events/{param}/registration-product",
       "apiHelper": "callEventApi",
-      "source": "src/routes/events.js:2325",
+      "source": "src/routes/events.js:2483",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
       "requestShape": "path:id",
@@ -4675,7 +4437,7 @@
       "method": "POST",
       "path": "/api/v2/events/{param}/registration-product/campaigns/{param}/{param}",
       "apiHelper": "callEventApi",
-      "source": "src/routes/events.js:2659",
+      "source": "src/routes/events.js:2662",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
       "requestShape": "JSON caller payload; validate against Laravel operation",
@@ -4749,7 +4511,7 @@
       "method": "POST",
       "path": "/api/v2/events/{param}/registration-product/forms/{param}/{param}",
       "apiHelper": "callEventApi",
-      "source": "src/routes/events.js:2551",
+      "source": "src/routes/events.js:2554",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
       "requestShape": "JSON caller payload; validate against Laravel operation",
@@ -4888,47 +4650,6 @@
         "path": "/api/v2/events/{id}/registration-product/invitations/{invitationId}/accept",
         "operationId": "EventRegistrationProduct_acceptMemberInvitation",
         "controllerAction": "App\\Http\\Controllers\\Api\\EventRegistrationProductController@acceptMemberInvitation",
-        "tags": [
-          "Event Registration"
-        ]
-      },
-      "frontendConsumers": [
-        "src/routes/events.js"
-      ],
-      "tests": [
-        "tests/api-consumer-ledger.test.js",
-        "tests/api.test.js",
-        "tests/shared-accessible-shell.test.js"
-      ],
-      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
-    },
-    {
-      "id": "GET /api/v2/events/{param}/registration-product/manage?{param} [callEventApi]",
-      "method": "GET",
-      "path": "/api/v2/events/{param}/registration-product/manage?{param}",
-      "apiHelper": "callEventApi",
-      "source": "src/routes/events.js:2327",
-      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
-      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
-      "requestShape": "path:id",
-      "responseShape": "successful Laravel response envelope",
-      "statusCodes": [
-        "200",
-        "401",
-        "403",
-        "404",
-        "422",
-        "429"
-      ],
-      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
-      "redirects": "consumer-controlled: src/routes/events.js",
-      "sideEffects": "read-only by HTTP method",
-      "cleanup": "not applicable",
-      "laravel": {
-        "status": "matched-openapi",
-        "path": "/api/v2/events/{id}/registration-product/manage",
-        "operationId": "EventRegistrationProduct_organizerOverview",
-        "controllerAction": "App\\Http\\Controllers\\Api\\EventRegistrationProductController@organizerOverview",
         "tags": [
           "Event Registration"
         ]
@@ -5351,6 +5072,132 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
+      "id": "POST /api/v2/events/{param}/registration/waitlist [callEventApi]",
+      "method": "POST",
+      "path": "/api/v2/events/{param}/registration/waitlist",
+      "apiHelper": "callEventApi",
+      "source": "src/routes/events.js:1351",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "path:id",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200",
+        "201",
+        "401",
+        "403",
+        "404",
+        "422",
+        "429"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/events.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/events/{id}/registration/waitlist",
+        "operationId": "EventRegistration_joinWaitlist",
+        "controllerAction": "App\\Http\\Controllers\\Api\\EventRegistrationController@joinWaitlist",
+        "tags": [
+          "Events"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/events.js"
+      ],
+      "tests": [
+        "tests/api-consumer-ledger.test.js",
+        "tests/api.test.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "POST /api/v2/events/{param}/registration/waitlist/accept [callEventApi]",
+      "method": "POST",
+      "path": "/api/v2/events/{param}/registration/waitlist/accept",
+      "apiHelper": "callEventApi",
+      "source": "src/routes/events.js:2740",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "path:id",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200",
+        "201",
+        "401",
+        "403",
+        "404",
+        "422",
+        "429"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/events.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/events/{id}/registration/waitlist/accept",
+        "operationId": "EventRegistration_acceptOffer",
+        "controllerAction": "App\\Http\\Controllers\\Api\\EventRegistrationController@acceptOffer",
+        "tags": [
+          "Events"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/events.js"
+      ],
+      "tests": [
+        "tests/api-consumer-ledger.test.js",
+        "tests/api.test.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "POST /api/v2/events/{param}/registration/waitlist/leave [callEventApi]",
+      "method": "POST",
+      "path": "/api/v2/events/{param}/registration/waitlist/leave",
+      "apiHelper": "callEventApi",
+      "source": "src/routes/events.js:1362",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "path:id",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200",
+        "201",
+        "401",
+        "403",
+        "404",
+        "422",
+        "429"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/events.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/events/{id}/registration/waitlist/leave",
+        "operationId": "EventRegistration_leaveWaitlist",
+        "controllerAction": "App\\Http\\Controllers\\Api\\EventRegistrationController@leaveWaitlist",
+        "tags": [
+          "Events"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/events.js"
+      ],
+      "tests": [
+        "tests/api-consumer-ledger.test.js",
+        "tests/api.test.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
       "id": "POST /api/v2/events/{param}/registration/withdraw [callEventApi]",
       "method": "POST",
       "path": "/api/v2/events/{param}/registration/withdraw",
@@ -5684,7 +5531,7 @@
       "method": "POST",
       "path": "/api/v2/events/{param}/submit",
       "apiHelper": "callEventApi",
-      "source": "src/routes/events.js:1506",
+      "source": "src/routes/events.js:1530",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
       "requestShape": "path:id",
@@ -5852,7 +5699,7 @@
       "method": "GET",
       "path": "/api/v2/events/{param}/tickets",
       "apiHelper": "callEventApi",
-      "source": "src/routes/events.js:2088",
+      "source": "src/routes/events.js:2096",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
       "requestShape": "path:id",
@@ -5935,7 +5782,7 @@
       "method": "GET",
       "path": "/api/v2/events/calendar/feed-tokens",
       "apiHelper": "callEventApi",
-      "source": "src/routes/events.js:2220",
+      "source": "src/routes/events.js:2227",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
       "requestShape": "query/path parameters; no request body expected",
@@ -6094,43 +5941,11 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/events/event-broadcasts/{param}?history_page={param}&history_per_page=50 [callEventApi]",
-      "method": "GET",
-      "path": "/api/v2/events/event-broadcasts/{param}?history_page={param}&history_per_page=50",
-      "apiHelper": "callEventApi",
-      "source": "src/routes/events.js:1946",
-      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
-      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
-      "requestShape": "query/path parameters; no request body expected",
-      "responseShape": "JSON/text response via ApiError-aware request",
-      "statusCodes": [],
-      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
-      "redirects": "consumer-controlled: src/routes/events.js",
-      "sideEffects": "read-only by HTTP method",
-      "cleanup": "not applicable",
-      "laravel": {
-        "status": "missing-openapi-match",
-        "path": "",
-        "operationId": "",
-        "controllerAction": "",
-        "tags": []
-      },
-      "frontendConsumers": [
-        "src/routes/events.js"
-      ],
-      "tests": [
-        "tests/api-consumer-ledger.test.js",
-        "tests/api.test.js",
-        "tests/shared-accessible-shell.test.js"
-      ],
-      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
-    },
-    {
       "id": "POST /api/v2/events/event-broadcasts/{param}/{param} [callEventApi]",
       "method": "POST",
       "path": "/api/v2/events/event-broadcasts/{param}/{param}",
       "apiHelper": "callEventApi",
-      "source": "src/routes/events.js:2073",
+      "source": "src/routes/events.js:2083",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
       "requestShape": "JSON caller payload; validate against Laravel operation",
@@ -9355,6 +9170,41 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
+      "id": "POST /api/v2/group-exchanges [callGroupExchangeApi]",
+      "method": "POST",
+      "path": "/api/v2/group-exchanges",
+      "apiHelper": "callGroupExchangeApi",
+      "source": "src/routes/group-exchange-actions.js:135",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "JSON caller payload; validate against Laravel operation",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/group-exchange-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/group-exchanges",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Group-exchanges"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/group-exchange-actions.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
       "id": "GET /api/v2/group-exchanges??{param} [callGroupExchangeApi]",
       "method": "GET",
       "path": "/api/v2/group-exchanges??{param}",
@@ -9390,26 +9240,30 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "DYNAMIC /api/v2/group-exchanges/{param} [callGroupExchangeApi]",
-      "method": "DYNAMIC",
+      "id": "DELETE /api/v2/group-exchanges/{param} [callGroupExchangeApi]",
+      "method": "DELETE",
       "path": "/api/v2/group-exchanges/{param}",
       "apiHelper": "callGroupExchangeApi",
-      "source": "src/routes/group-exchange-actions.js:83",
+      "source": "src/routes/group-exchange-actions.js:201",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
-      "requestShape": "JSON caller payload; validate against Laravel operation",
-      "responseShape": "JSON/text response via ApiError-aware request",
-      "statusCodes": [],
+      "requestShape": "path:id",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
       "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
       "redirects": "consumer-controlled: src/routes/group-exchange-actions.js",
-      "sideEffects": "method dynamic; classify every callsite before runtime",
-      "cleanup": "unresolved until method is concrete",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
-        "status": "dynamic-unresolved",
-        "path": "",
+        "status": "matched-openapi",
+        "path": "/api/v2/group-exchanges/{id}",
         "operationId": "",
         "controllerAction": "",
-        "tags": []
+        "tags": [
+          "Group-exchanges"
+        ]
       },
       "frontendConsumers": [
         "src/routes/group-exchange-actions.js"
@@ -9448,6 +9302,146 @@
       },
       "frontendConsumers": [
         "src/routes/group-exchanges.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "POST /api/v2/group-exchanges/{param}/complete [callGroupExchangeApi]",
+      "method": "POST",
+      "path": "/api/v2/group-exchanges/{param}/complete",
+      "apiHelper": "callGroupExchangeApi",
+      "source": "src/routes/group-exchange-actions.js:188",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "path:id",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/group-exchange-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/group-exchanges/{id}/complete",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Group-exchanges"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/group-exchange-actions.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "POST /api/v2/group-exchanges/{param}/confirm [callGroupExchangeApi]",
+      "method": "POST",
+      "path": "/api/v2/group-exchanges/{param}/confirm",
+      "apiHelper": "callGroupExchangeApi",
+      "source": "src/routes/group-exchange-actions.js:175",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "path:id",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/group-exchange-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/group-exchanges/{id}/confirm",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Group-exchanges"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/group-exchange-actions.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "POST /api/v2/group-exchanges/{param}/participants [callGroupExchangeApi]",
+      "method": "POST",
+      "path": "/api/v2/group-exchanges/{param}/participants",
+      "apiHelper": "callGroupExchangeApi",
+      "source": "src/routes/group-exchange-actions.js:148",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "path:id",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/group-exchange-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/group-exchanges/{id}/participants",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Group-exchanges"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/group-exchange-actions.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "DELETE /api/v2/group-exchanges/{param}/participants/{param} [callGroupExchangeApi]",
+      "method": "DELETE",
+      "path": "/api/v2/group-exchanges/{param}/participants/{param}",
+      "apiHelper": "callGroupExchangeApi",
+      "source": "src/routes/group-exchange-actions.js:162",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "path:id; path:userId",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/group-exchange-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/group-exchanges/{id}/participants/{userId}",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Group-exchanges"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/group-exchange-actions.js"
       ],
       "tests": [
         "tests/api.test.js",
@@ -10541,6 +10535,42 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
+      "id": "POST /api/v2/ideation-campaigns [callIdeationApi]",
+      "method": "POST",
+      "path": "/api/v2/ideation-campaigns",
+      "apiHelper": "callIdeationApi",
+      "source": "src/routes/ideation-actions.js:249",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "JSON caller payload; validate against Laravel operation",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/ideation-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/ideation-campaigns",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Ideation-campaigns"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/ideation-actions.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/runtime/ideation-campaign-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
       "id": "GET /api/v2/ideation-campaigns?per_page=50 [callIdeationApi]",
       "method": "GET",
       "path": "/api/v2/ideation-campaigns?per_page=50",
@@ -10568,6 +10598,42 @@
       },
       "frontendConsumers": [
         "src/routes/ideation.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/runtime/ideation-campaign-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "DELETE /api/v2/ideation-campaigns/{param} [callIdeationApi]",
+      "method": "DELETE",
+      "path": "/api/v2/ideation-campaigns/{param}",
+      "apiHelper": "callIdeationApi",
+      "source": "src/routes/ideation-actions.js:305",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "path:id",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/ideation-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/ideation-campaigns/{id}",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Ideation-campaigns"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/ideation-actions.js"
       ],
       "tests": [
         "tests/api.test.js",
@@ -10613,6 +10679,110 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
+      "id": "PUT /api/v2/ideation-campaigns/{param} [callIdeationApi]",
+      "method": "PUT",
+      "path": "/api/v2/ideation-campaigns/{param}",
+      "apiHelper": "callIdeationApi",
+      "source": "src/routes/ideation-actions.js:274",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "path:id",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/ideation-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/ideation-campaigns/{id}",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Ideation-campaigns"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/ideation-actions.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/runtime/ideation-campaign-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "DELETE /api/v2/ideation-campaigns/{param}/challenges/{param} [callIdeationApi]",
+      "method": "DELETE",
+      "path": "/api/v2/ideation-campaigns/{param}/challenges/{param}",
+      "apiHelper": "callIdeationApi",
+      "source": "src/routes/ideation-actions.js:290",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "path:id; path:challengeId",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/ideation-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/ideation-campaigns/{id}/challenges/{challengeId}",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Ideation-campaigns"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/ideation-actions.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/runtime/ideation-campaign-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "POST /api/v2/ideation-campaigns/0/challenges [callIdeationApi]",
+      "method": "POST",
+      "path": "/api/v2/ideation-campaigns/0/challenges",
+      "apiHelper": "callIdeationApi",
+      "source": "src/routes/ideation-actions.js:400",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "JSON caller payload; validate against Laravel operation",
+      "responseShape": "JSON/text response via ApiError-aware request",
+      "statusCodes": [],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/ideation-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "missing-openapi-match",
+        "path": "",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": []
+      },
+      "frontendConsumers": [
+        "src/routes/ideation-actions.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/runtime/ideation-campaign-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
       "id": "GET /api/v2/ideation-categories [callIdeationApi]",
       "method": "GET",
       "path": "/api/v2/ideation-categories",
@@ -10640,6 +10810,42 @@
       },
       "frontendConsumers": [
         "src/routes/ideation.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/runtime/ideation-campaign-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "POST /api/v2/ideation-challenges [callIdeationApi]",
+      "method": "POST",
+      "path": "/api/v2/ideation-challenges",
+      "apiHelper": "callIdeationApi",
+      "source": "src/routes/ideation-actions.js:316",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "JSON caller payload; validate against Laravel operation",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/ideation-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/ideation-challenges",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Ideation-challenges"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/ideation-actions.js"
       ],
       "tests": [
         "tests/api.test.js",
@@ -10685,6 +10891,42 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
+      "id": "DELETE /api/v2/ideation-challenges/{param} [callIdeationApi]",
+      "method": "DELETE",
+      "path": "/api/v2/ideation-challenges/{param}",
+      "apiHelper": "callIdeationApi",
+      "source": "src/routes/ideation-actions.js:380",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "path:id",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/ideation-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/ideation-challenges/{id}",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Ideation-challenges"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/ideation-actions.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/runtime/ideation-campaign-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
       "id": "GET /api/v2/ideation-challenges/{param} [callIdeationApi]",
       "method": "GET",
       "path": "/api/v2/ideation-challenges/{param}",
@@ -10712,6 +10954,150 @@
       },
       "frontendConsumers": [
         "src/routes/ideation.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/runtime/ideation-campaign-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "PUT /api/v2/ideation-challenges/{param} [callIdeationApi]",
+      "method": "PUT",
+      "path": "/api/v2/ideation-challenges/{param}",
+      "apiHelper": "callIdeationApi",
+      "source": "src/routes/ideation-actions.js:328",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "path:id",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/ideation-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/ideation-challenges/{id}",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Ideation-challenges"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/ideation-actions.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/runtime/ideation-campaign-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "POST /api/v2/ideation-challenges/{param}/duplicate [callIdeationApi]",
+      "method": "POST",
+      "path": "/api/v2/ideation-challenges/{param}/duplicate",
+      "apiHelper": "callIdeationApi",
+      "source": "src/routes/ideation-actions.js:367",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "path:id",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/ideation-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/ideation-challenges/{id}/duplicate",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Ideation-challenges"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/ideation-actions.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/runtime/ideation-campaign-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "POST /api/v2/ideation-challenges/{param}/favorite [callIdeationApi]",
+      "method": "POST",
+      "path": "/api/v2/ideation-challenges/{param}/favorite",
+      "apiHelper": "callIdeationApi",
+      "source": "src/routes/ideation-actions.js:354",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "path:id",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/ideation-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/ideation-challenges/{id}/favorite",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Ideation-challenges"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/ideation-actions.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/runtime/ideation-campaign-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "POST /api/v2/ideation-challenges/{param}/ideas [callIdeationApi]",
+      "method": "POST",
+      "path": "/api/v2/ideation-challenges/{param}/ideas",
+      "apiHelper": "callIdeationApi",
+      "source": "src/routes/ideation-actions.js:440",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "path:id",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/ideation-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/ideation-challenges/{id}/ideas",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Ideation-challenges"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/ideation-actions.js"
       ],
       "tests": [
         "tests/api.test.js",
@@ -10829,6 +11215,150 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
+      "id": "PUT /api/v2/ideation-challenges/{param}/outcome [callIdeationApi]",
+      "method": "PUT",
+      "path": "/api/v2/ideation-challenges/{param}/outcome",
+      "apiHelper": "callIdeationApi",
+      "source": "src/routes/ideation-actions.js:413",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "path:id",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/ideation-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/ideation-challenges/{id}/outcome",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Ideation-challenges"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/ideation-actions.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/runtime/ideation-campaign-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "PUT /api/v2/ideation-challenges/{param}/status [callIdeationApi]",
+      "method": "PUT",
+      "path": "/api/v2/ideation-challenges/{param}/status",
+      "apiHelper": "callIdeationApi",
+      "source": "src/routes/ideation-actions.js:341",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "path:id",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/ideation-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/ideation-challenges/{id}/status",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Ideation-challenges"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/ideation-actions.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/runtime/ideation-campaign-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "DELETE /api/v2/ideation-comments/{param} [callIdeationApi]",
+      "method": "DELETE",
+      "path": "/api/v2/ideation-comments/{param}",
+      "apiHelper": "callIdeationApi",
+      "source": "src/routes/ideation-actions.js:469",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "path:id",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/ideation-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/ideation-comments/{id}",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Ideation-comments"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/ideation-actions.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/runtime/ideation-campaign-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "DELETE /api/v2/ideation-ideas/{param} [callIdeationApi]",
+      "method": "DELETE",
+      "path": "/api/v2/ideation-ideas/{param}",
+      "apiHelper": "callIdeationApi",
+      "source": "src/routes/ideation-actions.js:525",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "path:id",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/ideation-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/ideation-ideas/{id}",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Ideation-ideas"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/ideation-actions.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/runtime/ideation-campaign-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
       "id": "GET /api/v2/ideation-ideas/{param} [callIdeationApi]",
       "method": "GET",
       "path": "/api/v2/ideation-ideas/{param}",
@@ -10856,6 +11386,42 @@
       },
       "frontendConsumers": [
         "src/routes/ideation.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/runtime/ideation-campaign-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "POST /api/v2/ideation-ideas/{param}/comments [callIdeationApi]",
+      "method": "POST",
+      "path": "/api/v2/ideation-ideas/{param}/comments",
+      "apiHelper": "callIdeationApi",
+      "source": "src/routes/ideation-actions.js:454",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "path:id",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/ideation-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/ideation-ideas/{id}/comments",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Ideation-ideas"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/ideation-actions.js"
       ],
       "tests": [
         "tests/api.test.js",
@@ -10901,6 +11467,78 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
+      "id": "POST /api/v2/ideation-ideas/{param}/convert-to-group [callIdeationApi]",
+      "method": "POST",
+      "path": "/api/v2/ideation-ideas/{param}/convert-to-group",
+      "apiHelper": "callIdeationApi",
+      "source": "src/routes/ideation-actions.js:553",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "path:id",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/ideation-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/ideation-ideas/{id}/convert-to-group",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Ideation-ideas"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/ideation-actions.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/runtime/ideation-campaign-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "PUT /api/v2/ideation-ideas/{param}/draft [callIdeationApi]",
+      "method": "PUT",
+      "path": "/api/v2/ideation-ideas/{param}/draft",
+      "apiHelper": "callIdeationApi",
+      "source": "src/routes/ideation-actions.js:427",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "path:id",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/ideation-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/ideation-ideas/{id}/draft",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Ideation-ideas"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/ideation-actions.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/runtime/ideation-campaign-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
       "id": "GET /api/v2/ideation-ideas/{param}/media [callIdeationApi]",
       "method": "GET",
       "path": "/api/v2/ideation-ideas/{param}/media",
@@ -10928,6 +11566,114 @@
       },
       "frontendConsumers": [
         "src/routes/ideation.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/runtime/ideation-campaign-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "POST /api/v2/ideation-ideas/{param}/media [callIdeationApi]",
+      "method": "POST",
+      "path": "/api/v2/ideation-ideas/{param}/media",
+      "apiHelper": "callIdeationApi",
+      "source": "src/routes/ideation-actions.js:539",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "path:id",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/ideation-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/ideation-ideas/{id}/media",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Ideation-ideas"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/ideation-actions.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/runtime/ideation-campaign-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "PUT /api/v2/ideation-ideas/{param}/status [callIdeationApi]",
+      "method": "PUT",
+      "path": "/api/v2/ideation-ideas/{param}/status",
+      "apiHelper": "callIdeationApi",
+      "source": "src/routes/ideation-actions.js:511",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "path:id",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/ideation-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/ideation-ideas/{id}/status",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Ideation-ideas"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/ideation-actions.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/runtime/ideation-campaign-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "POST /api/v2/ideation-ideas/{param}/vote [callIdeationApi]",
+      "method": "POST",
+      "path": "/api/v2/ideation-ideas/{param}/vote",
+      "apiHelper": "callIdeationApi",
+      "source": "src/routes/ideation-actions.js:483",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "path:id",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/ideation-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/ideation-ideas/{id}/vote",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Ideation-ideas"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/ideation-actions.js"
       ],
       "tests": [
         "tests/api.test.js",
@@ -12576,37 +13322,6 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "DYNAMIC /api/v2/listings/{param} [callListingApi]",
-      "method": "DYNAMIC",
-      "path": "/api/v2/listings/{param}",
-      "apiHelper": "callListingApi",
-      "source": "src/routes/listings.js:606",
-      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
-      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
-      "requestShape": "JSON caller payload; validate against Laravel operation",
-      "responseShape": "JSON/text response via ApiError-aware request",
-      "statusCodes": [],
-      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
-      "redirects": "consumer-controlled: src/routes/listings.js",
-      "sideEffects": "method dynamic; classify every callsite before runtime",
-      "cleanup": "unresolved until method is concrete",
-      "laravel": {
-        "status": "dynamic-unresolved",
-        "path": "",
-        "operationId": "",
-        "controllerAction": "",
-        "tags": []
-      },
-      "frontendConsumers": [
-        "src/routes/listings.js"
-      ],
-      "tests": [
-        "tests/api.test.js",
-        "tests/shared-accessible-shell.test.js"
-      ],
-      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
-    },
-    {
       "id": "GET /api/v2/listings/{param} [callListingApi]",
       "method": "GET",
       "path": "/api/v2/listings/{param}",
@@ -12784,6 +13499,41 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
+      "id": "POST /api/v2/listings/{param}/renew [callListingApi]",
+      "method": "POST",
+      "path": "/api/v2/listings/{param}/renew",
+      "apiHelper": "callListingApi",
+      "source": "src/routes/listings.js:916",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "path:id",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/listings.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/listings/{id}/renew",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Listings"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/listings.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
       "id": "POST /api/v2/listings/{param}/report [callListingApi]",
       "method": "POST",
       "path": "/api/v2/listings/{param}/report",
@@ -12804,6 +13554,76 @@
         "operationId": "",
         "controllerAction": "",
         "tags": []
+      },
+      "frontendConsumers": [
+        "src/routes/listings.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "DELETE /api/v2/listings/{param}/save [callListingApi]",
+      "method": "DELETE",
+      "path": "/api/v2/listings/{param}/save",
+      "apiHelper": "callListingApi",
+      "source": "src/routes/listings.js:903",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "path:id",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/listings.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/listings/{id}/save",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Listings"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/listings.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "POST /api/v2/listings/{param}/save [callListingApi]",
+      "method": "POST",
+      "path": "/api/v2/listings/{param}/save",
+      "apiHelper": "callListingApi",
+      "source": "src/routes/listings.js:890",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "path:id",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/listings.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/listings/{id}/save",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Listings"
+        ]
       },
       "frontendConsumers": [
         "src/routes/listings.js"
@@ -12915,46 +13735,11 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "DYNAMIC /api/v2/marketplace/{param} [callMarketplaceApi]",
-      "method": "DYNAMIC",
-      "path": "/api/v2/marketplace/{param}",
-      "apiHelper": "callMarketplaceApi",
-      "source": "src/routes/marketplace-actions.js:145",
-      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
-      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
-      "requestShape": "JSON caller payload; validate against Laravel operation",
-      "responseShape": "JSON/text response via ApiError-aware request",
-      "statusCodes": [],
-      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
-      "redirects": "consumer-controlled: src/routes/marketplace-actions.js",
-      "sideEffects": "method dynamic; classify every callsite before runtime",
-      "cleanup": "unresolved until method is concrete",
-      "laravel": {
-        "status": "dynamic-unresolved",
-        "path": "",
-        "operationId": "",
-        "controllerAction": "",
-        "tags": []
-      },
-      "frontendConsumers": [
-        "src/routes/marketplace-actions.js"
-      ],
-      "tests": [
-        "tests/api.test.js",
-        "tests/marketplace-payment-contract.test.js",
-        "tests/marketplace-status-localization.test.js",
-        "tests/marketplace-title-localization.test.js",
-        "tests/runtime/marketplace-mutation.spec.js",
-        "tests/shared-accessible-shell.test.js"
-      ],
-      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
-    },
-    {
       "id": "GET /api/v2/marketplace/{param} [callMarketplaceApi]",
       "method": "GET",
       "path": "/api/v2/marketplace/{param}",
       "apiHelper": "callMarketplaceApi",
-      "source": "src/routes/marketplace.js:738",
+      "source": "src/routes/marketplace.js:1330",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
       "requestShape": "query/path parameters; no request body expected",
@@ -12989,7 +13774,7 @@
       "method": "GET",
       "path": "/api/v2/marketplace/categories",
       "apiHelper": "callMarketplaceApi",
-      "source": "src/routes/marketplace.js:1121",
+      "source": "src/routes/marketplace.js:1331",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
       "requestShape": "query/path parameters; no request body expected",
@@ -13025,6 +13810,41 @@
       "path": "/api/v2/marketplace/listings",
       "apiHelper": "callMarketplaceApi",
       "source": "src/routes/marketplace-actions.js:464",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "JSON caller payload; validate against Laravel operation",
+      "responseShape": "JSON/text response via ApiError-aware request",
+      "statusCodes": [],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/marketplace-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "missing-openapi-match",
+        "path": "",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": []
+      },
+      "frontendConsumers": [
+        "src/routes/marketplace-actions.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/marketplace-payment-contract.test.js",
+        "tests/marketplace-status-localization.test.js",
+        "tests/marketplace-title-localization.test.js",
+        "tests/runtime/marketplace-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "DELETE /api/v2/marketplace/listings/{param} [callMarketplaceApi]",
+      "method": "DELETE",
+      "path": "/api/v2/marketplace/listings/{param}",
+      "apiHelper": "callMarketplaceApi",
+      "source": "src/routes/marketplace-actions.js:499",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
       "requestShape": "JSON caller payload; validate against Laravel operation",
@@ -13172,7 +13992,7 @@
       "responseShape": "JSON/text response via ApiError-aware request",
       "statusCodes": [],
       "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
-      "redirects": "consumer-controlled: src/routes/marketplace-actions.js, src/routes/marketplace.js",
+      "redirects": "consumer-controlled: src/routes/marketplace-actions.js",
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
       "laravel": {
@@ -13183,8 +14003,42 @@
         "tags": []
       },
       "frontendConsumers": [
-        "src/routes/marketplace-actions.js",
-        "src/routes/marketplace.js"
+        "src/routes/marketplace-actions.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/marketplace-payment-contract.test.js",
+        "tests/marketplace-status-localization.test.js",
+        "tests/marketplace-title-localization.test.js",
+        "tests/runtime/marketplace-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "POST /api/v2/marketplace/listings/{param}/renew [callMarketplaceApi]",
+      "method": "POST",
+      "path": "/api/v2/marketplace/listings/{param}/renew",
+      "apiHelper": "callMarketplaceApi",
+      "source": "src/routes/marketplace-actions.js:514",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "JSON caller payload; validate against Laravel operation",
+      "responseShape": "JSON/text response via ApiError-aware request",
+      "statusCodes": [],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/marketplace-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "missing-openapi-match",
+        "path": "",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": []
+      },
+      "frontendConsumers": [
+        "src/routes/marketplace-actions.js"
       ],
       "tests": [
         "tests/api.test.js",
@@ -13205,6 +14059,76 @@
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
       "requestShape": "JSON object: reason, description",
+      "responseShape": "JSON/text response via ApiError-aware request",
+      "statusCodes": [],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/marketplace-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "missing-openapi-match",
+        "path": "",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": []
+      },
+      "frontendConsumers": [
+        "src/routes/marketplace-actions.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/marketplace-payment-contract.test.js",
+        "tests/marketplace-status-localization.test.js",
+        "tests/marketplace-title-localization.test.js",
+        "tests/runtime/marketplace-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "DELETE /api/v2/marketplace/listings/{param}/save [callMarketplaceApi]",
+      "method": "DELETE",
+      "path": "/api/v2/marketplace/listings/{param}/save",
+      "apiHelper": "callMarketplaceApi",
+      "source": "src/routes/marketplace-actions.js:543",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "JSON caller payload; validate against Laravel operation",
+      "responseShape": "JSON/text response via ApiError-aware request",
+      "statusCodes": [],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/marketplace-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "missing-openapi-match",
+        "path": "",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": []
+      },
+      "frontendConsumers": [
+        "src/routes/marketplace-actions.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/marketplace-payment-contract.test.js",
+        "tests/marketplace-status-localization.test.js",
+        "tests/marketplace-title-localization.test.js",
+        "tests/runtime/marketplace-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "POST /api/v2/marketplace/listings/{param}/save [callMarketplaceApi]",
+      "method": "POST",
+      "path": "/api/v2/marketplace/listings/{param}/save",
+      "apiHelper": "callMarketplaceApi",
+      "source": "src/routes/marketplace-actions.js:527",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "JSON caller payload; validate against Laravel operation",
       "responseShape": "JSON/text response via ApiError-aware request",
       "statusCodes": [],
       "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
@@ -13302,6 +14226,113 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
+      "id": "DELETE /api/v2/marketplace/offers/{param} [callMarketplaceApi]",
+      "method": "DELETE",
+      "path": "/api/v2/marketplace/offers/{param}",
+      "apiHelper": "callMarketplaceApi",
+      "source": "src/routes/marketplace-actions.js:845",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "JSON caller payload; validate against Laravel operation",
+      "responseShape": "JSON/text response via ApiError-aware request",
+      "statusCodes": [],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/marketplace-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "missing-openapi-match",
+        "path": "",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": []
+      },
+      "frontendConsumers": [
+        "src/routes/marketplace-actions.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/laravel-runtime-smoke.test.js",
+        "tests/marketplace-payment-contract.test.js",
+        "tests/marketplace-status-localization.test.js",
+        "tests/marketplace-template-localization.test.js",
+        "tests/marketplace-title-localization.test.js",
+        "tests/runtime/marketplace-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "PUT /api/v2/marketplace/offers/{param}/accept [callMarketplaceApi]",
+      "method": "PUT",
+      "path": "/api/v2/marketplace/offers/{param}/accept",
+      "apiHelper": "callMarketplaceApi",
+      "source": "src/routes/marketplace-actions.js:819",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "JSON caller payload; validate against Laravel operation",
+      "responseShape": "JSON/text response via ApiError-aware request",
+      "statusCodes": [],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/marketplace-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "missing-openapi-match",
+        "path": "",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": []
+      },
+      "frontendConsumers": [
+        "src/routes/marketplace-actions.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/marketplace-payment-contract.test.js",
+        "tests/marketplace-status-localization.test.js",
+        "tests/marketplace-title-localization.test.js",
+        "tests/runtime/marketplace-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "PUT /api/v2/marketplace/offers/{param}/decline [callMarketplaceApi]",
+      "method": "PUT",
+      "path": "/api/v2/marketplace/offers/{param}/decline",
+      "apiHelper": "callMarketplaceApi",
+      "source": "src/routes/marketplace-actions.js:832",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "JSON caller payload; validate against Laravel operation",
+      "responseShape": "JSON/text response via ApiError-aware request",
+      "statusCodes": [],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/marketplace-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "missing-openapi-match",
+        "path": "",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": []
+      },
+      "frontendConsumers": [
+        "src/routes/marketplace-actions.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/marketplace-payment-contract.test.js",
+        "tests/marketplace-status-localization.test.js",
+        "tests/marketplace-title-localization.test.js",
+        "tests/runtime/marketplace-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
       "id": "POST /api/v2/marketplace/orders [callMarketplaceApi]",
       "method": "POST",
       "path": "/api/v2/marketplace/orders",
@@ -13346,6 +14377,76 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
+      "id": "PUT /api/v2/marketplace/orders/{param}/cancel [callMarketplaceApi]",
+      "method": "PUT",
+      "path": "/api/v2/marketplace/orders/{param}/cancel",
+      "apiHelper": "callMarketplaceApi",
+      "source": "src/routes/marketplace-actions.js:899",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "JSON caller payload; validate against Laravel operation",
+      "responseShape": "JSON/text response via ApiError-aware request",
+      "statusCodes": [],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/marketplace-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "missing-openapi-match",
+        "path": "",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": []
+      },
+      "frontendConsumers": [
+        "src/routes/marketplace-actions.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/marketplace-payment-contract.test.js",
+        "tests/marketplace-status-localization.test.js",
+        "tests/marketplace-title-localization.test.js",
+        "tests/runtime/marketplace-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "PUT /api/v2/marketplace/orders/{param}/confirm-delivery [callMarketplaceApi]",
+      "method": "PUT",
+      "path": "/api/v2/marketplace/orders/{param}/confirm-delivery",
+      "apiHelper": "callMarketplaceApi",
+      "source": "src/routes/marketplace-actions.js:885",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "JSON caller payload; validate against Laravel operation",
+      "responseShape": "JSON/text response via ApiError-aware request",
+      "statusCodes": [],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/marketplace-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "missing-openapi-match",
+        "path": "",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": []
+      },
+      "frontendConsumers": [
+        "src/routes/marketplace-actions.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/marketplace-payment-contract.test.js",
+        "tests/marketplace-status-localization.test.js",
+        "tests/marketplace-title-localization.test.js",
+        "tests/runtime/marketplace-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
       "id": "POST /api/v2/marketplace/orders/{param}/rate [callMarketplaceApi]",
       "method": "POST",
       "path": "/api/v2/marketplace/orders/{param}/rate",
@@ -13381,11 +14482,46 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
+      "id": "PUT /api/v2/marketplace/orders/{param}/ship [callMarketplaceApi]",
+      "method": "PUT",
+      "path": "/api/v2/marketplace/orders/{param}/ship",
+      "apiHelper": "callMarketplaceApi",
+      "source": "src/routes/marketplace-actions.js:872",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "JSON caller payload; validate against Laravel operation",
+      "responseShape": "JSON/text response via ApiError-aware request",
+      "statusCodes": [],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/marketplace-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "missing-openapi-match",
+        "path": "",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": []
+      },
+      "frontendConsumers": [
+        "src/routes/marketplace-actions.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/marketplace-payment-contract.test.js",
+        "tests/marketplace-status-localization.test.js",
+        "tests/marketplace-title-localization.test.js",
+        "tests/runtime/marketplace-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
       "id": "GET /api/v2/marketplace/seller/coupons [callMarketplaceApi]",
       "method": "GET",
       "path": "/api/v2/marketplace/seller/coupons",
       "apiHelper": "callMarketplaceApi",
-      "source": "src/routes/marketplace.js:957",
+      "source": "src/routes/marketplace.js:1726",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
       "requestShape": "query/path parameters; no request body expected",
@@ -13451,6 +14587,41 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
+      "id": "DELETE /api/v2/marketplace/seller/coupons/{param} [callMarketplaceApi]",
+      "method": "DELETE",
+      "path": "/api/v2/marketplace/seller/coupons/{param}",
+      "apiHelper": "callMarketplaceApi",
+      "source": "src/routes/marketplace-actions.js:1092",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "JSON caller payload; validate against Laravel operation",
+      "responseShape": "JSON/text response via ApiError-aware request",
+      "statusCodes": [],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/marketplace-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "missing-openapi-match",
+        "path": "",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": []
+      },
+      "frontendConsumers": [
+        "src/routes/marketplace-actions.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/marketplace-payment-contract.test.js",
+        "tests/marketplace-status-localization.test.js",
+        "tests/marketplace-title-localization.test.js",
+        "tests/runtime/marketplace-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
       "id": "PUT /api/v2/marketplace/seller/coupons/{param} [callMarketplaceApi]",
       "method": "PUT",
       "path": "/api/v2/marketplace/seller/coupons/{param}",
@@ -13486,11 +14657,46 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
+      "id": "POST /api/v2/marketplace/seller/pickup-scan [callMarketplaceApi]",
+      "method": "POST",
+      "path": "/api/v2/marketplace/seller/pickup-scan",
+      "apiHelper": "callMarketplaceApi",
+      "source": "src/routes/marketplace-actions.js:1000",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "JSON caller payload; validate against Laravel operation",
+      "responseShape": "JSON/text response via ApiError-aware request",
+      "statusCodes": [],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/marketplace-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "missing-openapi-match",
+        "path": "",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": []
+      },
+      "frontendConsumers": [
+        "src/routes/marketplace-actions.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/marketplace-payment-contract.test.js",
+        "tests/marketplace-status-localization.test.js",
+        "tests/marketplace-title-localization.test.js",
+        "tests/runtime/marketplace-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
       "id": "GET /api/v2/marketplace/seller/pickup-slots [callMarketplaceApi]",
       "method": "GET",
       "path": "/api/v2/marketplace/seller/pickup-slots",
       "apiHelper": "callMarketplaceApi",
-      "source": "src/routes/marketplace.js:944",
+      "source": "src/routes/marketplace.js:1678",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
       "requestShape": "query/path parameters; no request body expected",
@@ -13521,11 +14727,151 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
+      "id": "POST /api/v2/marketplace/seller/pickup-slots [callMarketplaceApi]",
+      "method": "POST",
+      "path": "/api/v2/marketplace/seller/pickup-slots",
+      "apiHelper": "callMarketplaceApi",
+      "source": "src/routes/marketplace-actions.js:983",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "JSON caller payload; validate against Laravel operation",
+      "responseShape": "JSON/text response via ApiError-aware request",
+      "statusCodes": [],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/marketplace-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "missing-openapi-match",
+        "path": "",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": []
+      },
+      "frontendConsumers": [
+        "src/routes/marketplace-actions.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/marketplace-payment-contract.test.js",
+        "tests/marketplace-status-localization.test.js",
+        "tests/marketplace-title-localization.test.js",
+        "tests/runtime/marketplace-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "DELETE /api/v2/marketplace/seller/pickup-slots/{param} [callMarketplaceApi]",
+      "method": "DELETE",
+      "path": "/api/v2/marketplace/seller/pickup-slots/{param}",
+      "apiHelper": "callMarketplaceApi",
+      "source": "src/routes/marketplace-actions.js:1026",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "JSON caller payload; validate against Laravel operation",
+      "responseShape": "JSON/text response via ApiError-aware request",
+      "statusCodes": [],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/marketplace-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "missing-openapi-match",
+        "path": "",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": []
+      },
+      "frontendConsumers": [
+        "src/routes/marketplace-actions.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/marketplace-payment-contract.test.js",
+        "tests/marketplace-status-localization.test.js",
+        "tests/marketplace-title-localization.test.js",
+        "tests/runtime/marketplace-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "PUT /api/v2/marketplace/seller/pickup-slots/{param} [callMarketplaceApi]",
+      "method": "PUT",
+      "path": "/api/v2/marketplace/seller/pickup-slots/{param}",
+      "apiHelper": "callMarketplaceApi",
+      "source": "src/routes/marketplace-actions.js:1013",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "JSON caller payload; validate against Laravel operation",
+      "responseShape": "JSON/text response via ApiError-aware request",
+      "statusCodes": [],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/marketplace-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "missing-openapi-match",
+        "path": "",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": []
+      },
+      "frontendConsumers": [
+        "src/routes/marketplace-actions.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/marketplace-payment-contract.test.js",
+        "tests/marketplace-status-localization.test.js",
+        "tests/marketplace-title-localization.test.js",
+        "tests/runtime/marketplace-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
       "id": "GET /api/v2/marketplace/sellers/{param} [callMarketplaceApi]",
       "method": "GET",
       "path": "/api/v2/marketplace/sellers/{param}",
       "apiHelper": "callMarketplaceApi",
       "source": "src/routes/marketplace.js:1499",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "query/path parameters; no request body expected",
+      "responseShape": "JSON/text response via ApiError-aware request",
+      "statusCodes": [],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/marketplace.js",
+      "sideEffects": "read-only by HTTP method",
+      "cleanup": "not applicable",
+      "laravel": {
+        "status": "missing-openapi-match",
+        "path": "",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": []
+      },
+      "frontendConsumers": [
+        "src/routes/marketplace.js"
+      ],
+      "tests": [
+        "tests/api.test.js",
+        "tests/marketplace-payment-contract.test.js",
+        "tests/marketplace-status-localization.test.js",
+        "tests/marketplace-title-localization.test.js",
+        "tests/runtime/marketplace-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "GET /api/v2/marketplace/sellers/{param}/listings?per_page=50 [callMarketplaceApi]",
+      "method": "GET",
+      "path": "/api/v2/marketplace/sellers/{param}/listings?per_page=50",
+      "apiHelper": "callMarketplaceApi",
+      "source": "src/routes/marketplace.js:1500",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
       "requestShape": "query/path parameters; no request body expected",
@@ -14546,41 +15892,6 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "GET /api/v2/messages/{param} [callMessageApi]",
-      "method": "GET",
-      "path": "/api/v2/messages/{param}",
-      "apiHelper": "callMessageApi",
-      "source": "src/routes/messages.js:455",
-      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
-      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
-      "requestShape": "path:id",
-      "responseShape": "successful Laravel response envelope",
-      "statusCodes": [
-        "200"
-      ],
-      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
-      "redirects": "consumer-controlled: src/routes/messages.js",
-      "sideEffects": "read-only by HTTP method",
-      "cleanup": "not applicable",
-      "laravel": {
-        "status": "matched-openapi",
-        "path": "/api/v2/messages/{id}",
-        "operationId": "",
-        "controllerAction": "",
-        "tags": [
-          "Messages"
-        ]
-      },
-      "frontendConsumers": [
-        "src/routes/messages.js"
-      ],
-      "tests": [
-        "tests/api.test.js",
-        "tests/shared-accessible-shell.test.js"
-      ],
-      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
-    },
-    {
       "id": "PUT /api/v2/messages/{param} [callMessageApi]",
       "method": "PUT",
       "path": "/api/v2/messages/{param}",
@@ -14756,7 +16067,7 @@
       "method": "GET",
       "path": "/api/v2/messages/restriction-status",
       "apiHelper": "callMessageApi",
-      "source": "src/routes/messages.js:173",
+      "source": "src/routes/messages.js:814",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
       "requestShape": "query/path parameters; no request body expected",
@@ -15822,45 +17133,6 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
-      "id": "PUT /api/v2/podcasts/{param}/episodes/{param} [callPodcastApi]",
-      "method": "PUT",
-      "path": "/api/v2/podcasts/{param}/episodes/{param}",
-      "apiHelper": "callPodcastApi",
-      "source": "src/routes/podcast-actions.js:255",
-      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
-      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
-      "requestShape": "JSON caller payload; validate against Laravel operation",
-      "responseShape": "200 application/json schema:PodcastEpisodeResponse",
-      "statusCodes": [
-        "200",
-        "404",
-        "422"
-      ],
-      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
-      "redirects": "consumer-controlled: src/routes/podcast-actions.js",
-      "sideEffects": "state-changing; disposable-environment runtime proof required",
-      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
-      "laravel": {
-        "status": "matched-openapi",
-        "path": "/api/v2/podcasts/{showId}/episodes/{episodeId}",
-        "operationId": "",
-        "controllerAction": "",
-        "tags": [
-          "Podcast Studio"
-        ]
-      },
-      "frontendConsumers": [
-        "src/routes/podcast-actions.js"
-      ],
-      "tests": [
-        "tests/api.test.js",
-        "tests/runtime/groups-mutation.spec.js",
-        "tests/runtime/podcasts-mutation.spec.js",
-        "tests/shared-accessible-shell.test.js"
-      ],
-      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
-    },
-    {
       "id": "POST /api/v2/podcasts/{param}/episodes/{param}/cover [uploadPodcastEpisodeCover]",
       "method": "POST",
       "path": "/api/v2/podcasts/{param}/episodes/{param}/cover",
@@ -16018,7 +17290,7 @@
       "method": "GET",
       "path": "/api/v2/podcasts/mine",
       "apiHelper": "callPodcastApi",
-      "source": "src/routes/podcast-actions.js:187",
+      "source": "src/routes/podcast-actions.js:345",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
       "requestShape": "undefined:undefined",
@@ -19441,7 +20713,7 @@
       "method": "DYNAMIC",
       "path": "/api/v2/volunteering/{param}",
       "apiHelper": "callVolunteeringApi",
-      "source": "src/routes/volunteering-actions.js:311",
+      "source": "src/routes/volunteering-actions.js:2576",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
       "requestShape": "JSON caller payload; validate against Laravel operation",
@@ -19539,6 +20811,40 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
+      "id": "PUT /api/v2/volunteering/accessibility-needs [callVolunteeringApi]",
+      "method": "PUT",
+      "path": "/api/v2/volunteering/accessibility-needs",
+      "apiHelper": "callVolunteeringApi",
+      "source": "src/routes/volunteering-actions.js:2668",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "JSON caller payload; validate against Laravel operation",
+      "responseShape": "JSON/text response via ApiError-aware request",
+      "statusCodes": [],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/volunteering-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "missing-openapi-match",
+        "path": "",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": []
+      },
+      "frontendConsumers": [
+        "src/routes/volunteering-actions.js"
+      ],
+      "tests": [
+        "tests/api-locale-context.test.js",
+        "tests/api.test.js",
+        "tests/runtime/volunteering-accessibility-mutation.spec.js",
+        "tests/runtime/volunteering-credentials-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
       "id": "GET /api/v2/volunteering/applications?status=approved&per_page=50 [callVolunteeringApi]",
       "method": "GET",
       "path": "/api/v2/volunteering/applications?status=approved&per_page=50",
@@ -19567,6 +20873,44 @@
       "frontendConsumers": [
         "src/routes/volunteering-actions.js",
         "src/server.js"
+      ],
+      "tests": [
+        "tests/api-locale-context.test.js",
+        "tests/api.test.js",
+        "tests/runtime/volunteering-accessibility-mutation.spec.js",
+        "tests/runtime/volunteering-credentials-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "DELETE /api/v2/volunteering/applications/{param} [callVolunteeringApi]",
+      "method": "DELETE",
+      "path": "/api/v2/volunteering/applications/{param}",
+      "apiHelper": "callVolunteeringApi",
+      "source": "src/routes/volunteering-actions.js:2620",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "path:id",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/volunteering-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/volunteering/applications/{id}",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Volunteering"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/volunteering-actions.js"
       ],
       "tests": [
         "tests/api-locale-context.test.js",
@@ -19632,6 +20976,45 @@
       "redirects": "consumer-controlled: src/routes/volunteering-actions.js",
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/volunteering/certificates",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Volunteering"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/volunteering-actions.js"
+      ],
+      "tests": [
+        "tests/api-locale-context.test.js",
+        "tests/api.test.js",
+        "tests/laravel-runtime-smoke.test.js",
+        "tests/runtime/volunteering-accessibility-mutation.spec.js",
+        "tests/runtime/volunteering-credentials-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "POST /api/v2/volunteering/certificates [callVolunteeringApi]",
+      "method": "POST",
+      "path": "/api/v2/volunteering/certificates",
+      "apiHelper": "callVolunteeringApi",
+      "source": "src/routes/volunteering-actions.js:2679",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "JSON caller payload; validate against Laravel operation",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/volunteering-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
         "status": "matched-openapi",
         "path": "/api/v2/volunteering/certificates",
@@ -19803,6 +21186,45 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
+      "id": "DELETE /api/v2/volunteering/credentials/{param} [callVolunteeringApi]",
+      "method": "DELETE",
+      "path": "/api/v2/volunteering/credentials/{param}",
+      "apiHelper": "callVolunteeringApi",
+      "source": "src/routes/volunteering-actions.js:2829",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "path:id",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/volunteering-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/volunteering/credentials/{id}",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Volunteering"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/volunteering-actions.js"
+      ],
+      "tests": [
+        "tests/api-locale-context.test.js",
+        "tests/api.test.js",
+        "tests/laravel-runtime-smoke.test.js",
+        "tests/runtime/volunteering-accessibility-mutation.spec.js",
+        "tests/runtime/volunteering-credentials-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
       "id": "GET /api/v2/volunteering/credentials/{param}/download [downloadVolunteerCredential]",
       "method": "GET",
       "path": "/api/v2/volunteering/credentials/{param}/download",
@@ -19830,6 +21252,42 @@
       "tests": [
         "tests/api.test.js",
         "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "POST /api/v2/volunteering/donations [callVolunteeringApi]",
+      "method": "POST",
+      "path": "/api/v2/volunteering/donations",
+      "apiHelper": "callVolunteeringApi",
+      "source": "src/routes/volunteering-actions.js:2880",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "JSON caller payload; validate against Laravel operation",
+      "responseShape": "JSON/text response via ApiError-aware request",
+      "statusCodes": [],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/volunteering-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "missing-openapi-match",
+        "path": "",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": []
+      },
+      "frontendConsumers": [
+        "src/routes/volunteering-actions.js"
+      ],
+      "tests": [
+        "tests/api-locale-context.test.js",
+        "tests/api.test.js",
+        "tests/laravel-runtime-smoke.test.js",
+        "tests/runtime/volunteering-accessibility-mutation.spec.js",
+        "tests/runtime/volunteering-credentials-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js",
+        "tests/template-source.test.js"
       ],
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
@@ -19894,6 +21352,41 @@
         "tags": [
           "Volunteering"
         ]
+      },
+      "frontendConsumers": [
+        "src/routes/volunteering-actions.js"
+      ],
+      "tests": [
+        "tests/api-locale-context.test.js",
+        "tests/api.test.js",
+        "tests/laravel-runtime-smoke.test.js",
+        "tests/runtime/volunteering-accessibility-mutation.spec.js",
+        "tests/runtime/volunteering-credentials-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "POST /api/v2/volunteering/expenses [callVolunteeringApi]",
+      "method": "POST",
+      "path": "/api/v2/volunteering/expenses",
+      "apiHelper": "callVolunteeringApi",
+      "source": "src/routes/volunteering-actions.js:2958",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "JSON caller payload; validate against Laravel operation",
+      "responseShape": "JSON/text response via ApiError-aware request",
+      "statusCodes": [],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/volunteering-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "missing-openapi-match",
+        "path": "",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": []
       },
       "frontendConsumers": [
         "src/routes/volunteering-actions.js"
@@ -20016,6 +21509,44 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
+      "id": "DELETE /api/v2/volunteering/group-reservations/{param} [callVolunteeringApi]",
+      "method": "DELETE",
+      "path": "/api/v2/volunteering/group-reservations/{param}",
+      "apiHelper": "callVolunteeringApi",
+      "source": "src/routes/volunteering-actions.js:2932",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "path:id",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/volunteering-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/volunteering/group-reservations/{id}",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Volunteering"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/volunteering-actions.js"
+      ],
+      "tests": [
+        "tests/api-locale-context.test.js",
+        "tests/api.test.js",
+        "tests/runtime/volunteering-accessibility-mutation.spec.js",
+        "tests/runtime/volunteering-credentials-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
       "id": "POST /api/v2/volunteering/group-reservations/{param}/members [callVolunteeringApi]",
       "method": "POST",
       "path": "/api/v2/volunteering/group-reservations/{param}/members",
@@ -20047,6 +21578,83 @@
       "tests": [
         "tests/api-locale-context.test.js",
         "tests/api.test.js",
+        "tests/runtime/volunteering-accessibility-mutation.spec.js",
+        "tests/runtime/volunteering-credentials-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "DELETE /api/v2/volunteering/group-reservations/{param}/members/{param} [callVolunteeringApi]",
+      "method": "DELETE",
+      "path": "/api/v2/volunteering/group-reservations/{param}/members/{param}",
+      "apiHelper": "callVolunteeringApi",
+      "source": "src/routes/volunteering-actions.js:2919",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "path:id; path:userId",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/volunteering-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/volunteering/group-reservations/{id}/members/{userId}",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Volunteering"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/volunteering-actions.js"
+      ],
+      "tests": [
+        "tests/api-locale-context.test.js",
+        "tests/api.test.js",
+        "tests/runtime/volunteering-accessibility-mutation.spec.js",
+        "tests/runtime/volunteering-credentials-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "POST /api/v2/volunteering/hours [callVolunteeringApi]",
+      "method": "POST",
+      "path": "/api/v2/volunteering/hours",
+      "apiHelper": "callVolunteeringApi",
+      "source": "src/routes/volunteering-actions.js:2640",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "JSON caller payload; validate against Laravel operation",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/volunteering-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/volunteering/hours",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Volunteering"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/volunteering-actions.js"
+      ],
+      "tests": [
+        "tests/api-locale-context.test.js",
+        "tests/api.test.js",
+        "tests/laravel-runtime-smoke.test.js",
         "tests/runtime/volunteering-accessibility-mutation.spec.js",
         "tests/runtime/volunteering-credentials-mutation.spec.js",
         "tests/shared-accessible-shell.test.js"
@@ -20086,6 +21694,44 @@
         "tests/api-locale-context.test.js",
         "tests/api.test.js",
         "tests/laravel-runtime-smoke.test.js",
+        "tests/runtime/volunteering-accessibility-mutation.spec.js",
+        "tests/runtime/volunteering-credentials-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "PUT /api/v2/volunteering/hours/{param}/verify [callVolunteeringApi]",
+      "method": "PUT",
+      "path": "/api/v2/volunteering/hours/{param}/verify",
+      "apiHelper": "callVolunteeringApi",
+      "source": "src/routes/volunteering-actions.js:3073",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "path:id",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/volunteering-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/volunteering/hours/{id}/verify",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Volunteering"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/volunteering-actions.js"
+      ],
+      "tests": [
+        "tests/api-locale-context.test.js",
+        "tests/api.test.js",
         "tests/runtime/volunteering-accessibility-mutation.spec.js",
         "tests/runtime/volunteering-credentials-mutation.spec.js",
         "tests/shared-accessible-shell.test.js"
@@ -20146,6 +21792,41 @@
       "redirects": "consumer-controlled: src/routes/volunteering-actions.js",
       "sideEffects": "read-only by HTTP method",
       "cleanup": "not applicable",
+      "laravel": {
+        "status": "missing-openapi-match",
+        "path": "",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": []
+      },
+      "frontendConsumers": [
+        "src/routes/volunteering-actions.js"
+      ],
+      "tests": [
+        "tests/api-locale-context.test.js",
+        "tests/api.test.js",
+        "tests/laravel-runtime-smoke.test.js",
+        "tests/runtime/volunteering-accessibility-mutation.spec.js",
+        "tests/runtime/volunteering-credentials-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "POST /api/v2/volunteering/incidents [callVolunteeringApi]",
+      "method": "POST",
+      "path": "/api/v2/volunteering/incidents",
+      "apiHelper": "callVolunteeringApi",
+      "source": "src/routes/volunteering-actions.js:3019",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "JSON caller payload; validate against Laravel operation",
+      "responseShape": "JSON/text response via ApiError-aware request",
+      "statusCodes": [],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/volunteering-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
       "laravel": {
         "status": "missing-openapi-match",
         "path": "",
@@ -20546,6 +22227,42 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
+      "id": "PUT /api/v2/volunteering/organisations/{param} [callVolunteeringApi]",
+      "method": "PUT",
+      "path": "/api/v2/volunteering/organisations/{param}",
+      "apiHelper": "callVolunteeringApi",
+      "source": "src/routes/volunteering-actions.js:3095",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "JSON caller payload; validate against Laravel operation",
+      "responseShape": "JSON/text response via ApiError-aware request",
+      "statusCodes": [],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/volunteering-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "missing-openapi-match",
+        "path": "",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": []
+      },
+      "frontendConsumers": [
+        "src/routes/volunteering-actions.js"
+      ],
+      "tests": [
+        "tests/accessibility/public-pages.spec.js",
+        "tests/api-locale-context.test.js",
+        "tests/api.test.js",
+        "tests/laravel-runtime-smoke.test.js",
+        "tests/runtime/volunteering-accessibility-mutation.spec.js",
+        "tests/runtime/volunteering-credentials-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
       "id": "GET /api/v2/volunteering/organisations/{param}?include=public_contract [getVolunteerOrganisation]",
       "method": "GET",
       "path": "/api/v2/volunteering/organisations/{param}?include=public_contract",
@@ -20753,6 +22470,40 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
+      "id": "POST /api/v2/volunteering/organisations/{param}/wallet/deposit [callVolunteeringApi]",
+      "method": "POST",
+      "path": "/api/v2/volunteering/organisations/{param}/wallet/deposit",
+      "apiHelper": "callVolunteeringApi",
+      "source": "src/routes/volunteering-actions.js:3118",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "JSON caller payload; validate against Laravel operation",
+      "responseShape": "JSON/text response via ApiError-aware request",
+      "statusCodes": [],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/volunteering-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "missing-openapi-match",
+        "path": "",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": []
+      },
+      "frontendConsumers": [
+        "src/routes/volunteering-actions.js"
+      ],
+      "tests": [
+        "tests/api-locale-context.test.js",
+        "tests/api.test.js",
+        "tests/runtime/volunteering-accessibility-mutation.spec.js",
+        "tests/runtime/volunteering-credentials-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
       "id": "GET /api/v2/volunteering/organisations/{param}/wallet/transactions?per_page=20 [callVolunteeringApi]",
       "method": "GET",
       "path": "/api/v2/volunteering/organisations/{param}/wallet/transactions?per_page=20",
@@ -20897,6 +22648,44 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
+      "id": "DELETE /api/v2/volunteering/shifts/{param}/waitlist [callVolunteeringApi]",
+      "method": "DELETE",
+      "path": "/api/v2/volunteering/shifts/{param}/waitlist",
+      "apiHelper": "callVolunteeringApi",
+      "source": "src/routes/volunteering-actions.js:2691",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "path:id",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/volunteering-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/volunteering/shifts/{id}/waitlist",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Volunteering"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/volunteering-actions.js"
+      ],
+      "tests": [
+        "tests/api-locale-context.test.js",
+        "tests/api.test.js",
+        "tests/runtime/volunteering-accessibility-mutation.spec.js",
+        "tests/runtime/volunteering-credentials-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
       "id": "GET /api/v2/volunteering/swaps [callVolunteeringApi]",
       "method": "GET",
       "path": "/api/v2/volunteering/swaps",
@@ -20955,6 +22744,45 @@
       "laravel": {
         "status": "matched-openapi",
         "path": "/api/v2/volunteering/swaps",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Volunteering"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/volunteering-actions.js"
+      ],
+      "tests": [
+        "tests/api-locale-context.test.js",
+        "tests/api.test.js",
+        "tests/laravel-runtime-smoke.test.js",
+        "tests/runtime/volunteering-accessibility-mutation.spec.js",
+        "tests/runtime/volunteering-credentials-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "DELETE /api/v2/volunteering/swaps/{param} [callVolunteeringApi]",
+      "method": "DELETE",
+      "path": "/api/v2/volunteering/swaps/{param}",
+      "apiHelper": "callVolunteeringApi",
+      "source": "src/routes/volunteering-actions.js:2758",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "path:id",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/volunteering-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/volunteering/swaps/{id}",
         "operationId": "",
         "controllerAction": "",
         "tags": [
@@ -21049,6 +22877,41 @@
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
+      "id": "POST /api/v2/volunteering/training [callVolunteeringApi]",
+      "method": "POST",
+      "path": "/api/v2/volunteering/training",
+      "apiHelper": "callVolunteeringApi",
+      "source": "src/routes/volunteering-actions.js:2991",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "JSON caller payload; validate against Laravel operation",
+      "responseShape": "JSON/text response via ApiError-aware request",
+      "statusCodes": [],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/volunteering-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "missing-openapi-match",
+        "path": "",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": []
+      },
+      "frontendConsumers": [
+        "src/routes/volunteering-actions.js"
+      ],
+      "tests": [
+        "tests/api-locale-context.test.js",
+        "tests/api.test.js",
+        "tests/laravel-runtime-smoke.test.js",
+        "tests/runtime/volunteering-accessibility-mutation.spec.js",
+        "tests/runtime/volunteering-credentials-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
       "id": "GET /api/v2/volunteering/wellbeing [callVolunteeringApi]",
       "method": "GET",
       "path": "/api/v2/volunteering/wellbeing",
@@ -21081,6 +22944,44 @@
         "tests/api-locale-context.test.js",
         "tests/api.test.js",
         "tests/laravel-runtime-smoke.test.js",
+        "tests/runtime/volunteering-accessibility-mutation.spec.js",
+        "tests/runtime/volunteering-credentials-mutation.spec.js",
+        "tests/shared-accessible-shell.test.js"
+      ],
+      "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
+    },
+    {
+      "id": "POST /api/v2/volunteering/wellbeing/checkin [callVolunteeringApi]",
+      "method": "POST",
+      "path": "/api/v2/volunteering/wellbeing/checkin",
+      "apiHelper": "callVolunteeringApi",
+      "source": "src/routes/volunteering-actions.js:2846",
+      "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
+      "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
+      "requestShape": "JSON caller payload; validate against Laravel operation",
+      "responseShape": "successful Laravel response envelope",
+      "statusCodes": [
+        "200"
+      ],
+      "errorEnvelope": "non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)",
+      "redirects": "consumer-controlled: src/routes/volunteering-actions.js",
+      "sideEffects": "state-changing; disposable-environment runtime proof required",
+      "cleanup": "fixture-specific cleanup and final absence/equality proof required",
+      "laravel": {
+        "status": "matched-openapi",
+        "path": "/api/v2/volunteering/wellbeing/checkin",
+        "operationId": "",
+        "controllerAction": "",
+        "tags": [
+          "Volunteering"
+        ]
+      },
+      "frontendConsumers": [
+        "src/routes/volunteering-actions.js"
+      ],
+      "tests": [
+        "tests/api-locale-context.test.js",
+        "tests/api.test.js",
         "tests/runtime/volunteering-accessibility-mutation.spec.js",
         "tests/runtime/volunteering-credentials-mutation.spec.js",
         "tests/shared-accessible-shell.test.js"
@@ -21489,7 +23390,7 @@
       "method": "POST",
       "path": "/api/webauthn/security-confirm",
       "apiHelper": "callWebAuthnApi",
-      "source": "src/routes/profile.js:449",
+      "source": "src/routes/profile.js:1366",
       "tenantAuthority": "request-scoped tenant header unless bearer, explicit tenant, Host, or Origin already supplies authority",
       "authAndRole": "bearer required by helper/OpenAPI; Laravel policy and consumer route guard remain authoritative",
       "requestShape": "JSON caller payload; validate against Laravel operation",

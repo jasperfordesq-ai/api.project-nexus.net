@@ -329,6 +329,17 @@ function collectWrapperContracts(parsedConsumers) {
     walk(consumer.ast, (node) => {
       if (node.type === 'CallExpression' && node.callee.type === 'Identifier') calledNames.add(node.callee.name);
     });
+
+    function aliasArgument(alias, wrapperIndex, callNode) {
+      if (wrapperIndex === null) return null;
+      const wrapperArgument = alias.argumentNodes[wrapperIndex];
+      if (wrapperArgument?.type !== 'Identifier') return wrapperArgument;
+      const parameterIndex = alias.functionNode.params.findIndex(
+        (parameter) => parameter.type === 'Identifier' && parameter.name === wrapperArgument.name
+      );
+      return parameterIndex === -1 ? wrapperArgument : callNode.arguments[parameterIndex];
+    }
+
     for (const [functionName, functionNode] of functions) {
       if (!calledNames.has(functionName)) continue;
       let wrapperCall = null;
@@ -340,19 +351,30 @@ function collectWrapperContracts(parsedConsumers) {
         aliases.set(functionName, {
           functionNode,
           wrapperName: wrapperCall.callee.name,
-          wrapperCall
+          argumentNodes: wrapperCall.arguments
         });
       }
     }
 
-    function aliasArgument(alias, wrapperIndex, callNode) {
-      if (wrapperIndex === null) return null;
-      const wrapperArgument = alias.wrapperCall.arguments[wrapperIndex];
-      if (wrapperArgument?.type !== 'Identifier') return wrapperArgument;
-      const parameterIndex = alias.functionNode.params.findIndex(
-        (parameter) => parameter.type === 'Identifier' && parameter.name === wrapperArgument.name
-      );
-      return parameterIndex === -1 ? wrapperArgument : callNode.arguments[parameterIndex];
+    let aliasAdded = true;
+    while (aliasAdded) {
+      aliasAdded = false;
+      for (const [functionName, functionNode] of functions) {
+        if (!calledNames.has(functionName) || aliases.has(functionName)) continue;
+        let aliasCall = null;
+        walk(functionNode.body, (node) => {
+          if (aliasCall || node.type !== 'CallExpression' || node.callee.type !== 'Identifier') return;
+          if (aliases.has(node.callee.name)) aliasCall = node;
+        });
+        if (!aliasCall) continue;
+        const innerAlias = aliases.get(aliasCall.callee.name);
+        aliases.set(functionName, {
+          functionNode,
+          wrapperName: innerAlias.wrapperName,
+          argumentNodes: [0, 1, 2, 3].map((index) => aliasArgument(innerAlias, index, aliasCall))
+        });
+        aliasAdded = true;
+      }
     }
 
     walk(consumer.ast, (node) => {
@@ -362,14 +384,12 @@ function collectWrapperContracts(parsedConsumers) {
       const config = WRAPPERS[wrapperName];
       if (!config) return;
       if (!alias && !consumer.imported.has(node.callee.name)) return;
-      if (!alias) {
-        const enclosingAlias = [...aliases.values()].find((candidate) => (
-          node.range[0] >= candidate.functionNode.body.range[0]
-          && node.range[1] <= candidate.functionNode.body.range[1]
-          && candidate.wrapperName === node.callee.name
-        ));
-        if (enclosingAlias) return;
-      }
+      const enclosingAlias = [...aliases.values()].find((candidate) => (
+        candidate.functionNode !== alias?.functionNode
+        && node.range[0] >= candidate.functionNode.body.range[0]
+        && node.range[1] <= candidate.functionNode.body.range[1]
+      ));
+      if (enclosingAlias) return;
       const argumentAt = (index) => alias ? aliasArgument(alias, index, node) : node.arguments[index];
       const methodValue = config.methodIndex === null
         ? config.defaultMethod

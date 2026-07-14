@@ -56,11 +56,14 @@ async function eventApi(token, method, path, data = undefined) {
     ? callEventApi(token, method, path)
     : callEventApi(token, method, path, data);
 }
+async function runEventAction(token, method, path, data = undefined) {
+  return eventApi(token, method, path, data);
+}
 async function publish(token, id) {
-  return eventApi(token, 'POST', \`/\${id}/publish\`, { confirmation: 'publish' });
+  return runEventAction(token, 'POST', \`/\${id}/publish\`, { confirmation: 'publish' });
 }
 async function create(token) {
-  return eventApi(token, 'POST', '', { title: 'Test event' });
+  return runEventAction(token, 'POST', '', { title: 'Test event' });
 }
 module.exports = { show, publish, create };
 `);
