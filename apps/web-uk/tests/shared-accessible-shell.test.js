@@ -23241,6 +23241,35 @@ describe('shared accessible frontend shell', () => {
     expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/registration-product/settings/publish', { expected_revision: 4 }, { headers: { 'Idempotency-Key': 'settings-publish-123' } });
   });
 
+  it('renders every governed Laravel Event Registration form editor field', async () => {
+    const api = require('../src/lib/api');
+    api.callEventApi
+      .mockResolvedValueOnce({ data: { registrations: [], invitations: [], guests: [], settings: {} } })
+      .mockResolvedValueOnce({ data: { settings: { revision: 3 }, forms: [{
+        id: 8, name: 'Access needs', description: 'Planning questions', status: 'draft', revision: 2,
+        questions: [{
+          stable_key: 'access_needs', question_type: 'multiple_choice', data_classification: 'sensitive',
+          prompt: 'What support is needed?', help_text: 'Choose every option that applies.', purpose: 'Plan reasonable adjustments',
+          retention_days: 365, is_required: true, choice_options: ['Step-free access', 'Quiet space'],
+          validation_rules: { min_length: 1, max_length: 2 }, displayed_text: 'Consent wording', displayed_text_version: '2026-07',
+          visibility_rules: { match: 'all', conditions: [{ question_key: 'attendance', operator: 'contains', value: 'in-person' }] }
+        }]
+      }] } });
+    const response = await request(app).get('/events/42/registration/forms/8').set('Cookie', signedCookieHeader());
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('class="govuk-inset-text"');
+    expect(response.text).toContain('id="question-0-classification" name="questions[0][data_classification]"');
+    expect(response.text).toContain('<option value="sensitive" selected>');
+    expect(response.text).toContain('id="question-0-help" name="questions[0][help_text]" rows="2">Choose every option that applies.</textarea>');
+    expect(response.text).toContain('id="question-0-required" name="questions[0][is_required]" type="checkbox" value="1" checked');
+    expect(response.text).toContain('id="question-0-min" name="questions[0][min_length]" type="number" min="0" value="1"');
+    expect(response.text).toContain('id="question-0-displayed-version" name="questions[0][displayed_text_version]" type="text" value="2026-07"');
+    expect(response.text).toContain('id="question-0-condition-key" name="questions[0][condition_key]" type="text" value="attendance"');
+    expect(response.text).toContain('<option value="contains" selected>');
+    expect(response.text).toContain('class="govuk-link govuk-!-margin-left-3" href="/events/42/registration"');
+    expect(api.callEventApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/42/registration-product/manage');
+  });
+
   it('creates a Laravel Event Registration form with normalized governed questions', async () => {
     const api = require('../src/lib/api'); const agent = request.agent(app); const shell = await agent.get('/contact').set('Cookie', signedCookieHeader()); const csrf = shell.text.match(/name="_csrf" value="([^"]+)"/)[1];
     api.callEventApi.mockResolvedValueOnce({ data: { changed: true } });
