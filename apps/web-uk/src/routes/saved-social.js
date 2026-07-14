@@ -188,6 +188,15 @@ function normalizeAppreciation(item) {
 }
 
 function appreciationStatus(error) {
+  const errors = Array.isArray(error?.data?.errors) ? error.data.errors : [];
+  const firstError = errors.find((item) => item && typeof item === 'object') || {};
+  const code = trimmed(
+    firstError.code || error?.data?.code || error?.data?.error_code || error?.data?.error
+  ).toUpperCase();
+
+  if (code === 'SAFEGUARDING_POLICY_UNAVAILABLE') return 'appreciation-safeguarding-unavailable';
+  if (code === 'SAFEGUARDING_CONTACT_RESTRICTED') return 'appreciation-safeguarding-restricted';
+
   const message = String(error?.message || '');
   if (/cannot_thank_self/i.test(message)) return 'appreciation-self';
   if (/message_too_long/i.test(message)) return 'appreciation-too-long';

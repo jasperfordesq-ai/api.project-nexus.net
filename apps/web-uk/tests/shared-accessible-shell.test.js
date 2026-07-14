@@ -15371,6 +15371,60 @@ describe('shared accessible frontend shell', () => {
     });
   });
 
+  it('preserves Laravel appreciation safeguarding failures in redirects and accessible errors', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/account')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    api.sendAppreciation.mockRejectedValueOnce(new api.ApiError('Contact restricted', 403, {
+      errors: [{ code: 'SAFEGUARDING_CONTACT_RESTRICTED', message: 'Contact restricted' }]
+    }));
+    const restricted = await agent
+      .post('/users/77/appreciations')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], message: 'Thank you for helping' });
+
+    api.sendAppreciation.mockRejectedValueOnce(new api.ApiError('Policy unavailable', 503, {
+      errors: [{ code: 'SAFEGUARDING_POLICY_UNAVAILABLE', message: 'Policy unavailable' }]
+    }));
+    const unavailable = await agent
+      .post('/users/77/appreciations')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1], message: 'Thank you for helping' });
+
+    expect(restricted.headers.location).toBe('/users/77/appreciations?status=appreciation-safeguarding-restricted');
+    expect(unavailable.headers.location).toBe('/users/77/appreciations?status=appreciation-safeguarding-unavailable');
+
+    api.getProfile.mockResolvedValue({ data: { id: 101, name: 'Avery Stone' } });
+    api.getUserV2.mockResolvedValue({ data: { id: 77, name: 'Morgan Lee' } });
+    api.getUserAppreciations.mockResolvedValue({
+      data: [],
+      meta: { current_page: 1, last_page: 1, total: 0, per_page: 20 }
+    });
+
+    const restrictedPage = await agent
+      .get(restricted.headers.location)
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const unavailablePage = await agent
+      .get(unavailable.headers.location)
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(restrictedPage.status).toBe(200);
+    expect(restrictedPage.text).toContain('govuk-error-summary');
+    expect(restrictedPage.text).toContain('The recipient’s community safeguarding policy does not allow this direct interaction. Ask a coordinator for help.');
+    expect(unavailablePage.status).toBe(200);
+    expect(unavailablePage.text).toContain('govuk-error-summary');
+    expect(unavailablePage.text).toContain('We cannot confirm the community safeguarding policy right now. No message has been sent. Please try again shortly.');
+  });
+
   it('keeps Laravel saved appreciation redirects inside the shared tenant mount', async () => {
     const api = require('../src/lib/api');
     const cookieSignature = require('cookie-signature');
