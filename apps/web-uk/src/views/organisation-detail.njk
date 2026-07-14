@@ -6,7 +6,7 @@
 {% extends "layouts/base.njk" %}
 
 {% set organisationName = organisation.name or t("govuk_alpha.organisations.title") %}
-{% set organisationDescription = organisation.description or organisation.excerpt or "" %}
+{% set organisationDescription = organisation.description or "" %}
 {% set opportunities = orgOpportunities or [] %}
 {% set reviews = orgReviews or [] %}
 

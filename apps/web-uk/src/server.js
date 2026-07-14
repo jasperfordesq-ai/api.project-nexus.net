@@ -1564,7 +1564,7 @@ app.get('/organisations/:id(\\d+)', requireOrganisationAuth, (req, res) => {
           return {
             ...review,
             authorName: String(author.name || '').trim() || res.locals.t('govuk_alpha.feed.unknown_author'),
-            authorAvatar: author.avatar || '',
+            authorAvatar: resolveBackendAssetUrl(author.avatar || author.avatar_url),
             rating: Number.isFinite(rating) ? Math.max(0, Math.min(5, Math.trunc(rating))) : 0
           };
         }),

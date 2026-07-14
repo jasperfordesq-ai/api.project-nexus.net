@@ -16646,7 +16646,7 @@ describe('shared accessible frontend shell', () => {
             id: 12,
             rating: 5,
             comment: 'Helpful and welcoming.',
-            author: { name: 'Aisha Khan' }
+            author: { name: 'Aisha Khan', avatar: '/storage/reviews/aisha.png' }
           }
         ]
       }
@@ -16686,10 +16686,33 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('href="/organisations/opportunities/77/apply"');
     expect(response.text).toContain('Apply to volunteer');
     expect(response.text).toContain('Aisha Khan');
+    expect(response.text).toContain('src="http://127.0.0.1:8088/storage/reviews/aisha.png"');
     expect(response.text).toContain('Rated 5 out of 5');
     expect(response.text).toContain('Helpful and welcoming.');
     expect(response.text).not.toContain('There are no current volunteering opportunities at this organisation.');
     expect(response.text).not.toContain('This organisation has no reviews yet.');
+  });
+
+  it('does not invent an organisation lead from the API excerpt when Blade has no description', async () => {
+    const api = require('../src/lib/api');
+    api.getVolunteerOrganisation.mockResolvedValueOnce({
+      data: {
+        id: 42,
+        name: 'Community Club',
+        excerpt: 'API-only summary that Blade does not render as the organisation lead.'
+      }
+    });
+    api.getOrganisationOpportunities.mockResolvedValueOnce({ data: [] });
+    api.getOrganisationReviews.mockResolvedValueOnce({ data: { reviews: [] } });
+
+    const response = await request(app)
+      .get('/organisations/42')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).not.toContain('API-only summary that Blade does not render as the organisation lead.');
+    expect(response.text).toContain('There are no current volunteering opportunities at this organisation.');
+    expect(response.text).toContain('This organisation has no reviews yet.');
   });
 
   it('hides the organisation jobs link when the tenant jobs feature is disabled', async () => {
