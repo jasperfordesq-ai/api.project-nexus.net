@@ -59,6 +59,7 @@ public class MarketplaceListing : ITenantEntity
     public int ViewsCount { get; set; }
     public int SavesCount { get; set; }
     public int ContactsCount { get; set; }
+    public int? MarketplaceEnforcementReportId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 
@@ -99,6 +100,7 @@ public class MarketplaceSellerProfile : ITenantEntity
     public int ListingsCount { get; set; }
     public int SalesCount { get; set; }
     public string? StripeAccountId { get; set; }
+    public int? MarketplaceSuspensionReportId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 
@@ -167,12 +169,20 @@ public class MarketplaceReport : ITenantEntity
     public int ReporterUserId { get; set; }
     public string Reason { get; set; } = string.Empty;
     public string? Details { get; set; }
-    public string Status { get; set; } = "open";
+    public string? EvidenceUrlsJson { get; set; }
+    public string Status { get; set; } = "received";
     public int? ResolvedByUserId { get; set; }
     public string? ResolutionNotes { get; set; }
+    public string? ActionTaken { get; set; }
+    public string? EnforcementSnapshotJson { get; set; }
+    public string? AppealText { get; set; }
+    public int? AppealedByUserId { get; set; }
+    public DateTime? AppealResolvedAt { get; set; }
+    public bool TransparencyReportIncluded { get; set; }
     public DateTime? AcknowledgedAt { get; set; }
     public DateTime? ResolvedAt { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedAt { get; set; }
 }
 
 public class MarketplaceSavedSearch : ITenantEntity

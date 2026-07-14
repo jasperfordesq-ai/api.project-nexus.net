@@ -33,10 +33,12 @@
     <ul class="govuk-list govuk-list--spaced">
       {% for item in bookmarks %}
         <li>
-          {% if item.href %}
-            <a class="govuk-link" href="{{ urlFor(item.href) }}">{{ item.title }}</a>
-          {% else %}
-            {{ item.title }}
+          {% if item.title %}
+            {% if item.href %}
+              <a class="govuk-link" href="{{ urlFor(item.href) }}">{{ item.title }}</a>
+            {% else %}
+              {{ item.title }}
+            {% endif %}
           {% endif %}
           {% if item.type %}
             <strong class="govuk-tag govuk-tag--grey govuk-!-margin-left-1">{{ item.label }}</strong>

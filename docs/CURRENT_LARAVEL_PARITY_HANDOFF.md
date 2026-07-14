@@ -12,24 +12,23 @@ parity job after a session interruption. The implementation branches may still
 be moving, so treat every numeric snapshot below as advisory. Regenerate the
 live state before editing code or claiming progress.
 
-## Latest Resume Point: Event Federation Reliability
+## Latest Resume Point: Marketplace Report Appeals
 
-Event lifecycle mutations now increment a durable federation version and enqueue
-idempotent, versioned upsert or tombstone records for active/prior Nexus event
-partners. Organizer/admin federation status is explicitly owned under both API
-aliases with private/no-store caching, strict tenant/manager authorization, health
-and per-partner diagnostics, and no payload, hash, idempotency-key, raw-error, or
-member-data leakage. Migration 142 replays after the complete chain on blank
-PostgreSQL; model drift is clean, Debug/Release builds have zero errors, the combined
-current lifecycle/federation suite passes 14/14, and route ownership passes 114/114.
+Marketplace report creation, reporter/seller list and detail, admin queue,
+acknowledgement, initial resolution, appeal, and appeal resolution now share one
+serialized DSA state machine. Seller projections redact reporter identity, notice
+text, and evidence. Enforcement snapshots and ownership markers make listing removal
+and seller suspension reversible without overwriting unrelated moderation. Migration
+143 safely normalizes legacy rows before adding canonical checks and appeal/enforcement
+evidence. Blank-chain replay, model drift, Debug/Release builds, 2/2 focused workflow
+proof, and the 122/122 ownership/admin marketplace gate are green.
 
-The live comparator reports 4,529 ASP.NET operations and 2,585/2,608 matched with
-23 static misses. Provisional global scores are 825/1000 implementation, 700/1000
-certification, and 72% overall. Resume with outbound federation claim/sign/deliver/
-retry processing or the next coherent 23-route workflow. Complete-suite/CI,
-unchanged canonical frontend smoke, schema/localization depth, inbound federation,
-and live-provider certification remain open; the status/enqueue slice alone does
-not certify provider delivery.
+The live comparator reports 4,537 ASP.NET operations and 2,589/2,608 matched with
+19 static misses. Provisional global scores are 835/1000 implementation, 710/1000
+certification, and 73% overall. Resume with marketplace order-dispute resolution,
+including real refund/ledger/inventory behavior, then the remaining route/runtime
+queue. Complete-suite/CI, unchanged canonical frontend smoke, schema/localization
+depth, federation transport, and live-provider certification remain open.
 
 ## Objective
 

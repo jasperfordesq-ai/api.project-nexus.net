@@ -134,7 +134,7 @@ function normalizeBookmark(item, t) {
   const type = bookmarkType(row.bookmarkable_type ?? row.bookmarkableType ?? row.item_type ?? row.itemType);
   const slug = trimmed(row.slug);
   const label = savedTypeLabel(type, t);
-  const title = trimmed(row.title) || (itemId ? `${label} #${itemId}` : label);
+  const title = trimmed(row.title);
   return {
     id: positiveInteger(row.id),
     itemId,

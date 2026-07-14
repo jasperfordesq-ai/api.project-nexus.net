@@ -825,12 +825,14 @@ public class NexusDbContext : DbContext
             entity.ToTable("marketplace_listings");
             entity.HasIndex(e => new { e.TenantId, e.Status, e.ModerationStatus });
             entity.HasIndex(e => new { e.TenantId, e.UserId });
+            entity.HasIndex(e => new { e.TenantId, e.MarketplaceEnforcementReportId });
         });
         modelBuilder.Entity<MarketplaceImage>().ToTable("marketplace_images");
         modelBuilder.Entity<MarketplaceSellerProfile>(entity =>
         {
             entity.ToTable("marketplace_seller_profiles");
             entity.HasIndex(e => new { e.TenantId, e.UserId }).IsUnique();
+            entity.HasIndex(e => new { e.TenantId, e.MarketplaceSuspensionReportId });
         });
         modelBuilder.Entity<MarketplaceSavedListing>(entity =>
         {
@@ -839,7 +841,23 @@ public class NexusDbContext : DbContext
         });
         modelBuilder.Entity<MarketplaceOffer>().ToTable("marketplace_offers");
         modelBuilder.Entity<MarketplaceOrder>().ToTable("marketplace_orders");
-        modelBuilder.Entity<MarketplaceReport>().ToTable("marketplace_reports");
+        modelBuilder.Entity<MarketplaceReport>(entity =>
+        {
+            entity.ToTable("marketplace_reports", table =>
+            {
+                table.HasCheckConstraint("chk_marketplace_report_reason", "\"Reason\" IN ('counterfeit','illegal','unsafe','misleading','discrimination','ip_violation','other')");
+                table.HasCheckConstraint("chk_marketplace_report_status", "\"Status\" IN ('received','acknowledged','under_review','action_taken','no_action','appealed','appeal_resolved')");
+                table.HasCheckConstraint("chk_marketplace_report_action", "\"ActionTaken\" IS NULL OR \"ActionTaken\" IN ('none','warning','listing_removed','seller_suspended')");
+            });
+            entity.Property(e => e.Reason).HasMaxLength(32);
+            entity.Property(e => e.Status).HasMaxLength(32);
+            entity.Property(e => e.ActionTaken).HasMaxLength(32);
+            entity.Property(e => e.EvidenceUrlsJson).HasColumnType("jsonb");
+            entity.Property(e => e.EnforcementSnapshotJson).HasColumnType("jsonb");
+            entity.HasIndex(e => new { e.TenantId, e.Status, e.CreatedAt });
+            entity.HasIndex(e => new { e.TenantId, e.ReporterUserId, e.CreatedAt });
+            entity.HasIndex(e => new { e.TenantId, e.AppealedByUserId });
+        });
         modelBuilder.Entity<MarketplaceSavedSearch>().ToTable("marketplace_saved_searches");
         modelBuilder.Entity<MarketplaceCollection>().ToTable("marketplace_collections");
         modelBuilder.Entity<MarketplaceCollectionItem>(entity =>

@@ -6,16 +6,16 @@ Canonical source: `C:\platforms\htdocs\staging` (read-only).
 
 ## Latest Verified Backend Slice
 
-Event lifecycle changes now maintain monotonic federation versions and durable,
-idempotent upsert/tombstone delivery evidence for active and prior Nexus partners.
-Both API aliases expose a manager-only, private/no-store federation status contract
-whose health and per-partner diagnostics exclude payloads, hashes, raw provider
-errors, idempotency keys, and member data. Migration 142 replays from an empty
-PostgreSQL database, model drift is clear, the combined current lifecycle/federation
-suite passes 14/14, route ownership passes 114/114, and Debug/Release builds have
-zero errors. The live inventory is **2,585/2,608 (99.1%, 23 missing)**. Outbound
-claim/sign/deliver/retry processing, inbound federation, complete-suite/CI proof,
-unchanged-frontend runtime proof, and live-provider certification remain open.
+Marketplace report creation, member list/show/appeal, and administrator queue,
+acknowledge/resolve/appeal resolution now share one tenant-safe serialized DSA state
+machine. Affected sellers receive redacted views; enforcement snapshots and ownership
+markers make listing removal and seller suspension safely reversible. Migration 143
+normalizes legacy rows before installing canonical constraints and evidence fields.
+Blank replay, model drift, Debug/Release builds, 2/2 focused workflow proof, and the
+122/122 ownership/admin marketplace gate are green. The live inventory is
+**2,589/2,608 (99.3%, 19 missing)**. Financially coupled order-dispute resolution,
+complete-suite/CI proof, unchanged-frontend runtime proof, schema/localization depth,
+and live-provider certification remain open.
 
 ## Inventory Baseline
 

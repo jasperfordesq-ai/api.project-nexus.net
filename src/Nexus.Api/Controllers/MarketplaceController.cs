@@ -1171,10 +1171,15 @@ public class MarketplaceController : ControllerBase
 
     [HttpPost("listings/{id:int}/report")]
     [Authorize]
-    public async Task<IActionResult> ReportListing(int id, [FromBody] ReportRequest request)
+    public async Task<IActionResult> ReportListing(int id, [FromBody] ReportRequest request, CancellationToken ct)
     {
-        var report = await _marketplace.ReportListingAsync(id, RequireUserId(), request.Reason ?? "inappropriate", request.Details ?? request.Description);
-        return Created($"/api/marketplace/reports/{report.Id}", new { success = true, data = MapMarketplaceReport(report) });
+        var result = await new MarketplaceReportCaseService(_db).CreateAsync(
+            User.GetTenantId() ?? throw new UnauthorizedAccessException(),
+            RequireUserId(), id, request.Reason, request.Details ?? request.Description,
+            request.EvidenceUrls, ct);
+        if (result.Succeeded) return StatusCode(result.Status, new { success = true, data = result.Data });
+        var error = result.Error!;
+        return StatusCode(error.Status, new { success = false, errors = new[] { new { code = error.Code, message = error.Message, field = error.Field } } });
     }
 
     [HttpGet("seller/coupons")]
@@ -2723,7 +2728,8 @@ public record RateOrderRequest(int Rating, string? Comment, [property: JsonPrope
 public record ReportRequest(
     string? Reason,
     string? Details,
-    [property: JsonPropertyName("description")] string? Description);
+    [property: JsonPropertyName("description")] string? Description,
+    [property: JsonPropertyName("evidence_urls")] string[]? EvidenceUrls = null);
 public sealed class PaymentRequest
 {
     [JsonPropertyName("order_id")]

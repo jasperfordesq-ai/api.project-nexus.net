@@ -43,6 +43,39 @@ Before any production deployment or production-container action, stop and read
 deployment or touching production containers. Never modify the Laravel repo or
 Laravel Edition containers from this worktree.
 
+## 2026-07-14 ASP.NET Marketplace Report Appeals Checkpoint (Locally Verified)
+
+Marketplace reports now use the Laravel-compatible DSA notice-and-action lifecycle
+rather than shallow `open/resolved` rows. Canonical creation validates reason,
+description, safe evidence URLs, self-reporting, and duplicate active reports.
+Reporter and affected-seller list/show projections are private and tenant-safe;
+seller views never disclose reporter identity, notice description, or evidence URLs.
+Only a reporter whose notice ended in no action or a seller affected by enforcement
+can appeal.
+
+Administrator queue, acknowledge, initial resolution, and appeal resolution are
+serialized and state-guarded. Warning, listing removal, and seller suspension are
+persisted with a pre-enforcement snapshot and report ownership markers. An appeal
+decision that changes the action restores only rows still owned by that report, so
+unrelated later moderation cannot be overwritten. Reporter/seller decisions create
+durable in-app notifications.
+
+Migration 143 (`20260714024014_MarketplaceReportAppealWorkflowParity`) safely maps
+legacy report states/reasons before installing canonical checks, JSON evidence and
+snapshot fields, appeal evidence, enforcement markers, and tenant/query indexes. The
+complete migration chain replays on blank PostgreSQL, EF model drift is clean,
+focused migrated-schema proof passes 2/2, the ownership/admin-marketplace gate passes
+122/122, and Debug/Release builds have zero errors. The live comparator reports
+4,537 ASP.NET operations and **2,589/2,608 matches (99.3%, 19 static misses)**.
+
+Current provisional global scores are **835/1000 implementation** and **710/1000
+certification confidence**. The honest combined finish-line estimate is **73%**,
+up from the goal baseline of 42% and the previous checkpoint of 72%. Marketplace
+order-dispute settlement/refund parity, the remaining route shapes, complete-suite/
+CI proof, unchanged-frontend browser proof, schema/localization depth, and live-
+provider evidence remain open. No production resource or frontend source was
+touched by this backend slice.
+
 ## 2026-07-14 ASP.NET Event Federation Reliability Checkpoint (Locally Verified)
 
 Event lifecycle mutations now maintain a monotonic federation version and enqueue

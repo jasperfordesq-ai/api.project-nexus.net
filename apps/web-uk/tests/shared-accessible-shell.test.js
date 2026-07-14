@@ -7211,6 +7211,13 @@ describe('shared accessible frontend shell', () => {
           bookmarkable_type: 'blog',
           bookmarkable_id: 55,
           slug: 'neighbourhood-update'
+        },
+        {
+          id: 93,
+          title: '',
+          bookmarkable_type: 'discussion',
+          bookmarkable_id: 66,
+          slug: ''
         }
       ],
       meta: { current_page: 1, last_page: 1, total: 2, per_page: 50 }
@@ -7235,6 +7242,8 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('name="type" value="event"');
     expect(response.text).toContain('name="id" value="42"');
     expect(response.text).toContain('Remove');
+    expect(response.text).toContain('name="type" value="discussion"');
+    expect(response.text).not.toContain('<a class="govuk-link" href="/feed"></a>');
     expect(response.text).not.toContain('shared accessible frontend preparation page');
   });
 

@@ -276,36 +276,40 @@ public class AdminMarketplaceController : ControllerBase
     }
 
     [HttpGet("reports")]
-    public async Task<IActionResult> Reports([FromQuery] string? status = null)
+    public async Task<IActionResult> Reports([FromQuery] string? status = null, [FromQuery] int page = 1, [FromQuery(Name = "per_page")] int perPage = 20, CancellationToken ct = default)
     {
-        var query = _db.MarketplaceReports.AsQueryable();
-        if (!string.IsNullOrWhiteSpace(status)) query = query.Where(r => r.Status == status);
-        var rows = await query.OrderByDescending(r => r.CreatedAt).ToListAsync();
-        return Ok(new { data = rows, meta = new { total = rows.Count } });
+        var result = await new MarketplaceReportCaseService(_db).AdminListAsync(
+            User.GetTenantId() ?? throw new UnauthorizedAccessException(), status, page, perPage, ct);
+        return CaseResult(result);
     }
 
     [HttpPost("reports/{id:int}/acknowledge")]
-    public async Task<IActionResult> AcknowledgeReport(int id)
+    public async Task<IActionResult> AcknowledgeReport(int id, CancellationToken ct)
     {
-        var report = await _db.MarketplaceReports.FirstOrDefaultAsync(r => r.Id == id);
-        if (report == null) return NotFound(new { error = "Report not found" });
-        report.Status = "acknowledged";
-        report.AcknowledgedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
-        return Ok(new { data = report });
+        var result = await new MarketplaceReportCaseService(_db).AcknowledgeAsync(
+            User.GetTenantId() ?? throw new UnauthorizedAccessException(),
+            User.GetUserId() ?? throw new UnauthorizedAccessException(), id, ct);
+        return CaseResult(result);
     }
 
     [HttpPut("reports/{id:int}/resolve")]
-    public async Task<IActionResult> ResolveReport(int id, [FromBody] AdminModerationRequest request)
+    public async Task<IActionResult> ResolveReport(int id, [FromBody] MarketplaceReportResolutionRequest request, CancellationToken ct)
     {
-        var report = await _db.MarketplaceReports.FirstOrDefaultAsync(r => r.Id == id);
-        if (report == null) return NotFound(new { error = "Report not found" });
-        report.Status = "resolved";
-        report.ResolutionNotes = request.Notes;
-        report.ResolvedByUserId = User.GetUserId();
-        report.ResolvedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
-        return Ok(new { data = report });
+        var result = await new MarketplaceReportCaseService(_db).ResolveAsync(
+            User.GetTenantId() ?? throw new UnauthorizedAccessException(),
+            User.GetUserId() ?? throw new UnauthorizedAccessException(), id,
+            request.ActionTaken, request.ResolutionReason, false, ct);
+        return CaseResult(result);
+    }
+
+    [HttpPut("reports/{id:int}/resolve-appeal")]
+    public async Task<IActionResult> ResolveReportAppeal(int id, [FromBody] MarketplaceReportResolutionRequest request, CancellationToken ct)
+    {
+        var result = await new MarketplaceReportCaseService(_db).ResolveAsync(
+            User.GetTenantId() ?? throw new UnauthorizedAccessException(),
+            User.GetUserId() ?? throw new UnauthorizedAccessException(), id,
+            request.ActionTaken, request.ResolutionReason, true, ct);
+        return CaseResult(result);
     }
 
     [HttpGet("transparency")]
@@ -467,9 +471,19 @@ public class AdminMarketplaceController : ControllerBase
             return Array.Empty<object>();
         }
     }
+
+    private IActionResult CaseResult(MarketplaceReportCaseResult result)
+    {
+        if (result.Succeeded) return StatusCode(result.Status, new { success = true, data = result.Data });
+        var error = result.Error!;
+        return StatusCode(error.Status, new { success = false, errors = new[] { new { code = error.Code, message = error.Message, field = error.Field } } });
+    }
 }
 
 public record AdminModerationRequest(string? Notes);
+public sealed record MarketplaceReportResolutionRequest(
+    [property: JsonPropertyName("action_taken")] string? ActionTaken,
+    [property: JsonPropertyName("resolution_reason")] string? ResolutionReason);
 public record AdminBulkModerationRequest(
     int[]? Ids,
     string? Notes,

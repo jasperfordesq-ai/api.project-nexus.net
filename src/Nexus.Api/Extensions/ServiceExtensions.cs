@@ -257,6 +257,7 @@ public static class ServiceExtensions
         services.AddScoped<CaringTandemMatchingService>();
         services.AddScoped<IntegrationShowcaseService>();
         services.AddScoped<MarketplaceService>();
+        services.AddScoped<MarketplaceReportCaseService>();
         services.AddScoped<EmailTemplateService>();
         services.AddScoped<VolunteerLongTailService>();
         services.AddScoped<VolunteerWellbeingAlertService>();
