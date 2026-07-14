@@ -12,28 +12,26 @@ parity job after a session interruption. The implementation branches may still
 be moving, so treat every numeric snapshot below as advisory. Regenerate the
 live state before editing code or claiming progress.
 
-## Latest Resume Point: Marketplace Dispute Settlement
+## Latest Resume Point: Event Configuration Policy
 
-Order disputes now have their own serialized tenant-safe aggregate rather than
-creating listing reports. Eligible buyer/seller creation validates canonical reasons,
-description, safe evidence URLs, and duplicate active cases while preserving the
-prior order state. The admin queue exposes the canonical participant/order projection.
-Buyer, seller, and closed decisions are replay-safe; free and time-credit buyer
-resolutions restore inventory exactly once, and time-credit refunds create a linked
-full seller-to-buyer reversal from verified original settlement evidence. Seller and
-closed outcomes restore the saved prior state. Participant notifications are durable.
-Fiat resolution deliberately returns `409 RESOLUTION_FAILED` without mutation until
-real provider/escrow settlement exists.
+All four `/api/v2/admin/config/events` read, audit, update, and restore operations now
+use a serialized tenant-safe typed policy aggregate with optimistic versions, strict
+key/type/dependency validation, explicit change reasons, no-op/stale rejection, live
+impact counters, and disruptive-disable confirmation. Confirmed reminder disablement
+cancels pending reminders; confirmed federation disablement withdraws shared events,
+advances federation versions, and enqueues partner tombstones. Selective/full restore
+is versioned and idempotent, and audit history projects actor/reason/version/changes.
+Platform-unavailable timed offers and authoritative outbox delivery fail closed.
 
-Migration 144 replays in the complete blank chain and model drift is clean. Focused
-proof passes 3/3 on upgraded and blank-chain databases, the affected marketplace set
-passes 16/16, route ownership passes 114/114, comparator fixtures pass, and Debug/
-Release builds have zero errors. The live comparator reports 4,541 ASP.NET operations
-and 2,591/2,608 matched with 17 static misses. Provisional global scores are 845/1000
-implementation, 720/1000 certification, and 74% overall. Resume with the four event-
-config operations or another concrete remaining route family, while keeping real fiat
-settlement, complete-suite/CI, unchanged canonical frontend smoke, schema/localization
-depth, federation transport, and live-provider certification open.
+Focused migrated-schema proof passes 3/3, route ownership passes 114/114, comparator
+fixtures pass, and Debug/Release builds have zero errors. The live comparator reports
+4,545 ASP.NET operations and 2,595/2,608 matched with 13 static misses. Provisional
+global scores are 855/1000 implementation, 730/1000 certification, and 75% overall.
+Resume with podcast artwork, prerender, group auto-assignment, or notification settings;
+keep the seven document-era vetting writes gated until their legacy-evidence safety
+contract is traced. Real fiat settlement, complete-suite/CI, unchanged canonical
+frontend smoke, schema/localization depth, federation transport, and live-provider
+certification remain open.
 
 ## Objective
 

@@ -6,18 +6,18 @@ Canonical source: `C:\platforms\htdocs\staging` (read-only).
 
 ## Latest Verified Backend Slice
 
-Marketplace order disputes now have a tenant-safe serialized aggregate, canonical
-creation validation and admin queue, saved prior-order state, replay-safe outcomes,
-durable participant notifications, and exactly-once inventory restoration. Free
-buyer resolutions settle at zero and time-credit resolutions append a linked full
-ledger reversal after verifying the original settlement. Seller/closed outcomes
-restore the prior state; fiat resolution fails closed without mutation until real
-provider/escrow evidence exists. Migration 144 replays in the complete blank chain,
-model drift is clean, focused upgraded/blank proof passes 3/3 each, the affected
-marketplace set passes 16/16, route ownership passes 114/114, and Debug/Release builds
-are green. The live inventory is **2,591/2,608 (99.3%, 17 missing)**. Real fiat
-settlement, complete-suite/CI proof, unchanged-frontend runtime proof, schema/
-localization depth, federation transport, and live-provider certification remain open.
+Administrator event-configuration read, audit, update and restore now use a durable
+tenant-safe typed policy aggregate with serializable locking, optimistic versions,
+reasoned audit history, selective/full idempotent restore, dependency validation,
+capability/impact projections and disruptive-disable confirmation. Confirmed reminder
+disablement cancels pending rows; confirmed federation disablement withdraws shared
+events and appends partner tombstones. Platform-unavailable modes fail closed. Focused
+migrated-schema proof passes 3/3, route ownership passes 114/114, comparator fixtures
+pass, and Debug/Release builds are green. The live inventory is **2,595/2,608 (99.5%,
+13 missing)**. Document-era vetting writes, media/prerender and remaining settings
+routes, real fiat settlement, complete-suite/CI proof, unchanged-frontend runtime
+proof, schema/localization depth, federation transport, and live-provider
+certification remain open.
 
 ## Inventory Baseline
 

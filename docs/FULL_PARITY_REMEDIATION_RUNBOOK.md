@@ -43,6 +43,40 @@ Before any production deployment or production-container action, stop and read
 deployment or touching production containers. Never modify the Laravel repo or
 Laravel Edition containers from this worktree.
 
+## 2026-07-14 ASP.NET Event Configuration Policy Checkpoint (Locally Verified)
+
+The four canonical administrator event-configuration routes now own a typed,
+tenant-safe policy aggregate rather than falling through the missing-route surface.
+Reads expose effective/default settings, version, platform capabilities, and live
+impact counts. Updates use serializable locking and optimistic versions, preserve
+unrelated tenant configuration, reject unknown or incorrectly typed keys, enforce
+waitlist and notification-consumer dependencies, require a reason, reject no-op and
+stale writes, and require explicit confirmation before disabling a policy with live
+registrations, waitlists, reminders, calendar tokens, shared events, or broadcasts.
+
+Confirmed reminder disablement cancels pending reminders. Confirmed federation
+disablement withdraws every shared tenant event, advances its federation version,
+and appends the existing per-partner tombstone delivery evidence. Selective or full
+restore removes only event overrides, increments the version only when something was
+stored, and is idempotent on replay. Update/restore audit entries retain actor, reason,
+version, changes, and time without exposing unrelated audit data. Platform-disabled
+timed waitlist offers and authoritative outbox delivery fail closed.
+
+Focused migrated-PostgreSQL proof passes 3/3, route ownership passes 114/114,
+comparator fixtures pass, and Debug test-project plus Release API builds have zero
+errors. No schema migration was needed because the existing tenant-config and audit
+ledgers provide durable typed state and history. The live comparator reports 4,545
+ASP.NET operations and **2,595/2,608 matches (99.5%, 13 static misses)**.
+
+Current provisional global scores are **855/1000 implementation** and **730/1000
+certification confidence**. The honest combined finish-line estimate is **75%**,
+up from the goal baseline of 42% and the previous checkpoint of 74%. The remaining
+document-era vetting writes, podcast artwork, prerender, group-auto-assignment and
+notification-settings routes, real fiat settlement, complete-suite/CI proof,
+unchanged-frontend browser proof, schema/localization depth, federation transport,
+and live-provider evidence remain open. No production resource or frontend source
+was touched by this backend slice.
+
 ## 2026-07-14 ASP.NET Marketplace Dispute Settlement Checkpoint (Locally Verified)
 
 Order disputes are no longer redirected into the listing-report workflow. Buyers
