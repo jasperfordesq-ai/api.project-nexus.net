@@ -171,7 +171,7 @@ Refresh the Laravel Blade/API source and Web UK implementation before relying on
 these numbers after either source moves.
 
 At this documentation audit, the product-source baseline was
-`db1bd3a3a520a126ffa9f10f037c8a1741bb9e48`. The revoked-session confirmation,
+`b792dcd2a45f95d8d0a90e764780107acb7c8267`. The revoked-session confirmation,
 Laravel method-spoof reconciliation, group-message contract, residual API-
 consumer correction, and backend-request timeout slices are above the frozen
 bank and remain **published and unscored**. The documentation remediation is
@@ -186,7 +186,7 @@ together from a clean published checkout.
   with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
   Only this fixed-rubric audit contributes to the current bank.
 - **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `db1bd3a3`, including the later identity/session confirmation,
+  baseline `b792dcd2`, including the later identity/session confirmation,
   method-spoof reconciliation, group-message contract, residual API-consumer
   correction, and backend-request timeout slices. Their evidence is useful, but they
   contribute zero points until one complete fixed-rubric re-audit explicitly
@@ -1546,3 +1546,21 @@ complete gate is green at 52/52 suites and 1,672/1,672 tests. No Laravel source,
 database, migration, mutation, container, or production operation was
 performed. This published component-audit improvement remains unscored, so the
 frozen bank remains 622/1,000 pending a complete fixed-rubric re-audit.
+
+## 2026-07-14 Member Transfer And Review Choice Parity
+
+Frozen evidence at `2026-07-14T17:21:22.9377534+01:00` against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and Web UK product commit
+`b792dcd2a45f95d8d0a90e764780107acb7c8267`. Member-profile credit transfers
+now require Blade's irreversible-transfer confirmation checkbox. Pending Review
+ratings no longer preselect five stars: every option is required and exposes
+Blade's localized `n out of 5` label. The Reviews average uses the same Laravel
+rating catalog instead of concatenating a hard-coded `/ 5` suffix.
+
+Focused default-English member and Reviews rendering passes 2/2 with green
+lint, the 322-template zero-match localization audit, and diff checks. The
+immediately preceding complete gate is green at 52/52 suites and 1,672/1,672
+tests. No Laravel source, database, migration, mutation, container, or
+production operation was performed. This published component-audit improvement
+remains unscored, so the frozen bank remains 622/1,000 pending a complete
+fixed-rubric re-audit.

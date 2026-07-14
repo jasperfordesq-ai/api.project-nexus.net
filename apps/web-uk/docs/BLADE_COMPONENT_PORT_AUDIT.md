@@ -994,6 +994,16 @@ rewriting.
 | Page-specific subnavs | Commerce, federation, gamification, jobs, messages, and ideation have Blade partial navs. | Jobs, Messages, Marketplace, Courses, Federation, both Gamification tab groups, and Ideation now use source-exact shared components/catalogs/current-page semantics. Ideation resolves Laravel's exact tenant-admin role set from `/api/v2/users/me`, exposes Create only to those roles, and fails the create GET closed before loading form data for other signed members. The Federation component replaced 17 duplicated invented-English blocks and Gamification replaced 10 duplicated strips. |
 | Error and validation summaries | Blade uses consistent GOV.UK error summary behavior and a deliberately standalone `AccessibleErrorPage` using the shared `error_pages` locale catalog. | Shared 403/404/419/429/500/503 templates use a standalone Laravel-shaped document with exact `error_pages.*` title/body/home copy, skip link, one main landmark, minimal attribution footer, `noindex`, CSS only, and no tenant/session navigation, cookie banner, phase banner, application JavaScript, exception details, or raw exception-message leakage. CSRF token mismatches return Laravel-compatible 419 instead of 403, and the final middleware maps 419 and 429 to their dedicated templates instead of the generic 500 body. Integration coverage proves exact Arabic output and status semantics for all six statuses; real-browser Arabic 404 and invalid-CSRF 419 journeys pass exact catalog markers, RTL, 320px reflow, and axe. Per-form summary/action/error mapping, mutation failures, and manual assistive-technology certification remain open. |
 
+### Member and review choice follow-up
+
+- Member-profile credit transfers now include Blade's required irreversible-
+  transfer confirmation checkbox while retaining the existing UUID idempotency
+  key. Pending Review forms require an explicit rating instead of preselecting
+  five stars, expose localized `n out of 5` labels, and use the same catalog for
+  the Reviews average. Focused default-English rendering passes `2/2`; live
+  transfer/review mutation certification remains governed by the disposable-
+  environment queue.
+
 ### Jobs member-page evidence
 
 - Current post-slice integration checkpoint: full Jest passes `48/48` suites and `1,626/1,626` tests; lint and brand pass; both static localization gates pass with 6,936 references, 5,281 unique keys, and zero unresolved or conservative template matches.
