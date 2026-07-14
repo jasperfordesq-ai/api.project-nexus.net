@@ -90,6 +90,7 @@
             spellcheck: false,
             value: values.email if values else "",
             attributes: {
+              "required": "required",
               "data-validate": "required email",
               "data-label": t("auth.email_label"),
               "data-required-message": t("auth.forgot_invalid"),
@@ -107,6 +108,7 @@
             type: "password",
             autocomplete: "current-password",
             attributes: {
+              "required": "required",
               "data-validate": "required",
               "data-label": t("auth.password_label"),
               "data-required-message": t("auth.login_failed")
@@ -132,6 +134,7 @@
               name: "tenant_slug",
               value: values.tenant_slug if values else "",
               attributes: {
+                "required": "required",
                 "data-validate": "required",
                 "data-label": "Community code"
               }

@@ -814,6 +814,17 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('<option value="ga" selected>Gaeilge</option>');
   });
 
+  it('exposes Blade-equivalent native required states on login controls', async () => {
+    const mounted = await request(app).get('/acme/accessible/login');
+    const root = await request(app).get('/login');
+
+    expect(mounted.status).toBe(200);
+    expect(mounted.text).toMatch(/<input[^>]*id="email"[^>]*required(?:="required")?[^>]*>/);
+    expect(mounted.text).toMatch(/<input[^>]*id="password"[^>]*required(?:="required")?[^>]*>/);
+    expect(root.status).toBe(200);
+    expect(root.text).toMatch(/<input[^>]*id="tenant_slug"[^>]*required(?:="required")?[^>]*>/);
+  });
+
   it('renders the Laravel-backed member dashboard summary', async () => {
     const api = require('../src/lib/api');
     api.getProfile.mockResolvedValue({

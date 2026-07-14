@@ -367,6 +367,20 @@ recent-Event consumer rows now have concrete method/path classification. This
 is static/mock contract closure, not disposable mutation/export certification,
 so the banked score remains 622/1000.
 
+## Public Login Required-State Parity
+
+The default-English login form now exposes native `required` states for email,
+password, and the root-domain community-code field, matching the Laravel Blade
+controls while retaining Web UK's progressive client validation. Rendered-output
+regression coverage proves the attributes. A read-only browser audit against a
+fresh local Web UK process also confirmed one main landmark and H1, valid home
+heading progression, no duplicate IDs, unnamed controls, empty links, missing
+image alternatives, or horizontal overflow, plus clean home/login reflow at
+320 CSS pixels. Synthetic Tab traversal did not move focus in the browser-control
+environment, so keyboard order, focus visibility, screen-reader output, and the
+remaining manual WCAG matrix are still explicitly uncertified. This evidence
+does not change the banked 622/1000 score without a complete rubric re-audit.
+
 ## Podcast Episode Visibility Labels
 
 Podcast studio episode visibility selects now follow Blade's exact catalog
