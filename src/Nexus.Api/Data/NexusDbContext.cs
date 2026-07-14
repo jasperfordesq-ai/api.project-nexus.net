@@ -141,6 +141,9 @@ public class NexusDbContext : DbContext
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<TenantConfig> TenantConfigs => Set<TenantConfig>();
     public DbSet<TenantSsoProvider> TenantSsoProviders => Set<TenantSsoProvider>();
+    public DbSet<OAuthIdentity> OAuthIdentities => Set<OAuthIdentity>();
+    public DbSet<SsoOidcFlow> SsoOidcFlows => Set<SsoOidcFlow>();
+    public DbSet<OAuthCallbackGrant> OAuthCallbackGrants => Set<OAuthCallbackGrant>();
     public DbSet<Role> Roles => Set<Role>();
     public DbSet<CaringEmergencyAlert> CaringEmergencyAlerts => Set<CaringEmergencyAlert>();
     public DbSet<CaringFederationPeer> CaringFederationPeers => Set<CaringFederationPeer>();

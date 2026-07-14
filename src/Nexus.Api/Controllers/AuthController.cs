@@ -308,15 +308,18 @@ public class AuthController : ControllerBase
         else
         {
             // Revoke all refresh tokens for this user
+            var invalidatedAt = DateTime.UtcNow;
             var tokens = await _db.RefreshTokens
                 .Where(t => t.UserId == userId && t.RevokedAt == null)
                 .ToListAsync();
 
             foreach (var token in tokens)
             {
-                token.RevokedAt = DateTime.UtcNow;
+                token.RevokedAt = invalidatedAt;
                 token.RevokedReason = "logout_all";
             }
+            var user = await _db.Users.IgnoreQueryFilters().SingleOrDefaultAsync(x => x.Id == userId);
+            if (user is not null) user.AuthenticationInvalidatedAt = invalidatedAt;
             await _db.SaveChangesAsync();
         }
 
@@ -854,6 +857,7 @@ public class AuthController : ControllerBase
 
         // Update password
         resetToken.User.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+        resetToken.User.AuthenticationInvalidatedAt = DateTime.UtcNow;
 
         // Mark token as used
         resetToken.UsedAt = DateTime.UtcNow;

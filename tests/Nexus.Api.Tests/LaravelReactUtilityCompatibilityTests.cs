@@ -31,10 +31,13 @@ public sealed class LaravelReactUtilityCompatibilityTests : IntegrationTestBase
             p.GetProperty("provider_key").GetString() == "azure-entra" &&
             p.GetProperty("display_name").GetString() == "Azure Entra");
 
-        var redirectJson = await ReadJsonAsync(await Client.GetAsync($"/api/v2/auth/sso/azure-entra/redirect?tenant_id={TestData.Tenant1.Id}"), HttpStatusCode.OK);
-        redirectJson.GetProperty("success").GetBoolean().Should().BeTrue();
-        redirectJson.GetProperty("provider").GetString().Should().Be("azure-entra");
-        redirectJson.GetProperty("redirect_url").GetString().Should().Contain("response_type=code");
+        // The canonical flow now requires the browser-held PKCE binding before
+        // any discovery or upstream redirect is attempted.
+        var redirectJson = await ReadJsonAsync(
+            await Client.GetAsync($"/api/v2/auth/sso/azure-entra/redirect?tenant_id={TestData.Tenant1.Id}"),
+            HttpStatusCode.BadRequest);
+        redirectJson.GetProperty("success").GetBoolean().Should().BeFalse();
+        redirectJson.GetProperty("error").GetString().Should().Be("sso_redirect_failed");
 
         var exchangeJson = await ReadJsonAsync(await Client.PostAsJsonAsync("/api/v2/auth/oauth/exchange", new { code = "bad-code" }), HttpStatusCode.BadRequest);
         exchangeJson.GetProperty("success").GetBoolean().Should().BeFalse();

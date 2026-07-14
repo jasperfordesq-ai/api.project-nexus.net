@@ -63,6 +63,13 @@ public class User : ITenantEntity
     public DateTime? LastLoginAt { get; set; }
 
     /// <summary>
+    /// Advances when password/session revocation invalidates authentication
+    /// ceremonies that began earlier. Credential issuance must fail when its
+    /// signed start time is not newer than this cutoff.
+    /// </summary>
+    public DateTime? AuthenticationInvalidatedAt { get; set; }
+
+    /// <summary>
     /// Profile photo URL — set when user uploads an avatar via /api/files/avatar.
     /// </summary>
     public string? AvatarUrl { get; set; }

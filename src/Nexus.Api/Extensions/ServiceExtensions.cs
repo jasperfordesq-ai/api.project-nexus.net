@@ -198,6 +198,9 @@ public static class ServiceExtensions
         services.AddScoped<FederationAdminService>();
         services.AddScoped<SecretsVaultService>();
         services.AddScoped<TenantSsoProviderService>();
+        services.AddSingleton<IPublicOidcEndpointValidator, PublicOidcEndpointValidator>();
+        services.AddSingleton<ISsoOidcHttpTransport, PinnedSsoOidcHttpTransport>();
+        services.AddScoped<SsoOidcAuthenticationService>();
         services.AddScoped<CaringEmergencyAlertService>();
         services.AddScoped<CaringFederationPeerService>();
         services.AddScoped<CaringSubRegionService>();
@@ -279,6 +282,9 @@ public static class ServiceExtensions
         services.AddHttpClient("NexusSsoOidc", c =>
         {
             c.Timeout = TimeSpan.FromSeconds(10);
+        }).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+        {
+            AllowAutoRedirect = false
         });
 
         // Phase 69 — AI multi-provider abstraction. Each concrete provider is

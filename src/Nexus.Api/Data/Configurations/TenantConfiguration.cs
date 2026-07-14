@@ -117,6 +117,54 @@ public class TenantConfiguration : TenantScopedConfiguration
             entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
         });
 
+        modelBuilder.Entity<OAuthIdentity>(entity =>
+        {
+            entity.ToTable("oauth_identities");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Provider).HasMaxLength(64).IsRequired();
+            entity.Property(e => e.ProviderUserId).HasMaxLength(191).IsRequired();
+            entity.Property(e => e.ProviderEmail).HasMaxLength(191);
+            entity.Property(e => e.AvatarUrl).HasMaxLength(500);
+            entity.Property(e => e.RawPayload).HasColumnType("jsonb");
+            entity.HasIndex(e => new { e.Provider, e.ProviderUserId })
+                .IsUnique()
+                .HasDatabaseName("oauth_identities_provider_uid_unique");
+            entity.HasIndex(e => new { e.UserId, e.Provider })
+                .IsUnique()
+                .HasDatabaseName("oauth_identities_user_provider_unique");
+            entity.HasIndex(e => e.TenantId);
+            entity.HasIndex(e => e.ProviderUserId);
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<SsoOidcFlow>(entity =>
+        {
+            entity.ToTable("sso_oidc_flows");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.ProviderKey).HasMaxLength(20).IsRequired();
+            entity.Property(e => e.StateNonceHash).HasMaxLength(64).IsRequired();
+            entity.Property(e => e.CodeVerifierCiphertext).HasColumnType("text").IsRequired();
+            entity.Property(e => e.OidcNonce).HasMaxLength(128).IsRequired();
+            entity.Property(e => e.BrowserChallenge).HasMaxLength(43).IsRequired();
+            entity.Property(e => e.RedirectUri).HasMaxLength(1000).IsRequired();
+            entity.HasIndex(e => e.StateNonceHash).IsUnique();
+            entity.HasIndex(e => new { e.TenantId, e.ProviderKey, e.ExpiresAt });
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+
+        modelBuilder.Entity<OAuthCallbackGrant>(entity =>
+        {
+            entity.ToTable("oauth_callback_grants");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.CodeHash).HasMaxLength(64).IsRequired();
+            entity.Property(e => e.Provider).HasMaxLength(64).IsRequired();
+            entity.Property(e => e.BrowserChallenge).HasMaxLength(43).IsRequired();
+            entity.Property(e => e.PendingIdentityCiphertext).HasColumnType("text");
+            entity.HasIndex(e => e.CodeHash).IsUnique();
+            entity.HasIndex(e => new { e.TenantId, e.UserId, e.ExpiresAt });
+            entity.HasQueryFilter(e => !TenantContext.IsResolved || e.TenantId == TenantContext.TenantId);
+        });
+
         // Laravel-compatible tenant invite codes for /api/v2/admin/invite-codes
         modelBuilder.Entity<TenantInviteCode>(entity =>
         {

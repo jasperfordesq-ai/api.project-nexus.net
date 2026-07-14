@@ -979,6 +979,7 @@ public class AdminCompatibilityController : ControllerBase
 
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(password);
         user.UpdatedAt = DateTime.UtcNow;
+        user.AuthenticationInvalidatedAt = user.UpdatedAt;
 
         var refreshTokens = await _db.RefreshTokens
             .Where(t => t.UserId == userId && t.RevokedAt == null)

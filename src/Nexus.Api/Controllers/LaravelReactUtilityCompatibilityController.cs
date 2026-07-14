@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
@@ -27,19 +28,22 @@ public sealed class LaravelReactUtilityCompatibilityController : ControllerBase
     private readonly IConfiguration _config;
     private readonly IHostEnvironment _environment;
     private readonly SafeguardingCoordinationService _safeguardingCoordination;
+    private readonly SsoOidcAuthenticationService _ssoAuthentication;
 
     public LaravelReactUtilityCompatibilityController(
         NexusDbContext db,
         TenantContext tenant,
         IConfiguration config,
         IHostEnvironment environment,
-        SafeguardingCoordinationService safeguardingCoordination)
+        SafeguardingCoordinationService safeguardingCoordination,
+        SsoOidcAuthenticationService ssoAuthentication)
     {
         _db = db;
         _tenant = tenant;
         _config = config;
         _environment = environment;
         _safeguardingCoordination = safeguardingCoordination;
+        _ssoAuthentication = ssoAuthentication;
     }
 
     [AllowAnonymous]
@@ -299,6 +303,7 @@ public sealed class LaravelReactUtilityCompatibilityController : ControllerBase
     }
 
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitingExtensions.AuthPolicy)]
     [HttpGet("/api/auth/sso/providers")]
     [HttpGet("/api/v2/auth/sso/providers")]
     public async Task<IActionResult> SsoProviders([FromQuery(Name = "tenant_id")] int? tenantId)
@@ -329,9 +334,14 @@ public sealed class LaravelReactUtilityCompatibilityController : ControllerBase
     }
 
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitingExtensions.AuthPolicy)]
     [HttpGet("/api/auth/sso/{provider}/redirect")]
     [HttpGet("/api/v2/auth/sso/{provider}/redirect")]
-    public async Task<IActionResult> SsoRedirect(string provider, [FromQuery(Name = "tenant_id")] int? tenantId)
+    public async Task<IActionResult> SsoRedirect(
+        string provider,
+        [FromQuery(Name = "tenant_id")] int? tenantId,
+        [FromQuery(Name = "browser_challenge")] string? browserChallenge,
+        CancellationToken ct)
     {
         var resolvedTenantId = ResolveTenantId(tenantId);
         if (resolvedTenantId <= 0)
@@ -339,53 +349,88 @@ public sealed class LaravelReactUtilityCompatibilityController : ControllerBase
             return BadRequest(new { success = false, error = "tenant_required", message = "Tenant is required." });
         }
 
-        var row = await _db.TenantSsoProviders
-            .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(p => p.TenantId == resolvedTenantId && p.IsEnabled && p.ProviderKey == provider);
-        if (row == null)
+        try
         {
-            return BadRequest(new { success = false, error = "sso_redirect_failed", message = "SSO provider is not available." });
+            var redirectUri = $"{Request.Scheme}://{Request.Host}/api/v2/auth/sso/callback";
+            var authorization = await _ssoAuthentication.BeginAsync(
+                resolvedTenantId,
+                provider,
+                browserChallenge,
+                redirectUri,
+                ct);
+            return Ok(new { success = true, redirect_url = authorization.Url, provider });
         }
-
-        var authorizeBase = row.IssuerUrl.TrimEnd('/') + "/authorize";
-        var redirectUri = $"{Request.Scheme}://{Request.Host}/api/v2/auth/sso/callback";
-        var query = new Dictionary<string, string?>
+        catch (Exception ex) when (ex is SsoAuthenticationException or HttpRequestException)
         {
-            ["client_id"] = row.ClientId,
-            ["response_type"] = "code",
-            ["scope"] = row.Scopes,
-            ["redirect_uri"] = redirectUri,
-            ["state"] = $"tenant:{resolvedTenantId}:provider:{provider}"
-        };
-        var redirectUrl = authorizeBase + "?" + string.Join("&", query.Select(kvp =>
-            $"{Uri.EscapeDataString(kvp.Key)}={Uri.EscapeDataString(kvp.Value ?? string.Empty)}"));
-
-        return Ok(new { success = true, redirect_url = redirectUrl, provider });
+            return BadRequest(new { success = false, error = "sso_redirect_failed", message = "SSO sign-in could not be started." });
+        }
     }
 
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitingExtensions.AuthPolicy)]
     [HttpGet("/api/auth/sso/callback")]
     [HttpGet("/api/v2/auth/sso/callback")]
-    public IActionResult SsoCallback([FromQuery] string? error = null, [FromQuery] string? code = null, [FromQuery] string? state = null)
+    public async Task<IActionResult> SsoCallback(
+        [FromQuery] string? error = null,
+        [FromQuery(Name = "error_description")] string? errorDescription = null,
+        [FromQuery] string? code = null,
+        [FromQuery] string? state = null,
+        CancellationToken ct = default)
     {
-        var qs = string.IsNullOrWhiteSpace(error)
-            ? $"code={Uri.EscapeDataString(code ?? string.Empty)}&provider=sso"
-            : $"error=sso_failed&message={Uri.EscapeDataString(error)}";
-        return Redirect("/auth/oauth/callback?" + qs);
+        var tenantId = _ssoAuthentication.TenantIdFromState(state);
+        var frontend = tenantId is > 0
+            ? await _ssoAuthentication.FrontendCallbackBaseAsync(tenantId.Value, ct)
+            : (_config["App:FrontendUrl"] ?? "http://localhost:5173").TrimEnd('/');
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(error) || string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(state))
+                throw new SsoAuthenticationException(errorDescription ?? error ?? "SSO callback is incomplete.");
+            var result = await _ssoAuthentication.HandleCallbackAsync(state, code, ct);
+            var query = $"code={Uri.EscapeDataString(result.CallbackCode)}" +
+                $"&provider={Uri.EscapeDataString(result.Provider)}" +
+                $"&flow={Uri.EscapeDataString(result.BrowserChallenge)}";
+            return Redirect(frontend + "/auth/oauth/callback?" + query);
+        }
+        catch (Exception ex) when (ex is SsoAuthenticationException or HttpRequestException or SecurityTokenException)
+        {
+            return Redirect(frontend + "/auth/oauth/callback?error=sso_failed&message=" +
+                Uri.EscapeDataString("SSO sign-in failed."));
+        }
     }
 
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitingExtensions.AuthPolicy)]
     [HttpPost("/api/auth/oauth/exchange")]
     [HttpPost("/api/v2/auth/oauth/exchange")]
-    public IActionResult OauthExchange([FromBody] JsonElement body)
+    public async Task<IActionResult> OauthExchange([FromBody] JsonElement body, CancellationToken ct)
     {
         var code = ReadString(body, "code");
-        if (string.IsNullOrWhiteSpace(code))
+        var browserVerifier = ReadString(body, "browser_verifier");
+        try
         {
-            return BadRequest(new { success = false, error = "invalid_oauth_code", message = "Invalid OAuth callback code." });
+            var result = await _ssoAuthentication.ExchangeAsync(
+                code,
+                browserVerifier,
+                HttpContext.Connection.RemoteIpAddress?.ToString(),
+                ct);
+            return Ok(new
+            {
+                success = true,
+                token = result.Token,
+                access_token = result.Token,
+                refresh_token = result.RefreshToken,
+                expires_in = result.ExpiresIn,
+                refresh_expires_in = result.RefreshExpiresIn,
+                token_type = "Bearer",
+                provider = result.Provider,
+                is_new = result.IsNew,
+                tenant_id = result.TenantId
+            });
         }
-
-        return BadRequest(new { success = false, error = "invalid_oauth_code", message = "Invalid OAuth callback code." });
+        catch (Exception ex) when (ex is SsoAuthenticationException or CryptographicException or DbUpdateException)
+        {
+            return BadRequest(new { success = false, error = "invalid_oauth_code", message = "OAuth sign-in failed." });
+        }
     }
 
     [AllowAnonymous]
