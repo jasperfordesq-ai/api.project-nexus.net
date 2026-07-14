@@ -87,6 +87,8 @@ const { tenantFeatureGate } = require('./middleware/tenant-feature-gates');
 const { tenantRouting } = require('./middleware/tenant-routing');
 const { requestTenantContext } = require('./middleware/request-tenant-context');
 const { refreshAuthSession, requireAuth } = require('./middleware/auth');
+const { assertProductionConfig } = require('./lib/production-config');
+const { createSessionStore } = require('./lib/session-store');
 
 const app = express();
 
@@ -97,6 +99,8 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 const ACCESSIBLE_COOKIE_NAME = 'nexus_accessible_cookie_consent';
 const LEGACY_ALPHA_COOKIE_NAME = 'nexus_alpha_cookie_consent';
 const ALPHA_COOKIE_MAX_AGE = 180 * 24 * 60 * 60 * 1000;
+assertProductionConfig(process.env);
+const sessionStore = createSessionStore({ nodeEnv: NODE_ENV });
 
 const HOME_MODULES = [
   { key: 'dashboard', titleKey: 'dashboard.title', descriptionKey: 'dashboard.description', href: '/dashboard', authRequired: true },
@@ -322,6 +326,7 @@ app.use(cookieParser(COOKIE_SECRET));
 // Session for flash messages
 app.use(session({
   secret: SESSION_SECRET,
+  store: sessionStore.store,
   resave: false,
   saveUninitialized: false,
   cookie: {
@@ -1807,10 +1812,17 @@ process.on('uncaughtException', (error) => {
 
 // Only start listening if not in test mode
 if (NODE_ENV !== 'test') {
-  app.listen(PORT, () => {
-    console.log(`NEXUS UK Frontend running at http://localhost:${PORT}`);
-    console.log(`Environment: ${NODE_ENV}`);
-  });
+  sessionStore.ready
+    .then(() => {
+      app.listen(PORT, () => {
+        console.log(`NEXUS UK Frontend running at http://localhost:${PORT}`);
+        console.log(`Environment: ${NODE_ENV}`);
+      });
+    })
+    .catch((error) => {
+      console.error('Unable to initialize the persistent session store:', error.message);
+      process.exit(1);
+    });
 }
 
 module.exports = app;

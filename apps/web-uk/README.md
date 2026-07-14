@@ -111,7 +111,9 @@ The application will be available at **http://localhost:5180**
 | `ASPNET_BASE_URL` | `http://localhost:5080` | Future ASP.NET backend base URL when explicitly selected. Not certified. |
 | `API_BASE_URL` | - | Explicit backend URL override. The resolver labels this as `api-base-url`; it does not certify ASP.NET compatibility or replace Laravel as the source of truth. Prefer `LARAVEL_BASE_URL` for Laravel-first work. |
 | `COOKIE_SECRET` | - | **Required.** Secret for signed cookies |
-| `SESSION_SECRET` | - | Secret for sessions (defaults to COOKIE_SECRET) |
+| `SESSION_SECRET` | - | Session-signing secret. Production requires an explicit 32+ character value distinct from `COOKIE_SECRET`. |
+| `SESSION_REDIS_URL` | - | Persistent session store URL. Required in production; supports `redis://` and `rediss://`. |
+| `SESSION_REDIS_PREFIX` | `nexus:web-uk:sess:` | Redis key prefix for Web UK sessions. |
 | `NODE_ENV` | `development` | Environment (development/production) |
 
 ## Representative Routes
@@ -292,7 +294,7 @@ nexus-uk-frontend/
 
 ## Stack
 
-- **Runtime:** Node.js 18+
+- **Runtime:** Node.js 18.19+
 - **Framework:** Express 4.x
 - **Templating:** Nunjucks 3.x
 - **Design System:** govuk-frontend 5.x (styles only, no crown branding)
