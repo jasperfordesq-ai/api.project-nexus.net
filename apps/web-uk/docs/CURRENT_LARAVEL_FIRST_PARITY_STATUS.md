@@ -111,8 +111,8 @@ commit as the implementation it describes.
 
 ## Audited Baseline
 
-The committed frontend starting baseline for the current checkout was refreshed
-through ASP.NET-repository commit `eff79b2e`, and the Laravel source baseline is
+The committed frontend baseline for the current checkout was refreshed through
+ASP.NET-repository commit `6573f9d5`, and the Laravel source baseline is
 `903d03d3`. The first SHA names the
 repository snapshot containing Web UK; it does not make ASP.NET authoritative.
 Refresh the Laravel Blade/API source and Web UK implementation before relying on
@@ -126,8 +126,10 @@ these numbers after either source moves.
 | Missing Laravel routes | 6 | All are Event workflows |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 48/48 suites, 1,622/1,622 tests | Fresh green code gate |
+| Jest | 48/48 suites, 1,626/1,626 tests | Fresh green code gate |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
+| Static locale usage | 6,936 references, 5,281 unique keys, 0 unresolved | Current complete-reference audit |
+| Template localization | 317 templates, 0 conservative matches | Current hard-coded-copy audit |
 | Blade marker check | 19/19 | Text-marker spotcheck, not visual certification |
 | Automated accessibility | Latest recorded 87/87 | Manual AT review remains open |
 
@@ -367,8 +369,10 @@ After the localization P0, the remaining priority order is:
    exhaustive Laravel mutation smoke; never run those gates against the
    production-derived local database. "All quarters classified" is not the same
    as all checks passing.
-2. Reconcile low-overlap Blade/Nunjucks families, especially messages, group
-   create/detail, recent Event flows, and unresolved component-audit rows.
+2. Continue reconciling recent Event flows and unresolved component-audit rows.
+   The July 14 Messages, Group create/detail, onboarding, and Feed/Groups/Wallet
+   pagination slices are published and should not be repeated without a new
+   concrete source mismatch.
 3. Compare significant states per route: guest, member, owner, tenant admin,
    feature-disabled, empty, populated, validation failure, authorization
    failure, pagination, mutation, upload, and download.
