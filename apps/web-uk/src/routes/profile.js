@@ -156,6 +156,9 @@ const PROFILE_STATUS_MESSAGES = {
   'passkey-removed': { type: 'success', message: 'Your passkey has been removed.' },
   'passkey-name-required': { type: 'error', message: 'Enter a passkey name.', anchor: 'passkeys' },
   'passkey-not-found': { type: 'error', message: 'We could not find that passkey.', anchor: 'passkeys' },
+  'passkey-last-sign-in-method': { type: 'error', message: 'Add another sign-in method before removing this passkey.', anchor: 'passkeys' },
+  'passkey-password-required': { type: 'error', message: 'Enter your current password', anchor: 'passkeys' },
+  'passkey-password-incorrect': { type: 'error', message: 'Your current password was incorrect', anchor: 'passkeys' },
   'passkey-failed': { type: 'error', message: 'Your passkey could not be updated.', anchor: 'passkeys' },
   'personalisation-saved': { type: 'success', message: 'Your personalisation preferences have been saved.' },
   'personalisation-failed': {
@@ -230,6 +233,9 @@ const PROFILE_STATUS_MESSAGE_KEYS = Object.freeze({
   'passkey-removed': 'profile_settings.passkeys.removed',
   'passkey-name-required': 'profile_settings.passkeys.name_required',
   'passkey-not-found': 'profile_settings.passkeys.not_found',
+  'passkey-last-sign-in-method': 'profile_settings.passkeys.last_sign_in_method',
+  'passkey-password-required': 'profile_settings.password_current_required',
+  'passkey-password-incorrect': 'profile_settings.password_current_incorrect',
   'personalisation-saved': 'profile_settings.personalisation.saved',
   'personalisation-failed': 'profile_settings.personalisation.failed',
   'match-prefs-saved': 'profile_settings.match.saved',
@@ -437,6 +443,19 @@ function twoFactorRedirect(status) {
 
 function deleteAccountRedirect(status) {
   return statusRedirect('/profile/delete-account', status);
+}
+
+async function confirmWebAuthnSecurityAction(token, currentPassword) {
+  const result = await callWebAuthn(token, 'POST', '/security-confirm', {
+    current_password: currentPassword
+  });
+  const confirmationToken = trimmed(payloadFrom(result).security_confirmation_token);
+  if (!confirmationToken) {
+    throw new ApiError('Laravel did not return a security confirmation token', 502, {
+      errors: [{ code: 'AUTH_SECURITY_CONFIRMATION_RESPONSE_INVALID' }]
+    });
+  }
+  return confirmationToken;
 }
 
 async function destroyRequestSession(req) {
@@ -1332,19 +1351,30 @@ router.post('/passkeys/rename', asyncRoute(async (req, res) => {
 
   const credentialId = trimmed(req.body.credential_id);
   const deviceName = trimmed(req.body.device_name, 100);
+  const currentPassword = String(req.body.current_password || '');
   if (credentialId === '' || deviceName === '') {
     return redirectTo(res, profileSettingsRedirect('passkey-name-required', '#passkeys'));
+  }
+  if (currentPassword === '') {
+    return redirectTo(res, profileSettingsRedirect('passkey-password-required', '#passkeys'));
   }
 
   let status = 'passkey-renamed';
   try {
+    const securityConfirmationToken = await confirmWebAuthnSecurityAction(token, currentPassword);
     await callWebAuthn(token, 'POST', '/rename', {
       credential_id: credentialId,
-      device_name: deviceName
+      device_name: deviceName,
+      security_confirmation_token: securityConfirmationToken
     });
   } catch (error) {
     if (redirectOnAuthError(error, res)) return undefined;
-    status = error instanceof ApiError && error.status === 404 ? 'passkey-not-found' : 'passkey-failed';
+    const code = apiErrorCode(error);
+    status = error instanceof ApiError && error.status === 404
+      ? 'passkey-not-found'
+      : (error instanceof ApiError && error.status === 403 && code === 'SECURITY_CONFIRMATION_REQUIRED'
+        ? 'passkey-password-incorrect'
+        : 'passkey-failed');
   }
 
   return redirectTo(res, profileSettingsRedirect(status, '#passkeys'));
@@ -1355,21 +1385,40 @@ router.post('/passkeys/remove', asyncRoute(async (req, res) => {
   if (!token) return redirectTo(res, loginRedirect());
 
   const credentialId = trimmed(req.body.credential_id);
+  const currentPassword = String(req.body.current_password || '');
   if (credentialId === '') {
     return redirectTo(res, profileSettingsRedirect('passkey-not-found', '#passkeys'));
   }
-
-  let status = 'passkey-removed';
-  try {
-    await callWebAuthn(token, 'POST', '/remove', {
-      credential_id: credentialId
-    });
-  } catch (error) {
-    if (redirectOnAuthError(error, res)) return undefined;
-    status = error instanceof ApiError && error.status === 404 ? 'passkey-not-found' : 'passkey-failed';
+  if (currentPassword === '') {
+    return redirectTo(res, profileSettingsRedirect('passkey-password-required', '#passkeys'));
   }
 
-  return redirectTo(res, profileSettingsRedirect(status, '#passkeys'));
+  try {
+    const securityConfirmationToken = await confirmWebAuthnSecurityAction(token, currentPassword);
+    const result = await callWebAuthn(token, 'POST', '/remove', {
+      credential_id: credentialId,
+      security_confirmation_token: securityConfirmationToken
+    });
+    if (payloadFrom(result).sessions_revoked !== true) {
+      return redirectTo(res, profileSettingsRedirect('passkey-not-found', '#passkeys'));
+    }
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    const code = apiErrorCode(error);
+    const status = error instanceof ApiError && error.status === 404
+      ? 'passkey-not-found'
+      : (error instanceof ApiError && error.status === 409 && code === 'LAST_SIGN_IN_METHOD'
+        ? 'passkey-last-sign-in-method'
+        : (error instanceof ApiError && error.status === 403 && code === 'SECURITY_CONFIRMATION_REQUIRED'
+          ? 'passkey-password-incorrect'
+          : 'passkey-failed'));
+    return redirectTo(res, profileSettingsRedirect(status, '#passkeys'));
+  }
+
+  invalidateUserCache(token);
+  await destroyRequestSession(req);
+  clearAuthCookies(res);
+  return redirectTo(res, '/login?status=passkey-removed');
 }));
 
 router.post('/personalisation', asyncRoute(async (req, res) => {

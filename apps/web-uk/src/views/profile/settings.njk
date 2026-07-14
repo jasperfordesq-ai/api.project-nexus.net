@@ -297,6 +297,10 @@
                     <label class="govuk-label" for="rename-{{ loop.index0 }}">{{ t("profile_settings.passkeys.rename_label") }}</label>
                     <input class="govuk-input govuk-!-width-two-thirds" id="rename-{{ loop.index0 }}" name="device_name" type="text" value="{{ passkey.device_name }}" maxlength="100">
                   </div>
+                  <div class="govuk-form-group govuk-!-margin-bottom-2">
+                    <label class="govuk-label" for="rename-password-{{ loop.index0 }}">{{ t("profile_settings.current_password_label") }}</label>
+                    <input class="govuk-input govuk-!-width-two-thirds" id="rename-password-{{ loop.index0 }}" name="current_password" type="password" autocomplete="current-password" required>
+                  </div>
                   <button class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button">{{ t("profile_settings.passkeys.rename_submit") }}</button>
                 </form>
                 <details class="govuk-details govuk-!-margin-bottom-0" data-module="govuk-details">
@@ -307,9 +311,13 @@
                       <strong class="govuk-warning-text__text"><span class="govuk-visually-hidden">{{ t("states.warning_prefix") }}</span> {{ t("ux.confirm_irreversible") }}</strong>
                     </div>
                     <form method="post" action="{{ urlFor('/profile/passkeys/remove') }}">
-                      <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-                      <input type="hidden" name="credential_id" value="{{ passkey.credential_id }}">
-                      <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">{{ t("profile_settings.passkeys.remove_submit") }}<span class="govuk-visually-hidden"> {{ passkey.device_name }}</span></button>
+                        <input type="hidden" name="_csrf" value="{{ csrfToken }}">
+                        <input type="hidden" name="credential_id" value="{{ passkey.credential_id }}">
+                        <div class="govuk-form-group">
+                          <label class="govuk-label" for="remove-password-{{ loop.index0 }}">{{ t("profile_settings.current_password_label") }}</label>
+                          <input class="govuk-input govuk-!-width-two-thirds" id="remove-password-{{ loop.index0 }}" name="current_password" type="password" autocomplete="current-password" required>
+                        </div>
+                        <button class="govuk-button govuk-button--warning govuk-!-margin-bottom-0" data-module="govuk-button">{{ t("profile_settings.passkeys.remove_submit") }}<span class="govuk-visually-hidden"> {{ passkey.device_name }}</span></button>
                     </form>
                   </div>
                 </details>

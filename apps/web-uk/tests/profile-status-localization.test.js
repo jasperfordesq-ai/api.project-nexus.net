@@ -29,6 +29,7 @@ jest.mock('../src/middleware/auth', () => ({
 }));
 
 const api = require('../src/lib/api');
+const auth = require('../src/middleware/auth');
 const { createTranslator } = require('../src/lib/localization');
 const profileRouter = require('../src/routes/profile');
 
@@ -128,6 +129,47 @@ describe('request-scoped profile status localization', () => {
     expect(response.status).toBe(200);
     expect(response.body.locals.status).toBe('2fa-code-invalid');
     expect(response.body.locals.statusConfig.message).toBe(t('security_2fa.code_invalid'));
+  });
+
+  it('requires password reauthentication before passkey rename', async () => {
+    const response = await request(createApp('en'))
+      .post('/profile/passkeys/rename')
+      .type('form')
+      .send({ credential_id: 'cred-1', device_name: 'Laptop' });
+
+    expect(response.headers.location).toBe('/profile/settings?status=passkey-password-required#passkeys');
+    expect(api.callWebAuthnApi).not.toHaveBeenCalled();
+  });
+
+  it('maps rejected passkey reauthentication without attempting removal', async () => {
+    api.callWebAuthnApi.mockRejectedValueOnce(new api.ApiError('Confirmation rejected', 403, {
+      errors: [{ code: 'SECURITY_CONFIRMATION_REQUIRED' }]
+    }));
+
+    const response = await request(createApp('en'))
+      .post('/profile/passkeys/remove')
+      .type('form')
+      .send({ credential_id: 'cred-1', current_password: 'wrong-password' });
+
+    expect(response.headers.location).toBe('/profile/settings?status=passkey-password-incorrect#passkeys');
+    expect(api.callWebAuthnApi).toHaveBeenCalledTimes(1);
+    expect(auth.clearAuthCookies).not.toHaveBeenCalled();
+  });
+
+  it('preserves the session when Laravel blocks removal of the last sign-in method', async () => {
+    api.callWebAuthnApi
+      .mockResolvedValueOnce({ data: { security_confirmation_token: 'confirmed' } })
+      .mockRejectedValueOnce(new api.ApiError('Last method', 409, {
+        errors: [{ code: 'LAST_SIGN_IN_METHOD' }]
+      }));
+
+    const response = await request(createApp('en'))
+      .post('/profile/passkeys/remove')
+      .type('form')
+      .send({ credential_id: 'cred-1', current_password: 'current-password' });
+
+    expect(response.headers.location).toBe('/profile/settings?status=passkey-last-sign-in-method#passkeys');
+    expect(auth.clearAuthCookies).not.toHaveBeenCalled();
   });
 
   it('renders the neutral profile-updated query status in Arabic on the destination page', async () => {

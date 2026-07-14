@@ -17,7 +17,8 @@ const LOGIN_SUCCESS_STATUS_KEYS = Object.freeze({
   'password-reset': 'auth.password_reset',
   'register-created': 'auth.register_created',
   'signed-out': 'auth.signed_out',
-  'account-deletion-requested': 'delete_account.success'
+  'account-deletion-requested': 'delete_account.success',
+  'passkey-removed': 'profile_settings.passkeys.removed'
 });
 
 const LOGIN_ERROR_STATUS_KEYS = Object.freeze({

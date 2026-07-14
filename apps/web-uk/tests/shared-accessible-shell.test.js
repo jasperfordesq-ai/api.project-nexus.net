@@ -6333,6 +6333,14 @@ describe('shared accessible frontend shell', () => {
     expect(api.resendVerification).toHaveBeenCalledWith('ada@example.org', '');
   });
 
+  it('renders Laravel passkey-removal confirmation on the signed-out login page', async () => {
+    const response = await request(app).get('/login?status=passkey-removed');
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('Your passkey has been removed.');
+    expect(response.text).toContain('govuk-notification-banner--success');
+  });
+
   it('keeps Laravel public auth pages renderable for signed-in visitors', async () => {
     const cases = [
       { path: '/login', text: '<h1 class="govuk-heading-xl">Sign in</h1>' },
@@ -28311,22 +28319,35 @@ describe('shared accessible frontend shell', () => {
       frequency: 'daily'
     });
 
+    api.callWebAuthnApi
+      .mockResolvedValueOnce({ data: { security_confirmation_token: 'confirm-rename' } })
+      .mockResolvedValueOnce({ data: { device_name: 'Work laptop' } });
     const renamePasskeyResponse = await post('/profile/passkeys/rename', {
       credential_id: 'cred-1',
-      device_name: ' Work laptop '
+      device_name: ' Work laptop ',
+      current_password: 'current-password'
     });
     expect(renamePasskeyResponse.headers.location).toBe('/profile/settings?status=passkey-renamed#passkeys');
+    expect(api.callWebAuthnApi).toHaveBeenNthCalledWith(api.callWebAuthnApi.mock.calls.length - 1, 'test-token', 'POST', '/security-confirm', {
+      current_password: 'current-password'
+    });
     expect(api.callWebAuthnApi).toHaveBeenLastCalledWith('test-token', 'POST', '/rename', {
       credential_id: 'cred-1',
-      device_name: 'Work laptop'
+      device_name: 'Work laptop',
+      security_confirmation_token: 'confirm-rename'
     });
 
+    api.callWebAuthnApi
+      .mockResolvedValueOnce({ data: { security_confirmation_token: 'confirm-remove' } })
+      .mockResolvedValueOnce({ data: { sessions_revoked: true } });
     const removePasskeyResponse = await post('/profile/passkeys/remove', {
-      credential_id: 'cred-1'
+      credential_id: 'cred-1',
+      current_password: 'current-password'
     });
-    expect(removePasskeyResponse.headers.location).toBe('/profile/settings?status=passkey-removed#passkeys');
+    expect(removePasskeyResponse.headers.location).toBe('/login?status=passkey-removed');
     expect(api.callWebAuthnApi).toHaveBeenLastCalledWith('test-token', 'POST', '/remove', {
-      credential_id: 'cred-1'
+      credential_id: 'cred-1',
+      security_confirmation_token: 'confirm-remove'
     });
 
     const personalisationResponse = await post('/profile/personalisation', {
