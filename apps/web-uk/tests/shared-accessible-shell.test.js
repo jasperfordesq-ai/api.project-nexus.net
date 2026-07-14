@@ -26936,7 +26936,7 @@ describe('shared accessible frontend shell', () => {
               sender_id: 55,
               body: 'Hello team,\nthe rota is ready. <script>alert("unsafe")</script>',
               created_at: '2026-07-06T12:15:00Z',
-              sender: { id: 55, name: 'Casey Quinn' }
+              sender: { id: 55, name: 'Casey Quinn', avatar_url: '/uploads/55/casey.jpg' }
             }
           ],
           meta: {
@@ -26971,6 +26971,8 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('You');
     expect(response.text).toContain('Administrator');
     expect(response.text).toContain('Casey Quinn');
+    expect(response.text).toContain('<img class="nexus-alpha-avatar" src="/uploads/55/casey.jpg" alt="" loading="lazy" decoding="async" width="48" height="48">');
+    expect(response.text).toContain('<span class="nexus-alpha-avatar nexus-alpha-avatar--placeholder" aria-hidden="true">Y</span>');
     expect(response.text).toContain('<mark class="nexus-alpha-search-match">Hello</mark> team,<br>the rota is ready.');
     expect(response.text).toContain('<mark class="nexus-alpha-search-match">Hello</mark> again — I have published the final rota.');
     expect(response.text).toContain('&lt;script&gt;alert(&quot;unsafe&quot;)&lt;/script&gt;');
