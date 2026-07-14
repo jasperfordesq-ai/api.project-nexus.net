@@ -29794,7 +29794,7 @@ describe('shared accessible frontend shell', () => {
             id: 42,
             title: 'Advanced community care',
             summary: 'Practical neighbour support',
-            description: 'Build practical skills for supporting neighbours safely.',
+            description: 'Build <strong>practical</strong> skills for supporting neighbours safely.',
             level: 'advanced',
             visibility: 'members',
             enrollment_type: 'self_paced',
@@ -29815,7 +29815,7 @@ describe('shared accessible frontend shell', () => {
                     id: 11,
                     title: 'Risk check',
                     content_type: 'text',
-                    body: 'Use a simple checklist before each visit.'
+                    body: '<p class="lesson" onclick="alert(1)">Use a <strong>simple</strong> checklist before each visit.</p><script>alert(2)</script>'
                   },
                   {
                     id: 12,
@@ -29947,6 +29947,8 @@ describe('shared accessible frontend shell', () => {
     expect(api.callCourseApi).toHaveBeenCalledWith('test-token', 'GET', '/42/reviews');
     expect(api.callCourseApi).toHaveBeenCalledWith('test-token', 'GET', '/42/progress');
     expect(detail.text).toContain('Advanced community care');
+    expect(detail.text).toContain('Build practical skills for supporting neighbours safely.');
+    expect(detail.text).not.toContain('<strong>practical</strong>');
     expect(detail.text).toContain('Intro to community support');
     expect(detail.text).toContain('Download your certificate');
     expect(detail.text).toContain('Leave a review');
@@ -29965,6 +29967,14 @@ describe('shared accessible frontend shell', () => {
     expect(learn.text).toContain('Safeguarding quiz');
     expect(learn.text).toContain('Ask for consent');
     expect(learn.text).toContain('Mark lesson as complete');
+
+    const textLesson = await request(app)
+      .get('/courses/42/learn?lesson=11')
+      .set('Cookie', signedCookieHeader());
+    expect(textLesson.status).toBe(200);
+    expect(textLesson.text).toContain('<p class="lesson">Use a <strong>simple</strong> checklist before each visit.</p>');
+    expect(textLesson.text).not.toContain('onclick=');
+    expect(textLesson.text).not.toContain('alert(2)');
 
     const certificate = await request(app)
       .get('/courses/42/certificate')

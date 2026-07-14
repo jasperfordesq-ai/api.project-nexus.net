@@ -5,6 +5,7 @@
 
 const express = require('express');
 const { ApiError, ApiOfflineError, callCourseApi, getMyCourses } = require('../lib/api');
+const { sanitizeCmsHtml } = require('../lib/html-sanitizer');
 const { asyncRoute } = require('../lib/routeHelpers');
 
 const router = express.Router();
@@ -261,7 +262,7 @@ function normalizeCourse(course) {
     id: positiveInteger(course.id) || 0,
     title: titleFrom(course.title),
     summary: trimmed(course.summary),
-    description: trimmed(course.description),
+    description: trimmed(stripHtml(course.description)),
     excerpt: limitText(course.description || course.summary, 160),
     level,
     levelLabel: COURSE_LEVEL_LABELS[level] || (level ? `${level.charAt(0).toUpperCase()}${level.slice(1)}` : ''),
@@ -339,7 +340,7 @@ function normalizeLesson(lesson, progress = { completed: new Set(), available: n
     title: titleFrom(lesson.title, 'Lesson'),
     contentType,
     contentTypeLabel: LESSON_CONTENT_TYPE_LABELS[contentType] || contentType,
-    body: trimmed(lesson.body),
+    body: sanitizeCmsHtml(lesson.body),
     videoUrl: trimmed(lesson.video_url),
     embedUrl: trimmed(lesson.embed_url),
     attachmentUrl: trimmed(lesson.attachment_url),

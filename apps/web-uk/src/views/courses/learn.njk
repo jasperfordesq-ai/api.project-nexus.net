@@ -87,7 +87,7 @@
         {% endif %}
 
         {% if currentLesson.body %}
-          <div class="govuk-body">{{ currentLesson.body | nl2br | safe }}</div>
+          <div class="govuk-body">{{ currentLesson.body | safe }}</div>
         {% endif %}
 
         {% if currentLesson.attachmentUrl %}
