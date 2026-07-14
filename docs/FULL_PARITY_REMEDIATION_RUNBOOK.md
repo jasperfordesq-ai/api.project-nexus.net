@@ -285,6 +285,30 @@ route, 282/350 semantic, 124/150 schema, 90/100 security/localization, 45/100
 build/test/CI, 10/125 unchanged-frontends, and 21/75 providers/ops/docs. Exact
 remaining deductions are 0, 68, 26, 10, 55, 115, and 54 points.
 
+### 2026-07-14 Held-Escrow Charge-Dispute Reconciliation (Published)
+
+Evidence snapshot: Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf`, ASP.NET implementation
+`027f35e6189eee13eb05396050a2995706597cad`, captured 2026-07-14
+19:15:17 +01:00. Signed Stripe charge-dispute created/updated/closed events now
+bind provider charge/dispute identity to one tenant payment while funds remain
+held. Open events freeze the order and escrow; a win restores the prior order
+state and makes escrow releasable; a loss records the provider exposure in the
+durable refund ledger and closes full-refund order/escrow state. Event replay is
+idempotent. Paid or scheduled payouts remain fail-closed pending transfer lookup,
+reversal, and won-dispute reimbursement evidence.
+
+The Release API build passes with zero errors and three known unrelated warnings;
+the complete marketplace payment/dispute gate passes 28/28. Paid-transfer dispute
+recovery, refund notifications, live Stripe proof, full-suite/CI, and unchanged-
+client runtime certification remain open.
+
+Published implementation `027f35e6189eee13eb05396050a2995706597cad`
+banks 3 semantic and 1 provider/operations point for **676/1000**: 100/100
+route, 285/350 semantic, 124/150 schema, 90/100 security/localization, 45/100
+build/test/CI, 10/125 unchanged-frontends, and 22/75 providers/ops/docs. Exact
+remaining deductions are 0, 65, 26, 10, 55, 115, and 53 points.
+
 ## Historical Checkpoints
 
 Everything in this section is dated implementation evidence. Its older

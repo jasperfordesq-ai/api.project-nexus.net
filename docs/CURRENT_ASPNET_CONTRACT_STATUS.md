@@ -4,7 +4,7 @@ Last verified: 2026-07-14
 
 Status: **canonical current ASP.NET score and certification source**
 
-<!-- doc-consistency: ASPNET_CURRENT_BANKED_SCORE=672/1000 -->
+<!-- doc-consistency: ASPNET_CURRENT_BANKED_SCORE=676/1000 -->
 
 Use this document for the current ASP.NET completion score. Use
 [`FULL_PARITY_REMEDIATION_RUNBOOK.md`](FULL_PARITY_REMEDIATION_RUNBOOK.md) for
@@ -35,7 +35,7 @@ ASP.NET-specific page branches do not satisfy the goal.
 
 ## Current Scored Position
 
-The **current banked score is 672/1000 (67.2%)** under Fixed Rubric Baseline 1.
+The **current banked score is 676/1000 (67.6%)** under Fixed Rubric Baseline 1.
 The denominator is fixed; newly discovered work is recorded as a deduction or
 a separately named Laravel-drift baseline, never as a silent denominator
 change.
@@ -43,13 +43,13 @@ change.
 | Category | Banked | Maximum | Open |
 | --- | ---: | ---: | ---: |
 | Active Laravel API route representation | 100 | 100 | 0 |
-| Semantic workflow and canonical-consumer contract parity | 282 | 350 | 68 |
+| Semantic workflow and canonical-consumer contract parity | 285 | 350 | 65 |
 | Schema, migrations, data integrity, and upgrade safety | 124 | 150 | 26 |
 | Auth, tenant isolation, security, and localization | 90 | 100 | 10 |
 | Full build/test/CI evidence | 45 | 100 | 55 |
 | Unchanged canonical React plus unchanged Web UK dual-backend runtime proof | 10 | 125 | 115 |
-| Providers, jobs, integrations, operational proof, and reproducible docs | 21 | 75 | 54 |
-| **Total** | **672** | **1000** | **328** |
+| Providers, jobs, integrations, operational proof, and reproducible docs | 22 | 75 | 53 |
+| **Total** | **676** | **1000** | **324** |
 
 Active route representation is **2,601/2,601 matched with 0 missing**. Seven
 retired OpenAPI-only operations are reported separately and return to the
@@ -78,14 +78,15 @@ published:
 | Marketplace escrow settlement and delayed Connect payout | Implementation `93417bd17e886e8d05e054ec2f679a4851c6ae26` | +8 semantic, +4 schema, +2 providers/operations = **659/1000** |
 | Marketplace provider refunds and dispute settlement | Implementation `4f7b9f202322d792574f2003274fadfda9e7037d` | +5 semantic, +3 schema, +1 providers/operations = **668/1000** |
 | Signed external marketplace refund reconciliation | Implementation `ef8a0cf8d9458abda8350f8bf2a5adca44f12724` | +3 semantic, +1 providers/operations = **672/1000** |
+| Signed held-escrow charge-dispute reconciliation | Implementation `027f35e6189eee13eb05396050a2995706597cad` | +3 semantic, +1 providers/operations = **676/1000** |
 
 These named values form an audit trail. They are not competing current scores.
 
 ## Repository State At This Verification
 
 The product-source baseline inspected for this page was
-`ef8a0cf8d9458abda8350f8bf2a5adca44f12724`, with Laravel frozen at
-`903d03d3db78bbf87129ad35728be3b72819acaf` on 2026-07-14 18:53:01 +01:00.
+`027f35e6189eee13eb05396050a2995706597cad`, with Laravel frozen at
+`903d03d3db78bbf87129ad35728be3b72819acaf` on 2026-07-14 19:15:17 +01:00.
 Web UK-only commits do not add ASP.NET points and belong in the Web UK status
 report.
 
@@ -96,7 +97,7 @@ at the verification snapshot.
 
 ### Dirty And In Flight
 
-The signed-refund-reconciliation marketplace slice is committed and banked. The separate
+The held-dispute-reconciliation marketplace slice is committed and banked. The separate
 event-safety migration and concurrent Web UK generated-ledger changes remain
 outside this checkpoint; neither contributes ASP.NET points here. Dirty files
 never increase the banked score.
@@ -107,7 +108,7 @@ count, elapsed effort, or an agent's estimate.
 
 ## Open Certification Gates
 
-The remaining 328 points are not a single implementation queue. They include
+The remaining 324 points are not a single implementation queue. They include
 independent proof gates that must remain visible in status reports:
 
 - semantic completion for remaining marketplace, federation, jobs, providers,
@@ -133,8 +134,8 @@ Complete these eight bounded packages in order unless an external dependency is
 recorded against a package. Do not turn a package into estimated score movement;
 points bank only through the evidence transaction above.
 
-1. **Finish marketplace financial lifecycle.** Implement signed charge-dispute
-   event reconciliation, provider dispute win/loss recovery, refund notifications,
+1. **Finish marketplace financial lifecycle.** Implement paid-transfer charge-
+   dispute reversal/reimbursement recovery, refund notifications,
    and live-provider proof without weakening the now-
    banked paid-delivery, escrow, and manual-refund ledgers.
 2. **Generate the canonical React call-site contract matrix.** At named Laravel

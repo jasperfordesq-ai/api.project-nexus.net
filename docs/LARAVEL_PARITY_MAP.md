@@ -7,7 +7,7 @@ Status: **Maintained reference — detailed evidence and gap map, not a current 
 Evidence provenance: the latest published-backend summary was reviewed on
 2026-07-14 against Laravel
 `903d03d3db78bbf87129ad35728be3b72819acaf` and ASP.NET implementation
-`ef8a0cf8d9458abda8350f8bf2a5adca44f12724`; dirty backend work is excluded.
+`027f35e6189eee13eb05396050a2995706597cad`; dirty backend work is excluded.
 Every older inventory lacking its own exact source pair is historical and
 provenance-incomplete, regardless of words such as “latest” retained inside a
 checkpoint.
@@ -58,6 +58,11 @@ separate-charge transfers idempotently, and enter each expanded provider refund
 in the durable ledger once. Incomplete provider detail fails closed. Charge-
 dispute win/loss reconciliation, refund notifications, and live-provider proof
 remain open.
+
+Signed charge-dispute events now freeze held escrow and restore it on a provider
+win or convert a provider loss into the durable refund ledger. Paid/scheduled
+payout disputes remain fail-closed until transfer reversal and reimbursement
+evidence is implemented.
 
 The seven apparent document-era vetting gaps are retired OpenAPI-only artifacts:
 Laravel live routes omit them, the controller prohibits them, feature tests assert
