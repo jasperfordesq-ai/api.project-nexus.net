@@ -1003,6 +1003,9 @@ rewriting.
   the Reviews average. Focused default-English rendering passes `2/2`; live
   transfer/review mutation certification remains governed by the disposable-
   environment queue.
+- Group Exchange detail now renders Blade's `Back to exchanges` link before the
+  caption and heading through `urlFor()`. The focused list/create/detail render
+  passes `1/1`; mutation and manual accessibility certification remain open.
 
 ### Jobs member-page evidence
 
