@@ -96,20 +96,30 @@ function trimmed(value) {
   return String(value || '').trim();
 }
 
-function priceFromCents(value) {
-  const cents = Number(value || 0);
-  if (!Number.isFinite(cents) || cents <= 0) return '';
-  return (cents / 100).toFixed(2);
+function tenantCurrency(req) {
+  const configured = trimmed(req.accessibleRouting?.tenant?.settings?.default_currency).toUpperCase();
+  return /^[A-Z]{3}$/.test(configured) ? configured : 'EUR';
 }
 
-function normalizeTier(tier, t) {
+function priceFromCents(value, currency) {
+  const cents = Number(value || 0);
+  if (!Number.isFinite(cents) || cents <= 0) return '';
+  const prefix = {
+    EUR: '\u20ac',
+    USD: '$',
+    GBP: '\u00a3'
+  }[currency] || `${currency} `;
+  return `${prefix}${(cents / 100).toFixed(2)}`;
+}
+
+function normalizeTier(tier, t, currency) {
   return {
     ...tier,
     id: positiveInteger(tier.id) || 0,
     name: trimmed(tier.name) || t('premium.title'),
     description: trimmed(tier.description),
-    monthlyPrice: priceFromCents(tier.monthly_price_cents),
-    yearlyPrice: priceFromCents(tier.yearly_price_cents),
+    monthlyPrice: priceFromCents(tier.monthly_price_cents, currency),
+    yearlyPrice: priceFromCents(tier.yearly_price_cents, currency),
     defaultInterval: Number(tier.yearly_price_cents || 0) > 0 && Number(tier.monthly_price_cents || 0) <= 0 ? 'yearly' : 'monthly',
     features: Array.isArray(tier.features) ? tier.features.map(trimmed).filter(Boolean) : []
   };
@@ -189,7 +199,7 @@ router.get('/', asyncRoute(async (req, res) => {
       title: res.locals.t('premium.title'),
       activeNav: 'explore',
       tiers: listTiers(tiersResult)
-        .map((tier) => normalizeTier(tier, res.locals.t)).filter((tier) => tier.id > 0),
+        .map((tier) => normalizeTier(tier, res.locals.t, tenantCurrency(req))).filter((tier) => tier.id > 0),
       currentTierName: currentTierName(me),
       status: routeStatus(req.query, PRICING_STATUS_MESSAGES, res.locals.t)
     });

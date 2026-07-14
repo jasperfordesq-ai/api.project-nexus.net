@@ -9755,8 +9755,9 @@ describe('shared accessible frontend shell', () => {
     expect(pricing.text).toContain(t('premium.description'));
     expect(pricing.text).toContain('Community Champion');
     expect(pricing.text).toContain('Support local projects every month.');
-    expect(pricing.text).toContain(`5.00</strong> ${t('premium.per_month')}`);
-    expect(pricing.text).toContain(`50.00</strong> ${t('premium.per_year')}`);
+    expect(pricing.text).toContain(`€5.00</strong> ${t('premium.per_month')}`);
+    expect(pricing.text).toContain(`€50.00</strong> ${t('premium.per_year')}`);
+    expect(pricing.text.replace(/\s+/g, ' ')).toContain(`${t('premium.per_month')} · <strong>€50.00`);
     expect(pricing.text).toContain('Supporter badge');
     expect(pricing.text).toContain(t('premium.states.subscribe-failed'));
     expect(pricing.text).toContain(t('premium.current_plan_title'));
@@ -9867,9 +9868,20 @@ describe('shared accessible frontend shell', () => {
           events: true,
           member_premium: true,
           volunteering: true
-        }
+        },
+        settings: { default_currency: 'gbp' }
       }
     });
+
+    api.getMemberPremiumTiers.mockResolvedValue({
+      data: { tiers: [{ id: 7, name: 'Community Champion', monthly_price_cents: 500, yearly_price_cents: 5000 }] }
+    });
+    const pricing = await agent
+      .get('/acme/accessible/premium')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    expect(pricing.status).toBe(200);
+    expect(pricing.text).toContain('£5.00');
+    expect(pricing.text).toContain('£50.00');
 
     const first = await agent
       .get('/acme/accessible/contact')

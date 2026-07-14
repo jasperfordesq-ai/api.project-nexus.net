@@ -44,7 +44,7 @@
           {% endif %}
           <p class="govuk-body govuk-!-margin-bottom-2">
             {% if tier.monthlyPrice %}<strong>{{ tier.monthlyPrice }}</strong> {{ t("premium.per_month") }}{% endif %}
-            {% if tier.monthlyPrice and tier.yearlyPrice %}<br>{% endif %}
+            {% if tier.monthlyPrice and tier.yearlyPrice %} · {% endif %}
             {% if tier.yearlyPrice %}<strong>{{ tier.yearlyPrice }}</strong> {{ t("premium.per_year") }}{% endif %}
           </p>
           {% if tier.features and tier.features.length %}
