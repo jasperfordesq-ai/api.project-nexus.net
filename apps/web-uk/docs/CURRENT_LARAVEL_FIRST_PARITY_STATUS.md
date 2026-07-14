@@ -173,7 +173,7 @@ these numbers after either source moves.
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
 | Jest | 49/49 suites, 1,637/1,637 tests | Fresh green code gate |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
-| Static locale usage | 7,124 references, 5,424 unique keys, 0 unresolved | Current complete-reference audit |
+| Static locale usage | 7,166 references, 5,467 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
 | Blade marker check | Retained 19/19; current rerun unavailable | Current public-GET rerun timed out against Laravel HTTP; retained result is not visual certification |
 | Automated accessibility | Not currently certified: 28 passed, login failed, 58 did not run | Full aggregate requires a disposable Laravel environment; manual AT review remains open |
@@ -221,6 +221,18 @@ dynamic translation keys from appearing as option text. Focused default-English
 render proof passes 1/1, the full Jest gate remains 49/49 suites and 1,637/1,637
 tests, and lint, localization-key, template-localization, CSS, and brand gates
 are green. No Laravel request, upload, mutation, or database access was used.
+
+## Marketplace Collection And Pickup-Slot Refresh
+
+Buyer collections and seller pickup-slot pages now mirror current Blade copy,
+caption hierarchy, status labels, collection-window formatting, QR guidance,
+visually hidden table caption, form sections, controls, warnings, and actions
+through Laravel's exact commerce catalogs. The older invented collection
+description and `Picked up`/`No show` labels are replaced by Blade's `Collected`
+and `Missed` contract. Focused rendered proof passes 3/3 after correcting one
+route-harness regression; the final full Jest rerun passes 49/49 suites and
+1,637/1,637 tests. Lint, localization-key, template-localization, CSS, and brand
+gates are green. No Laravel request, mutation, upload, or database access ran.
 
 ## Marketplace Listing Form Refresh
 

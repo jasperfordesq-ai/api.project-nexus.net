@@ -30655,8 +30655,11 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(200);
     expect(api.callMarketplaceApi).toHaveBeenCalledWith('test-token', 'GET', '/me/pickups');
     expect(response.text).toContain('My collections');
+    expect(response.text).toContain('Items you have reserved for collection. Show the seller your collection code when you arrive.');
     expect(response.text).toContain('Community bike');
     expect(response.text).toContain('Reserved');
+    expect(response.text).toContain('Collection window: 7 Jul 2026, 10:30');
+    expect(response.text).toContain('Your collection code');
     expect(response.text).toContain('PICKUP-123');
     expect(response.text).not.toContain('Laravel Blade route');
   });
@@ -30747,6 +30750,8 @@ describe('shared accessible frontend shell', () => {
     expect(api.callMarketplaceApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/seller/pickup-slots');
     expect(api.callMarketplaceApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/seller/pickup-slots');
     expect(index.text).toContain('Pickup slots');
+    expect(index.text).toContain('class="govuk-caption-l"');
+    expect(index.text).toContain('govuk-visually-hidden">Pickup slots</caption>');
     expect(index.text).toContain('Collection confirmed. The order is marked as collected.');
     expect(index.text).toContain('Order reference: 91');
     expect(index.text).toContain('Confirm a collection');
@@ -30756,6 +30761,8 @@ describe('shared accessible frontend shell', () => {
     expect(index.text).toContain('Not active');
     expect(index.text).toContain('href="/marketplace/slots/7/edit"');
     expect(edit.text).toContain('Edit pickup slot');
+    expect(edit.text).toContain('Date and time');
+    expect(edit.text).toContain('Back to pickup slots');
     expect(edit.text).toContain('Pickup slot updated.');
     expect(edit.text).toContain('value="2026-07-07T10:30"');
     expect(edit.text).toContain('action="/marketplace/slots/7/update"');

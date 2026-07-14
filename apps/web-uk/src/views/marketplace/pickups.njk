@@ -8,12 +8,12 @@
 {% block mainContent %}
   {% include "marketplace/_nav.njk" %}
 
-  <span class="govuk-caption-l">Collections at {{ tenantName or serviceName }}</span>
-  <h1 class="govuk-heading-xl">My collections</h1>
-  <p class="govuk-body-l">Collection reservations and pickup codes for marketplace orders.</p>
+  <span class="govuk-caption-l">{{ t("govuk_alpha_commerce.pickups.caption", { community: tenantName or serviceName }) }}</span>
+  <h1 class="govuk-heading-xl">{{ t("govuk_alpha_commerce.pickups.title") }}</h1>
+  <p class="govuk-body-l">{{ t("govuk_alpha_commerce.pickups.description") }}</p>
 
   {% if not reservations.length %}
-    <p class="govuk-inset-text">You do not have any collection reservations.</p>
+    <p class="govuk-inset-text">{{ t("govuk_alpha_commerce.pickups.empty") }}</p>
   {% else %}
     <div class="nexus-alpha-card-list">
       {% for reservation in reservations %}
@@ -22,13 +22,11 @@
             <h2 class="govuk-heading-s govuk-!-margin-bottom-1">{{ reservation.title }}</h2>
             <strong class="govuk-tag {{ reservation.statusTagClass }}">{{ reservation.statusLabel }}</strong>
           </div>
-          {% if reservation.slotStart %}
-            <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-2">Collection window: {{ reservation.slotStart }}</p>
-          {% endif %}
+          <p class="govuk-body-s nexus-alpha-meta govuk-!-margin-bottom-2">{{ t("govuk_alpha_commerce.pickups.window_label") }}: {{ reservation.slotStartLabel }}</p>
           {% if reservation.status == 'reserved' and reservation.qrCode %}
             <div class="govuk-inset-text govuk-!-margin-top-0 govuk-!-margin-bottom-0">
-              <h3 class="govuk-heading-s govuk-!-margin-bottom-1">Collection code</h3>
-              <p class="govuk-hint govuk-!-margin-bottom-1">Show this code to the seller when collecting your item.</p>
+              <h3 class="govuk-heading-s govuk-!-margin-bottom-1">{{ t("govuk_alpha_commerce.pickups.code_heading") }}</h3>
+              <p class="govuk-hint govuk-!-margin-bottom-1">{{ t("govuk_alpha_commerce.pickups.code_hint") }}</p>
               <p class="govuk-body govuk-!-font-weight-bold">{{ reservation.qrCode }}</p>
             </div>
           {% endif %}

@@ -754,7 +754,7 @@ function decorateOrder(order, role) {
   };
 }
 
-function decorateReservation(reservation) {
+function decorateReservation(reservation, t = null) {
   const row = reservation && typeof reservation === 'object' ? reservation : {};
   const slot = row.slot && typeof row.slot === 'object' ? row.slot : {};
   const status = trimmed(row.status) || 'reserved';
@@ -762,14 +762,16 @@ function decorateReservation(reservation) {
     ...row,
     id: positiveInteger(row.id),
     orderId: positiveInteger(row.order_id),
-    title: trimmed(row.listing_title || row.listing?.title) || `Order ${positiveInteger(row.order_id) || ''}`.trim(),
+    title: trimmed(row.listing_title || row.listing?.title) || (t ? t('govuk_alpha_commerce.pickups.order_label', { id: positiveInteger(row.order_id) || 0 }) : `Order ${positiveInteger(row.order_id) || 0}`),
     status,
-    statusLabel: PICKUP_STATUS_LABELS[status] || status,
+    statusLabel: t && Object.hasOwn(PICKUP_STATUS_LABELS, status)
+      ? t(`govuk_alpha_commerce.pickups.status_${status}`)
+      : (PICKUP_STATUS_LABELS[status] || status),
     statusTagClass: status === 'picked_up'
       ? 'govuk-tag--green'
       : (status === 'cancelled' ? 'govuk-tag--red' : (status === 'reserved' ? 'govuk-tag--blue' : 'govuk-tag--yellow')),
     qrCode: trimmed(row.qr_code),
-    slotStart: trimmed(slot.slot_start || row.slot_start || row.reserved_at)
+    slotStartLabel: formatDateTimeLabel(slot.slot_start || row.slot_start || row.reserved_at)
   };
 }
 
@@ -1444,7 +1446,7 @@ router.get('/pickups', asyncRoute(async (req, res) => {
       titleKey: 'govuk_alpha_commerce.pickups.title',
       activeNav: 'explore',
       activeTab: 'orders',
-      reservations: rowsFrom(result).map(decorateReservation)
+      reservations: rowsFrom(result).map((reservation) => decorateReservation(reservation, res.locals.t))
     });
   } catch (error) {
     return renderMarketplaceError(error, res, 'My collections');
