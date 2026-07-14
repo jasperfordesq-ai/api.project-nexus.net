@@ -186,7 +186,7 @@ together from a clean published checkout.
   with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
   Only this fixed-rubric audit contributes to the current bank.
 - **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `fd99edaa`, including the later implementation, contract,
+  baseline `7b180e41`, including the later implementation, contract,
   resilience, and component-audit slices. Their evidence is useful, but they
   contribute zero points until one complete fixed-rubric re-audit explicitly
   replaces the baseline.
@@ -205,7 +205,7 @@ together from a clean published checkout.
 | Missing Laravel routes | 1 | Event offline check-in code generation |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 52/52 suites, 1,689/1,689 tests | Latest uninterrupted complete non-mutating gate at product baseline `fd99edaa` |
+| Jest | 52/52 suites, 1,690/1,690 tests | Latest uninterrupted complete non-mutating gate at product baseline `7b180e41` |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
 | Static locale usage | 7,580 references, 5,784 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
@@ -1565,6 +1565,22 @@ matrix, and API ledger are green. No Laravel database, migration, mutation,
 upload, download, container, or production operation was performed. This
 published contract improvement remains unscored, so the frozen bank remains
 `622/1,000` pending a complete fixed-rubric re-audit.
+
+## 2026-07-14 Organisation Manage Row Boundaries
+
+Frozen evidence refreshed at `2026-07-14T23:37:24.7643501+01:00` against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and Web UK product commit
+`7b180e41`. Manage rows now follow Blade's identity, display-name, and role
+boundaries: rows with empty IDs are skipped, names are trimmed before the
+source fallback, and management controls require the authoritative
+`member_role` rather than an API-only `role` alias.
+
+Focused default-English normal/boundary proof passes `2/2`; the uninterrupted
+complete non-mutating gate passes `52/52` suites and `1,690/1,690` tests. Lint,
+route matrix, and API ledger are green. No Laravel database, migration,
+mutation, upload, download, container, or production operation was performed.
+This published component-audit improvement remains unscored, so the frozen
+bank remains `622/1,000` pending a complete fixed-rubric re-audit.
 
 ## 2026-07-14 Listing Report Validation Replay
 
