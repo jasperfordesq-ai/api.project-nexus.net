@@ -6812,7 +6812,7 @@ describe('shared accessible frontend shell', () => {
       cursor: 'abc'
     });
     expect(response.text).toContain('Avery Stone');
-    expect(response.text).toContain('/uploads/avery.jpg');
+    expect(response.text).toContain(`src="${getApiBaseUrl()}/uploads/avery.jpg" alt="" loading="lazy" decoding="async" width="48" height="48"`);
     expect(response.text).toContain('Can we confirm Saturday?');
     expect(response.text).toContain(`${longMessage.slice(0, 177)}...`);
     expect(response.text).not.toContain(longMessage);
@@ -27749,7 +27749,7 @@ describe('shared accessible frontend shell', () => {
     expect(groupsMain).not.toContain('govuk-grid-column-two-thirds');
     expect(response.text).toContain('data-module="govuk-button" href="/messages/groups/new"');
     expect(response.text).toContain('Local helpers');
-    expect(response.text).toContain('src="/uploads/local-helpers.jpg" alt="" loading="lazy" decoding="async" width="48" height="48"');
+    expect(response.text).toContain(`src="${getApiBaseUrl()}/uploads/local-helpers.jpg" alt="" loading="lazy" decoding="async" width="48" height="48"`);
     expect(response.text).toContain('class="nexus-alpha-avatar nexus-alpha-avatar--placeholder" aria-hidden="true">G</span>');
     expect(response.text).toContain('3 members');
     expect(response.text).toContain('2 unread messages');

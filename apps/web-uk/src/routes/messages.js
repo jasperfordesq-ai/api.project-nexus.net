@@ -446,7 +446,10 @@ function normalizeInboxConversation(conversation, currentUserId, t) {
   return {
     ...source,
     id: positiveInteger(source.id) || source.id,
-    otherUser,
+    otherUser: {
+      ...otherUser,
+      avatarAssetUrl: resolveBackendAssetUrl(otherUser.avatar_url || otherUser.avatarUrl)
+    },
     displayName,
     unreadCount: Number(source.unread_count ?? source.unreadCount ?? 0) || 0,
     lastMessageText: bladeLimit(lastMessageText),
@@ -845,7 +848,8 @@ router.get('/groups', requireAuth, asyncRoute(async (req, res) => {
     title: res.locals.t('govuk_alpha_messages.groups.title'),
     groups: groups.map(group => ({
       ...group,
-      displayName: groupName(group, res.locals.t)
+      displayName: groupName(group, res.locals.t),
+      avatarAssetUrl: resolveBackendAssetUrl(group.group_avatar_url || group.groupAvatarUrl)
     })),
     groupStatus: groupStatus(req.query.status, res.locals.t),
     ...access,

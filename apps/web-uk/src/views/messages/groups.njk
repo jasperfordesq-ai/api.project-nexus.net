@@ -60,8 +60,8 @@
           {% for group in groups %}
             <article class="nexus-alpha-card">
               <div class="nexus-alpha-card-head">
-                {% if group.group_avatar_url or group.groupAvatarUrl %}
-                  <img class="nexus-alpha-avatar" src="{{ group.group_avatar_url or group.groupAvatarUrl }}" alt="" loading="lazy" decoding="async" width="48" height="48">
+                {% if group.avatarAssetUrl %}
+                  <img class="nexus-alpha-avatar" src="{{ group.avatarAssetUrl }}" alt="" loading="lazy" decoding="async" width="48" height="48">
                 {% else %}
                   <span class="nexus-alpha-avatar nexus-alpha-avatar--placeholder" aria-hidden="true">{{ group.displayName | first | upper }}</span>
                 {% endif %}
