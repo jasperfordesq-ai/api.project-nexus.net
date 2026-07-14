@@ -988,6 +988,14 @@ async function downloadEventApi(token, path = '', requestOptions = {}) {
   });
 }
 
+async function downloadEventRegistrationSubmissions(token, eventId, data) {
+  return downloadRequest(`/api/v2/events/${encodeURIComponent(eventId)}/registration-product/submissions/export`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data)
+  });
+}
+
 async function downloadVolunteerCredential(token, id) {
   return downloadRequest(`/api/v2/volunteering/credentials/${encodeURIComponent(id)}/download`, {
     headers: { Authorization: `Bearer ${token}` }
@@ -3453,6 +3461,7 @@ module.exports = {
   callAdminEventApi,
   callEventTemplateApi,
   downloadEventApi,
+  downloadEventRegistrationSubmissions,
   getEventCategories,
   getVolunteeringCategories,
   uploadEventImage,

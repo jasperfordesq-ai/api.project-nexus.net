@@ -2556,6 +2556,30 @@ describe('API Request Functions', () => {
       );
     });
 
+    it('should export Event Registration submissions through Laravel POST binary contract', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: new Map([['content-type', 'text/csv; charset=UTF-8']]),
+        arrayBuffer: async () => Buffer.from('Question,Answer').buffer
+      });
+
+      await api.downloadEventRegistrationSubmissions('test-token', 42, {
+        purpose: 'Governance export',
+        correlation_id: 'audit-123',
+        include_sensitive: false
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/events/42/registration-product/submissions/export',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' }),
+          body: JSON.stringify({ purpose: 'Governance export', correlation_id: 'audit-123', include_sensitive: false })
+        })
+      );
+    });
+
     it('should call Laravel admin event endpoints with the exact query and decision payload', async () => {
       mockFetch
         .mockResolvedValueOnce({

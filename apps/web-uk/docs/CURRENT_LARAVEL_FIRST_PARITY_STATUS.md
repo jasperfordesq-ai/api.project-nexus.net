@@ -177,7 +177,7 @@ these numbers after either source moves.
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
 | Blade marker check | Current 19/19 | Current-source public GET marker comparison; not screenshot or visual certification |
 | Automated accessibility | Not currently certified: 28 passed, login failed, 58 did not run | Full aggregate requires a disposable Laravel environment; manual AT review remains open |
-| Frontend API consumer ledger | 663 contracts: 441 OpenAPI matches, 222 unmatched, 0 dynamic | Static method/path and ownership evidence; unmatched rows are not parity claims |
+| Frontend API consumer ledger | 663 contracts: 444 OpenAPI matches, 219 unmatched, 0 dynamic | Static method/path and ownership evidence; unmatched rows are not parity claims |
 
 ### Frozen Completion Baseline
 
@@ -241,7 +241,7 @@ when a concrete regression requires an independently publishable fix.
 8. **P0 - Event check-in boundary:** obtain a safe Laravel online signed-code
    contract or an explicit source-contract decision for
    `POST /events/{id}/check-in/code`. Owner: Laravel backend/API workstream.
-9. **P1 - API ledger closure:** reconcile all 222 unmatched consumer rows,
+9. **P1 - API ledger closure:** reconcile all 219 unmatched consumer rows,
    adding focused assertions for concrete gaps. Owner:
    Web UK; Laravel API owner for genuine source omissions.
 10. **P1 - Component-audit closure:** finish the remaining default-English
@@ -269,9 +269,9 @@ request-scoped tenant authority, auth/role boundary, request and response shape,
 status/error behavior, redirects, side effects, cleanup requirements, Laravel
 operation/controller metadata, frontend consumers, and detected tests.
 
-The current static inventory contains 663 consumed contracts. It matches 441
-method/path pairs to Laravel OpenAPI, leaves 222 without an exact OpenAPI match,
-and has no dynamically unresolved method/path callsites. It also classifies 369
+The current static inventory contains 663 consumed contracts. It matches 444
+method/path pairs to Laravel OpenAPI, leaves 219 without an exact OpenAPI match,
+and has no dynamically unresolved method/path callsites. It also classifies 370
 rows as state-changing and therefore requiring disposable-
 environment runtime proof. An unmatched row may be an OpenAPI documentation
 gap, a frontend contract gap, or a generator-normalization gap; it is not proof
@@ -350,6 +350,22 @@ state-changing rows, zero dynamic rows, and zero rows without detected tests.
 This closes one concrete contract regression but does not by itself certify
 live delivery side effects or the broader unmatched queue; the banked score
 remains 622/1000 pending the next complete scored audit.
+
+## Event Registration Contract Classification
+
+The remaining recent Event ledger gaps are now concrete. Registration form
+publish/fork and invitation campaign issue/schedule/cancel use explicit Laravel
+method/path pairs instead of action-parameter placeholders. Registration answer
+export now has a dedicated binary helper for Laravel's exact
+`POST /api/v2/events/{id}/registration-product/submissions/export` contract;
+the generic download wrapper previously caused the ledger to misclassify that
+consumer as GET even though runtime correctly overrode the method. Focused API,
+form, campaign, review, and export proof passes. The ledger now records 663
+contracts, 444 exact OpenAPI matches, 219 unmatched rows, 370 state-changing
+rows, zero dynamic rows, and zero rows without detected tests. All current
+recent-Event consumer rows now have concrete method/path classification. This
+is static/mock contract closure, not disposable mutation/export certification,
+so the banked score remains 622/1000.
 
 ## Podcast Episode Visibility Labels
 
@@ -949,7 +965,7 @@ After the localization P0, the remaining priority order is:
    normalized marker check only.
 5. Complete manual keyboard, screen-reader, focus-order, error-summary, no-JS,
    zoom/reflow, forced-colour, and disabled-user evidence.
-6. Maintain the generated frontend-consumer API ledger and reconcile its 222
+6. Maintain the generated frontend-consumer API ledger and reconcile its 219
    unmatched rows against Laravel routes/controllers and real
    consumers. Do not count an OpenAPI match or test-file reference as behavioral
    certification.

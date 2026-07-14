@@ -292,6 +292,7 @@ jest.mock('../src/lib/api', () => ({
   callEventApi: jest.fn().mockResolvedValue({ data: { id: 42 } }),
   callEventTemplateApi: jest.fn().mockResolvedValue({ data: [] }),
   downloadEventApi: jest.fn().mockResolvedValue({ status: 200, body: Buffer.from('metric,value'), headers: { 'content-type': 'text/csv; charset=UTF-8', 'content-disposition': 'attachment; filename="event-42-analytics.csv"' } }),
+  downloadEventRegistrationSubmissions: jest.fn().mockResolvedValue({ status: 200, body: Buffer.from('Question,Answer'), headers: { 'content-type': 'text/csv; charset=UTF-8', 'content-disposition': 'attachment; filename="event-registration-42.csv"' } }),
   getEvents: jest.fn().mockResolvedValue({ data: [], pagination: { page: 1, totalPages: 1 } }),
   getEvent: jest.fn().mockResolvedValue({ data: { id: 42, title: 'Community garden day', start_time: '2026-08-01T10:00:00' } }),
   getEventRsvps: jest.fn().mockResolvedValue({ data: [] }),
@@ -615,6 +616,7 @@ describe('shared accessible frontend shell', () => {
     api.callAdminEventApi.mockReset().mockResolvedValue({ data: [], meta: { total: 0, current_page: 1, last_page: 1 } });
     api.callEventBroadcastApi.mockReset().mockResolvedValue({ data: { id: 8 } });
     api.downloadEventApi.mockReset().mockResolvedValue({ status: 200, body: Buffer.from('metric,value'), headers: { 'content-type': 'text/csv; charset=UTF-8', 'content-disposition': 'attachment; filename="event-42-analytics.csv"' } });
+    api.downloadEventRegistrationSubmissions.mockReset().mockResolvedValue({ status: 200, body: Buffer.from('Question,Answer'), headers: { 'content-type': 'text/csv; charset=UTF-8', 'content-disposition': 'attachment; filename="event-registration-42.csv"' } });
     api.getEventCategories.mockReset().mockResolvedValue({ data: [] });
     api.uploadEventImage.mockReset().mockResolvedValue({ data: { cover_image: '/uploads/events/garden.webp' } });
     api.getEvents.mockReset().mockResolvedValue({ data: [], pagination: { page: 1, totalPages: 1 } });
@@ -23634,10 +23636,10 @@ describe('shared accessible frontend shell', () => {
     const reviewed = await agent.post('/events/42/registration/submissions/51/review').set('Cookie', signedCookieHeader()).type('form').send({ _csrf: csrf, purpose: 'Accessibility planning', correlation_id: 'case-123', include_sensitive: '1' });
     expect(reviewed.status).toBe(200); expect(reviewed.text).toContain('Quiet room');
     expect(api.callEventApi).toHaveBeenNthCalledWith(1, 'test-token', 'POST', '/42/registration-product/submissions/51/answers', { purpose: 'Accessibility planning', correlation_id: 'case-123', include_sensitive: true });
-    api.downloadEventApi.mockResolvedValueOnce({ status: 200, body: Buffer.from('Question,Answer\nAccess,Quiet'), headers: { 'content-type': 'text/csv; charset=UTF-8', 'content-disposition': 'attachment; filename="event-registration-42.csv"' } });
+    api.downloadEventRegistrationSubmissions.mockResolvedValueOnce({ status: 200, body: Buffer.from('Question,Answer\nAccess,Quiet'), headers: { 'content-type': 'text/csv; charset=UTF-8', 'content-disposition': 'attachment; filename="event-registration-42.csv"' } });
     const exported = await agent.post('/events/42/registration/submissions/export').set('Cookie', signedCookieHeader()).type('form').send({ _csrf: csrf, purpose: 'Governance export', correlation_id: 'audit-123' });
     expect(exported.headers['content-type']).toContain('text/csv');
-    expect(api.downloadEventApi).toHaveBeenLastCalledWith('test-token', '/42/registration-product/submissions/export', { method: 'POST', body: { purpose: 'Governance export', correlation_id: 'audit-123', include_sensitive: false } });
+    expect(api.downloadEventRegistrationSubmissions).toHaveBeenLastCalledWith('test-token', 42, { purpose: 'Governance export', correlation_id: 'audit-123', include_sensitive: false });
   });
 
   it('accepts invitations and captures consent-bound Laravel Event Registration guests', async () => {

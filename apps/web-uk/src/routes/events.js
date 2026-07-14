@@ -23,6 +23,7 @@ const {
   callAdminEventApi,
   callEventTemplateApi,
   downloadEventApi,
+  downloadEventRegistrationSubmissions,
   getEventCategories,
   uploadEventImage,
   callUgcTranslateApi,
@@ -2601,7 +2602,11 @@ async function transitionRegistrationForm(req, res, action) {
   const id = Number(req.params.id); const formId = positiveInteger(req.params.formId); const key = trimmed(req.body.idempotency_key, 191); const settingsRevision = positiveInteger(req.body.expected_settings_revision); const formRevision = positiveInteger(req.body.expected_form_revision);
   if (!formId || !key || !settingsRevision || (action === 'publish' && !formRevision)) return redirectTo(res, eventPath(id, '/registration?status=invalid'));
   const payload = { expected_settings_revision: settingsRevision, ...(action === 'publish' ? { expected_form_revision: formRevision } : {}) };
-  try { await callEventMutation(tokenFrom(req), 'POST', `/${id}/registration-product/forms/${formId}/${action}`, payload, key); return redirectTo(res, eventPath(id, `/registration?status=form-${action === 'fork' ? 'forked' : 'published'}`)); }
+  try {
+    if (action === 'publish') await callEventMutation(tokenFrom(req), 'POST', `/${id}/registration-product/forms/${formId}/publish`, payload, key);
+    else await callEventMutation(tokenFrom(req), 'POST', `/${id}/registration-product/forms/${formId}/fork`, payload, key);
+    return redirectTo(res, eventPath(id, `/registration?status=form-${action === 'fork' ? 'forked' : 'published'}`));
+  }
   catch (error) { if (redirectOnAuthError(error, res)) return undefined; if (error instanceof ApiError && [400, 403, 404, 409, 422, 429, 503].includes(error.status)) return redirectTo(res, eventPath(id, '/registration?status=failed')); throw error; }
 }
 router.post('/:id(\\d+)/registration/forms/:formId(\\d+)/publish', requireAuth, asyncRoute(async (req, res) => transitionRegistrationForm(req, res, 'publish')));
@@ -2645,7 +2650,7 @@ router.post('/:id(\\d+)/registration/submissions/:submissionId(\\d+)/review', re
 router.post('/:id(\\d+)/registration/submissions/export', requireAuth, asyncRoute(async (req, res) => {
   const id = Number(req.params.id); const purpose = trimmed(req.body.purpose, 500); const correlation = trimmed(req.body.correlation_id, 191);
   if (!purpose || !correlation) return redirectTo(res, eventPath(id, '/registration?status=invalid'));
-  const download = await downloadEventApi(tokenFrom(req), `/${id}/registration-product/submissions/export`, { method: 'POST', body: { purpose, correlation_id: correlation, include_sensitive: checked(req.body.include_sensitive) } });
+  const download = await downloadEventRegistrationSubmissions(tokenFrom(req), id, { purpose, correlation_id: correlation, include_sensitive: checked(req.body.include_sensitive) });
   res.status(download.status || 200); res.set('Content-Type', download.headers['content-type'] || 'text/csv; charset=UTF-8'); res.set('Content-Disposition', download.headers['content-disposition'] || `attachment; filename="event-registration-${id}.csv"`); res.set('Cache-Control', 'private, no-store'); res.set('X-Content-Type-Options', 'nosniff'); return res.send(download.body);
 }));
 
@@ -2709,7 +2714,13 @@ async function mutateRegistrationCampaign(req, res, action) {
   if (action === 'schedule') payload.scheduled_for = trimmed(req.body.scheduled_for);
   if (action === 'cancel') payload.reason = trimmed(req.body.reason, 2000);
   if (!campaignId || !revision || !key || (action === 'issue' && !payload.expires_at) || (action === 'schedule' && !payload.scheduled_for) || (action === 'cancel' && !payload.reason)) return redirectTo(res, eventPath(id, '/registration?status=invalid'));
-  try { await callEventMutation(tokenFrom(req), 'POST', `/${id}/registration-product/campaigns/${campaignId}/${action}`, payload, key); const status = { issue: 'campaign-issued', schedule: 'campaign-scheduled', cancel: 'campaign-cancelled' }[action]; return redirectTo(res, eventPath(id, `/registration?status=${status}`)); }
+  try {
+    if (action === 'issue') await callEventMutation(tokenFrom(req), 'POST', `/${id}/registration-product/campaigns/${campaignId}/issue`, payload, key);
+    else if (action === 'schedule') await callEventMutation(tokenFrom(req), 'POST', `/${id}/registration-product/campaigns/${campaignId}/schedule`, payload, key);
+    else await callEventMutation(tokenFrom(req), 'POST', `/${id}/registration-product/campaigns/${campaignId}/cancel`, payload, key);
+    const status = { issue: 'campaign-issued', schedule: 'campaign-scheduled', cancel: 'campaign-cancelled' }[action];
+    return redirectTo(res, eventPath(id, `/registration?status=${status}`));
+  }
   catch (error) { if (redirectOnAuthError(error, res)) return undefined; if (error instanceof ApiError && [400, 403, 404, 409, 422, 429, 503].includes(error.status)) return redirectTo(res, eventPath(id, '/registration?status=failed')); throw error; }
 }
 router.post('/:id(\\d+)/registration/campaigns/:campaignId(\\d+)/issue', requireAuth, asyncRoute(async (req, res) => mutateRegistrationCampaign(req, res, 'issue')));
