@@ -79,10 +79,10 @@
     <h2 class="govuk-heading-l govuk-!-margin-top-7" id="transactions-heading">{{ t("wallet.history_title") }}</h2>
     <p class="govuk-body"><a class="govuk-link" href="{{ urlFor('/wallet/export.csv') }}" download>{{ t("wallet_t1.export_button") }}</a> <span class="govuk-hint govuk-!-display-inline">— {{ t("wallet_t1.export_description") }}</span></p>
     <nav aria-label="{{ t('wallet_t1.filter_heading') }}" class="govuk-!-margin-bottom-4"><ul class="nexus-alpha-filter-nav">
-      <li><a class="govuk-link" href="{{ urlFor('/wallet') }}#transactions"{% if txFilter == "all" %} aria-current="page"{% endif %}>{{ t("wallet_t1.filter_all") }}</a></li>
-      <li><a class="govuk-link" href="{{ urlFor('/wallet?filter=earned') }}#transactions"{% if txFilter == "earned" %} aria-current="page"{% endif %}>{{ t("wallet_t1.filter_earned") }}</a></li>
-      <li><a class="govuk-link" href="{{ urlFor('/wallet?filter=spent') }}#transactions"{% if txFilter == "spent" %} aria-current="page"{% endif %}>{{ t("wallet_t1.filter_spent") }}</a></li>
-      <li><a class="govuk-link" href="{{ urlFor('/wallet?filter=pending') }}#transactions"{% if txFilter == "pending" %} aria-current="page"{% endif %}>{{ t("wallet_t1.filter_pending") }}</a></li>
+      <li><a class="govuk-link{% if txFilter == 'all' %} govuk-link--no-visited-state{% endif %}" href="{{ urlFor('/wallet') }}#transactions"{% if txFilter == "all" %} aria-current="page"{% endif %}>{{ t("wallet_t1.filter_all") }}</a></li>
+      <li><a class="govuk-link{% if txFilter == 'earned' %} govuk-link--no-visited-state{% endif %}" href="{{ urlFor('/wallet?filter=earned') }}#transactions"{% if txFilter == "earned" %} aria-current="page"{% endif %}>{{ t("wallet_t1.filter_earned") }}</a></li>
+      <li><a class="govuk-link{% if txFilter == 'spent' %} govuk-link--no-visited-state{% endif %}" href="{{ urlFor('/wallet?filter=spent') }}#transactions"{% if txFilter == "spent" %} aria-current="page"{% endif %}>{{ t("wallet_t1.filter_spent") }}</a></li>
+      <li><a class="govuk-link{% if txFilter == 'pending' %} govuk-link--no-visited-state{% endif %}" href="{{ urlFor('/wallet?filter=pending') }}#transactions"{% if txFilter == "pending" %} aria-current="page"{% endif %}>{{ t("wallet_t1.filter_pending") }}</a></li>
     </ul></nav>
     {% if transactions.length %}
       <table class="govuk-table"><caption class="govuk-table__caption govuk-table__caption--s govuk-visually-hidden">{{ t("wallet.history_title") }}</caption><thead class="govuk-table__head"><tr class="govuk-table__row"><th scope="col" class="govuk-table__header">{{ t("wallet.when_label") }}</th><th scope="col" class="govuk-table__header">{{ t("wallet.with_label") }}</th><th scope="col" class="govuk-table__header">{{ t("wallet.description_label") }}</th><th scope="col" class="govuk-table__header govuk-table__header--numeric">{{ t("wallet.amount_col") }}</th></tr></thead><tbody class="govuk-table__body">

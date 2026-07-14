@@ -6706,7 +6706,8 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('<span class="govuk-pagination__link-title">Next</span>');
     expect(response.text).toContain('class="govuk-pagination__icon govuk-pagination__icon--next"');
     expect(response.text).not.toContain('govuk-pagination govuk-pagination--block');
-    expect(response.text).toContain('aria-current="page">Spent');
+    expect(response.text).toContain('class="govuk-link govuk-link--no-visited-state" href="/wallet?filter=spent#transactions" aria-current="page">Spent');
+    expect(response.text).toContain('class="govuk-link" href="/wallet?filter=earned#transactions">Earned');
   });
 
   it('renders the messages hub without the legacy bare compose route', async () => {
@@ -32440,7 +32441,8 @@ describe('shared accessible frontend shell', () => {
       .get('/volunteering?tab=community_projects')
       .set('Cookie', signedCookieHeader());
     expect(projects.status).toBe(200);
-    expect(projects.text).toContain('aria-current="page">Community projects</a>');
+    expect(projects.text).toContain('class="govuk-link govuk-link--no-visited-state" href="/volunteering?tab=community_projects" aria-current="page">Community projects</a>');
+    expect(projects.text).toContain('class="govuk-link" href="/volunteering?tab=applications">Applications</a>');
     expect(projects.text).toContain('Neighbourhood garden');
     expect(projects.text).toContain('Active');
     expect(projects.text).toContain('Create a shared growing space.');

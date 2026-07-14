@@ -95,10 +95,10 @@
     </ul>
     <nav class="govuk-!-margin-top-6 govuk-!-margin-bottom-4" aria-label="{{ t('volunteering.tabs_title') }}">
       <ul class="govuk-list govuk-list--inline">
-        <li><a class="govuk-link" href="{{ urlFor('/volunteering') }}"{% if selectedTab == 'opportunities' %} aria-current="page"{% endif %}>{{ t("volunteering.tabs.opportunities") }}</a></li>
-        <li><a class="govuk-link" href="{{ urlFor('/volunteering?tab=applications') }}"{% if selectedTab == 'applications' %} aria-current="page"{% endif %}>{{ t("volunteering.tabs.applications") }}</a></li>
-        <li><a class="govuk-link" href="{{ urlFor('/volunteering?tab=recommended') }}"{% if selectedTab == 'recommended' %} aria-current="page"{% endif %}>{{ t("volunteering.tabs.recommended") }}</a></li>
-        <li><a class="govuk-link" href="{{ urlFor('/volunteering?tab=community_projects') }}"{% if selectedTab == 'community_projects' %} aria-current="page"{% endif %}>{{ t("volunteering.community_projects_tab") }}</a></li>
+        <li><a class="govuk-link{% if selectedTab == 'opportunities' %} govuk-link--no-visited-state{% endif %}" href="{{ urlFor('/volunteering') }}"{% if selectedTab == 'opportunities' %} aria-current="page"{% endif %}>{{ t("volunteering.tabs.opportunities") }}</a></li>
+        <li><a class="govuk-link{% if selectedTab == 'applications' %} govuk-link--no-visited-state{% endif %}" href="{{ urlFor('/volunteering?tab=applications') }}"{% if selectedTab == 'applications' %} aria-current="page"{% endif %}>{{ t("volunteering.tabs.applications") }}</a></li>
+        <li><a class="govuk-link{% if selectedTab == 'recommended' %} govuk-link--no-visited-state{% endif %}" href="{{ urlFor('/volunteering?tab=recommended') }}"{% if selectedTab == 'recommended' %} aria-current="page"{% endif %}>{{ t("volunteering.tabs.recommended") }}</a></li>
+        <li><a class="govuk-link{% if selectedTab == 'community_projects' %} govuk-link--no-visited-state{% endif %}" href="{{ urlFor('/volunteering?tab=community_projects') }}"{% if selectedTab == 'community_projects' %} aria-current="page"{% endif %}>{{ t("volunteering.community_projects_tab") }}</a></li>
         <li><a class="govuk-link" href="{{ urlFor('/volunteering/hours') }}">{{ t("volunteering.tabs.hours") }}</a></li>
       </ul>
     </nav>
