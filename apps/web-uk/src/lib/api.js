@@ -314,13 +314,15 @@ async function getPlatformStats(options = {}) {
   return request('/api/v2/platform/stats', { headers });
 }
 
-async function verify2fa(twoFactorToken, code, tenantSlug) {
+async function verify2fa(twoFactorToken, code, tenantSlug, options = {}) {
   return request('/api/totp/verify', {
     method: 'POST',
     headers: tenantSlugHeaders(tenantSlug),
     body: JSON.stringify({
       two_factor_token: twoFactorToken,
-      code
+      code,
+      use_backup_code: options.useBackupCode === true,
+      trust_device: options.trustDevice === true
     })
   });
 }

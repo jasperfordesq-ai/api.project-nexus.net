@@ -438,7 +438,10 @@ describe('API Request Functions', () => {
       };
       mockFetch.mockResolvedValueOnce(successfulJson(responseBody));
 
-      const result = await api.verify2fa('pending-two-factor-token', '123456', 'acme');
+      const result = await api.verify2fa('pending-two-factor-token', 'ABCD1234', 'acme', {
+        useBackupCode: true,
+        trustDevice: true
+      });
 
       expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:5000/api/totp/verify',
@@ -450,7 +453,9 @@ describe('API Request Functions', () => {
           }),
           body: JSON.stringify({
             two_factor_token: 'pending-two-factor-token',
-            code: '123456'
+            code: 'ABCD1234',
+            use_backup_code: true,
+            trust_device: true
           })
         })
       );

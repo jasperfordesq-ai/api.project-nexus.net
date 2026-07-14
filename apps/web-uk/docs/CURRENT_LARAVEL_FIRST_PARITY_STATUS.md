@@ -413,6 +413,31 @@ default-English significant state but does not remove the complete 14-point
 component-audit deduction, so the banked score remains `622/1000` pending a
 complete rubric re-audit.
 
+## Two-Factor Login Workflow Parity
+
+Checkpoint frozen at `2026-07-14T12:42:00.9631927+01:00` against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and published Web UK base
+`8f63d2bc39f8bac1c19bc7d982e33e225f7145ec`. Both bases matched
+`origin/main`; this checkpoint's Web UK change was in flight and the remaining
+dirty files belonged to the separate ASP.NET workstream.
+
+The mounted two-factor login state now accepts Laravel backup codes instead of
+forcing a numeric six-digit pattern, exposes Blade's backup-code choice, and
+shows the trusted-device choice only when Laravel's login response permits it.
+Web UK preserves Laravel's configured trusted-device duration, submits
+`use_backup_code` and `trust_device` to the exact verification contract, and
+forces `trust_device=false` when the backend disables that capability. The
+page also restores Blade's top back link, large lead paragraph, code-linked
+error summary, and inline error/ARIA relationship. Focused verification passed
+`4/4` suites and `1,014/1,014` tests. The complete non-mutating gate passed
+`49/49` suites and `1,654/1,654` tests, brand, lint, CSS, route inventory
+`688/689`, API ledger `663/444/219/0`, all localization audits, and the
+refreshed 19/19 canonical Blade marker comparison. No Laravel login,
+verification, mutation, database, or migration operation ran. This closes a
+concrete default-English authentication substate but does not remove the full
+14-point component-state deduction without a complete rubric re-audit, so the
+banked score remains `622/1000`.
+
 ## Podcast Episode Visibility Labels
 
 Podcast studio episode visibility selects now follow Blade's exact catalog

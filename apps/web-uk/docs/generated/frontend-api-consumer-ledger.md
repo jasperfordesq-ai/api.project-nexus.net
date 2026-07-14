@@ -9,7 +9,7 @@ This is static evidence: an OpenAPI match or test reference does not prove runti
 - Dynamic unresolved contracts: 0
 - State-changing contracts: 370
 - Rows without detected tests: 0
-- API source SHA-256: `d03759fef3ae095c6df476913ccab3176849d793e5392b17d2498b0238793f17`
+- API source SHA-256: `010ddd2dd08bb7004120aa93bf08799bcfd102bf82dbe0ad031f4f3b1e9259ef`
 - Laravel OpenAPI SHA-256: `0f62bf532901e6925b630d6a8ed0add7cd2c2bd9395b773c6a1a6581c0d38722`
 
 The JSON companion contains the full request/response, status/error, redirect, side-effect, cleanup, Laravel implementation, consumer, and test fields.

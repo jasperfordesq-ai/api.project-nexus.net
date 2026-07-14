@@ -11,6 +11,10 @@
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
 
+      {% if show2fa %}
+        <a class="govuk-back-link" href="{{ urlFor('/login') }}">{{ t("auth.back_to_sign_in") }}</a>
+      {% endif %}
+
       {% if successMessage %}
         {% set notificationMessage = successMessage %}
         {% set notificationType = "success" %}
@@ -23,7 +27,7 @@
           errorList: [
             {
               text: error,
-              href: "#email"
+              href: "#code" if show2fa else "#email"
             }
           ]
         }) }}
@@ -31,7 +35,7 @@
 
       {% if show2fa %}
         <h1 class="govuk-heading-xl">{{ t("auth.two_factor_title") }}</h1>
-        <p class="govuk-body">{{ t("auth.two_factor_description") }}</p>
+        <p class="govuk-body-l">{{ t("auth.two_factor_description") }}</p>
 
         <form method="post" action="{{ urlFor('/login/two-factor') }}" novalidate>
           <input type="hidden" name="_csrf" value="{{ csrfToken }}">
@@ -45,15 +49,35 @@
             },
             id: "code",
             name: "code",
-            inputmode: "numeric",
+            inputmode: "text",
             autocomplete: "one-time-code",
             spellcheck: false,
             classes: "govuk-input--width-10",
+            errorMessage: { text: error } if error else undefined,
             attributes: {
-              "pattern": "[0-9]*",
-              "maxlength": "6"
+              "autocapitalize": "characters"
             }
           }) }}
+
+          <div class="govuk-checkboxes govuk-checkboxes--small govuk-!-margin-bottom-4" data-module="govuk-checkboxes">
+            <div class="govuk-checkboxes__item">
+              <input class="govuk-checkboxes__input" id="use_backup_code" name="use_backup_code" type="checkbox" value="1">
+              <label class="govuk-label govuk-checkboxes__label" for="use_backup_code">{{ t("auth.two_factor_use_backup_label") }}</label>
+            </div>
+          </div>
+
+          {% if allowTrustedDevice %}
+            {% set trustDeviceLabel = t("govuk_alpha_settings.nav.trust_device", { days: trustedDeviceDays or 30 }) %}
+            <fieldset class="govuk-fieldset govuk-!-margin-bottom-4">
+              <legend class="govuk-fieldset__legend govuk-visually-hidden">{{ trustDeviceLabel }}</legend>
+              <div class="govuk-checkboxes govuk-checkboxes--small" data-module="govuk-checkboxes">
+                <div class="govuk-checkboxes__item">
+                  <input class="govuk-checkboxes__input" id="trust_device" name="trust_device" type="checkbox" value="1">
+                  <label class="govuk-label govuk-checkboxes__label" for="trust_device">{{ trustDeviceLabel }}</label>
+                </div>
+              </div>
+            </fieldset>
+          {% endif %}
 
           {{ govukButton({
             text: t("auth.two_factor_submit")

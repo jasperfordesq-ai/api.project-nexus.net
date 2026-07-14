@@ -216,7 +216,9 @@ describe('auth tenant authority', () => {
   it('stores tenant authority with the 2FA challenge and clears both after exact token-envelope success', async () => {
     api.login.mockResolvedValueOnce({
       requires_2fa: true,
-      two_factor_token: 'pending-two-factor-token'
+      two_factor_token: 'pending-two-factor-token',
+      allow_trusted_device: true,
+      trusted_device_days: 45
     });
     api.verify2fa.mockResolvedValueOnce({
       success: true,
@@ -243,14 +245,28 @@ describe('auth tenant authority', () => {
       pending2faTenantSlug: 'acme'
     });
 
+    const twoFactorPage = await agent.get('/acme/accessible/login/two-factor');
+    expect(twoFactorPage.body.locals).toEqual(expect.objectContaining({
+      allowTrustedDevice: true,
+      trustedDeviceDays: 45
+    }));
+
     const verifyResponse = await agent
       .post('/acme/accessible/login/two-factor')
       .type('form')
-      .send({ code: '123456', tenant_slug: 'crafted-other-tenant' });
+      .send({
+        code: 'ABCD1234',
+        use_backup_code: '1',
+        trust_device: '1',
+        tenant_slug: 'crafted-other-tenant'
+      });
 
     expect(verifyResponse.status).toBe(302);
     expect(verifyResponse.headers.location).toBe('/acme/accessible/dashboard');
-    expect(api.verify2fa).toHaveBeenCalledWith('pending-two-factor-token', '123456', 'acme');
+    expect(api.verify2fa).toHaveBeenCalledWith('pending-two-factor-token', 'ABCD1234', 'acme', {
+      useBackupCode: true,
+      trustDevice: true
+    });
     expect(setAuthCookies).toHaveBeenCalledWith(
       expect.anything(),
       'verified-access-token',
@@ -307,6 +323,41 @@ describe('auth tenant authority', () => {
     expect((await agent.get('/__test/session')).body).toEqual({
       pending2faToken: null,
       pending2faTenantSlug: null
+    });
+  });
+
+  it('suppresses and rejects trusted-device requests when Laravel disables them', async () => {
+    api.login.mockResolvedValueOnce({
+      requires_2fa: true,
+      two_factor_token: 'no-trust-token',
+      allow_trusted_device: false,
+      trusted_device_days: 60
+    });
+    api.verify2fa.mockResolvedValueOnce({
+      success: true,
+      access_token: 'verified-access-token',
+      refresh_token: 'verified-refresh-token',
+      expires_in: 900,
+      refresh_expires_in: 604800
+    });
+    const agent = request.agent(app);
+
+    await agent
+      .post('/acme/accessible/login')
+      .type('form')
+      .send({ email: 'member@example.test', password: 'Test123!' });
+
+    const page = await agent.get('/acme/accessible/login/two-factor');
+    expect(page.body.locals.allowTrustedDevice).toBe(false);
+
+    await agent
+      .post('/acme/accessible/login/two-factor')
+      .type('form')
+      .send({ code: '123456', trust_device: '1' });
+
+    expect(api.verify2fa).toHaveBeenCalledWith('no-trust-token', '123456', 'acme', {
+      useBackupCode: false,
+      trustDevice: false
     });
   });
 

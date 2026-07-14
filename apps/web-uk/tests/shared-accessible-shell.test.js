@@ -6359,8 +6359,21 @@ describe('shared accessible frontend shell', () => {
     const twoFactorPage = await agent.get('/login/two-factor');
     expect(twoFactorPage.status).toBe(200);
     expect(twoFactorPage.text).toContain('name="code"');
+    expect(twoFactorPage.text).toContain('inputmode="text"');
+    expect(twoFactorPage.text).toContain('autocapitalize="characters"');
+    expect(twoFactorPage.text).toContain('name="use_backup_code"');
+    expect(twoFactorPage.text).toContain('name="trust_device"');
+    expect(twoFactorPage.text).toContain('Remember this device for 30 days');
+    expect(twoFactorPage.text).toContain('class="govuk-back-link" href="/login"');
     expect(twoFactorPage.text).toContain('action="/login/two-factor"');
     expect(twoFactorPage.text).not.toContain('action="/verify-2fa"');
+    expect(twoFactorPage.text).not.toContain('pattern="[0-9]*"');
+    expect(twoFactorPage.text).not.toContain('maxlength="6"');
+
+    const invalidPage = await agent.get('/login/two-factor?status=two-factor-invalid');
+    expect(invalidPage.text).toContain('href="#code"');
+    expect(invalidPage.text).toContain('id="code-error"');
+    expect(invalidPage.text).toContain('aria-describedby="code-hint code-error"');
   });
 
   it('submits the Laravel resend-verification route through the email verification API helper', async () => {

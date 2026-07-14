@@ -194,6 +194,8 @@ function clearPendingTwoFactor(req) {
   if (!req.session) return;
   delete req.session.pending2faToken;
   delete req.session.pending2faTenantSlug;
+  delete req.session.pending2faAllowTrustedDevice;
+  delete req.session.pending2faTrustedDeviceDays;
 }
 
 function rotatingSessionFrom(result) {
@@ -262,6 +264,11 @@ router.post('/login', asyncRoute(async (req, res) => {
 
       req.session.pending2faToken = pendingToken;
       req.session.pending2faTenantSlug = tenantSlug;
+      req.session.pending2faAllowTrustedDevice = result.allow_trusted_device !== false;
+      const trustedDeviceDays = Number(result.trusted_device_days);
+      req.session.pending2faTrustedDeviceDays = Number.isInteger(trustedDeviceDays) && trustedDeviceDays > 0
+        ? trustedDeviceDays
+        : 30;
       return redirectTo(res, '/login/two-factor');
     }
 
@@ -309,6 +316,8 @@ async function handleTwoFactorPost(req, res) {
   const { code } = req.body;
   const pendingToken = req.session?.pending2faToken;
   const pendingTenantSlug = pendingTwoFactorTenantSlug(req);
+  const allowTrustedDevice = req.session?.pending2faAllowTrustedDevice !== false;
+  const trustedDeviceDays = Number(req.session?.pending2faTrustedDeviceDays) || 30;
 
   if (!pendingToken) {
     clearPendingTwoFactor(req);
@@ -320,12 +329,17 @@ async function handleTwoFactorPost(req, res) {
       title: translate(req, 'auth.two_factor_title'),
       show2fa: true,
       error: translate(req, 'auth.two_factor_code_required'),
+      allowTrustedDevice,
+      trustedDeviceDays,
       csrfToken: req.csrfToken ? req.csrfToken() : ''
     });
   }
 
   try {
-    const result = await verify2fa(pendingToken, code.trim(), pendingTenantSlug);
+    const result = await verify2fa(pendingToken, code.trim(), pendingTenantSlug, {
+      useBackupCode: checkboxValue(req.body.use_backup_code),
+      trustDevice: allowTrustedDevice && checkboxValue(req.body.trust_device)
+    });
 
     if (result?.success !== true) {
       throw new ApiError('Laravel did not return the two-factor login token envelope', 502, {
@@ -361,6 +375,8 @@ async function handleTwoFactorPost(req, res) {
       title: translate(req, 'auth.two_factor_title'),
       show2fa: true,
       error: translate(req, errorKey),
+      allowTrustedDevice,
+      trustedDeviceDays,
       csrfToken: req.csrfToken ? req.csrfToken() : '',
       turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
     });
@@ -377,6 +393,8 @@ router.get('/login/two-factor', (req, res) => {
     title: translate(req, 'auth.two_factor_title'),
     show2fa: true,
     error: statusMessage(req, req.query.status, TWO_FACTOR_ERROR_STATUS_KEYS),
+    allowTrustedDevice: req.session.pending2faAllowTrustedDevice !== false,
+    trustedDeviceDays: Number(req.session.pending2faTrustedDeviceDays) || 30,
     csrfToken: req.csrfToken ? req.csrfToken() : '',
     turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || ''
   });
