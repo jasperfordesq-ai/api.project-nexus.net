@@ -7349,7 +7349,7 @@ describe('shared accessible frontend shell', () => {
     expect(detail.text).toContain('Ask about weekend availability.');
     expect(detail.text).toContain('Safeguarding handbook');
     expect(detail.text).toContain('Resource');
-    expect(detail.text).toContain('href="/resources?item=7"');
+    expect(detail.text).not.toContain('href="/resources?item=7"');
     expect(detail.text).toContain('method="post" action="/me/collections/12/items/99/remove"');
     expect(detail.text).toContain('method="post" action="/me/collections/12/update"');
     expect(detail.text).toContain('method="post" action="/me/collections/12/delete"');
@@ -7360,7 +7360,7 @@ describe('shared accessible frontend shell', () => {
     expect(api.getSavedCollectionItems).toHaveBeenCalledWith('test-token', 12, { page: 1, per_page: 20 });
   });
 
-  it('renders public non-owner collections read-only with canonical item links', async () => {
+  it('renders public non-owner collections read-only with Blade-supported item links', async () => {
     const api = require('../src/lib/api');
     api.getProfile.mockResolvedValue({ data: { id: 202, name: 'Viewing member' } });
     api.getSavedCollectionItems.mockResolvedValue({
@@ -7387,10 +7387,14 @@ describe('shared accessible frontend shell', () => {
       .set('Cookie', signedCookieHeader());
 
     expect(response.status).toBe(200);
-    expect(response.text).toContain('href="/acme/accessible/feed?post=11"');
-    expect(response.text).toContain('href="/acme/accessible/blog/12"');
-    expect(response.text).toContain('href="/acme/accessible/resources?item=13"');
-    expect(response.text).toContain('href="/acme/accessible/marketplace/14"');
+    expect(response.text).toContain('href="/acme/accessible/feed"');
+    expect(response.text).not.toContain('href="/acme/accessible/feed?post=11"');
+    expect(response.text).not.toContain('href="/acme/accessible/blog/12"');
+    expect(response.text).not.toContain('href="/acme/accessible/resources?item=13"');
+    expect(response.text).not.toContain('href="/acme/accessible/marketplace/14"');
+    expect(response.text).toContain('Community article');
+    expect(response.text).toContain('Safety guide');
+    expect(response.text).toContain('Shared ladder');
     expect(response.text).not.toContain('action="/acme/accessible/me/collections/12/update"');
     expect(response.text).not.toContain('action="/acme/accessible/me/collections/12/delete"');
     expect(response.text).not.toContain('/items/91/remove');

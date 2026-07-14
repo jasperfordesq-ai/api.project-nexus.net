@@ -112,10 +112,7 @@ function itemHref(type, id) {
     event: `/events/${id}`,
     job: `/jobs/${id}`,
     group: `/groups/${id}`,
-    article: `/blog/${id}`,
-    resource: `/resources?item=${id}`,
-    marketplace_listing: `/marketplace/${id}`,
-    post: `/feed?post=${id}`
+    post: '/feed'
   };
   return paths[type] || '';
 }

@@ -113,8 +113,8 @@ commit as the implementation it describes.
 
 The frontend baseline for the current checkout includes the Event registration,
 account-hub reconciliation, Event Communications, lifecycle-history, and recurrence-
-history slices; its published parent is repository commit `44633bf8`; the current
-checkout also contains the titleless-bookmark parity slice. The Laravel source
+history slices; its published parent is repository commit `889155f1`; the current
+checkout also contains the saved-item link-boundary parity slice. The Laravel source
 baseline is `903d03d3`. The first SHA names the
 repository snapshot containing Web UK; it does not make ASP.NET authoritative.
 Refresh the Laravel Blade/API source and Web UK implementation before relying on
