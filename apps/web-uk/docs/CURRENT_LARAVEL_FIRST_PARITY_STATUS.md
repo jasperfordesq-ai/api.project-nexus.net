@@ -111,9 +111,9 @@ commit as the implementation it describes.
 
 ## Audited Baseline
 
-The committed frontend baseline for the current checkout was refreshed through
-ASP.NET-repository commit `6573f9d5`, and the Laravel source baseline is
-`903d03d3`. The first SHA names the
+The frontend baseline for the current checkout includes the Event registration
+answer-validation refresh built from ASP.NET-repository commit `66c08363`, and
+the Laravel source baseline is `903d03d3`. The first SHA names the
 repository snapshot containing Web UK; it does not make ASP.NET authoritative.
 Refresh the Laravel Blade/API source and Web UK implementation before relying on
 these numbers after either source moves.
@@ -126,10 +126,10 @@ these numbers after either source moves.
 | Missing Laravel routes | 6 | All are Event workflows |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 48/48 suites, 1,626/1,626 tests | Fresh green code gate |
+| Jest | 48/48 suites, 1,627/1,627 tests | Fresh green code gate |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
-| Static locale usage | 6,936 references, 5,281 unique keys, 0 unresolved | Current complete-reference audit |
-| Template localization | 317 templates, 0 conservative matches | Current hard-coded-copy audit |
+| Static locale usage | 6,947 references, 5,288 unique keys, 0 unresolved | Current complete-reference audit |
+| Template localization | 318 templates, 0 conservative matches | Current hard-coded-copy audit |
 | Blade marker check | 19/19 | Text-marker spotcheck, not visual certification |
 | Automated accessibility | Latest recorded 87/87 | Manual AT review remains open |
 
@@ -288,6 +288,20 @@ The full non-mutating gate passes 47/47 suites and 1,607/1,607 tests; lint,
 branding, 6,891 static references / 5,254 unique keys / zero unresolved keys,
 the 317-template zero-match audit, diff check, and the unchanged 683/689 route
 matrix are green. No Laravel runtime or database mutation was run.
+
+## Event Registration Questionnaire Refresh
+
+The attendee questionnaire now selects only Laravel's first invited, confirmed,
+or pending registration, renders the published form description, and matches
+Blade's short text, long text, single-choice, multiple-choice, consent, and
+waiver controls. Native required state remains disabled for conditional
+questions; configured length and selection constraints are bounded by Blade's
+500/10,000-character hard limits. Invalid no-JavaScript submissions preserve
+answers, render field-linked summary and inline errors, and stop before either
+registration-product mutation call. Focused Event Registration proof passes
+8/8; the full non-mutating gate passes 48/48 suites and 1,627/1,627 tests with
+green lint, brand, CSS, route, and localization gates. No Laravel runtime or
+database mutation was run.
 
 ## Localization P0 Closed In Current Slice
 

@@ -257,11 +257,18 @@ unchanged ASP.NET runtime proof remain open.
 
 Attendees can now submit governed answers through Laravel's required draft-then-
 submit sequence, accept member invitations, and capture consent-versioned guests.
+The attendee form now selects only invited, confirmed, or pending registrations,
+renders the published description and exact short/long/choice/consent/waiver
+control families, preserves conditional required semantics, enforces bounded
+length and selection rules, and replays invalid answers through field-linked
+summary and inline errors without calling either mutation endpoint.
 Organizers can review or export answers only with explicit purpose/correlation
 evidence, cancel guests only after destructive confirmation, and apply versioned,
 idempotent guest attendance transitions. Single-value multi-choice submissions
-are normalized against the authoritative published form schema. Focused exact-
-payload, privacy, export, consent, and confirmation proof passes. Campaigns,
+are normalized against the authoritative published form schema. Focused
+questionnaire/no-mutation and exact-payload, privacy, export, consent, and
+confirmation proof passes; the full non-mutating gate is 48/48 suites and
+1,627/1,627 tests. Campaigns,
 retention, live disposable effects, manual assistive-technology review, and
 unchanged ASP.NET runtime proof remain open.
 
@@ -373,11 +380,11 @@ The seven redirect/auth rows formerly marked Started have real mounted routes,
 focused behavior evidence, and material Laravel integration, so this review
 corrects them to Partial without claiming their explicitly listed gaps closed.
 
-The current aggregate evidence includes `48/48` Jest suites and `1,626/1,626`
+The current aggregate evidence includes `48/48` Jest suites and `1,627/1,627`
 tests, green lint/brand/CSS gates, `683` of `689` Laravel routes matched (`690`
 local declarations, `6` classified API-boundary gaps, `5` documented extras,
 and `3` ignored infrastructure routes), structurally complete
-`11`-locale/`36`-namespace/`8,837`-key catalogs, a `317`-template conservative
+`11`-locale/`36`-namespace/`8,837`-key catalogs, a `318`-template conservative
 audit with `0` safe exact matches, a full `80/80` Chromium/axe run at checkpoint
 `ea1ed6d4` in `1,610.1` seconds (`26.8` minutes) with no skipped, unexpected, or
 flaky results, and a live `19/19` Blade marker comparison. All four exhaustive

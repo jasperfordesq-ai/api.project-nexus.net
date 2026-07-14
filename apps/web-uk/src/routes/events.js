@@ -2006,12 +2006,89 @@ function registrationQuestions(value) {
   }).filter((question) => question.question_type && question.prompt && question.purpose && question.retention_days);
 }
 
+function registrationAnswers(questions, value) {
+  const submitted = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  return Object.fromEntries(arrayValues(questions).map((question) => {
+    const key = trimmed(question?.stable_key, 191);
+    const type = trimmed(question?.question_type);
+    const raw = submitted[key];
+    if (type === 'multiple_choice') return [key, arrayValues(raw).map((item) => String(item))];
+    if (['consent', 'waiver'].includes(type)) return [key, checked(raw)];
+    return [key, raw === undefined || raw === null ? '' : String(raw)];
+  }).filter(([key]) => key));
+}
+
+function registrationAnswerErrors(questions, answers, res) {
+  const errors = {};
+  for (const question of arrayValues(questions)) {
+    const key = trimmed(question?.stable_key, 191);
+    if (!key) continue;
+    const type = trimmed(question?.question_type);
+    const value = answers[key];
+    const rules = question?.validation_rules && typeof question.validation_rules === 'object'
+      ? question.validation_rules
+      : {};
+    const isConditional = question?.visibility_rules && typeof question.visibility_rules === 'object';
+    const selections = Array.isArray(value) ? value : [];
+    const textValue = typeof value === 'string' ? value : '';
+    const answered = type === 'multiple_choice'
+      ? selections.length > 0
+      : (['consent', 'waiver'].includes(type) ? value === true : textValue.trim() !== '');
+
+    if (question?.is_required && !isConditional && !answered) {
+      errors[key] = res.locals.t('event_registration.answers.validation.required');
+      continue;
+    }
+    if (!answered) continue;
+
+    const minLength = Number.parseInt(rules.min_length, 10);
+    const configuredMaxLength = Number.parseInt(rules.max_length, 10);
+    const hardMaxLength = type === 'short_text' ? 500 : 10000;
+    const maxLength = Number.isInteger(configuredMaxLength)
+      ? Math.min(configuredMaxLength, hardMaxLength)
+      : hardMaxLength;
+    if (!Array.isArray(value) && Number.isInteger(minLength) && textValue.length < minLength) {
+      errors[key] = res.locals.t('event_registration.answers.validation.min_length', { limit: minLength });
+      continue;
+    }
+    if (!Array.isArray(value) && textValue.length > maxLength) {
+      errors[key] = res.locals.t('event_registration.answers.validation.max_length', { limit: maxLength });
+      continue;
+    }
+    const minSelections = Number.parseInt(rules.min_selections, 10);
+    const maxSelections = Number.parseInt(rules.max_selections, 10);
+    if (Array.isArray(value) && Number.isInteger(minSelections) && selections.length < minSelections) {
+      errors[key] = res.locals.tc('event_registration.answers.validation.min_selections', minSelections, { count: minSelections });
+      continue;
+    }
+    if (Array.isArray(value) && Number.isInteger(maxSelections) && selections.length > maxSelections) {
+      errors[key] = res.locals.tc('event_registration.answers.validation.max_selections', maxSelections, { count: maxSelections });
+    }
+  }
+  return errors;
+}
+
+function rememberRegistrationAnswers(req, eventId, formId, values, errors = {}) {
+  if (!req.session) return;
+  req.session.eventRegistrationAnswers = { eventId, formId, values, errors };
+}
+
+function consumeRegistrationAnswers(req, eventId, formId) {
+  const replay = req.session?.eventRegistrationAnswers;
+  if (req.session?.eventRegistrationAnswers) delete req.session.eventRegistrationAnswers;
+  return replay && replay.eventId === eventId && replay.formId === formId
+    ? replay
+    : { values: {}, errors: {} };
+}
+
 router.get('/:id(\\d+)/registration', requireAuth, asyncRoute(async (req, res) => {
   const id = Number(req.params.id); const token = tokenFrom(req); const query = new URLSearchParams();
   for (const collection of ['submissions', 'campaigns', 'guests']) for (const suffix of ['page', 'per_page']) { const key = `${collection}_${suffix}`; if (positiveInteger(req.query[key])) query.set(key, String(positiveInteger(req.query[key]))); }
   const [eventResult, state] = await Promise.all([callApi(token, 'GET', `/${id}`), registrationProductState(token, id, query.size ? `?${query}` : '')]);
+  const activeRegistration = arrayValues(state.attendee?.registrations).find((registration) => ['invited', 'confirmed', 'pending'].includes(trimmed(registration?.registration_state)));
+  const replay = consumeRegistrationAnswers(req, id, positiveInteger(state.attendee?.form?.id));
   res.set('Cache-Control', 'private, no-store');
-  return res.render('events/registration', { title: res.locals.t('event_registration.title'), activeNav: 'events', event: { id, title: trimmed(eventFrom(eventResult).title) }, ...state, status: trimmed(req.query.status), idempotencyKey: randomUUID(), csrfToken: req.csrfToken ? req.csrfToken() : '' });
+  return res.render('events/registration', { title: res.locals.t('event_registration.title'), activeNav: 'events', event: { id, title: trimmed(eventFrom(eventResult).title) }, ...state, activeRegistration, status: trimmed(req.query.status), answerValues: replay.values, answerErrors: replay.errors, idempotencyKey: randomUUID(), csrfToken: req.csrfToken ? req.csrfToken() : '' });
 }, { notFoundTitle: 'Event not found' }));
 
 router.post('/:id(\\d+)/registration/settings', requireAuth, asyncRoute(async (req, res) => {
@@ -2063,24 +2140,25 @@ router.post('/:id(\\d+)/registration/forms/:formId(\\d+)/fork', requireAuth, asy
 router.post('/:id(\\d+)/registration/registrations/:registrationId(\\d+)/forms/:formId(\\d+)/submit', requireAuth, asyncRoute(async (req, res) => {
   const id = Number(req.params.id); const registrationId = positiveInteger(req.params.registrationId); const formId = positiveInteger(req.params.formId); const key = trimmed(req.body.idempotency_key, 180);
   if (!registrationId || !formId || !key) return redirectTo(res, eventPath(id, '/registration?status=invalid'));
-  const answers = req.body.answers && typeof req.body.answers === 'object' ? { ...req.body.answers } : {};
+  let answers = req.body.answers && typeof req.body.answers === 'object' ? { ...req.body.answers } : {};
   const expectedRevision = req.body.expected_submission_revision === '' || req.body.expected_submission_revision === undefined ? null : Math.max(0, Number.parseInt(req.body.expected_submission_revision, 10));
   try {
     const attendee = dataFrom(await callApi(tokenFrom(req), 'GET', `/${id}/registration-product`)) || {};
     const registration = arrayValues(attendee.registrations).find((item) => positiveInteger(item?.id) === registrationId);
     if (!registration || positiveInteger(attendee.form?.id) !== formId) throw new ApiError('Registration form identity mismatch', 409);
-    for (const question of arrayValues(attendee.form?.questions)) {
-      const stableKey = trimmed(question?.stable_key, 191);
-      if (!stableKey || !Object.prototype.hasOwnProperty.call(answers, stableKey)) continue;
-      if (question.question_type === 'multiple_choice') answers[stableKey] = arrayValues(answers[stableKey]);
-      if (['consent', 'waiver'].includes(question.question_type)) answers[stableKey] = checked(answers[stableKey]);
+    const questions = arrayValues(attendee.form?.questions);
+    answers = registrationAnswers(questions, answers);
+    const errors = registrationAnswerErrors(questions, answers, res);
+    if (Object.keys(errors).length) {
+      rememberRegistrationAnswers(req, id, formId, answers, errors);
+      return redirectTo(res, eventPath(id, '/registration?status=invalid#registration-answers'));
     }
     const saved = dataFrom(await callEventMutation(tokenFrom(req), 'POST', `/${id}/registration-product/submissions`, { registration_id: registrationId, form_version_id: formId, answers, expected_revision: expectedRevision }, `${key}:draft`)) || {};
     const submission = saved.submission || saved; const submissionId = positiveInteger(submission.id); const revision = positiveInteger(submission.revision);
     if (!submissionId || !revision) throw new ApiError('Registration submission response was incomplete', 502);
     await callEventMutation(tokenFrom(req), 'POST', `/${id}/registration-product/submissions/${submissionId}/submit`, { expected_revision: revision }, `${key}:submit`);
     return redirectTo(res, eventPath(id, '/registration?status=answers-submitted'));
-  } catch (error) { if (redirectOnAuthError(error, res)) return undefined; if (error instanceof ApiError && [400, 403, 404, 409, 422, 429, 503].includes(error.status)) return redirectTo(res, eventPath(id, '/registration?status=failed')); throw error; }
+  } catch (error) { if (redirectOnAuthError(error, res)) return undefined; if (error instanceof ApiError && [400, 403, 404, 409, 422, 429, 503].includes(error.status)) { rememberRegistrationAnswers(req, id, formId, answers); return redirectTo(res, eventPath(id, '/registration?status=failed#registration-answers')); } throw error; }
 }));
 
 router.post('/:id(\\d+)/registration/submissions/:submissionId(\\d+)/review', requireAuth, asyncRoute(async (req, res) => {

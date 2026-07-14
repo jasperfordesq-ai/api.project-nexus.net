@@ -23259,6 +23259,68 @@ describe('shared accessible frontend shell', () => {
     expect(api.callEventApi).toHaveBeenNthCalledWith(3, 'test-token', 'POST', '/42/registration-product/submissions/51/submit', { expected_revision: 2 }, { headers: { 'Idempotency-Key': 'answers-123:submit' } });
   });
 
+  it('renders governed Event Registration question types and replays invalid answers without a mutation', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const questions = [
+      { stable_key: 'short_reason', question_type: 'short_text', prompt: 'Short reason', help_text: 'Brief help', is_required: true, validation_rules: { min_length: 5, max_length: 10 } },
+      { stable_key: 'long_notes', question_type: 'long_text', prompt: 'Long notes', is_required: false, validation_rules: { max_length: 100 } },
+      { stable_key: 'arrival', question_type: 'single_choice', prompt: 'Arrival', is_required: true, choice_options: ['Morning', 'Afternoon'] },
+      { stable_key: 'support', question_type: 'multiple_choice', prompt: 'Support', is_required: true, choice_options: ['Step-free', 'Quiet space'], validation_rules: { min_selections: 2, max_selections: 2 } },
+      { stable_key: 'consent', question_type: 'consent', prompt: 'I consent', displayed_text: 'Consent wording', is_required: true }
+    ];
+    const attendee = {
+      registration: { status: 'confirmed' },
+      registrations: [{ id: 10, registration_state: 'cancelled' }, { id: 11, registration_state: 'confirmed', registration_version: 2 }],
+      form: { id: 8, name: 'Access needs', description: 'Tell us what you need.', questions },
+      invitations: [], guests: [], settings: { guests_enabled: false }
+    };
+    const mockRegistrationPage = () => api.callEventApi
+      .mockResolvedValueOnce({ data: { id: 42, title: 'Community garden day' } })
+      .mockResolvedValueOnce({ data: attendee })
+      .mockResolvedValueOnce({ data: {} });
+
+    mockRegistrationPage();
+    const page = await agent.get('/events/42/registration').set('Cookie', signedCookieHeader());
+    expect(page.status).toBe(200);
+    expect(page.text).toContain('Tell us what you need.');
+    expect(page.text).toContain('/registration/registrations/11/forms/8/submit');
+    expect(page.text).not.toContain('/registration/registrations/10/forms/8/submit');
+    expect(page.text).toMatch(/id="answer-short_reason"[^>]*required[^>]*minlength="5"[^>]*maxlength="10"/);
+    expect(page.text).toMatch(/id="answer-long_notes"[^>]*maxlength="100"/);
+    expect(page.text).toContain('class="govuk-radios__input"');
+    expect(page.text).toContain('class="govuk-checkboxes__input"');
+    expect(page.text).toContain('Consent wording');
+    const csrf = page.text.match(/name="_csrf" value="([^"]+)"/)[1];
+
+    api.callEventApi.mockResolvedValueOnce({ data: attendee });
+    const invalid = await agent.post('/events/42/registration/registrations/11/forms/8/submit')
+      .set('Cookie', signedCookieHeader())
+      .type('form')
+      .send({
+        _csrf: csrf,
+        idempotency_key: 'answers-invalid-123',
+        answers: { short_reason: 'abc', long_notes: 'Keep this answer', arrival: 'Morning', support: ['Step-free'] }
+      });
+    expect(invalid.status).toBe(302);
+    expect(invalid.headers.location).toBe('/events/42/registration?status=invalid#registration-answers');
+    expect(api.callEventApi.mock.calls.filter((call) => call[1] === 'POST')).toHaveLength(0);
+
+    mockRegistrationPage();
+    const replay = await agent.get('/events/42/registration?status=invalid').set('Cookie', signedCookieHeader());
+    expect(replay.status).toBe(200);
+    expect(replay.text).toContain('href="#answer-short_reason"');
+    expect(replay.text).toContain('href="#answer-support"');
+    expect(replay.text).toContain('href="#answer-consent"');
+    expect(replay.text).toContain('Enter at least 5 characters.');
+    expect(replay.text).toContain('Select at least 2 options.');
+    expect(replay.text).toContain('Answer this question.');
+    expect(replay.text).toContain('value="abc"');
+    expect(replay.text).toMatch(/<textarea[^>]*id="answer-long_notes"[^>]*>Keep this answer<\/textarea>/);
+    expect(replay.text).toMatch(/value="Morning"[^>]*checked/);
+    expect(replay.text).toMatch(/value="Step-free"[^>]*checked/);
+  });
+
   it('reviews and exports Laravel Event Registration answers with explicit audit evidence', async () => {
     const api = require('../src/lib/api'); const agent = request.agent(app); const shell = await agent.get('/contact').set('Cookie', signedCookieHeader()); const csrf = shell.text.match(/name="_csrf" value="([^"]+)"/)[1];
     api.callEventApi
