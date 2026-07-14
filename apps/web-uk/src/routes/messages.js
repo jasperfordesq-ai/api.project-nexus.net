@@ -198,6 +198,13 @@ function tenantFeatureEnabled(req, key, fallback = true) {
   return flagEnabled(tenant, key, 'features', fallback);
 }
 
+function requireConnectionsFeature(req, res, next) {
+  if (!tenantFeatureEnabled(req, 'connections', true)) {
+    return res.status(403).render('errors/403', { title: 'Forbidden' });
+  }
+  return next();
+}
+
 function memberIdsFrom(raw) {
   const values = Array.isArray(raw) ? raw : String(raw || '').split(',');
   const seen = new Set();
@@ -727,7 +734,7 @@ router.post('/:userId(\\d+)/voice', asyncRoute(async (req, res) => {
   return redirectTo(res, messageRedirect(userId, 'message-sent'));
 }));
 
-router.post('/groups', asyncRoute(async (req, res) => {
+router.post('/groups', requireConnectionsFeature, asyncRoute(async (req, res) => {
   const token = tokenFrom(req);
   if (!token) return redirectTo(res, loginRedirect());
 
@@ -861,7 +868,7 @@ router.get('/groups', requireAuth, asyncRoute(async (req, res) => {
   });
 }));
 
-router.get('/groups/new', requireAuth, asyncRoute(async (req, res) => {
+router.get('/groups/new', requireConnectionsFeature, requireAuth, asyncRoute(async (req, res) => {
   const restriction = await messageRestriction(req);
   const access = messageAccess(req, restriction);
   const query = trimmed(req.query.q);

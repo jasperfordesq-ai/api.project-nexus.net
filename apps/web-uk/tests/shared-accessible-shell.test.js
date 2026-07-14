@@ -28282,6 +28282,45 @@ describe('shared accessible frontend shell', () => {
     expect(replay.text).toContain('Safeguarding check needed');
   });
 
+  it('applies Laravel connections gating before group-create authentication or API access', async () => {
+    const api = require('../src/lib/api');
+    api.getTenantBootstrap.mockResolvedValue(tenantBootstrap('acme', {
+      modules: { messages: true },
+      features: { connections: false }
+    }));
+    const agent = request.agent(app);
+    const cookie = signedCookieHeader();
+
+    const getResponse = await agent
+      .get('/acme/accessible/messages/groups/new?q=case')
+      .set('Cookie', cookie);
+
+    expect(getResponse.status).toBe(403);
+    expect(getResponse.text).toContain(englishForbiddenTitle);
+    expect(api.searchUsers).not.toHaveBeenCalled();
+    expect(api.getUser).not.toHaveBeenCalled();
+
+    const csrfToken = await csrfTokenFor(agent, '/acme/accessible/contact', cookie);
+    const postResponse = await agent
+      .post('/acme/accessible/messages/groups')
+      .set('Cookie', cookie)
+      .type('form')
+      .send({
+        _csrf: csrfToken,
+        name: 'Local helpers',
+        member_ids: ['44', '55']
+      });
+
+    expect(postResponse.status).toBe(403);
+    expect(postResponse.text).toContain(englishForbiddenTitle);
+    expect(api.callConversationApi).not.toHaveBeenCalledWith(
+      'test-token',
+      'POST',
+      '/groups',
+      expect.anything()
+    );
+  });
+
   it('suppresses group-message mutations when Laravel restricts messaging', async () => {
     const api = require('../src/lib/api');
     api.callConversationApi.mockResolvedValueOnce({ data: [] });
