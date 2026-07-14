@@ -30017,7 +30017,7 @@ describe('shared accessible frontend shell', () => {
         location: 'Belfast',
         delivery_method: 'pickup',
         user: { id: 77, name: 'Aisha Khan' },
-        images: [{ url: '/uploads/bike.jpg' }]
+        images: [{ url: '/uploads/bike.jpg' }, { url: '/uploads/bike-side.jpg' }]
       }
     });
 
@@ -30028,7 +30028,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(200);
     expect(api.callMarketplaceApi).toHaveBeenCalledWith('test-token', 'GET', '/listings/42');
     expect(response.text).toContain('Back to marketplace');
-    expect(response.text).toContain('This item has been saved.');
+    expect(response.text).not.toContain('This item has been saved.');
     expect(response.text).toContain('Community bike');
     expect(response.text).toContain('A road-ready bicycle for local trips.');
     expect(response.text).toContain('GBP 15.50');
@@ -30039,7 +30039,12 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Buy this item');
     expect(response.text).toContain('href="/marketplace/42/buy"');
     expect(response.text).toContain('href="/marketplace/42/offer"');
+    expect(response.text).toContain('href="/messages/new/77"');
+    expect(response.text).toContain('Message seller');
     expect(response.text).toContain('href="/marketplace/42/report"');
+    expect(response.text).toContain('Photo 1 for Community bike');
+    expect(response.text).toContain('Photo 2 for Community bike');
+    expect(response.text).toContain('(opens in new tab)');
     expect(response.text).not.toContain('Laravel Blade route');
   });
 

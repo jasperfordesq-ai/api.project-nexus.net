@@ -173,7 +173,7 @@ these numbers after either source moves.
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
 | Jest | 49/49 suites, 1,637/1,637 tests | Fresh green code gate |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
-| Static locale usage | 7,181 references, 5,481 unique keys, 0 unresolved | Current complete-reference audit |
+| Static locale usage | 7,189 references, 5,487 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
 | Blade marker check | Retained 19/19; current rerun unavailable | Current public-GET rerun timed out against Laravel HTTP; retained result is not visual certification |
 | Automated accessibility | Not currently certified: 28 passed, login failed, 58 did not run | Full aggregate requires a disposable Laravel environment; manual AT review remains open |
@@ -244,6 +244,18 @@ copy. Focused default-English render proof passes 1/1; the final full Jest gate
 passes 49/49 suites and 1,637/1,637 tests. Lint, localization-key,
 template-localization, CSS, and brand gates are green. No Laravel request,
 mutation, upload, or database access ran.
+
+## Marketplace Listing Detail Refresh
+
+Marketplace listing detail now mirrors current Blade's caption, gallery
+alternatives and new-tab announcement, multiline description, location label,
+offer/save actions, seller-message action, and report action. The Web UK-only
+query-status banner was removed because Blade does not render it on this page.
+Focused default-English detail and hybrid-price proof passes 2/2; the complete
+Jest gate passes 49/49 suites and 1,637/1,637 tests. Lint, CSS, brand, the
+7,189-reference / 5,487-unique-key zero-unresolved audit, and the 322-template
+zero-match audit are green. No Laravel request, mutation, upload, download, or
+database access ran.
 
 ## Marketplace Listing Form Refresh
 
