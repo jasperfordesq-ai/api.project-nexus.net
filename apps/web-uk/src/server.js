@@ -77,7 +77,7 @@ const { errorLogger, finalErrorHandler } = require('./lib/errorHandler');
 const { ApiError, getExchangeConfig } = require('./lib/api');
 const { generalLimiter, authLimiter, walletLimiter, formLimiter } = require('./lib/rateLimiter');
 const { handleApiError } = require('./lib/routeHelpers');
-const { buildShellLocals } = require('./lib/accessible-shell');
+const { buildShellLocals, resolveBackendAssetUrl } = require('./lib/accessible-shell');
 const { formatLocaleDate, localeForIntl, translate, translateChoice } = require('./lib/localization');
 const { getRequestLocale } = require('./lib/request-locale-context');
 const { parseMultipartForm } = require('./middleware/multipart');
@@ -998,6 +998,10 @@ app.get('/volunteering/opportunities/:id(\\d+)', requireAuth, (req, res) => {
 
     return {
       ...opportunity,
+      organization: {
+        ...organization,
+        logo_url: resolveBackendAssetUrl(organization.logo_url || organization.logoUrl)
+      },
       organisationId,
       organisationName,
       categoryName: category.name || (typeof opportunity.category === 'string' ? opportunity.category : ''),

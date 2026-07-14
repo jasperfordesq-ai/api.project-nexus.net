@@ -18611,6 +18611,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Remote');
     expect(response.text).toContain('Help prepare meals and welcome visitors');
     expect(response.text).toContain('Community Club');
+    expect(response.text).toContain(`src="${getApiBaseUrl()}/storage/community-club.png"`);
     expect(response.text).not.toContain('href="/organisations/42"');
     expect(response.text).toContain('About this opportunity');
     expect(response.text).toContain('Organisation');
