@@ -171,10 +171,10 @@ Refresh the Laravel Blade/API source and Web UK implementation before relying on
 these numbers after either source moves.
 
 At this documentation audit, the product-source baseline was
-`023625ead3294eea8118548966893e4427d99460`. The revoked-session confirmation,
-Laravel method-spoof reconciliation, group-message contract, residual API-
-consumer correction, and backend-request timeout slices are above the frozen
-bank and remain **published and unscored**. The documentation remediation is
+`65e079426a5edebe4f56ea2ec8135254f9ca3acc`. The post-bank implementation,
+contract, resilience, component-audit, attached Event-poll, and Listing-
+analytics slices are above the frozen bank and remain **published and
+unscored**. The documentation remediation is
 published; unrelated ASP.NET backend work remains outside this score. The table below
 records the latest individually
 verified non-mutating gates; it is not a claim that every gate was rerun
@@ -186,9 +186,8 @@ together from a clean published checkout.
   with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
   Only this fixed-rubric audit contributes to the current bank.
 - **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `023625ea`, including the later identity/session confirmation,
-  method-spoof reconciliation, group-message contract, residual API-consumer
-  correction, and backend-request timeout slices. Their evidence is useful, but they
+  baseline `65e07942`, including the later implementation, contract,
+  resilience, and component-audit slices. Their evidence is useful, but they
   contribute zero points until one complete fixed-rubric re-audit explicitly
   replaces the baseline.
 - **Dirty and uncommitted:** no Web UK product file is intended to remain dirty
@@ -1829,5 +1828,23 @@ vulnerabilities, and the complete non-mutating gate passes 52/52 suites and
 1,674/1,674 tests. Brand, lint, CSS, route, API-ledger, locale, 322-template
 zero-match, 19/19 canonical Blade-marker, and diff checks are green. No Laravel
 request, database, migration, mutation, container, or production operation was
+performed. This published component-audit improvement remains unscored, so the
+frozen bank remains 622/1,000 pending a complete fixed-rubric re-audit.
+
+## 2026-07-14 Listing Analytics Catalog Parity
+
+Frozen evidence at `2026-07-14T20:14:16.2373626+01:00` against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and published Web UK product commit
+`65e079426a5edebe4f56ea2ec8135254f9ca3acc`. The owner Listing analytics page
+now uses the exact Laravel `govuk_alpha_listings.analytics` catalog for its
+title, navigation, period controls, metrics, empty states, table captions,
+progress labels, trend copy, and contact-method labels. Its API and data
+projection are unchanged.
+
+Focused owner-page proof passes 1/1, and the uninterrupted complete
+non-mutating gate passes 52/52 suites and 1,676/1,676 tests. Lint, branding,
+CSS, the 7,436-reference / 5,679-unique-key zero-unresolved locale audit, the
+322-template zero-match audit, and diff checks are green. No Laravel request,
+database, migration, mutation, container, or production operation was
 performed. This published component-audit improvement remains unscored, so the
 frozen bank remains 622/1,000 pending a complete fixed-rubric re-audit.
