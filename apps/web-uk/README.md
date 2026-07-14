@@ -348,6 +348,7 @@ nexus-uk-frontend/
 | `npm run test:watch` | Run tests in watch mode |
 | `npm run lint` | Lint the Web UK server source |
 | `npm run route:matrix` | Refresh and verify Laravel accessible route coverage |
+| `npm run api:ledger` | Generate the Web UK frontend-consumer contract ledger and match concrete method/path calls to Laravel OpenAPI |
 | `npm run visual:blade` | Compare scoped Web UK and Laravel Blade text markers |
 | `npm run smoke:laravel:local` | Run the core Laravel smoke against a fresh ephemeral Web UK listener |
 | `npm run smoke:federation:local` | Traverse federation onboarding, read settings back, and restore the E2E fixture |

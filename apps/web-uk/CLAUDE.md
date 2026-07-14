@@ -97,6 +97,7 @@ npm --prefix apps/web-uk run lint
 npm --prefix apps/web-uk test -- --runInBand
 npm --prefix apps/web-uk run build:css
 npm --prefix apps/web-uk run route:matrix
+npm --prefix apps/web-uk run api:ledger
 npm --prefix apps/web-uk run locales:audit
 npm --prefix apps/web-uk run locales:audit-templates -- --summary
 npm --prefix apps/web-uk run visual:blade

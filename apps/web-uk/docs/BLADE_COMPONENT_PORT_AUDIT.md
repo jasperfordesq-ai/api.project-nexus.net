@@ -212,6 +212,30 @@ requires a disposable environment; it is not Agenda regression evidence.
 Disposable live session effects, manual assistive-technology review, and
 unchanged ASP.NET runtime proof remain open.
 
+## 2026-07-14 Frontend-Consumer API Ledger Checkpoint
+
+Web UK now generates a contract inventory from `src/lib/api.js`, concrete
+source callsites, test references, and Laravel's read-only `openapi.json`.
+The JSON ledger records method/path, tenant authority, auth/role boundary,
+request and response shapes, status/error handling, redirects, side effects,
+cleanup requirements, Laravel operation/controller metadata, frontend
+consumers, and tests. Its Markdown companion is the compact review index.
+
+The initial current-source result contains 582 consumed contracts: 371 exact
+Laravel OpenAPI method/path matches, 194 without an exact match, 17 dynamic
+callsites requiring manual classification, and 276 state-changing rows that
+require disposable-environment runtime evidence. These are reconciliation
+counts, not parity scores. OpenAPI omissions, generator limitations, and real
+contract gaps must be distinguished row by row, and a detected test reference
+does not prove that every recorded field is asserted.
+
+Focused generator proof passes 2/2; the full static gate passes 49/49 suites
+and 1,637/1,637 tests with green brand, lint, CSS, route, ledger, and locale
+checks. A current-checkout public-GET-only Blade marker attempt timed out at the
+wrapper limit because Laravel HTTP did not return the comparison pages. No
+runtime write was attempted, and that run is not reported as green or failed
+visual evidence.
+
 ## 2026-07-13 Event Reminders Checkpoint
 
 Confirmed attendees now have Laravel's real reminder preference page, including

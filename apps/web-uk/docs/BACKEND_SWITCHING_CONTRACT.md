@@ -1149,6 +1149,14 @@ and records Laravel route names, handlers, inferred Blade views, feature/module
 gates, auth classification, API/service hints, and current `apps/web-uk`
 method/path matches.
 
+Use `docs/generated/frontend-api-consumer-ledger.json` as the backend-contract
+consumer inventory. Refresh it with `npm run api:ledger`; it records concrete
+Web UK method/path consumers, tenant/auth boundaries, request and response
+shapes, statuses/errors, redirects, side effects, cleanup requirements,
+Laravel OpenAPI/controller matches, and test references. Dynamic or unmatched
+rows remain explicit gaps. Neither an OpenAPI match nor a detected test-file
+reference certifies behavior against Laravel or ASP.NET.
+
 `src/routes/laravel-prep-pages.js` registers generated Laravel GET preparation
 pages after all real route modules only for rows that the generated matrix marks
 as `missing`. The current `681/687` matrix exports `3` runtime preparation pages

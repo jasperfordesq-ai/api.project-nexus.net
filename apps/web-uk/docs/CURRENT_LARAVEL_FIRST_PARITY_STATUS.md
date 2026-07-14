@@ -155,11 +155,11 @@ commit as the implementation it describes.
 
 The frontend baseline for the current checkout includes the Event registration,
 account-hub reconciliation, Event Communications, lifecycle-history, recurrence-
-history, and Event moderation slices; its published parent is repository commit
-`b797c26f`. The current checkout also contains an uncommitted Event Agenda
-presentation refresh owned by the Web UK workstream. The Laravel source baseline
-is `903d03d3`. The first SHA names the
-repository snapshot containing Web UK; it does not make ASP.NET authoritative.
+history, Event moderation, and Event Agenda slices. Event Agenda was published
+in `d21c6ed9`, followed by the accessibility data-boundary correction in
+`8eec911b`. The Laravel source baseline is `903d03d3`. The Web UK SHAs name
+repository snapshots containing the frontend; they do not make ASP.NET
+authoritative.
 Refresh the Laravel Blade/API source and Web UK implementation before relying on
 these numbers after either source moves.
 
@@ -171,16 +171,46 @@ these numbers after either source moves.
 | Missing Laravel routes | 1 | Event offline check-in code generation |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 48/48 suites, 1,635/1,635 tests | Fresh green code gate |
+| Jest | 49/49 suites, 1,637/1,637 tests | Fresh green code gate |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
 | Static locale usage | 7,123 references, 5,423 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
-| Blade marker check | 19/19 | Text-marker spotcheck, not visual certification |
+| Blade marker check | Retained 19/19; current rerun unavailable | Current public-GET rerun timed out against Laravel HTTP; retained result is not visual certification |
 | Automated accessibility | Not currently certified: 28 passed, login failed, 58 did not run | Full aggregate requires a disposable Laravel environment; manual AT review remains open |
+| Frontend API consumer ledger | 582 contracts: 371 OpenAPI matches, 194 unmatched, 17 dynamic | Static method/path and ownership evidence; unresolved rows are not parity claims |
 
 The generated route matrix was refreshed against the same route inventories
 and reports the counts above. It remains declaration evidence, not runtime or
 workflow certification.
+
+## Frontend-Consumer API Ledger
+
+`npm run api:ledger` now generates
+`docs/generated/frontend-api-consumer-ledger.json` and its Markdown index from
+the current `src/lib/api.js`, actual Web UK source consumers, test references,
+and Laravel's read-only `openapi.json`. Every JSON row records method/path,
+request-scoped tenant authority, auth/role boundary, request and response shape,
+status/error behavior, redirects, side effects, cleanup requirements, Laravel
+operation/controller metadata, frontend consumers, and detected tests.
+
+The current static inventory contains 582 consumed contracts. It matches 371
+method/path pairs to Laravel OpenAPI, leaves 194 without an exact OpenAPI match,
+and marks 17 variable method/path callsites as dynamically unresolved. It also
+classifies 276 rows as state-changing and therefore requiring disposable-
+environment runtime proof. An unmatched row may be an OpenAPI documentation
+gap, a frontend contract gap, or a generator-normalization gap; it is not proof
+that Laravel lacks the endpoint. A detected test reference is not proof that
+the test asserts the full contract. These unresolved classifications are now a
+concrete reconciliation queue rather than hidden readiness debt.
+
+Focused generator proof passes 2/2 and the full Jest gate passes 49/49 suites,
+1,637/1,637 tests. Brand, lint, CSS, route matrix, ledger regeneration, locale
+sync/shape, static-key resolution, and the 322-template zero-match audit are
+green. A fresh current-checkout `visual:blade` attempt used only unauthenticated
+GET requests but reached its ten-minute wrapper timeout because the restored
+Laravel HTTP service did not return the public comparison pages. It is recorded
+as unavailable, not as a failed or green marker result; the retained historical
+19/19 result remains a text-marker spotcheck only.
 
 ## Marketplace Listing Form Refresh
 
@@ -552,9 +582,10 @@ After the localization P0, the remaining priority order is:
    normalized marker check only.
 5. Complete manual keyboard, screen-reader, focus-order, error-summary, no-JS,
    zoom/reflow, forced-colour, and disabled-user evidence.
-6. Add a generated frontend-consumer API ledger covering method/path, tenant
-   authority, role, request shape, response/status/error envelope, redirects,
-   side effects, cleanup, Laravel implementation, frontend consumer, and tests.
+6. Maintain the generated frontend-consumer API ledger and reconcile its 194
+   unmatched and 17 dynamic rows against Laravel routes/controllers and real
+   consumers. Do not count an OpenAPI match or test-file reference as behavioral
+   certification.
 7. Harden production concerns separately: persistent sessions, production-only
    secrets/configuration, and request timeouts/abort handling.
 
@@ -574,6 +605,7 @@ npm --prefix apps/web-uk run lint
 npm --prefix apps/web-uk test -- --runInBand
 npm --prefix apps/web-uk run build:css
 npm --prefix apps/web-uk run route:matrix
+npm --prefix apps/web-uk run api:ledger
 npm --prefix apps/web-uk run locales:sync
 npm --prefix apps/web-uk run locales:audit
 npm --prefix apps/web-uk run locales:audit-keys
