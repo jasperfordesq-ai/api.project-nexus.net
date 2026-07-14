@@ -1010,6 +1010,10 @@ rewriting.
   required by Blade's GOV.UK focus-on-load order. Focused signed/unsigned
   rendering passes `1/1`; manual focus and screen-reader certification remain
   open.
+- Member-profile reviews now use Blade's GOV.UK card list, localized reviewer
+  heading, blue `n out of 5` tag, assistive rating copy, and comment body. The
+  legacy star/date header is removed; focused default-English rendering passes
+  `1/1`, while broader runtime and manual certification remain open.
 
 ### Jobs member-page evidence
 
