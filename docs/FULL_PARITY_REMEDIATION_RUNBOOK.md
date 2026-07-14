@@ -371,14 +371,40 @@ Release API and test-assembly builds pass. The focused fake-IdP authentication
 suite passes 4/4, the broader focused SSO controller/service set passes 10/10,
 and migration SQL generation from the prior published migration contains only
 the intended authentication tables, indexes, and user invalidation column. The
-container-backed public-controller fixture timed out during database provisioning,
-so full-suite/CI and unchanged-client runtime points remain open.
+public-controller SSO/OAuth compatibility check subsequently passes 1/1 against
+a stable, separately named disposable PostgreSQL database. Full-suite/CI and
+unchanged-client runtime points remain open.
 
 Published implementation `c20d064e6adb99d3a585efd299650d5e913180ff`
 banks 8 semantic, 3 schema, and 3 security points for **698/1000**: 100/100
 route, 299/350 semantic, 127/150 schema, 93/100 security/localization, 45/100
 build/test/CI, 10/125 unchanged-frontends, and 24/75 providers/ops/docs. Exact
 remaining deductions are 0, 51, 23, 7, 55, 115, and 51 points.
+
+### 2026-07-15 Tenant Bootstrap Runtime Evidence (Published)
+
+Evidence snapshot: Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf`, tenant-bootstrap implementation
+`5fbcf36dedf320c0ca81ac77f8b4771d891f7331`, ASP.NET verification HEAD
+`ccd109fc4dc67b0b117780b2130d519e6bb38eea`, captured 2026-07-15
+00:04:57 +01:00. Explicit slug resolution is authoritative and fail-closed,
+custom Host precedes Origin, Origin is accepted only on the shared Host, and an
+unknown explicit slug cannot fall back to an authenticated tenant header or the
+default tenant.
+
+The corrected focused tenant-bootstrap set passes 4/4 and the containing
+public-compatibility class passes 11/11 against the same separately named
+disposable PostgreSQL database through `NEXUS_TEST_POSTGRES`. The ordinary
+Testcontainers mapped connection reproduced a Docker transport reset during
+`EnsureCreatedAsync`; no test method executed in that failed attempt, and it is
+not reported as an application failure. The stable external-container path
+completed schema creation, seed/reset, HTTP host/origin handling, and cleanup.
+
+This closes the previously published provisional movement and banks 2 semantic
+and 1 security/tenant-isolation point for **701/1000**: 100/100 route, 301/350
+semantic, 127/150 schema, 94/100 security/localization, 45/100 build/test/CI,
+10/125 unchanged-frontends, and 24/75 providers/ops/docs. Exact remaining
+deductions are 0, 49, 23, 6, 55, 115, and 51 points.
 
 ## Historical Checkpoints
 

@@ -4,7 +4,7 @@ Last verified: 2026-07-14
 
 Status: **canonical current ASP.NET score and certification source**
 
-<!-- doc-consistency: ASPNET_CURRENT_BANKED_SCORE=698/1000 -->
+<!-- doc-consistency: ASPNET_CURRENT_BANKED_SCORE=701/1000 -->
 
 Use this document for the current ASP.NET completion score. Use
 [`FULL_PARITY_REMEDIATION_RUNBOOK.md`](FULL_PARITY_REMEDIATION_RUNBOOK.md) for
@@ -35,7 +35,7 @@ ASP.NET-specific page branches do not satisfy the goal.
 
 ## Current Scored Position
 
-The **current banked score is 698/1000 (69.8%)** under Fixed Rubric Baseline 1.
+The **current banked score is 701/1000 (70.1%)** under Fixed Rubric Baseline 1.
 The denominator is fixed; newly discovered work is recorded as a deduction or
 a separately named Laravel-drift baseline, never as a silent denominator
 change.
@@ -43,13 +43,13 @@ change.
 | Category | Banked | Maximum | Open |
 | --- | ---: | ---: | ---: |
 | Active Laravel API route representation | 100 | 100 | 0 |
-| Semantic workflow and canonical-consumer contract parity | 299 | 350 | 51 |
+| Semantic workflow and canonical-consumer contract parity | 301 | 350 | 49 |
 | Schema, migrations, data integrity, and upgrade safety | 127 | 150 | 23 |
-| Auth, tenant isolation, security, and localization | 93 | 100 | 7 |
+| Auth, tenant isolation, security, and localization | 94 | 100 | 6 |
 | Full build/test/CI evidence | 45 | 100 | 55 |
 | Unchanged canonical React plus unchanged Web UK dual-backend runtime proof | 10 | 125 | 115 |
 | Providers, jobs, integrations, operational proof, and reproducible docs | 24 | 75 | 51 |
-| **Total** | **698** | **1000** | **302** |
+| **Total** | **701** | **1000** | **299** |
 
 Active route representation is **2,601/2,601 matched with 0 missing**. Seven
 retired OpenAPI-only operations are reported separately and return to the
@@ -85,16 +85,19 @@ published:
 | Paid-transfer charge-dispute recovery | Implementation `9875fb5dd33e3ab5c33ea77a83fcfb0b8c6c0b00` | +3 semantic, +1 providers/operations = **680/1000** |
 | Marketplace refund notification evidence | Implementation `b37a3cc5ed903394b67813a3e34304213b9e150d` | +3 semantic, +1 providers/operations = **684/1000** |
 | Secure SSO/OIDC authentication flow | Implementation `c20d064e6adb99d3a585efd299650d5e913180ff` | +8 semantic, +3 schema, +3 security = **698/1000** |
+| Tenant-bootstrap precedence and fail-closed runtime proof | Implementation `5fbcf36dedf320c0ca81ac77f8b4771d891f7331`; stable disposable-PostgreSQL verification at ASP.NET `ccd109fc4dc67b0b117780b2130d519e6bb38eea` | +2 semantic, +1 security = **701/1000** |
 
 These named values form an audit trail. They are not competing current scores.
 
 ## Repository State At This Verification
 
 The product-source HEAD inspected for this page was
-`c20d064e6adb99d3a585efd299650d5e913180ff`, which is also the last banked
-ASP.NET implementation, with
+`ccd109fc4dc67b0b117780b2130d519e6bb38eea`, with the last banked backend
+implementation `c20d064e6adb99d3a585efd299650d5e913180ff` and the newly
+banked tenant-bootstrap implementation
+`5fbcf36dedf320c0ca81ac77f8b4771d891f7331`, with
 Laravel frozen at `903d03d3db78bbf87129ad35728be3b72819acaf` on
-2026-07-14 23:50:46 +01:00. Web UK-only commits do not add ASP.NET points and
+2026-07-15 00:04:57 +01:00. Web UK-only commits do not add ASP.NET points and
 belong in the Web UK status report.
 
 ### Published But Not Rescored
@@ -112,27 +115,15 @@ Laravel `903d03d3db78bbf87129ad35728be3b72819acaf` and ASP.NET
 inventory generation does not prove payload, envelope, auth, tenant, side-effect,
 or runtime correctness.
 
-Published commit `5fbcf36dedf320c0ca81ac77f8b4771d891f7331` makes an
-explicit tenant-bootstrap slug authoritative and fail-closed, adds custom-Host
-then shared-Host Origin resolution, and prevents header/default fallback after
-an unknown slug. Release builds for the API and test project passed. In the
-first focused runtime run, three bootstrap tests passed and the host/Origin test
-reached an assertion that exposed an invalid master-tenant fixture assumption;
-after correcting that fixture, two clean reruns were blocked before application
-execution because the Testcontainers PostgreSQL process was OOM-killed during
-`EnsureCreatedAsync` (`exit 137`). Its provisional movement is **+2 semantic
-and +1 security/tenant isolation**, but it adds **zero banked points** until the
-corrected four-test bootstrap set and containing public-compatibility suite pass.
-
 ### Dirty And In Flight
 
-The refund-notification marketplace and secure SSO/OIDC slices are committed
-and banked. Tenant
-bootstrap commit `5fbcf36dedf320c0ca81ac77f8b4771d891f7331` is published
-but remains a **+3 provisional / +0 banked** slice pending the runtime proof
-described above. The separate dirty event-safety migration remains outside this
-checkpoint and contributes zero ASP.NET points here. Dirty files never increase
-the banked score.
+The refund-notification marketplace, secure SSO/OIDC, and tenant-bootstrap
+slices are committed and banked. The corrected tenant-bootstrap set passes 4/4
+and its containing public-compatibility class passes 11/11 against a separately
+named disposable PostgreSQL database through `NEXUS_TEST_POSTGRES`; the related
+SSO public-controller integration check also passes 1/1 on that database. The
+separate dirty event-safety migration remains outside this checkpoint and
+contributes zero ASP.NET points here. Dirty files never increase the banked score.
 
 Re-run `git status --short`, compare the published checkpoint with `HEAD`, and
 refresh this section before every status report. Do not infer points from file
@@ -140,7 +131,7 @@ count, elapsed effort, or an agent's estimate.
 
 ## Open Certification Gates
 
-The remaining 302 points are not a single implementation queue. They include
+The remaining 299 points are not a single implementation queue. They include
 independent proof gates that must remain visible in status reports:
 
 - semantic completion for remaining marketplace, federation, jobs, providers,
