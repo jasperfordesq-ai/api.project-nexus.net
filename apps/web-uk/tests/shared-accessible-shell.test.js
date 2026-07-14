@@ -10119,6 +10119,54 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('There was a problem searching. Please try again.');
   });
 
+  it('normalizes advanced search result boundaries like the Blade partials', async () => {
+    const api = require('../src/lib/api');
+    const t = createTranslator('en');
+    const tc = createChoiceTranslator('en');
+
+    api.searchV2.mockResolvedValueOnce({
+      data: [
+        { type: 'listing', id: -1, title: '   ', description: '   ' },
+        { type: 'user', id: 0, name: '   ', tagline: '', bio: 'Must not render' },
+        {
+          type: 'event',
+          id: -5,
+          title: '   ',
+          start_time: '',
+          start_date: '2026-08-01T10:00:00Z'
+        },
+        {
+          type: 'group',
+          id: 9,
+          name: 'Community Group',
+          members_count: 0,
+          member_count: 9
+        }
+      ],
+      meta: { search: { query: 'community', total: 4, type: 'all' } }
+    });
+    api.getSavedSearches.mockResolvedValueOnce({ data: [] });
+    api.getListingCategories.mockResolvedValueOnce({ data: [] });
+    api.getPopularListingTags.mockResolvedValueOnce({ data: [] });
+
+    const response = await request(app)
+      .get('/search/advanced?q=community')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain(t('govuk_alpha_search.results.section_listings'));
+    expect(response.text).toContain(t('govuk_alpha.members.unknown_member'));
+    expect(response.text).toContain(t('govuk_alpha_search.results.section_events'));
+    expect(response.text).not.toContain('href="/listings/-1"');
+    expect(response.text).not.toContain('href="/members/0"');
+    expect(response.text).not.toContain('href="/events/-5"');
+    expect(response.text).not.toContain('Must not render');
+    expect(response.text).not.toContain('1 August 2026');
+    expect(response.text).toContain('href="/groups/9">Community Group</a>');
+    expect(response.text).toContain(tc('govuk_alpha_search.results.members_count', 0, { count: 0 }));
+    expect(response.text).not.toContain(tc('govuk_alpha_search.results.members_count', 9, { count: 9 }));
+  });
+
   it('renders the Laravel-style advanced search page', async () => {
     const api = require('../src/lib/api');
     const t = createTranslator('ar');

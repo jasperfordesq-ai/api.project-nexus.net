@@ -245,6 +245,17 @@ function truncate(text, max) {
   return `${value.slice(0, max - 3)}...`;
 }
 
+function coalescedField(item, primary, fallback) {
+  return item[primary] === null || item[primary] === undefined
+    ? item[fallback]
+    : item[primary];
+}
+
+function positiveId(value) {
+  const id = intFrom(value);
+  return id > 0 ? id : 0;
+}
+
 function groupedSearchResults(rows) {
   const grouped = { listings: [], users: [], events: [], groups: [] };
   for (const row of Array.isArray(rows) ? rows : []) {
@@ -253,17 +264,43 @@ function groupedSearchResults(rows) {
     if (type === 'listing') {
       grouped.listings.push({
         ...item,
+        displayTitle: textFrom(item.title),
+        displayDescription: textFrom(item.description),
+        displayListingType: textFrom(coalescedField(item, 'listing_type', 'type')),
+        displayHours: coalescedField(item, 'hours_estimate', 'estimated_hours'),
+        linkId: positiveId(item.id),
         imageAssetUrl: resolveBackendAssetUrl(item.image_url || item.imageUrl)
       });
     }
     if (type === 'user') {
       grouped.users.push({
         ...item,
+        displayName: textFrom(item.name),
+        displayTagline: textFrom(coalescedField(item, 'tagline', 'bio')),
+        displayLocation: textFrom(item.location),
+        linkId: positiveId(item.id),
         avatarAssetUrl: resolveBackendAssetUrl(item.avatar || item.avatar_url || item.avatarUrl)
       });
     }
-    if (type === 'event') grouped.events.push(item);
-    if (type === 'group') grouped.groups.push(item);
+    if (type === 'event') {
+      grouped.events.push({
+        ...item,
+        displayTitle: textFrom(item.title),
+        displayDescription: textFrom(item.description),
+        displayWhen: textFrom(coalescedField(item, 'start_time', 'start_date')),
+        displayLocation: textFrom(item.location),
+        linkId: positiveId(item.id)
+      });
+    }
+    if (type === 'group') {
+      grouped.groups.push({
+        ...item,
+        displayName: textFrom(item.name),
+        displayDescription: textFrom(item.description),
+        displayMembersCount: intFrom(coalescedField(item, 'members_count', 'member_count')),
+        linkId: positiveId(item.id)
+      });
+    }
   }
   return grouped;
 }
