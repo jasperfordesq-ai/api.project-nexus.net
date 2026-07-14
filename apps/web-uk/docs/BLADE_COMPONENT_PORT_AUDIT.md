@@ -264,6 +264,10 @@ length and selection rules, and replays invalid answers through field-linked
 summary and inline errors without calling either mutation endpoint.
 Attendee invitations now render Blade's type/status summary cards, expose the
 Accept action only while issued, and preserve the localized empty state.
+Guest capture now includes Blade's telephone, ticket-entitlement, privacy, and
+notification controls, while the guest summary list localizes status and limits
+the labelled reason, confirmation, and warning cancellation controls to captured
+guests.
 Organizers can review or export answers only with explicit purpose/correlation
 evidence, cancel guests only after destructive confirmation, and apply versioned,
 idempotent guest attendance transitions. Single-value multi-choice submissions
@@ -386,7 +390,7 @@ The current aggregate evidence includes `48/48` Jest suites and `1,627/1,627`
 tests, green lint/brand/CSS gates, `683` of `689` Laravel routes matched (`690`
 local declarations, `6` classified API-boundary gaps, `5` documented extras,
 and `3` ignored infrastructure routes), structurally complete
-`11`-locale/`36`-namespace/`8,837`-key catalogs, a `318`-template conservative
+`11`-locale/`36`-namespace/`8,837`-key catalogs, a `319`-template conservative
 audit with `0` safe exact matches, a full `80/80` Chromium/axe run at checkpoint
 `ea1ed6d4` in `1,610.1` seconds (`26.8` minutes) with no skipped, unexpected, or
 flaky results, and a live `19/19` Blade marker comparison. All four exhaustive

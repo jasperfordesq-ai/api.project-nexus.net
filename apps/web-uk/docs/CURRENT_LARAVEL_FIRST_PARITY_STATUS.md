@@ -128,8 +128,8 @@ these numbers after either source moves.
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
 | Jest | 48/48 suites, 1,627/1,627 tests | Fresh green code gate |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
-| Static locale usage | 6,949 references, 5,289 unique keys, 0 unresolved | Current complete-reference audit |
-| Template localization | 318 templates, 0 conservative matches | Current hard-coded-copy audit |
+| Static locale usage | 6,956 references, 5,293 unique keys, 0 unresolved | Current complete-reference audit |
+| Template localization | 319 templates, 0 conservative matches | Current hard-coded-copy audit |
 | Blade marker check | 19/19 | Text-marker spotcheck, not visual certification |
 | Automated accessibility | Latest recorded 87/87 | Manual AT review remains open |
 
@@ -300,10 +300,13 @@ questions; configured length and selection constraints are bounded by Blade's
 answers, render field-linked summary and inline errors, and stop before either
 registration-product mutation call. Issued and accepted invitations now use
 Blade's summary cards, localized type/status, issued-only Accept action, and
-empty state instead of a bare action form. Focused Event Registration proof passes
-8/8; the full non-mutating gate passes 48/48 suites and 1,627/1,627 tests with
-green lint, brand, CSS, route, and localization gates. No Laravel runtime or
-database mutation was run.
+empty state instead of a bare action form. Guest capture now matches Blade's
+name, email, telephone, ticket-entitlement, privacy, and notification fields;
+guest summaries localize status and expose the labelled, confirmed cancellation
+form only for captured guests. Focused Event Registration proof passes 8/8; the
+full non-mutating gate passes 48/48 suites and 1,627/1,627 tests with green lint,
+brand, CSS, route, and localization gates. No Laravel runtime or database
+mutation was run.
 
 ## Localization P0 Closed In Current Slice
 

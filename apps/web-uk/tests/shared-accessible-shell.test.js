@@ -23273,7 +23273,9 @@ describe('shared accessible frontend shell', () => {
       registration: { status: 'confirmed' },
       registrations: [{ id: 10, registration_state: 'cancelled' }, { id: 11, registration_state: 'confirmed', registration_version: 2 }],
       form: { id: 8, name: 'Access needs', description: 'Tell us what you need.', questions },
-      invitations: [{ id: 71, status: 'issued' }, { id: 72, status: 'accepted' }], guests: [], settings: { guests_enabled: false }
+      invitations: [{ id: 71, status: 'issued' }, { id: 72, status: 'accepted' }],
+      guests: [{ id: 91, display_name: 'Guest member', status: 'captured', revision: 2 }, { id: 92, display_name: null, status: 'cancelled', revision: 3 }],
+      settings: { guests_enabled: true }
     };
     const mockRegistrationPage = () => api.callEventApi
       .mockResolvedValueOnce({ data: { id: 42, title: 'Community garden day' } })
@@ -23296,6 +23298,12 @@ describe('shared accessible frontend shell', () => {
     expect(page.text).toContain('<strong class="govuk-tag">Accepted</strong>');
     expect(page.text).toContain('/events/42/registration/invitations/71/accept');
     expect(page.text).not.toContain('/events/42/registration/invitations/72/accept');
+    expect(page.text).toContain('id="guest-phone" name="phone" type="tel"');
+    expect(page.text).toContain('id="guest-ticket" name="ticket_entitlement_id" type="number" min="1"');
+    expect(page.text).toContain('id="guest-notifications" name="notification_consent"');
+    expect(page.text).toContain('id="guest-cancel-reason-91"');
+    expect(page.text).toContain('id="guest-cancel-confirm-91"');
+    expect(page.text).not.toContain('guest-cancel-reason-92');
     const csrf = page.text.match(/name="_csrf" value="([^"]+)"/)[1];
 
     api.callEventApi.mockResolvedValueOnce({ data: attendee });
@@ -23348,9 +23356,9 @@ describe('shared accessible frontend shell', () => {
     expect(accepted.headers.location).toBe('/events/42/registration?status=invitation-accepted');
     expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/registration-product/invitations/71/accept', {}, { headers: { 'Idempotency-Key': 'invite-accept-123' } });
     api.callEventApi.mockResolvedValueOnce({ data: { guest: { id: 91 } } });
-    const guest = await agent.post('/events/42/registration/registrations/11/guests').set('Cookie', signedCookieHeader()).type('form').send({ _csrf: csrf, expected_registration_version: '3', display_name: 'Guest member', email: 'guest@example.test', consent_accepted: '1', notification_consent: '1' });
+    const guest = await agent.post('/events/42/registration/registrations/11/guests').set('Cookie', signedCookieHeader()).type('form').send({ _csrf: csrf, expected_registration_version: '3', display_name: 'Guest member', email: 'guest@example.test', phone: '+353 87 123 4567', ticket_entitlement_id: '19', consent_accepted: '1', notification_consent: '1' });
     expect(guest.headers.location).toBe('/events/42/registration?status=guest-added');
-    expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/registration-product/registrations/11/guests', expect.objectContaining({ expected_registration_version: 3, display_name: 'Guest member', consent_accepted: true, notification_consent: true, consent_text_version: '2026-07-12' }));
+    expect(api.callEventApi).toHaveBeenLastCalledWith('test-token', 'POST', '/42/registration-product/registrations/11/guests', expect.objectContaining({ expected_registration_version: 3, display_name: 'Guest member', phone: '+353 87 123 4567', ticket_entitlement_id: 19, consent_accepted: true, notification_consent: true, consent_text_version: '2026-07-12' }));
   });
 
   it('requires destructive confirmation for guest cancellation and versions guest attendance', async () => {
