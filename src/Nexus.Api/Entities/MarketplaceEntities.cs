@@ -100,6 +100,7 @@ public class MarketplaceSellerProfile : ITenantEntity
     public int ListingsCount { get; set; }
     public int SalesCount { get; set; }
     public string? StripeAccountId { get; set; }
+    public bool StripeOnboardingComplete { get; set; }
     public int? MarketplaceSuspensionReportId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
@@ -148,6 +149,9 @@ public class MarketplaceOrder : ITenantEntity
     public decimal? TimeCreditTotal { get; set; }
     public int? WalletTransactionId { get; set; }
     public int? WalletRefundTransactionId { get; set; }
+    public string? PaymentIntentId { get; set; }
+    public string? StripeCheckoutMode { get; set; }
+    public DateTime? PaymentExpiresAt { get; set; }
     public string Currency { get; set; } = "EUR";
     public string Status { get; set; } = "pending";
     public string DeliveryMethod { get; set; } = "pickup";
@@ -161,6 +165,30 @@ public class MarketplaceOrder : ITenantEntity
     public DateTime? UpdatedAt { get; set; }
 
     public MarketplaceListing? Listing { get; set; }
+}
+
+public class MarketplacePayment : ITenantEntity
+{
+    public long Id { get; set; }
+    public int TenantId { get; set; }
+    public int MarketplaceOrderId { get; set; }
+    public string StripePaymentIntentId { get; set; } = string.Empty;
+    public string? StripeChargeId { get; set; }
+    public string FundsFlow { get; set; } = "destination_charge";
+    public decimal Amount { get; set; }
+    public string Currency { get; set; } = "EUR";
+    public decimal PlatformFee { get; set; }
+    public decimal SellerPayout { get; set; }
+    public string? PaymentMethod { get; set; }
+    public string Status { get; set; } = "pending";
+    public decimal? RefundAmount { get; set; }
+    public string? RefundReason { get; set; }
+    public DateTime? RefundedAt { get; set; }
+    public string PayoutStatus { get; set; } = "pending";
+    public string? PayoutId { get; set; }
+    public DateTime? PaidOutAt { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
 
 public class MarketplaceDispute : ITenantEntity

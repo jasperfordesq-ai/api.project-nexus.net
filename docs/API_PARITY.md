@@ -12,6 +12,21 @@ The legacy ASP.NET React copy at `apps/react-frontend/` is no longer the target
 for API design. ASP.NET API parity means the ASP.NET backend can satisfy the API
 calls made by the production Laravel React frontend.
 
+## 2026-07-14 Marketplace Payment Settlement Refresh
+
+Marketplace fiat checkout now uses a provider-bound Stripe destination charge
+instead of a local placeholder. Create validates buyer/tenant/order/seller,
+currency precision, checkout mode and expiry; binds one intent with stable
+idempotency; verifies destination, fee, amount, currency and identity metadata;
+and cancels an unbound remote intent after a lost race. Confirm and the signed
+marketplace webhook share provider-revalidated, exactly-once local settlement.
+Seller payout and balance reads use the durable tenant-scoped payment ledger.
+Migration `20260714105831_MarketplacePaymentSettlementParity` applies on
+disposable PostgreSQL and model drift is clear. Release builds have zero errors,
+payment service proof passes 9/9, and the BuyNow controller case passes. Connect
+onboarding, escrow, refunds/disputes, payment notifications, live-provider proof,
+full-suite/CI, and unchanged-frontend runtime certification remain open.
+
 ## 2026-07-14 Retired Vetting OpenAPI Reconciliation
 
 The seven final apparent gaps were stale OpenAPI-only document-era vetting writes.

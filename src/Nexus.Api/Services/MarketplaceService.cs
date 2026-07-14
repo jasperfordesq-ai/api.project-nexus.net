@@ -390,6 +390,8 @@ public class MarketplaceService
             Quantity = Math.Max(1, quantity),
             TotalAmount = listing.Price.HasValue ? listing.Price.Value * Math.Max(1, quantity) : null,
             TimeCreditTotal = listing.TimeCreditPrice.HasValue ? listing.TimeCreditPrice.Value * Math.Max(1, quantity) : null,
+            Status = listing.Price.HasValue && listing.Price.Value > 0 ? "pending_payment" : "pending",
+            PaymentExpiresAt = listing.Price.HasValue && listing.Price.Value > 0 ? DateTime.UtcNow.AddMinutes(30) : null,
             DeliveryMethod = deliveryMethod ?? listing.DeliveryMethod,
             ShippingAddress = shippingAddress
         };

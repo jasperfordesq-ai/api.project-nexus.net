@@ -106,6 +106,9 @@ public static class RateLimitingExtensions
     public const string EventRecurrenceReadPolicy = "events-recurrence-read";
     public const string EventRecurrencePreviewPolicy = "events-recurrence-preview";
     public const string EventRecurrenceCommitPolicy = "events-recurrence-commit";
+    public const string MarketplacePaymentCreatePolicy = "marketplace-payment-create";
+    public const string MarketplacePaymentConfirmPolicy = "marketplace-payment-confirm";
+    public const string MarketplacePaymentReadPolicy = "marketplace-payment-read";
 
     public static IReadOnlyList<SafeguardingVettingRateLimitContract> SafeguardingVettingRateLimitContracts { get; } =
     [
@@ -243,6 +246,15 @@ public static class RateLimitingExtensions
             AddAuthenticatedFixedWindowPolicy(
                 options, EventRecurrenceReadPolicy, config, trustedProxies,
                 "RateLimiting:Events:RecurrenceReadPermitLimit", 60);
+            AddAuthenticatedFixedWindowPolicy(
+                options, MarketplacePaymentCreatePolicy, config, trustedProxies,
+                "RateLimiting:Marketplace:PaymentCreatePermitLimit", 10);
+            AddAuthenticatedFixedWindowPolicy(
+                options, MarketplacePaymentConfirmPolicy, config, trustedProxies,
+                "RateLimiting:Marketplace:PaymentConfirmPermitLimit", 10);
+            AddAuthenticatedFixedWindowPolicy(
+                options, MarketplacePaymentReadPolicy, config, trustedProxies,
+                "RateLimiting:Marketplace:PaymentReadPermitLimit", 30);
             AddAuthenticatedFixedWindowPolicy(
                 options, EventRecurrencePreviewPolicy, config, trustedProxies,
                 "RateLimiting:Events:RecurrencePreviewPermitLimit", 30);

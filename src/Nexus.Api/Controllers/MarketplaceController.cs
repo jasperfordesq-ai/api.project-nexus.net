@@ -8,10 +8,12 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
+using Nexus.Api.Middleware;
 using Nexus.Api.Services;
 
 namespace Nexus.Api.Controllers;
@@ -24,12 +26,21 @@ public class MarketplaceController : ControllerBase
     private readonly MarketplaceService _marketplace;
     private readonly NexusDbContext _db;
     private readonly FileUploadService? _fileUploadService;
+    private readonly MarketplacePaymentService? _paymentService;
+    private readonly IConfiguration? _configuration;
 
-    public MarketplaceController(MarketplaceService marketplace, NexusDbContext db, FileUploadService? fileUploadService = null)
+    public MarketplaceController(
+        MarketplaceService marketplace,
+        NexusDbContext db,
+        FileUploadService? fileUploadService = null,
+        MarketplacePaymentService? paymentService = null,
+        IConfiguration? configuration = null)
     {
         _marketplace = marketplace;
         _db = db;
         _fileUploadService = fileUploadService;
+        _paymentService = paymentService;
+        _configuration = configuration;
     }
 
     [HttpGet("listings")]
@@ -536,7 +547,7 @@ public class MarketplaceController : ControllerBase
     public async Task<IActionResult> SellerOnboardStatus()
     {
         var profile = await _marketplace.GetOrCreateSellerProfileAsync(RequireUserId());
-        var onboardingComplete = !string.IsNullOrWhiteSpace(profile.StripeAccountId) && profile.IsVerified;
+        var onboardingComplete = !string.IsNullOrWhiteSpace(profile.StripeAccountId) && profile.StripeOnboardingComplete;
 
         return Ok(new
         {
@@ -686,88 +697,99 @@ public class MarketplaceController : ControllerBase
 
     [HttpPost("payments/create-intent")]
     [Authorize]
-    public async Task<IActionResult> CreatePaymentIntent([FromBody] PaymentRequest request)
+    [EnableRateLimiting(RateLimitingExtensions.MarketplacePaymentCreatePolicy)]
+    public async Task<IActionResult> CreatePaymentIntent([FromBody] PaymentRequest request, CancellationToken ct)
     {
-        if (request.OrderId.HasValue)
-        {
-            var order = await _db.MarketplaceOrders.FirstOrDefaultAsync(o => o.Id == request.OrderId.Value);
-            if (order == null)
-                return NotFound(new { success = false, code = "NOT_FOUND", error = "Order not found" });
-            if (order.BuyerUserId != RequireUserId())
-                return StatusCode(403, new { success = false, code = "FORBIDDEN", error = "Only the buyer can initiate payment." });
-
-            var paymentIntentId = $"local_pi_{Guid.NewGuid():N}";
-            return Ok(new
-            {
-                success = true,
-                data = new
-                {
-                    client_secret = $"{paymentIntentId}_secret_local",
-                    payment_intent_id = paymentIntentId,
-                    order_id = order.Id,
-                    amount = order.TotalAmount,
-                    currency = order.Currency
-                }
-            });
-        }
-
-        var localIntentId = $"local_pi_{Guid.NewGuid():N}";
-        return Ok(new
-        {
-            success = true,
-            data = new
-            {
-                id = localIntentId,
-                client_secret = $"{localIntentId}_secret_local",
-                payment_intent_id = localIntentId,
-                status = "requires_confirmation",
-                amount = request.Amount,
-                currency = request.Currency ?? "EUR"
-            }
-        });
+        if (!request.OrderId.HasValue)
+            return UnprocessableEntity(new { success = false, errors = new[] { new { code = "VALIDATION_ERROR", message = "Order is required.", field = "order_id" } } });
+        if (_paymentService is null)
+            return StatusCode(503, new { success = false, errors = new[] { new { code = "PAYMENT_ERROR", message = "Marketplace payment service is unavailable.", field = (string?)null } } });
+        return PaymentResult(await _paymentService.CreateIntentAsync(
+            User.GetTenantId() ?? throw new UnauthorizedAccessException(), RequireUserId(), request.OrderId.Value, ct));
     }
 
     [HttpPost("payments/confirm")]
     [Authorize]
-    public IActionResult ConfirmPayment([FromBody] PaymentConfirmRequest request)
-        => Ok(new { data = new { id = request.PaymentId, status = "confirmed" } });
+    [EnableRateLimiting(RateLimitingExtensions.MarketplacePaymentConfirmPolicy)]
+    public async Task<IActionResult> ConfirmPayment([FromBody] PaymentConfirmRequest request, CancellationToken ct)
+    {
+        if (_paymentService is null)
+            return StatusCode(503, new { success = false, errors = new[] { new { code = "PAYMENT_ERROR", message = "Marketplace payment service is unavailable.", field = (string?)null } } });
+        return PaymentResult(await _paymentService.ConfirmAsync(
+            User.GetTenantId() ?? throw new UnauthorizedAccessException(), RequireUserId(), request.PaymentIntentId, ct));
+    }
 
     [HttpGet("payments/{id}/status")]
     [Authorize]
-    public IActionResult PaymentStatus(string id)
-        => Ok(new { data = new { id, status = "confirmed" } });
+    [EnableRateLimiting(RateLimitingExtensions.MarketplacePaymentReadPolicy)]
+    public async Task<IActionResult> PaymentStatus(long id, CancellationToken ct)
+    {
+        if (_paymentService is null)
+            return StatusCode(503, new { success = false, errors = new[] { new { code = "PAYMENT_ERROR", message = "Marketplace payment service is unavailable.", field = (string?)null } } });
+        return PaymentResult(await _paymentService.StatusAsync(
+            User.GetTenantId() ?? throw new UnauthorizedAccessException(), RequireUserId(), id, ct));
+    }
 
     [HttpGet("seller/payouts")]
     [Authorize]
-    public IActionResult SellerPayouts() => Ok(new { data = Array.Empty<object>(), meta = new { total = 0 } });
+    [EnableRateLimiting(RateLimitingExtensions.MarketplacePaymentReadPolicy)]
+    public async Task<IActionResult> SellerPayouts(
+        [FromQuery] int limit = 20,
+        [FromQuery] int page = 1,
+        CancellationToken ct = default)
+    {
+        if (_paymentService is null)
+            return StatusCode(503, new { success = false, errors = new[] { new { code = "PAYMENT_ERROR", message = "Marketplace payment service is unavailable.", field = (string?)null } } });
+
+        var result = await _paymentService.SellerPayoutsAsync(
+            User.GetTenantId() ?? throw new UnauthorizedAccessException(),
+            RequireUserId(),
+            Math.Clamp(page, 1, 1000),
+            Math.Clamp(limit, 1, 100),
+            ct);
+        return Ok(new
+        {
+            success = true,
+            data = result.Items,
+            meta = new
+            {
+                current_page = result.Page,
+                per_page = result.Limit,
+                total = result.Total,
+                total_pages = result.TotalPages,
+                has_more = result.Page < result.TotalPages
+            }
+        });
+    }
 
     [HttpGet("seller/balance")]
     [Authorize]
-    public IActionResult SellerBalance() => Ok(new { data = new { available = 0, pending = 0, currency = "EUR" } });
+    [EnableRateLimiting(RateLimitingExtensions.MarketplacePaymentReadPolicy)]
+    public async Task<IActionResult> SellerBalance(CancellationToken ct)
+    {
+        if (_paymentService is null)
+            return StatusCode(503, new { success = false, errors = new[] { new { code = "PAYMENT_ERROR", message = "Marketplace payment service is unavailable.", field = (string?)null } } });
+        var balance = await _paymentService.SellerBalanceAsync(
+            User.GetTenantId() ?? throw new UnauthorizedAccessException(), RequireUserId(), ct);
+        return Ok(new { success = true, data = balance });
+    }
 
     [HttpPost("seller/onboard")]
     [Authorize]
     public async Task<IActionResult> SellerOnboard([FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] SellerProfileRequest? request = null)
     {
-        var profile = await _marketplace.GetOrCreateSellerProfileAsync(RequireUserId(), request?.DisplayName);
-        if (string.IsNullOrWhiteSpace(profile.StripeAccountId))
+        await _marketplace.GetOrCreateSellerProfileAsync(RequireUserId(), request?.DisplayName);
+        return StatusCode(StatusCodes.Status501NotImplemented, new
         {
-            profile.StripeAccountId = $"acct_local_{Guid.NewGuid():N}";
-            profile.UpdatedAt = DateTime.UtcNow;
-            await _db.SaveChangesAsync();
-        }
-
-        var onboardingUrl = BuildLocalSellerOnboardingUrl(profile.StripeAccountId);
-        return Ok(new
-        {
-            success = true,
-            data = new
+            success = false,
+            errors = new[]
             {
-                account_id = profile.StripeAccountId,
-                onboarding_url = onboardingUrl,
-                url = onboardingUrl,
-                profile,
-                status = "local"
+                new
+                {
+                    code = "PAYMENT_ERROR",
+                    message = "Stripe Connect onboarding is not yet available.",
+                    field = (string?)null
+                }
             }
         });
     }
@@ -1722,7 +1744,44 @@ public class MarketplaceController : ControllerBase
 
     [HttpPost("webhooks/stripe")]
     [AllowAnonymous]
-    public IActionResult StripeWebhook() => Ok(new { received = true });
+    public async Task<IActionResult> StripeWebhook(CancellationToken ct)
+    {
+        if (_paymentService is null || _configuration is null)
+            return StatusCode(503, new { error = "marketplace_payment_service_unavailable" });
+        var secret = _configuration["Stripe:WebhookSecret_Marketplace"] ?? _configuration["Stripe:WebhookSecret"];
+        if (string.IsNullOrWhiteSpace(secret))
+            return StatusCode(503, new { error = "webhook_secret_unconfigured" });
+
+        Request.EnableBuffering();
+        Request.Body.Position = 0;
+        using var reader = new StreamReader(Request.Body, Encoding.UTF8, leaveOpen: true);
+        var raw = await reader.ReadToEndAsync(ct);
+        Request.Body.Position = 0;
+        if (string.IsNullOrWhiteSpace(raw)) return BadRequest(new { error = "empty_body" });
+        var signature = Request.Headers["Stripe-Signature"].FirstOrDefault();
+        var (valid, reason) = StripeWebhookController.VerifyStripeSignature(raw, signature, secret);
+        if (!valid) return Unauthorized(new { error = "signature_invalid", reason });
+
+        try
+        {
+            using var document = JsonDocument.Parse(raw);
+            var root = document.RootElement;
+            var eventId = root.TryGetProperty("id", out var idElement) ? idElement.GetString() : null;
+            var eventType = root.TryGetProperty("type", out var typeElement) ? typeElement.GetString() : null;
+            if (eventType != "payment_intent.succeeded") return Ok(new { received = true, applied = false });
+            if (!root.TryGetProperty("data", out var data) || !data.TryGetProperty("object", out var stripeObject) ||
+                !stripeObject.TryGetProperty("id", out var intentIdElement) || intentIdElement.ValueKind != JsonValueKind.String)
+                return BadRequest(new { error = "missing_data_object" });
+            var result = await _paymentService.ReconcileSucceededIntentAsync(intentIdElement.GetString()!, eventId, ct);
+            if (result.Succeeded) return Ok(result.Data);
+            var error = result.Error!;
+            return StatusCode(error.Status, new { error = error.Code, message = error.Message });
+        }
+        catch (JsonException)
+        {
+            return BadRequest(new { error = "invalid_json" });
+        }
+    }
 
     private static PromotionProduct? ResolvePromotionProduct(string? type)
     {
@@ -2698,6 +2757,17 @@ public class MarketplaceController : ControllerBase
             * Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
         return earth * 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
     }
+
+    private IActionResult PaymentResult(MarketplacePaymentResult result)
+    {
+        if (result.Succeeded) return StatusCode(result.Status, new { success = true, data = result.Data });
+        var error = result.Error!;
+        return StatusCode(error.Status, new
+        {
+            success = false,
+            errors = new[] { new { code = error.Code, message = error.Message, field = error.Field } }
+        });
+    }
 }
 
 public record ImageRequest(string? Url, string? AltText);
@@ -2741,7 +2811,11 @@ public sealed class PaymentRequest
 
     public string? Currency { get; set; }
 }
-public record PaymentConfirmRequest(string PaymentId);
+public sealed class PaymentConfirmRequest
+{
+    [JsonPropertyName("payment_intent_id")]
+    public string? PaymentIntentId { get; set; }
+}
 public record SavedSearchRequest(
     string? Name,
     string? Query,

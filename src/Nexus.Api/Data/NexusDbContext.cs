@@ -569,6 +569,7 @@ public class NexusDbContext : DbContext
     public DbSet<MarketplaceSavedListing> MarketplaceSavedListings => Set<MarketplaceSavedListing>();
     public DbSet<MarketplaceOffer> MarketplaceOffers => Set<MarketplaceOffer>();
     public DbSet<MarketplaceOrder> MarketplaceOrders => Set<MarketplaceOrder>();
+    public DbSet<MarketplacePayment> MarketplacePayments => Set<MarketplacePayment>();
     public DbSet<MarketplaceDispute> MarketplaceDisputes => Set<MarketplaceDispute>();
     public DbSet<MarketplaceReport> MarketplaceReports => Set<MarketplaceReport>();
     public DbSet<MarketplaceSavedSearch> MarketplaceSavedSearches => Set<MarketplaceSavedSearch>();
@@ -845,7 +846,43 @@ public class NexusDbContext : DbContext
         modelBuilder.Entity<MarketplaceOrder>(entity =>
         {
             entity.ToTable("marketplace_orders");
+            entity.HasAlternateKey(e => new { e.TenantId, e.Id });
             entity.HasIndex(e => new { e.TenantId, e.WalletRefundTransactionId }).IsUnique().HasFilter("\"WalletRefundTransactionId\" IS NOT NULL");
+            entity.Property(e => e.PaymentIntentId).HasMaxLength(255);
+            entity.Property(e => e.StripeCheckoutMode).HasMaxLength(32);
+            entity.HasCheckConstraint("chk_marketplace_order_checkout_mode", "\"StripeCheckoutMode\" IS NULL OR \"StripeCheckoutMode\" IN ('payment_intent','checkout_session')");
+            entity.HasIndex(e => new { e.TenantId, e.PaymentIntentId }).IsUnique().HasFilter("\"PaymentIntentId\" IS NOT NULL");
+            entity.HasIndex(e => new { e.TenantId, e.Status, e.PaymentExpiresAt });
+        });
+        modelBuilder.Entity<MarketplacePayment>(entity =>
+        {
+            entity.ToTable("marketplace_payments", table =>
+            {
+                table.HasCheckConstraint("chk_marketplace_payment_status", "\"Status\" IN ('pending','succeeded','failed','refunded','partially_refunded')");
+                table.HasCheckConstraint("chk_marketplace_payment_payout_status", "\"PayoutStatus\" IN ('pending','scheduled','paid','failed')");
+                table.HasCheckConstraint("chk_marketplace_payment_funds_flow", "\"FundsFlow\" IN ('destination_charge','separate_charge_transfer')");
+                table.HasCheckConstraint("chk_marketplace_payment_amounts", "\"Amount\" > 0 AND \"PlatformFee\" >= 0 AND \"SellerPayout\" >= 0 AND \"PlatformFee\" + \"SellerPayout\" = \"Amount\"");
+            });
+            entity.Property(e => e.StripePaymentIntentId).HasMaxLength(255);
+            entity.Property(e => e.StripeChargeId).HasMaxLength(255);
+            entity.Property(e => e.FundsFlow).HasMaxLength(32);
+            entity.Property(e => e.Amount).HasPrecision(18, 2);
+            entity.Property(e => e.Currency).HasMaxLength(3);
+            entity.Property(e => e.PlatformFee).HasPrecision(18, 2);
+            entity.Property(e => e.SellerPayout).HasPrecision(18, 2);
+            entity.Property(e => e.PaymentMethod).HasMaxLength(50);
+            entity.Property(e => e.Status).HasMaxLength(32);
+            entity.Property(e => e.RefundAmount).HasPrecision(18, 2);
+            entity.Property(e => e.PayoutStatus).HasMaxLength(32);
+            entity.Property(e => e.PayoutId).HasMaxLength(255);
+            entity.HasIndex(e => new { e.TenantId, e.MarketplaceOrderId });
+            entity.HasIndex(e => new { e.TenantId, e.Status });
+            entity.HasIndex(e => e.StripePaymentIntentId).IsUnique();
+            entity.HasOne<MarketplaceOrder>()
+                .WithMany()
+                .HasForeignKey(e => new { e.TenantId, e.MarketplaceOrderId })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
+                .OnDelete(DeleteBehavior.Cascade);
         });
         modelBuilder.Entity<MarketplaceDispute>(entity =>
         {

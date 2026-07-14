@@ -6,6 +6,16 @@ Canonical source: `C:\platforms\htdocs\staging` (read-only).
 
 ## Latest Verified Backend Slice
 
+Marketplace card settlement now has a real Stripe destination-charge boundary,
+durable tenant/order payment ledger, exact provider economics and identity
+validation, signed succeeded-intent webhook reconciliation, race-safe checkout
+claim/binding, provider-revalidated replay, and seller payout/balance reads.
+Migration `20260714105831_MarketplacePaymentSettlementParity` applies on
+disposable PostgreSQL with no pending model changes; focused payment proof is
+9/9 and the payment-facing controller case passes. Real Connect onboarding,
+escrow/refunds/disputes, notifications, live-provider and unchanged-frontend
+runtime certification remain open.
+
 The seven apparent document-era vetting gaps are retired OpenAPI-only artifacts:
 Laravel live routes omit them, the controller prohibits them, feature tests assert
 404/405, and canonical React uses the metadata-only replacement. The comparator now

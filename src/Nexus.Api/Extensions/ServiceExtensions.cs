@@ -322,6 +322,8 @@ public static class ServiceExtensions
             c.Timeout = TimeSpan.FromSeconds(30);
             c.DefaultRequestHeaders.TryAddWithoutValidation("Stripe-Version", "2024-06-20");
         });
+        services.AddScoped<IMarketplaceStripeGateway, MarketplaceStripeGateway>();
+        services.AddScoped<MarketplacePaymentService>();
         services.AddScoped<MoneyDonationService>();
         services.AddScoped<BookmarkService>();
         services.AddScoped<PeerEndorsementService>();

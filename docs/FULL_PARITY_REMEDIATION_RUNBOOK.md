@@ -43,6 +43,64 @@ Before any production deployment or production-container action, stop and read
 deployment or touching production containers. Never modify the Laravel repo or
 Laravel Edition containers from this worktree.
 
+## Fixed 1000-Point Completion Rubric
+
+All older implementation, certification, combined, and static-route percentages
+below are historical checkpoints. They must not be used as the current overall
+completion percentage. Effective 2026-07-14, the only overall denominator is:
+
+| Category | Weight |
+| --- | ---: |
+| Active route/call-site representation | 100 |
+| Semantic workflow and canonical-consumer contract parity | 350 |
+| Schema, migrations, data integrity, and upgrade safety | 150 |
+| Auth, tenant isolation, security, and localization | 100 |
+| Full build/test/CI evidence | 100 |
+| Unchanged canonical React plus unchanged certified Web UK runtime proof | 125 |
+| Providers, jobs, integrations, operational proof, and reproducible docs | 75 |
+
+Fixed Rubric Baseline 1 freezes Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf`, ASP.NET
+`b751d22f38baf0ac8bdf90fe669550b568fcb489`, and 2026-07-14 10:51:18 +01.
+Its banked score is **620/1000 (62%)**: 100/100 route representation,
+250/350 semantic parity, 110/150 schema/upgrade safety, 90/100 security and
+localization, 45/100 build/test/CI, 10/125 unchanged-frontend runtime proof,
+and 15/75 providers/operations/docs. Exact deductions are respectively 0,
+100, 40, 10, 55, 115, and 60 points. New Laravel drift creates a separately
+named baseline and scope-added delta; it does not silently rewrite this score.
+
+## 2026-07-14 Marketplace Payment Settlement Candidate (Locally Verified)
+
+Evidence snapshot: Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf`, ASP.NET parent
+`1871130ed5dff15e5333f4110d46f44395c1ae53`, captured 2026-07-14
+12:24:14 +01. This candidate replaces the local fake-payment-intent path with
+Stripe destination-charge orchestration: currency-exponent-aware amounts,
+stable idempotency, exact provider identity/economics validation, buyer and
+tenant ownership, checkout claim/expiry guards, post-provider race rechecks,
+orphan-intent cancellation, provider-revalidated confirmation replay, signed
+marketplace webhook reconciliation, durable payment/payout rows, and seller
+payout/balance projections. Escrow remains explicitly fail-closed.
+
+Migration `20260714105831_MarketplacePaymentSettlementParity` adds the payment
+ledger, tenant/order composite integrity, unique provider intent, seller
+onboarding state, checkout mode, and expiry fields with economic/status checks.
+It applies to disposable PostgreSQL and EF reports no pending model changes.
+The Release API build passes with zero errors. New payment-service proof passes
+9/9; the payment-facing BuyNow controller case also passes. The broad existing
+Marketplace controller class is not green: two independently reproduced stale
+assertions still expect the pre-DSA report projection and camel-case admin
+moderation field. Full-suite/CI, live Stripe/Connect, escrow/refunds/disputes,
+notifications, feature gating, localization depth, and unchanged-frontend
+runtime proof remain open.
+
+Before publication, the banked score remains **620/1000** and this verified
+candidate is **+12 in flight**. Once committed and pushed without evidence
+regression, it banks 8 semantic and 4 schema points for **632/1000**:
+100/100 route, 258/350 semantic, 114/150 schema, 90/100 security/localization,
+45/100 build/test/CI, 10/125 unchanged-frontends, and 15/75 providers/ops/docs.
+Exact remaining deductions are 0, 92, 36, 10, 55, 115, and 60 points.
+
 ## 2026-07-14 Retired Vetting OpenAPI Reconciliation (Locally Verified)
 
 The final seven apparent static gaps were stale OpenAPI-only document-era vetting

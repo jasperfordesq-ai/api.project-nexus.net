@@ -177,18 +177,16 @@ public class MarketplaceControllerTests : IntegrationTestBase
 
         var start = await Client.PostAsync("/api/v2/marketplace/seller/onboard", null);
 
-        start.StatusCode.Should().Be(HttpStatusCode.OK);
+        start.StatusCode.Should().Be(HttpStatusCode.NotImplemented);
         var startJson = await start.Content.ReadFromJsonAsync<JsonElement>();
-        startJson.GetProperty("success").GetBoolean().Should().BeTrue();
-        var startData = startJson.GetProperty("data");
-        startData.GetProperty("account_id").GetString().Should().StartWith("acct_");
-        startData.GetProperty("onboarding_url").GetString().Should().StartWith("http");
-        startData.GetProperty("url").GetString().Should().Be(startData.GetProperty("onboarding_url").GetString());
+        startJson.GetProperty("success").GetBoolean().Should().BeFalse();
+        startJson.GetProperty("errors")[0].GetProperty("code").GetString().Should().Be("PAYMENT_ERROR");
+        (await start.Content.ReadAsStringAsync()).Should().NotContain("acct_local_");
 
         var afterStart = await Client.GetAsync("/api/v2/marketplace/seller/onboard/status");
         var afterStartJson = await afterStart.Content.ReadFromJsonAsync<JsonElement>();
         var afterStartData = afterStartJson.GetProperty("data");
-        afterStartData.GetProperty("stripe_account_id").GetString().Should().Be(startData.GetProperty("account_id").GetString());
+        afterStartData.GetProperty("stripe_account_id").ValueKind.Should().Be(JsonValueKind.Null);
         afterStartData.GetProperty("stripe_onboarding_complete").GetBoolean().Should().BeFalse();
     }
 
@@ -726,7 +724,7 @@ public class MarketplaceControllerTests : IntegrationTestBase
         order.GetProperty("listing_id").GetInt32().Should().Be(listingId);
         order.GetProperty("buyer_id").GetInt32().Should().Be(TestData.MemberUser.Id);
         order.GetProperty("seller_id").GetInt32().Should().Be(TestData.AdminUser.Id);
-        order.GetProperty("status").GetString().Should().Be("pending");
+        order.GetProperty("status").GetString().Should().Be("pending_payment");
         order.GetProperty("order_number").GetString().Should().NotBeNullOrWhiteSpace();
         order.GetProperty("total_cents").GetInt32().Should().Be(5000);
         order.GetProperty("currency").GetString().Should().Be("EUR");
@@ -736,12 +734,11 @@ public class MarketplaceControllerTests : IntegrationTestBase
             order_id = order.GetProperty("id").GetInt32()
         });
 
-        createIntent.StatusCode.Should().Be(HttpStatusCode.OK);
+        createIntent.StatusCode.Should().Be(HttpStatusCode.Forbidden);
         var intentJson = await createIntent.Content.ReadFromJsonAsync<JsonElement>();
-        intentJson.GetProperty("success").GetBoolean().Should().BeTrue();
-        var intent = intentJson.GetProperty("data");
-        intent.GetProperty("client_secret").GetString().Should().NotBeNullOrWhiteSpace();
-        intent.GetProperty("payment_intent_id").GetString().Should().NotBeNullOrWhiteSpace();
+        intentJson.GetProperty("success").GetBoolean().Should().BeFalse();
+        intentJson.GetProperty("errors")[0].GetProperty("code").GetString().Should().Be("FEATURE_DISABLED");
+        (await createIntent.Content.ReadAsStringAsync()).Should().NotContain("local_pi_");
     }
 
     [Fact]
