@@ -27406,6 +27406,39 @@ describe('shared accessible frontend shell', () => {
     }));
   });
 
+  it('returns Blade voice failure state when a voice clip exceeds the 10 MB limit', async () => {
+    const cookieSignature = require('cookie-signature');
+    const api = require('../src/lib/api');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+    expect(csrfMatch).not.toBeNull();
+
+    const response = await agent
+      .post('/messages/77/voice')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .field('_csrf', csrfMatch[1])
+      .attach('voice', Buffer.alloc((10 * 1024 * 1024) + 1), {
+        filename: 'oversized-voice-note.webm',
+        contentType: 'audio/webm'
+      });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/messages/77?status=voice-failed');
+    expect(api.uploadVoiceMessage).not.toHaveBeenCalled();
+
+    const page = await agent
+      .get('/messages/77?status=voice-failed')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(page.status).toBe(200);
+    expect(page.text).toContain('Your voice message could not be sent. Please try again.');
+  });
+
   it('renders the Laravel-backed podcast index page', async () => {
     const api = require('../src/lib/api');
     api.callPodcastApi.mockImplementation(async (_token, _method, pathName) => {

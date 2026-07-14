@@ -1600,7 +1600,11 @@ app.use(/^\/groups\/\d+\/feed$/, parseMultipartForm({ maxFileSize: 5 * 1024 * 10
 app.use('/listings/new', parseMultipartForm({ maxFileSize: 25 * 1024 * 1024 }));
 app.use(/^\/listings\/\d+\/edit$/, parseMultipartForm({ maxFileSize: 25 * 1024 * 1024 }));
 app.use(/^\/messages\/\d+$/, parseMultipartForm({ maxFileSize: 10 * 1024 * 1024, multiples: true }));
-app.use(/^\/messages\/\d+\/voice$/, parseMultipartForm({ maxFileSize: 10 * 1024 * 1024 }));
+app.use(
+  /^\/messages\/\d+\/voice$/,
+  parseMultipartForm({ maxFileSize: 10 * 1024 * 1024 }),
+  messageVoiceMultipartErrorRedirect
+);
 app.use(
   /^\/groups\/\d+\/image$/,
   parseMultipartForm({ maxFileSize: 8 * 1024 * 1024 }),
@@ -1690,6 +1694,13 @@ function groupMultipartErrorRedirect(sizeStatus, invalidStatus) {
     const status = isSizeError ? sizeStatus : invalidStatus;
     return redirectTo(res, `/groups/${match[1]}/${match[2]}?status=${encodeURIComponent(status)}`);
   };
+}
+
+function messageVoiceMultipartErrorRedirect(error, req, res, next) {
+  const match = String(req.originalUrl || req.url || '').match(/\/messages\/(\d+)\/voice(?:[?#]|$)/);
+  if (!match) return next(error);
+
+  return redirectTo(res, `/messages/${match[1]}?status=voice-failed`);
 }
 
 function multipartStatusErrorRedirect(pathname, sizeStatus, invalidStatus) {
