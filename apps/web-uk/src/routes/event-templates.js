@@ -25,7 +25,7 @@ const TEMPLATE_FIELD_KEYS = new Set([
   'federated_visibility'
 ]);
 
-function normalizedAudit(audit) {
+function normalizedAudit(audit, formatDate) {
   if (!audit || typeof audit !== 'object') return {};
   const evidence = audit.evidence && typeof audit.evidence === 'object' && !Array.isArray(audit.evidence)
     ? audit.evidence
@@ -33,10 +33,18 @@ function normalizedAudit(audit) {
   const knownFields = (value) => Array.isArray(value)
     ? value.filter((field) => typeof field === 'string' && TEMPLATE_FIELD_KEYS.has(field))
     : [];
+  const integrityHash = trimmed(evidence.snapshot_hash || evidence.effective_snapshot_hash);
+  const recordedAt = new Date(audit.created_at);
   return {
     ...audit,
+    recordedAtLabel: audit.created_at && !Number.isNaN(recordedAt.getTime())
+      ? formatDate(recordedAt, {
+        day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'UTC'
+      })
+      : trimmed(audit.created_at),
     evidence: {
       ...evidence,
+      integrity_chunks: integrityHash.match(/.{1,8}/g) || [],
       copied_fields: knownFields(evidence.copied_fields),
       override_fields: knownFields(evidence.override_fields)
     }
@@ -61,7 +69,10 @@ router.get('/:templateId(\\d+)/history', requireAuth, asyncRoute(async (req, res
   const filter = selectedFilter(req.query.filter); const libraryCursor = trimmed(req.query.library_cursor, 4096);
   const [templateResult, historyResult] = await Promise.all([callEventTemplateApi(tokenFrom(req), 'GET', `/${templateId}`), callEventTemplateApi(tokenFrom(req), 'GET', `/${templateId}/history?${query}`)]);
   res.set('Cache-Control', 'private, no-store');
-  return res.render('events/template-history', { title: res.locals.t('event_templates.audit_title'), activeNav: 'events', template: dataFrom(templateResult) || {}, audits: collectionFrom(historyResult).map(normalizedAudit), pagination: historyResult?.meta || {}, filter, libraryCursor });
+  const formatDate = typeof res.locals.formatLocaleDate === 'function'
+    ? res.locals.formatLocaleDate
+    : (value) => trimmed(value);
+  return res.render('events/template-history', { title: res.locals.t('event_templates.audit_title'), activeNav: 'events', template: dataFrom(templateResult) || {}, audits: collectionFrom(historyResult).map((audit) => normalizedAudit(audit, formatDate)), pagination: historyResult?.meta || {}, filter, libraryCursor });
 }, { notFoundTitle: 'Template not found' }));
 
 router.get('/:templateId(\\d+)/materialize', requireAuth, asyncRoute(async (req, res) => renderMaterialization(req, res), { notFoundTitle: 'Template not found' }));

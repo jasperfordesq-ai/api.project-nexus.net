@@ -24741,9 +24741,10 @@ describe('shared accessible frontend shell', () => {
     expect(library.text).toContain(translateEnglish('event_templates.safety_title'));
     expect(library.text).toContain(translateEnglish('event_templates.use_count', { count: 3 }));
     const history = await request(app).get('/event-templates/7/history?cursor=incoming%2Bcursor%2F9%3D&filter=archived&library_cursor=library%2Bcursor%2F8%3D').set('Cookie', signedCookieHeader());
-    expect(history.status).toBe(200); expect(history.text).toContain('Reusable garden day'); expect(history.text).toContain('2026-07-13T12:00:00Z');
+    expect(history.status).toBe(200); expect(history.text).toContain('Reusable garden day');
+    expect(history.text).toContain('<time datetime="2026-07-13T12:00:00Z">13 July 2026 at 12:00</time>');
     expect(history.text).toContain(translateEnglish('event_templates.audit_immutable'));
-    expect(history.text).toContain('abcdef1234567890');
+    expect(history.text).toContain('<code>abcdef12<wbr>34567890</code>');
     expect(history.text).toContain(translateEnglish('event_templates.audit_event_reference', { id: 99 }));
     expect(history.text).not.toContain('event_templates.fields.private_answers');
     expect(history.text).not.toContain('event_templates.fields.attendees');

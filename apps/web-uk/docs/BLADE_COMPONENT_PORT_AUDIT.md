@@ -335,7 +335,7 @@ capability/render and exact-endpoint proof passes. Live review-policy variants,
 moderator handoff, manual assistive-technology review, and unchanged ASP.NET
 runtime proof remain open.
 
-## 2026-07-13 Event Template Workflow Checkpoint
+## 2026-07-14 Event Template Workflow Checkpoint
 
 Event managers now have Laravel's private template library, immutable audit
 history, source-event capture/revision preview, idempotent capture/revision, and
@@ -346,7 +346,10 @@ history, exact-payload, optimistic-version, and fresh-draft proof passes. The
 default-English library, capture, materialization, and immutable-history pages
 now mirror Blade's safety guidance, summaries, checklist, capability controls,
 error/success states, and opaque cursor preservation; unknown audit field keys
-fail closed instead of leaking raw localization keys. Live
+fail closed instead of leaking raw localization keys. Immutable audit entries
+now use Blade-style stable localized timestamps rather than relative dates and
+insert deterministic eight-character break opportunities in integrity digests.
+Live
 disposable template/materialization effects, manual assistive-technology review,
 and unchanged ASP.NET runtime proof remain open.
 
