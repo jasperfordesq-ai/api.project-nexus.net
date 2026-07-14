@@ -179,6 +179,82 @@ these numbers after either source moves.
 | Automated accessibility | Not currently certified: 28 passed, login failed, 58 did not run | Full aggregate requires a disposable Laravel environment; manual AT review remains open |
 | Frontend API consumer ledger | 590 contracts: 371 OpenAPI matches, 202 unmatched, 17 dynamic | Static method/path and ownership evidence; unresolved rows are not parity claims |
 
+### Frozen Completion Baseline
+
+This scoring baseline is frozen at `2026-07-14T09:37:38Z` against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and published Web UK
+`a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`. Both SHAs equal their respective
+`origin/main`; `apps/web-uk` has no dirty in-flight work. The Laravel repository
+retains only its pre-existing `react-frontend/package-lock.json` modification
+and untracked `.codex/` path.
+
+This is a named new baseline, not a silent rewrite of an older percentage. It
+uses the fixed Laravel-first rubric below because prior reports blended route
+coverage, implementation, and certification. Its runtime score is also reset
+because the opening correction in `BLADE_COMPONENT_PORT_AUDIT.md` invalidates
+every side-effect result run against the ordinary production-derived Laravel
+database. No Web UK implementation regression caused that reset.
+
+| Fixed rubric | Earned | Exact deduction |
+|---|---:|---|
+| Route/inventory representation | 99/100 | -1: the online Event check-in code POST remains undeclared in Web UK because Laravel exposes no safe equivalent frontend contract. |
+| Observable Blade/workflow implementation | 278/300 | -8: Event moderation membership/order/online state and check-in behavior are not contract-identical; -14: unresolved component-audit significant states still need finite default-English closure rather than declaration-only coverage. |
+| API contract/state coverage plus static/mock verification | 170/200 | -20: 202 ledger rows lack an exact OpenAPI match; -5: 17 callsites remain dynamically unresolved; -5: auth/role/status/side-effect assertions are not yet complete across every significant state. |
+| Disposable Laravel runtime certification | 0/200 | -200: no separately provisioned and verified disposable Laravel environment has been evidenced, so all live mutation/upload/download/destructive certification remains open. |
+| Screenshot/manual accessibility/WCAG certification | 35/150 | -40: no representative screenshot comparison set; -30: no actual screen-reader speech-output sign-off; -25: manual keyboard/no-JS/zoom/reflow/forced-colour coverage is incomplete; -20: the current full accessibility aggregate is not certified. |
+| Production hardening and reproducible docs | 40/50 | -4: persistent session production proof; -3: production secret/configuration proof; -3: request timeout/abort behavior remain open. |
+| **Laravel-first banked score** | **622/1000 (62.2%)** | Implementation-only subtotal is 547/600 (91.2%); it must not be reported as overall completion. |
+
+ASP.NET switchability is not included in the 622 points and is not rescored by
+this frontend workstream. It remains a separate backend-owned certification:
+unchanged Web UK must pass against ASP.NET by configuration change only after
+that backend is declared ready.
+
+### Finite P0/P1 Completion Queue
+
+The remaining Laravel-first queue is 12 bounded work packages. Do not expand it
+with route-by-route Arabic tests or cosmetic exploration; split a package only
+when a concrete regression requires an independently publishable fix.
+
+1. **P0 - Disposable environment:** provision and verify an isolated Laravel
+   application/database/storage environment that cannot address the ordinary
+   production-derived database; record identifiers, schema/source SHA, and
+   reset proof. Owner: environment/operator.
+2. **P0 - Runtime foundation:** run the current authentication, tenant, role,
+   module/feature, empty/populated, validation, and authorization matrix only
+   in that disposable environment. Owner: Web UK after item 1.
+3. **P0 - Identity/value side effects:** certify account/profile/settings,
+   sessions/passkeys, wallet/transfers/donations, messaging/connections, and
+   cleanup. Owner: Web UK after item 1.
+4. **P0 - Community side effects:** certify feed, comments/reactions, groups,
+   generic listings, events, polls, goals, and cleanup. Owner: Web UK after
+   item 1.
+5. **P0 - Commerce/work side effects:** certify marketplace, jobs,
+   volunteering, organisations, podcasts, resources, uploads/downloads, and
+   cleanup. Owner: Web UK after item 1.
+6. **P0 - Privileged/export side effects:** certify administrator/owner
+   actions, moderation, binary exports, destructive confirmations, and final
+   absence. Owner: Web UK after item 1.
+7. **P0 - Event moderation boundary:** obtain a Laravel API projection with
+   Blade-equivalent queue membership, submission order, and `is_online`, then
+   consume it unchanged in Web UK. Owner: Laravel backend/API workstream.
+8. **P0 - Event check-in boundary:** obtain a safe Laravel online signed-code
+   contract or an explicit source-contract decision for
+   `POST /events/{id}/check-in/code`. Owner: Laravel backend/API workstream.
+9. **P1 - API ledger closure:** classify and reconcile all 202 unmatched and 17
+   dynamic consumer rows, adding focused assertions for concrete gaps. Owner:
+   Web UK; Laravel API owner for genuine source omissions.
+10. **P1 - Component-audit closure:** finish the remaining default-English
+    significant-state rows and mark each closed, upstream-blocked, or
+    certification-only with evidence. Owner: Web UK.
+11. **P1 - Visual and manual WCAG:** capture the representative Blade/Web UK
+    screenshot set and complete keyboard, no-JS, zoom/reflow, forced-colour,
+    focus/error, and screen-reader sign-off. Owner: accessibility reviewer with
+    Web UK support.
+12. **P1 - Production hardening:** prove persistent sessions, production
+    secrets/configuration, timeout/abort handling, and a reproducible release
+    runbook. Owner: Web UK/operations.
+
 The generated route matrix was refreshed against the same route inventories
 and reports the counts above. It remains declaration evidence, not runtime or
 workflow certification.
