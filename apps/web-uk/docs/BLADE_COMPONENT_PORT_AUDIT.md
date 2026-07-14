@@ -1059,6 +1059,14 @@ rewriting.
 
 ### Jobs member-page evidence
 
+- `views/jobs-applicants.blade.php` now maps to an owner Applicants page with
+  Blade's request-locale headings, analytics labels, applicant/stage fallbacks,
+  applied-date and multiline cover-letter presentation, and update action. A
+  failed applicant collection renders the source management-denial `403`
+  rather than an invented partial page, while optional analytics remain non-
+  fatal. Focused populated/auth/denial proof passes `3/3`; the complete non-
+  mutating gate passes `52/52` suites and `1,679/1,679` tests, with 7,529
+  references, 5,757 unique keys, and zero unresolved/template matches.
 - `views/jobs-pipeline.blade.php` now maps to a mounted owner pipeline with the
   source applicants back destination, request-locale catalog, full-list link,
   labelled stage sections, plural counts, empty states, localized stage
