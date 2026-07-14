@@ -16,7 +16,7 @@ const {
 const { withTokenRefresh } = require('../middleware/auth');
 const { asyncRoute } = require('../lib/routeHelpers');
 const { getRequestProfile } = require('../lib/request-profile');
-const { flagEnabled } = require('../lib/accessible-shell');
+const { flagEnabled, resolveBackendAssetUrl } = require('../lib/accessible-shell');
 
 const router = express.Router();
 const COMMENTABLE_FEED_TYPES = new Set([
@@ -271,8 +271,20 @@ function allowed(value, values, fallback) {
 
 function feedCommentRows(result) {
   const data = dataFrom(result);
-  if (Array.isArray(data)) return data;
-  return data && Array.isArray(data.comments) ? data.comments : [];
+  const rows = Array.isArray(data) ? data : (data && Array.isArray(data.comments) ? data.comments : []);
+  const project = (comment) => {
+    const source = comment && typeof comment === 'object' ? comment : {};
+    const author = source.author && typeof source.author === 'object' ? source.author : {};
+    return {
+      ...source,
+      author: {
+        ...author,
+        avatarAssetUrl: resolveBackendAssetUrl(author.avatar || author.avatar_url || author.avatarUrl)
+      },
+      replies: Array.isArray(source.replies) ? source.replies.map(project) : []
+    };
+  };
+  return rows.map(project);
 }
 
 function feedNextHref(meta, perPage, selectedType, selectedMode, selectedSubtype) {

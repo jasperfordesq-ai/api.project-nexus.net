@@ -13609,7 +13609,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('nexus-alpha-comments-list--nested');
     expect(response.text).toContain('I can help with repairs.');
     expect(response.text).toContain('Thank you.');
-    expect(response.text).toContain('src="/avatars/current.jpg"');
+    expect(response.text).toContain(`src="${getApiBaseUrl()}/avatars/current.jpg"`);
     expect(response.text).toContain('action="/feed/comments/12/react"');
     expect(response.text).toContain('Celebrate (2)');
     expect(response.text).toContain('nexus-alpha-reaction--active');
