@@ -5,6 +5,7 @@
 
 const express = require('express');
 const { callPodcastApi, ApiError } = require('../lib/api');
+const { resolveBackendAssetUrl } = require('../lib/accessible-shell');
 const { getRequestProfile } = require('../lib/request-profile');
 const { asyncRoute } = require('../lib/routeHelpers');
 
@@ -164,6 +165,12 @@ function safeRelativeOrAbsoluteUrl(value) {
     : '';
 }
 
+function backendRelativeUrl(value) {
+  const url = safeRelativeOrAbsoluteUrl(value);
+  if (!url) return '';
+  return url.startsWith('/') ? resolveBackendAssetUrl(url) : url;
+}
+
 function sortFrom(query) {
   const sort = trimmed(query.sort);
   return PODCAST_SORTS.includes(sort) ? sort : 'newest';
@@ -253,9 +260,9 @@ function decorateShow(show, t = null) {
     byLabel: ownerName
       ? (t ? t('govuk_alpha.podcasts.by_label', { name: ownerName }) : `By ${ownerName}`)
       : '',
-    artworkUrl: safeRelativeOrAbsoluteUrl(row.artwork_url),
-    rssUrl: safeRelativeOrAbsoluteUrl(row.rss_url),
-    rssEnabled: Boolean(row.rss_enabled) && safeRelativeOrAbsoluteUrl(row.rss_url),
+    artworkUrl: backendRelativeUrl(row.artwork_url),
+    rssUrl: backendRelativeUrl(row.rss_url),
+    rssEnabled: Boolean(row.rss_enabled) && backendRelativeUrl(row.rss_url),
     episodeCount: Number.isFinite(Number(episodeCount)) ? Number(episodeCount) : 0,
     episodeCountLabel: episodeCountLabel(episodeCount),
     status,
@@ -281,8 +288,8 @@ function decorateEpisode(episode, showId = null, t = null) {
     title: trimmed(row.title) || (t ? t('govuk_alpha.podcasts.episodes_title') : 'Episodes'),
     description: stripHtml(row.description || row.summary || ''),
     cardDescription: limitedText(row.description || row.summary || '', 240),
-    audioUrl: safeRelativeOrAbsoluteUrl(row.audio_url),
-    coverImageUrl: safeRelativeOrAbsoluteUrl(row.cover_image_url),
+    audioUrl: backendRelativeUrl(row.audio_url),
+    coverImageUrl: backendRelativeUrl(row.cover_image_url),
     transcript: String(row.transcript || '').trim(),
     chaptersJson: Array.isArray(row.chapters) ? JSON.stringify(row.chapters.map((chapter) => ({
       title: trimmed(chapter.title),

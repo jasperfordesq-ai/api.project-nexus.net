@@ -27983,6 +27983,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Community voices');
     expect(response.text).toContain('By Aisha Khan');
     expect(response.text).toContain('4 episodes');
+    expect(response.text).toContain('src="http://127.0.0.1:8088/uploads/podcast.png"');
     expect(response.text).toContain('href="/podcasts/7"');
     expect(response.text).toContain('href="/podcasts/studio"');
     expect(response.text).toContain('<option value="Environment" selected>Environment</option>');
@@ -28061,13 +28062,13 @@ describe('shared accessible frontend shell', () => {
         owner: { name: 'Aisha Khan' },
         artwork_url: 'https://media.example.test/podcast.png',
         rss_enabled: true,
-        rss_url: 'https://example.test/feed.xml',
+        rss_url: '/api/v2/podcasts/7/feed.xml',
         episodes: [
           {
             id: 99,
             title: 'First update',
             description: 'A short first episode.',
-            audio_url: 'https://media.example.test/first.mp3',
+            audio_url: '/uploads/podcasts/first.mp3',
             status: 'published'
           }
         ]
@@ -28086,6 +28087,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Community voices');
     expect(response.text).toContain('Stories from local members.');
     expect(response.text).toContain('RSS feed');
+    expect(response.text).toContain('href="http://127.0.0.1:8088/api/v2/podcasts/7/feed.xml"');
     expect(response.text).toContain('Subscribe to this podcast');
     expect(response.text).toContain('First update');
     expect(response.text).toContain('href="/podcasts/7/episodes/99"');
@@ -28100,7 +28102,7 @@ describe('shared accessible frontend shell', () => {
         id: 99,
         title: 'First update',
         description: 'Episode notes for listeners.',
-        audio_url: 'https://media.example.test/first.mp3',
+        audio_url: '/uploads/podcasts/first.mp3',
         transcript: 'Welcome to the first update.',
         show: { id: 7, title: 'Community voices' }
       }
@@ -28117,6 +28119,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('First update');
     expect(response.text).toContain('Episode notes for listeners.');
     expect(response.text).toContain('Listen to First update');
+    expect(response.text).toContain('src="http://127.0.0.1:8088/uploads/podcasts/first.mp3"');
     expect(response.text).toContain('Read transcript');
     expect(response.text).toContain('Welcome to the first update.');
     expect(response.text).not.toContain('Laravel Blade route');
@@ -28239,14 +28242,14 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Publish your show');
     expect(response.text).toContain('Community voices');
     expect(response.text).toContain('Weekly local audio');
-    expect(response.text).toContain('/uploads/podcasts/community.jpg');
+    expect(response.text).toContain('http://127.0.0.1:8088/uploads/podcasts/community.jpg');
     expect(response.text).toContain('en-IE');
     expect(response.text).toContain('podcasts@example.test');
     expect(response.text).toContain('Episode 3');
     expect(response.text).toContain('First update');
     expect(response.text).toContain('Episode transcript');
     expect(response.text).toContain('Opening');
-    expect(response.text).toContain('/uploads/podcasts/episode.jpg');
+    expect(response.text).toContain('http://127.0.0.1:8088/uploads/podcasts/episode.jpg');
     expect(response.text).toContain('action="/podcasts/studio/42/update"');
     expect(response.text).toContain('name="episode_id" value="99"');
     expect(response.text).toContain('Add an episode');

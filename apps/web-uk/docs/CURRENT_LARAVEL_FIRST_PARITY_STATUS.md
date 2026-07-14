@@ -315,6 +315,18 @@ episode notifications when a subscription is created, instead of Web UK
 silently storing `false`. Mocked action proof covers subscribe, unsubscribe,
 failure, and the exact payload boundary; no live subscription was changed.
 
+## Podcast Backend-Relative Media Refresh
+
+Podcast artwork, RSS feeds, hosted audio, and episode covers now preserve
+Blade's backend-origin behaviour when Laravel returns a root-relative path.
+Web UK resolves those paths against the configured Laravel origin instead of
+its own origin, while retaining validated absolute HTTP(S) media URLs. This
+prevents otherwise valid uploaded media and RSS links from becoming broken on
+the separate Web UK host.
+
+Focused mocked browse, detail, episode, and studio proof passes 12/12. No live
+Laravel request, media upload/download, database write, or migration was run.
+
 ## Event Detail Attendee Roster Refresh
 
 Event detail now consumes Laravel's canonical attendee projection in Blade's
