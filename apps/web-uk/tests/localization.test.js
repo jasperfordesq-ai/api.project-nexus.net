@@ -121,6 +121,13 @@ describe('translation and formatter foundation', () => {
       .toBe('4.8 out of 5');
   });
 
+  it('interpolates Laravel catalogue values that use double-brace placeholders', () => {
+    expect(translate('en', 'event_registration.settings.revision', { revision: 3 }))
+      .toBe('Revision 3');
+    expect(translate('en', 'event_registration.forms.version', { version: 4 }))
+      .toBe('Version 4');
+  });
+
   it('loads authoritative translated output for every offered locale', () => {
     const englishLogin = translate('en', 'auth.login_title');
     for (const locale of SUPPORTED_LOCALES) {

@@ -126,10 +126,10 @@ these numbers after either source moves.
 | Missing Laravel routes | 6 | All are Event workflows |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 48/48 suites, 1,627/1,627 tests | Fresh green code gate |
+| Jest | 48/48 suites, 1,628/1,628 tests | Fresh green code gate |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
-| Static locale usage | 6,956 references, 5,293 unique keys, 0 unresolved | Current complete-reference audit |
-| Template localization | 319 templates, 0 conservative matches | Current hard-coded-copy audit |
+| Static locale usage | 6,962 references, 5,299 unique keys, 0 unresolved | Current complete-reference audit |
+| Template localization | 320 templates, 0 conservative matches | Current hard-coded-copy audit |
 | Blade marker check | 19/19 | Text-marker spotcheck, not visual certification |
 | Automated accessibility | Latest recorded 87/87 | Manual AT review remains open |
 
@@ -304,7 +304,10 @@ empty state instead of a bare action form. Guest capture now matches Blade's
 name, email, telephone, ticket-entitlement, privacy, and notification fields;
 guest summaries localize status and expose the labelled, confirmed cancellation
 form only for captured guests. Focused Event Registration proof passes 8/8; the
-full non-mutating gate passes 48/48 suites and 1,627/1,627 tests with green lint,
+organizer policy and form lists now also show Blade's description, status,
+revision, event-timezone-local inputs, required controls, and form versions.
+Double-brace Laravel catalogue placeholders interpolate without visible braces.
+The full non-mutating gate passes 48/48 suites and 1,628/1,628 tests with green lint,
 brand, CSS, route, and localization gates. No Laravel runtime or database
 mutation was run.
 

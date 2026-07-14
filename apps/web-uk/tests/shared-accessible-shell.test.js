@@ -23208,7 +23208,7 @@ describe('shared accessible frontend shell', () => {
     api.callEventApi
       .mockResolvedValueOnce({ data: { id: 42, title: 'Community garden day' } })
       .mockResolvedValueOnce({ data: { registration: { status: 'confirmed' }, registrations: [], invitations: [], guests: [], settings: {} } })
-      .mockResolvedValueOnce({ data: { settings: { status: 'draft', revision: 3, approval_mode: 'manual', per_member_limit: 2, guests_enabled: true, max_guests_per_registration: 2, guest_retention_days: 30 }, forms: [{ id: 8, name: 'Access needs', status: 'draft', revision: 2 }, { id: 9, name: 'Published questions', status: 'published', revision: 4 }] } });
+      .mockResolvedValueOnce({ data: { settings: { status: 'draft', revision: 3, approval_mode: 'manual', event_timezone_snapshot: 'Europe/Dublin', opens_at_utc: '2026-08-01T09:00:00Z', closes_at_utc: '2026-08-10T17:00:00Z', cancellation_cutoff_at_utc: '2026-07-31T18:00:00Z', per_member_limit: 2, guests_enabled: true, max_guests_per_registration: 2, guest_retention_days: 30 }, forms: [{ id: 8, name: 'Access needs', status: 'draft', revision: 2, version_number: 4 }, { id: 9, name: 'Published questions', status: 'published', revision: 4, version_number: 2 }] } });
     const response = await request(app).get('/events/42/registration').set('Cookie', signedCookieHeader());
     expect(response.status).toBe(200);
     expect(response.headers['cache-control']).toBe('private, no-store');
@@ -23216,6 +23216,11 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('/events/42/registration/forms/8');
     expect(response.text).toContain('/events/42/registration/forms/9/fork');
     expect(response.text).toContain('name="expected_revision" value="3"');
+    expect(response.text).toContain('value="2026-08-01T10:00"');
+    expect(response.text).toContain('id="registration-cutoff" name="cancellation_cutoff_at"');
+    expect(response.text).toContain('Version 4');
+    expect(response.text).toContain('Revision 3');
+    expect(response.text).toContain('data-module="govuk-checkboxes"');
     expect(api.callEventApi).toHaveBeenNthCalledWith(3, 'test-token', 'GET', '/42/registration-product/manage');
   });
 

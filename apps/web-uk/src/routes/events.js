@@ -2087,8 +2087,19 @@ router.get('/:id(\\d+)/registration', requireAuth, asyncRoute(async (req, res) =
   const [eventResult, state] = await Promise.all([callApi(token, 'GET', `/${id}`), registrationProductState(token, id, query.size ? `?${query}` : '')]);
   const activeRegistration = arrayValues(state.attendee?.registrations).find((registration) => ['invited', 'confirmed', 'pending'].includes(trimmed(registration?.registration_state)));
   const replay = consumeRegistrationAnswers(req, id, positiveInteger(state.attendee?.form?.id));
+  const settings = state.organizer?.settings;
+  const timezone = trimmed(settings?.event_timezone_snapshot) || 'UTC';
+  const organizer = state.organizer && {
+    ...state.organizer,
+    settings: settings && {
+      ...settings,
+      opens_at_local: dateTimeLocalInZone(settings.opens_at_utc, timezone),
+      closes_at_local: dateTimeLocalInZone(settings.closes_at_utc, timezone),
+      cancellation_cutoff_at_local: dateTimeLocalInZone(settings.cancellation_cutoff_at_utc, timezone)
+    }
+  };
   res.set('Cache-Control', 'private, no-store');
-  return res.render('events/registration', { title: res.locals.t('event_registration.title'), activeNav: 'events', event: { id, title: trimmed(eventFrom(eventResult).title) }, ...state, activeRegistration, status: trimmed(req.query.status), answerValues: replay.values, answerErrors: replay.errors, idempotencyKey: randomUUID(), csrfToken: req.csrfToken ? req.csrfToken() : '' });
+  return res.render('events/registration', { title: res.locals.t('event_registration.title'), activeNav: 'events', event: { id, title: trimmed(eventFrom(eventResult).title) }, ...state, organizer, activeRegistration, status: trimmed(req.query.status), answerValues: replay.values, answerErrors: replay.errors, idempotencyKey: randomUUID(), csrfToken: req.csrfToken ? req.csrfToken() : '' });
 }, { notFoundTitle: 'Event not found' }));
 
 router.post('/:id(\\d+)/registration/settings', requireAuth, asyncRoute(async (req, res) => {

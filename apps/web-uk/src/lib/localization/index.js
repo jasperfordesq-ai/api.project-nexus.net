@@ -64,8 +64,8 @@ function valueInCatalog(catalog, key) {
 
 function interpolate(value, replacements = {}) {
   if (typeof value !== 'string') return value;
-  return value.replace(/\{([A-Za-z0-9_]+)\}|:([A-Za-z0-9_]+)/g, (match, braceKey, colonKey) => {
-    const key = braceKey || colonKey;
+  return value.replace(/\{\{([A-Za-z0-9_]+)\}\}|\{([A-Za-z0-9_]+)\}|:([A-Za-z0-9_]+)/g, (match, doubleBraceKey, braceKey, colonKey) => {
+    const key = doubleBraceKey || braceKey || colonKey;
     return Object.prototype.hasOwnProperty.call(replacements, key)
       ? String(replacements[key])
       : match;
