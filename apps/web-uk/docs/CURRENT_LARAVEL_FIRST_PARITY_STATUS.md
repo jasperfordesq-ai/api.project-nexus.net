@@ -171,7 +171,7 @@ Refresh the Laravel Blade/API source and Web UK implementation before relying on
 these numbers after either source moves.
 
 At this documentation audit, the product-source baseline was
-`751cc24cc190c145994a9307d5405e833503f171`. The post-bank implementation,
+`998380e712817dd57ad800466896e291b00e9167`. The post-bank implementation,
 contract, resilience, component-audit, attached Event-poll, and Listing-
 analytics slices are above the frozen bank and remain **published and
 unscored**. The documentation remediation is
@@ -186,7 +186,7 @@ together from a clean published checkout.
   with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
   Only this fixed-rubric audit contributes to the current bank.
 - **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `751cc24c`, including the later implementation, contract,
+  baseline `998380e7`, including the later implementation, contract,
   resilience, and component-audit slices. Their evidence is useful, but they
   contribute zero points until one complete fixed-rubric re-audit explicitly
   replaces the baseline.
@@ -205,9 +205,9 @@ together from a clean published checkout.
 | Missing Laravel routes | 1 | Event offline check-in code generation |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 52/52 suites, 1,679/1,679 tests | Latest uninterrupted complete non-mutating gate at product baseline `751cc24c` |
+| Jest | 52/52 suites, 1,679/1,679 tests | Latest uninterrupted complete non-mutating gate at product baseline `998380e7` |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
-| Static locale usage | 7,556 references, 5,780 unique keys, 0 unresolved | Current complete-reference audit |
+| Static locale usage | 7,568 references, 5,782 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
 | Blade marker check | Current 19/19 | Current-source public GET marker comparison; not screenshot or visual certification |
 | Automated accessibility | Not currently certified: 28 passed, login failed, 58 did not run | Full aggregate requires a disposable Laravel environment; manual AT review remains open |
