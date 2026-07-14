@@ -171,7 +171,7 @@ Refresh the Laravel Blade/API source and Web UK implementation before relying on
 these numbers after either source moves.
 
 At this documentation audit, the product-source baseline was
-`069b6dfb5e4546b17f70b793901cfa244a3b5dac`. The post-bank implementation,
+`3ad92a66dca8e6971bd408603beb8f8eed8b7e1b`. The post-bank implementation,
 contract, resilience, component-audit, attached Event-poll, and Listing-
 analytics slices are above the frozen bank and remain **published and
 unscored**. The documentation remediation is
@@ -186,7 +186,7 @@ together from a clean published checkout.
   with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
   Only this fixed-rubric audit contributes to the current bank.
 - **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `069b6dfb`, including the later implementation, contract,
+  baseline `3ad92a66`, including the later implementation, contract,
   resilience, and component-audit slices. Their evidence is useful, but they
   contribute zero points until one complete fixed-rubric re-audit explicitly
   replaces the baseline.
