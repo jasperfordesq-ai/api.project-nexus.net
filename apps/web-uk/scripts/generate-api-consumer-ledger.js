@@ -503,6 +503,21 @@ function openApiIndex(openApi) {
   return index;
 }
 
+function laravelApiRouteIndex(source) {
+  const index = new Map();
+  const uncommented = String(source || '')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*(?:\/\/|#).*$/gm, '');
+  const routePattern = /Route::(get|post|put|patch|delete|head|options)\(\s*(['"])(\/[^'"]*)\2/g;
+  for (const match of uncommented.matchAll(routePattern)) {
+    const method = match[1].toUpperCase();
+    const declaredPath = match[3];
+    const routePath = declaredPath.startsWith('/api/') ? declaredPath : `/api${declaredPath}`;
+    index.set(`${method}|${normalizePath(routePath)}`, { routePath });
+  }
+  return index;
+}
+
 function describeSchema(schema) {
   if (!schema) return '';
   if (schema.$ref) return schema.$ref.replace('#/components/schemas/', 'schema:');
@@ -540,8 +555,9 @@ function sha256(contents) {
   return crypto.createHash('sha256').update(contents).digest('hex');
 }
 
-function buildRows({ directContracts, wrapperContracts, consumers, openApi, testSources }) {
+function buildRows({ directContracts, wrapperContracts, consumers, openApi, laravelApiRoutes, testSources }) {
   const operationIndex = openApiIndex(openApi);
+  const routeIndex = laravelApiRouteIndex(laravelApiRoutes);
   const rowsByKey = new Map();
   for (const contract of [...directContracts, ...wrapperContracts]) {
     const key = contractKey(contract);
@@ -553,6 +569,7 @@ function buildRows({ directContracts, wrapperContracts, consumers, openApi, test
   return [...rowsByKey.values()].map((row) => {
     const normalized = normalizePath(row.path);
     const match = row.method === 'DYNAMIC' ? null : operationIndex.get(`${row.method}|${normalized}`);
+    const routeDeclaration = row.method === 'DYNAMIC' ? null : routeIndex.get(`${row.method}|${normalized}`);
     const operation = match?.operation || null;
     const statusCodes = operation ? Object.keys(operation.responses || {}).sort() : [];
     const authMode = operation?.security?.length > 0 ? 'required' : (row.authMode || 'guest');
@@ -585,8 +602,10 @@ function buildRows({ directContracts, wrapperContracts, consumers, openApi, test
         controllerAction: operation['x-controller-action'] || '',
         tags: operation.tags || []
       } : {
-        status: row.method === 'DYNAMIC' || normalized.includes('{param}') && row.path.includes('{dynamic}') ? 'dynamic-unresolved' : 'missing-openapi-match',
-        path: '',
+        status: row.method === 'DYNAMIC' || normalized.includes('{param}') && row.path.includes('{dynamic}')
+          ? 'dynamic-unresolved'
+          : (routeDeclaration ? 'route-declared-openapi-omission' : 'missing-openapi-match'),
+        path: routeDeclaration?.routePath || '',
         operationId: '',
         controllerAction: '',
         tags: []
@@ -620,11 +639,14 @@ function renderMarkdown(report) {
     `- Contracts: ${report.summary.contracts}`,
     `- Laravel OpenAPI matches: ${report.summary.matchedOpenApi}`,
     `- Missing OpenAPI matches: ${report.summary.missingOpenApi}`,
+    `- Direct Laravel route declarations omitted from OpenAPI: ${report.summary.routeDeclaredOpenApiOmissions}`,
+    `- Without a direct Laravel route declaration: ${report.summary.withoutLaravelRouteDeclaration}`,
     `- Dynamic unresolved contracts: ${report.summary.dynamicUnresolved}`,
     `- State-changing contracts: ${report.summary.stateChanging}`,
     `- Rows without detected tests: ${report.summary.withoutTests}`,
     `- API source SHA-256: \`${report.sources.apiSha256}\``,
     `- Laravel OpenAPI SHA-256: \`${report.sources.laravelOpenApiSha256}\``,
+    `- Laravel API routes SHA-256: \`${report.sources.laravelApiRoutesSha256}\``,
     '',
     'The JSON companion contains the full request/response, status/error, redirect, side-effect, cleanup, Laravel implementation, consumer, and test fields.',
     '',
@@ -647,6 +669,7 @@ function generateApiConsumerLedger(options = {}) {
   const outDir = options.outDir || path.join(webUkRoot, 'docs', 'generated');
   const apiPath = options.apiPath || path.join(webUkRoot, 'src', 'lib', 'api.js');
   const openApiPath = options.openApiPath || path.join(laravelRoot, 'openapi.json');
+  const laravelApiRoutesPath = options.laravelApiRoutesPath || path.join(laravelRoot, 'routes', 'api.php');
   const provenance = options.provenance || collectGeneratorProvenance({
     laravelRoot,
     webUkRoot,
@@ -654,6 +677,9 @@ function generateApiConsumerLedger(options = {}) {
   });
   const apiSource = readText(apiPath);
   const openApiSource = readText(openApiPath);
+  const laravelApiRoutesSource = fs.existsSync(laravelApiRoutesPath)
+    ? readText(laravelApiRoutesPath)
+    : '';
   const apiAst = parseJavaScript(apiSource, apiPath);
   const { consumers, parsed } = collectConsumers(webUkRoot);
   const testSources = collectTestSources(webUkRoot);
@@ -665,6 +691,7 @@ function generateApiConsumerLedger(options = {}) {
     wrapperContracts,
     consumers,
     openApi: JSON.parse(openApiSource),
+    laravelApiRoutes: laravelApiRoutesSource,
     testSources
   });
   const report = {
@@ -675,12 +702,16 @@ function generateApiConsumerLedger(options = {}) {
       api: path.relative(webUkRoot, apiPath).replace(/\\/g, '/'),
       apiSha256: sha256(apiSource),
       laravelOpenApi: openApiPath,
-      laravelOpenApiSha256: sha256(openApiSource)
+      laravelOpenApiSha256: sha256(openApiSource),
+      laravelApiRoutes: laravelApiRoutesPath,
+      laravelApiRoutesSha256: sha256(laravelApiRoutesSource)
     },
     summary: {
       contracts: rows.length,
       matchedOpenApi: rows.filter((row) => row.laravel.status === 'matched-openapi').length,
-      missingOpenApi: rows.filter((row) => row.laravel.status === 'missing-openapi-match').length,
+      missingOpenApi: rows.filter((row) => row.laravel.status !== 'matched-openapi' && row.laravel.status !== 'dynamic-unresolved').length,
+      routeDeclaredOpenApiOmissions: rows.filter((row) => row.laravel.status === 'route-declared-openapi-omission').length,
+      withoutLaravelRouteDeclaration: rows.filter((row) => row.laravel.status === 'missing-openapi-match').length,
       dynamicUnresolved: rows.filter((row) => row.laravel.status === 'dynamic-unresolved').length,
       stateChanging: rows.filter((row) => row.sideEffects.startsWith('state-changing')).length,
       withoutTests: rows.filter((row) => row.tests.length === 0).length
@@ -708,6 +739,7 @@ module.exports = {
   collectWrapperContracts,
   displayPath,
   generateApiConsumerLedger,
+  laravelApiRouteIndex,
   normalizePath,
   parseJavaScript,
   renderMarkdown,

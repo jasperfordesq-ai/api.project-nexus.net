@@ -10,6 +10,7 @@ const path = require('path');
 const {
   displayPath,
   generateApiConsumerLedger,
+  laravelApiRouteIndex,
   normalizePath,
   parseJavaScript,
   staticValue
@@ -73,7 +74,10 @@ async function publish(token, id) {
 async function create(token) {
   return runEventAction(token, 'POST', '', { title: 'Test event' });
 }
-module.exports = { show, publish, create };
+async function legacy(token) {
+  return runEventAction(token, 'GET', '/legacy');
+}
+module.exports = { show, publish, create, legacy };
 `);
 
     writeFile(path.join(webUkRoot, 'tests', 'events.test.js'), `
@@ -124,6 +128,10 @@ describe('events contract', () => {
         }
       }
     }, null, 2));
+
+    writeFile(path.join(laravelRoot, 'routes', 'api.php'), `<?php
+Route::get('/v2/events/legacy', [EventsController::class, 'legacy']);
+`);
   });
 
   afterEach(() => {
@@ -147,6 +155,20 @@ describe('events contract', () => {
     expect(normalizePath(arithmeticQuery)).toBe('/api/v2/federation/connections');
   });
 
+  it('indexes direct Laravel API route declarations without treating them as OpenAPI', () => {
+    const index = laravelApiRouteIndex(`<?php
+Route::get('/v2/events/{id}/history', [EventsController::class, 'history']);
+Route::post('/auth/login', [AuthController::class, 'login']);
+// Route::delete('/v2/events/{id}', [EventsController::class, 'destroy']);
+`);
+
+    expect(index.get('GET|/api/v2/events/{param}/history')).toEqual({
+      routePath: '/api/v2/events/{id}/history'
+    });
+    expect(index.get('POST|/api/auth/login')).toEqual({ routePath: '/api/auth/login' });
+    expect(index.has('DELETE|/api/v2/events/{param}')).toBe(false);
+  });
+
   it('matches direct and wrapper callsites to Laravel and records safety evidence', () => {
     const report = generateApiConsumerLedger({
       webUkRoot,
@@ -167,9 +189,13 @@ describe('events contract', () => {
     const createRow = report.rows.find((row) => row.method === 'POST' && row.path === '/api/v2/events');
     const getRow = report.rows.find((row) => row.method === 'GET' && row.path === '/api/v2/events/{param}');
     const publishRow = report.rows.find((row) => row.method === 'POST' && row.path === '/api/v2/events/{param}/publish');
+    const legacyRow = report.rows.find((row) => row.method === 'GET' && row.path === '/api/v2/events/legacy');
 
-    expect(report.summary.contracts).toBe(3);
+    expect(report.summary.contracts).toBe(4);
     expect(report.summary.matchedOpenApi).toBe(3);
+    expect(report.summary.missingOpenApi).toBe(1);
+    expect(report.summary.routeDeclaredOpenApiOmissions).toBe(1);
+    expect(report.summary.withoutLaravelRouteDeclaration).toBe(0);
     expect(report.summary.dynamicUnresolved).toBe(0);
     expect(report.generatedAt).toBe('2026-07-14T00:00:00.000Z');
     expect(report.provenance).toEqual(expect.objectContaining({
@@ -200,12 +226,17 @@ describe('events contract', () => {
       requestShape: 'application/json schema:EventPublishRequest'
     }));
     expect(publishRow.statusCodes).toEqual(['200', '422']);
+    expect(legacyRow.laravel).toEqual(expect.objectContaining({
+      status: 'route-declared-openapi-omission',
+      path: '/api/v2/events/legacy'
+    }));
     expect(fs.existsSync(path.join(outDir, 'frontend-api-consumer-ledger.json'))).toBe(true);
     expect(fs.existsSync(path.join(outDir, 'frontend-api-consumer-ledger.md'))).toBe(true);
     const json = JSON.parse(fs.readFileSync(path.join(outDir, 'frontend-api-consumer-ledger.json'), 'utf8'));
     const markdown = fs.readFileSync(path.join(outDir, 'frontend-api-consumer-ledger.md'), 'utf8');
     expect(json.sources.apiSha256).toBe(report.sources.apiSha256);
     expect(json.sources.laravelOpenApiSha256).toBe(report.sources.laravelOpenApiSha256);
+    expect(json.sources.laravelApiRoutesSha256).toBe(report.sources.laravelApiRoutesSha256);
     expect(markdown).toContain('Status: **Generated snapshot — static consumer inventory, not certification**');
     expect(markdown).toContain('Laravel commit SHA: `3333333333333333333333333333333333333333`');
     expect(markdown).toContain('Web UK repository working tree dirty: no');
