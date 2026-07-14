@@ -171,7 +171,7 @@ Refresh the Laravel Blade/API source and Web UK implementation before relying on
 these numbers after either source moves.
 
 At this documentation audit, the product-source baseline was
-`b9319e97e25ac9fd4ef2507302549b5e77ebbbd4`. The revoked-session confirmation,
+`c60f9cf78762f094fa0eacfe65f708dd894eb096`. The revoked-session confirmation,
 Laravel method-spoof reconciliation, group-message contract, residual API-
 consumer correction, and backend-request timeout slices are above the frozen
 bank and remain **published and unscored**. The documentation remediation is
@@ -186,7 +186,7 @@ together from a clean published checkout.
   with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
   Only this fixed-rubric audit contributes to the current bank.
 - **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `b9319e97`, including the later identity/session confirmation,
+  baseline `c60f9cf7`, including the later identity/session confirmation,
   method-spoof reconciliation, group-message contract, residual API-consumer
   correction, and backend-request timeout slices. Their evidence is useful, but they
   contribute zero points until one complete fixed-rubric re-audit explicitly
@@ -205,7 +205,7 @@ together from a clean published checkout.
 | Missing Laravel routes | 1 | Event offline check-in code generation |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 52/52 suites, 1,674/1,674 tests | Latest recorded uninterrupted full gate after the frozen score; later improvements remain unscored until a complete rubric re-audit |
+| Jest | 52/52 suites, 1,675/1,675 tests | Latest recorded uninterrupted full gate after the frozen score; later improvements remain unscored until a complete rubric re-audit |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
 | Static locale usage | 7,341 references, 5,620 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
@@ -1329,6 +1329,23 @@ checks. No Laravel source, database, migration, mutation, upload, download,
 cleanup, or production operation was performed. This improves evidence
 classification only; the frozen bank remains 622/1,000 pending a complete
 rubric re-audit.
+
+## 2026-07-14 Blog RSS Contract Parity
+
+Frozen evidence at `2026-07-14T19:10:08.9779730+01:00` against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and published Web UK product commit
+`c60f9cf78762f094fa0eacfe65f708dd894eb096`. Blog RSS now matches Blade's
+tenant-named channel, absolute mount-aware links, permalink GUIDs, optional RFC-
+822 publication dates, request language, and XML escaping for backend-authored
+channel/item text.
+
+Focused hostile-character feed proof passes 1/1, and the complete non-mutating
+gate passes 52/52 suites and 1,675/1,675 tests. Brand, lint, CSS, route, API-
+ledger, locale, 322-template zero-match, 19/19 canonical Blade-marker, and diff
+checks are green. No Laravel request, database, migration, mutation, container,
+or production operation was performed. This published component-audit
+improvement remains unscored, so the frozen bank remains 622/1,000 pending a
+complete fixed-rubric re-audit.
 
 ## 2026-07-14 Plain-Text Source-Markup Parity
 
