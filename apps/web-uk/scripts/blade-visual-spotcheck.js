@@ -29,7 +29,6 @@ const DEFAULT_VISUAL_SPOTCHECKS = [
     laravel: { path: '/hour-timebank/accessible' },
     web: { path: '/hour-timebank/accessible' },
     markers: [
-      'Hour Timebank',
       'Accessible',
       'Connecting Communities',
       'What you can do'
@@ -81,7 +80,7 @@ const DEFAULT_VISUAL_SPOTCHECKS = [
     'Save cookie settings'
   ]),
   sharedTenantCheck('public-about', '/about', [
-    'About Hour Timebank',
+    'About TimeBank Ireland',
     'How it works',
     'Our values'
   ]),

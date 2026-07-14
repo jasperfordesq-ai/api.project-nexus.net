@@ -3,11 +3,11 @@
 Generated from `src/lib/api.js`, routed Web UK consumers, tests, and Laravel `openapi.json`.
 This is static evidence: an OpenAPI match or test reference does not prove runtime behavior, role policy, side effects, cleanup, or frontend parity.
 
-- Contracts: 584
+- Contracts: 586
 - Laravel OpenAPI matches: 371
-- Missing OpenAPI matches: 196
+- Missing OpenAPI matches: 198
 - Dynamic unresolved contracts: 17
-- State-changing contracts: 278
+- State-changing contracts: 280
 - Rows without detected tests: 0
 - API source SHA-256: `ecc666062398ab57244f5dbcbf95531c8b617ce5f87f1569021127bc1ff04740`
 - Laravel OpenAPI SHA-256: `0f62bf532901e6925b630d6a8ed0add7cd2c2bd9395b773c6a1a6581c0d38722`
@@ -384,6 +384,8 @@ The JSON companion contains the full request/response, status/error, redirect, s
 | POST | `/api/v2/marketplace/orders` | `callMarketplaceApi` | createMarketplaceOrder | state-changing; disposable-environment runtime proof required<br>fixture-specific cleanup and final absence/equality proof required | src/routes/marketplace-actions.js | tests/api.test.js<br>tests/laravel-runtime-smoke.test.js<br>tests/marketplace-payment-contract.test.js<br>tests/marketplace-status-localization.test.js<br>tests/marketplace-template-localization.test.js<br>tests/marketplace-title-localization.test.js<br>tests/runtime/marketplace-mutation.spec.js<br>tests/shared-accessible-shell.test.js |
 | POST | `/api/v2/marketplace/orders/{param}/rate` | `callMarketplaceApi` | missing-openapi-match | state-changing; disposable-environment runtime proof required<br>fixture-specific cleanup and final absence/equality proof required | src/routes/marketplace-actions.js | tests/api.test.js<br>tests/marketplace-payment-contract.test.js<br>tests/marketplace-status-localization.test.js<br>tests/marketplace-title-localization.test.js<br>tests/runtime/marketplace-mutation.spec.js<br>tests/shared-accessible-shell.test.js |
 | GET | `/api/v2/marketplace/seller/coupons` | `callMarketplaceApi` | missing-openapi-match | read-only by HTTP method<br>not applicable | src/routes/marketplace.js | tests/api.test.js<br>tests/marketplace-payment-contract.test.js<br>tests/marketplace-status-localization.test.js<br>tests/marketplace-title-localization.test.js<br>tests/runtime/marketplace-mutation.spec.js<br>tests/shared-accessible-shell.test.js |
+| POST | `/api/v2/marketplace/seller/coupons` | `callMarketplaceApi` | missing-openapi-match | state-changing; disposable-environment runtime proof required<br>fixture-specific cleanup and final absence/equality proof required | src/routes/marketplace-actions.js | tests/api.test.js<br>tests/marketplace-payment-contract.test.js<br>tests/marketplace-status-localization.test.js<br>tests/marketplace-title-localization.test.js<br>tests/runtime/marketplace-mutation.spec.js<br>tests/shared-accessible-shell.test.js |
+| PUT | `/api/v2/marketplace/seller/coupons/{param}` | `callMarketplaceApi` | missing-openapi-match | state-changing; disposable-environment runtime proof required<br>fixture-specific cleanup and final absence/equality proof required | src/routes/marketplace-actions.js | tests/api.test.js<br>tests/marketplace-payment-contract.test.js<br>tests/marketplace-status-localization.test.js<br>tests/marketplace-title-localization.test.js<br>tests/runtime/marketplace-mutation.spec.js<br>tests/shared-accessible-shell.test.js |
 | GET | `/api/v2/marketplace/seller/pickup-slots` | `callMarketplaceApi` | missing-openapi-match | read-only by HTTP method<br>not applicable | src/routes/marketplace.js | tests/api.test.js<br>tests/marketplace-payment-contract.test.js<br>tests/marketplace-status-localization.test.js<br>tests/marketplace-title-localization.test.js<br>tests/runtime/marketplace-mutation.spec.js<br>tests/shared-accessible-shell.test.js |
 | GET | `/api/v2/marketplace/sellers/{param}` | `callMarketplaceApi` | missing-openapi-match | read-only by HTTP method<br>not applicable | src/routes/marketplace.js | tests/api.test.js<br>tests/marketplace-payment-contract.test.js<br>tests/marketplace-status-localization.test.js<br>tests/marketplace-title-localization.test.js<br>tests/runtime/marketplace-mutation.spec.js<br>tests/shared-accessible-shell.test.js |
 | GET | `/api/v2/marketplace/sellers/{param}/shipping-options` | `callMarketplaceApi` | missing-openapi-match | read-only by HTTP method<br>not applicable | src/routes/marketplace-actions.js<br>src/routes/marketplace.js | tests/api.test.js<br>tests/marketplace-payment-contract.test.js<br>tests/marketplace-status-localization.test.js<br>tests/marketplace-title-localization.test.js<br>tests/runtime/marketplace-mutation.spec.js<br>tests/shared-accessible-shell.test.js |

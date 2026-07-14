@@ -33,6 +33,7 @@ const FEATURE_ROUTE_GATES = [
   { prefix: '/group-exchanges', featureKey: 'group_exchanges' },
   { prefix: '/ideation', featureKey: 'ideation_challenges' },
   { prefix: '/jobs', featureKey: 'job_vacancies' },
+  { prefix: '/marketplace/coupons', featureKey: 'merchant_coupons' },
   { prefix: '/marketplace', featureKey: 'marketplace' },
   { prefix: '/polls', featureKey: 'polls' },
   { prefix: '/courses', featureKey: 'courses' },

@@ -185,13 +185,22 @@ describe('Laravel-first Marketplace template localization', () => {
     for (const templateName of [
       'marketplace/onboarding.njk',
       'marketplace/slots.njk',
-      'marketplace/slot-form.njk',
-      'marketplace/coupons.njk',
-      'marketplace/coupon-form.njk'
+      'marketplace/slot-form.njk'
     ]) {
       expect(templateSource(templateName)).toContain(
         '{% set marketplaceStatusSuccessHeadingKey = "states.success_title" %}'
       );
+    }
+
+    for (const templateName of [
+      'marketplace/coupons.njk',
+      'marketplace/coupon-form.njk'
+    ]) {
+      const couponSource = templateSource(templateName);
+      expect(couponSource).toContain('t("govuk_alpha.states.success_title")');
+      expect(couponSource).toContain('t("govuk_alpha_commerce.common.error_title")');
+      expect(couponSource).not.toContain('jobs_t3.');
+      expect(couponSource).not.toContain('polish_federation.transfer_cancel');
     }
   });
 

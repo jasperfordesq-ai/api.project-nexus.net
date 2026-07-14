@@ -833,17 +833,26 @@ function decoratePickupSlot(slot) {
   };
 }
 
-function discountLabel(coupon) {
+function discountLabel(coupon, req) {
   const type = trimmed(coupon.discount_type) || 'percent';
   const value = Number(coupon.discount_value);
-  if (type === 'percent') return `${formatCompactNumber(value)}%`;
-  if (type === 'bogo') return COUPON_DISCOUNT_LABELS.bogo;
-  return formatCompactNumber(value);
+  const safeValue = Number.isFinite(value) ? value : 0;
+  if (type === 'percent') {
+    return `${safeValue.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}%`;
+  }
+  if (type === 'bogo') {
+    return translateMarketplaceMessage(
+      req,
+      'govuk_alpha_commerce.coupons.discount_type_bogo',
+      COUPON_DISCOUNT_LABELS.bogo
+    );
+  }
+  return safeValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function decorateCoupon(coupon) {
+function decorateCoupon(coupon, req) {
   const row = coupon && typeof coupon === 'object' ? coupon : {};
-  const status = allowed(row.status, COUPON_STATUSES, 'draft');
+  const status = trimmed(row.status) || 'draft';
   const discountType = allowed(row.discount_type, COUPON_DISCOUNT_TYPES, 'percent');
 
   return {
@@ -853,15 +862,25 @@ function decorateCoupon(coupon) {
     code: trimmed(row.code),
     description: trimmed(row.description),
     discountType,
-    discountTypeLabel: COUPON_DISCOUNT_LABELS[discountType] || discountType,
+    discountTypeLabel: translateMarketplaceMessage(
+      req,
+      `govuk_alpha_commerce.coupons.discount_type_${discountType}`,
+      COUPON_DISCOUNT_LABELS[discountType] || discountType
+    ),
     discountValue: row.discount_value ?? '',
-    discountLabel: discountLabel({ ...row, discount_type: discountType }),
+    discountLabel: discountLabel({ ...row, discount_type: discountType }, req),
     minOrderCents: row.min_order_cents ?? '',
     maxUses: row.max_uses ?? '',
     usageCount: Number.isFinite(Number(row.usage_count)) ? Number(row.usage_count) : 0,
     validUntil: dateInput(row.valid_until),
     status,
-    statusLabel: COUPON_STATUS_LABELS[status] || status,
+    statusLabel: COUPON_STATUS_LABELS[status]
+      ? translateMarketplaceMessage(
+        req,
+        `govuk_alpha_commerce.coupons.status_${status}`,
+        COUPON_STATUS_LABELS[status]
+      )
+      : status,
     statusTagClass: COUPON_STATUS_TAGS[status] || 'govuk-tag--grey'
   };
 }
@@ -901,14 +920,14 @@ async function loadPickupSlot(token, id) {
   return slot;
 }
 
-async function loadSellerCoupons(token) {
+async function loadSellerCoupons(token, req) {
   const result = await callMarketplace(token, 'GET', '/seller/coupons');
-  return rowsFrom(result).map(decorateCoupon);
+  return rowsFrom(result).map((coupon) => decorateCoupon(coupon, req));
 }
 
-async function loadSellerCoupon(token, id) {
+async function loadSellerCoupon(token, id, req) {
   const couponId = positiveInteger(id);
-  const coupons = await loadSellerCoupons(token);
+  const coupons = await loadSellerCoupons(token, req);
   const coupon = coupons.find((item) => item.id === couponId);
   if (!coupon) throw new ApiError('Coupon not found.', 404);
   return coupon;
@@ -1156,6 +1175,55 @@ function consumeListingFormState(req, key) {
     delete req.session.marketplaceListingForms[key];
   }
   return state && typeof state === 'object' ? state : null;
+}
+
+function couponFormSessionKey(req, key) {
+  const tenantSlug = trimmed(
+    req.accessibleRouting?.tenant?.slug
+      || req.accessibleRouting?.tenantSlug
+      || 'default'
+  );
+  return `marketplaceCouponForm:${tenantSlug}:${key}`;
+}
+
+function consumeCouponFormState(req, key) {
+  const sessionKey = couponFormSessionKey(req, key);
+  const state = req.session?.[sessionKey];
+  if (state && req.session) delete req.session[sessionKey];
+  return state && typeof state === 'object' ? state : null;
+}
+
+function couponFormErrors(req, state) {
+  if (!Array.isArray(state?.errors)) return [];
+  return state.errors.map((error) => {
+    if (error && typeof error === 'object' && error.key) {
+      return translateMarketplaceMessage(req, error.key, error.key);
+    }
+    if (error && typeof error === 'object') return trimmed(error.text, 2000);
+    return trimmed(error, 2000);
+  }).filter(Boolean);
+}
+
+function couponDiscountTypeOptions(req) {
+  return COUPON_DISCOUNT_TYPES.map((value) => ({
+    value,
+    label: translateMarketplaceMessage(
+      req,
+      `govuk_alpha_commerce.coupons.discount_type_${value}`,
+      COUPON_DISCOUNT_LABELS[value]
+    )
+  }));
+}
+
+function couponStatusOptions(req) {
+  return COUPON_STATUSES.map((value) => ({
+    value,
+    label: translateMarketplaceMessage(
+      req,
+      `govuk_alpha_commerce.coupons.status_${value}`,
+      COUPON_STATUS_LABELS[value]
+    )
+  }));
 }
 
 function listingFormErrors(req, state, status) {
@@ -1571,14 +1639,17 @@ router.get('/coupons', asyncRoute(async (req, res) => {
   if (!token) return undefined;
 
   try {
-    const coupons = await loadSellerCoupons(token);
+    const coupons = await loadSellerCoupons(token, req);
+    const statusKey = trimmed(req.query.status);
     return res.render('marketplace/coupons', {
       title: 'My coupons',
       titleKey: 'govuk_alpha_commerce.coupons.title',
       activeNav: 'explore',
       activeTab: 'sell',
       coupons,
-      status: statusEntry(req, req.query.status)
+      status: ['coupon-created', 'coupon-deleted', 'coupon-delete-failed'].includes(statusKey)
+        ? statusEntry(req, statusKey)
+        : null
     });
   } catch (error) {
     return renderMarketplaceError(error, res, 'My coupons');
@@ -1589,6 +1660,7 @@ router.get('/coupons/new', asyncRoute(async (req, res) => {
   const token = requireToken(req, res);
   if (!token) return undefined;
 
+  const formState = consumeCouponFormState(req, 'create');
   return res.render('marketplace/coupon-form', {
     title: 'Create a coupon',
     titleKey: 'govuk_alpha_commerce.coupons.title_create',
@@ -1596,12 +1668,15 @@ router.get('/coupons/new', asyncRoute(async (req, res) => {
     activeTab: 'sell',
     mode: 'create',
     isEdit: false,
-    coupon: decorateCoupon({ discount_type: 'percent', status: 'draft' }),
+    coupon: {
+      ...decorateCoupon({ discount_type: 'percent', status: 'draft' }, req),
+      ...(formState?.values || {})
+    },
     action: '/marketplace/coupons/new',
-    submitLabel: 'Create coupon',
-    discountTypes: COUPON_DISCOUNT_TYPES.map((value) => ({ value, label: COUPON_DISCOUNT_LABELS[value] })),
-    statuses: COUPON_STATUSES.map((value) => ({ value, label: COUPON_STATUS_LABELS[value] })),
-    status: statusEntry(req, req.query.status)
+    discountTypes: couponDiscountTypeOptions(req),
+    statuses: couponStatusOptions(req),
+    formErrors: couponFormErrors(req, formState),
+    status: null
   });
 }));
 
@@ -1610,7 +1685,9 @@ router.get('/coupons/:id(\\d+)/edit', asyncRoute(async (req, res) => {
   if (!token) return undefined;
 
   try {
-    const coupon = await loadSellerCoupon(token, req.params.id);
+    const coupon = await loadSellerCoupon(token, req.params.id, req);
+    const formState = consumeCouponFormState(req, `edit:${coupon.id}`);
+    const statusKey = trimmed(req.query.status);
     return res.render('marketplace/coupon-form', {
       title: 'Edit your coupon',
       titleKey: 'govuk_alpha_commerce.coupons.title_edit',
@@ -1618,12 +1695,14 @@ router.get('/coupons/:id(\\d+)/edit', asyncRoute(async (req, res) => {
       activeTab: 'sell',
       mode: 'edit',
       isEdit: true,
-      coupon,
+      coupon: { ...coupon, ...(formState?.values || {}) },
       action: `/marketplace/coupons/${coupon.id}/update`,
-      submitLabel: 'Save changes',
-      discountTypes: COUPON_DISCOUNT_TYPES.map((value) => ({ value, label: COUPON_DISCOUNT_LABELS[value] })),
-      statuses: COUPON_STATUSES.map((value) => ({ value, label: COUPON_STATUS_LABELS[value] })),
-      status: statusEntry(req, req.query.status)
+      discountTypes: couponDiscountTypeOptions(req),
+      statuses: couponStatusOptions(req),
+      formErrors: couponFormErrors(req, formState),
+      status: ['coupon-saved', 'coupon-save-failed'].includes(statusKey)
+        ? statusEntry(req, statusKey)
+        : null
     });
   } catch (error) {
     return renderMarketplaceError(error, res, 'Edit your coupon');

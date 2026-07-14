@@ -30938,11 +30938,20 @@ describe('shared accessible frontend shell', () => {
             valid_until: '2026-08-01T00:00:00Z',
             status: 'active',
             usage_count: 3
+          },
+          {
+            id: 6,
+            title: 'Three euro offer',
+            code: 'THREE',
+            discount_type: 'fixed',
+            discount_value: 3,
+            status: 'paused'
           }
         ]
       }
     };
     api.callMarketplaceApi
+      .mockResolvedValueOnce(coupons)
       .mockResolvedValueOnce(coupons)
       .mockResolvedValueOnce(coupons);
 
@@ -30953,19 +30962,26 @@ describe('shared accessible frontend shell', () => {
       .get('/marketplace/coupons/5/edit?status=coupon-saved')
       .set('Cookie', signedCookieHeader());
     const create = await request(app)
-      .get('/marketplace/coupons/new?status=coupon-title-required')
+      .get('/marketplace/coupons/new')
+      .set('Cookie', signedCookieHeader());
+    const deleteFailed = await request(app)
+      .get('/marketplace/coupons?status=coupon-delete-failed')
       .set('Cookie', signedCookieHeader());
 
     expect(index.status).toBe(200);
     expect(edit.status).toBe(200);
     expect(create.status).toBe(200);
+    expect(deleteFailed.status).toBe(200);
     expect(api.callMarketplaceApi).toHaveBeenNthCalledWith(1, 'test-token', 'GET', '/seller/coupons');
     expect(api.callMarketplaceApi).toHaveBeenNthCalledWith(2, 'test-token', 'GET', '/seller/coupons');
     expect(index.text).toContain('My coupons');
+    expect(index.text).toContain('class="govuk-caption-l"');
+    expect(index.text).toContain('govuk-visually-hidden">My coupons</caption>');
     expect(index.text).toContain('Your coupon was created.');
     expect(index.text).toContain('Summer sale');
     expect(index.text).toContain('SUMMER10');
     expect(index.text).toContain('10%');
+    expect(index.text).toContain('3.00');
     expect(index.text).toContain('Active');
     expect(index.text).toContain('href="/marketplace/coupons/5/edit"');
     expect(edit.text).toContain('Edit your coupon');
@@ -30974,9 +30990,161 @@ describe('shared accessible frontend shell', () => {
     expect(edit.text).toContain('Ten percent off');
     expect(edit.text).toContain('value="2026-08-01"');
     expect(edit.text).toContain('Delete this coupon?');
+    expect(edit.text).toContain('id="discount_type"');
+    expect(edit.text).toContain('id="discount_type-fixed"');
+    expect(edit.text).toContain('id="discount_type-bogo"');
     expect(create.text).toContain('Create a coupon');
-    expect(create.text).toContain('Enter a coupon title');
+    expect(create.text).not.toContain('Enter a coupon title');
+    expect(deleteFailed.text).toContain('<h2 class="govuk-error-summary__title">There is a problem</h2>');
+    expect(deleteFailed.text).toContain('<li>Sorry, your coupon could not be deleted. Please try again.</li>');
+    expect(deleteFailed.text).not.toContain('href="#coupon_title"');
     expect(create.text).not.toContain('Laravel Blade route');
+  });
+
+  it('fails every seller coupon page closed when Laravel disables merchant coupons', async () => {
+    const api = require('../src/lib/api');
+    api.getTenantBootstrap.mockResolvedValue({
+      data: {
+        id: 2,
+        name: 'Acme Timebank',
+        slug: 'acme',
+        modules: { listings: true },
+        features: { marketplace: true, merchant_coupons: false }
+      }
+    });
+
+    const index = await request(app)
+      .get('/acme/accessible/marketplace/coupons')
+      .set('Cookie', signedAuthCookieHeader());
+    const create = await request(app)
+      .get('/acme/accessible/marketplace/coupons/new')
+      .set('Cookie', signedAuthCookieHeader());
+    const edit = await request(app)
+      .get('/acme/accessible/marketplace/coupons/5/edit')
+      .set('Cookie', signedAuthCookieHeader());
+
+    expect(index.status).toBe(403);
+    expect(create.status).toBe(403);
+    expect(edit.status).toBe(403);
+    expect(api.callMarketplaceApi).not.toHaveBeenCalled();
+  });
+
+  it('replays Laravel coupon validation and API errors once with Blade field links', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', signedAuthCookieHeader());
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+    const postPath = (pathName, body) => agent
+      .post(pathName)
+      .set('Cookie', signedAuthCookieHeader())
+      .type('form')
+      .send({ _csrf: csrfMatch[1], ...body });
+    const post = (body) => postPath('/marketplace/coupons/new', body);
+
+    const invalid = await post({
+      title: '',
+      code: ' KEEP-ME ',
+      description: ' Explain this offer ',
+      discount_type: 'fixed',
+      discount_value: '',
+      min_order_cents: '0',
+      max_uses: '12',
+      valid_until: '2026-10-01',
+      status: 'paused'
+    });
+    expect(invalid.status).toBe(302);
+    expect(invalid.headers.location).toBe('/marketplace/coupons/new');
+    expect(api.callMarketplaceApi).not.toHaveBeenCalled();
+
+    const invalidForm = await agent
+      .get('/marketplace/coupons/new')
+      .set('Cookie', signedAuthCookieHeader());
+    expect(invalidForm.text).toContain('<a href="#coupon_title">Enter a coupon title</a>');
+    expect(invalidForm.text).toContain('<a href="#coupon_title">Enter a discount value greater than zero</a>');
+    expect(invalidForm.text).toContain('value=" KEEP-ME "');
+    expect(invalidForm.text).toContain('Explain this offer');
+    expect(invalidForm.text).toContain('value="0"');
+    expect(invalidForm.text).toContain('value="12"');
+    expect(invalidForm.text).toContain('value="2026-10-01"');
+    expect(invalidForm.text).toMatch(/value="paused" selected/);
+
+    const consumed = await agent
+      .get('/marketplace/coupons/new')
+      .set('Cookie', signedAuthCookieHeader());
+    expect(consumed.text).not.toContain('Enter a coupon title');
+    expect(consumed.text).not.toContain('value=" KEEP-ME "');
+
+    api.callMarketplaceApi.mockRejectedValueOnce(
+      new api.ApiError('This coupon conflicts with an existing offer.', 422, {})
+    );
+    const rejected = await post({
+      title: ' Autumn offer ',
+      code: 'AUTUMN',
+      description: 'Local members',
+      discount_type: 'percent',
+      discount_value: '15',
+      status: 'active'
+    });
+    expect(rejected.headers.location).toBe('/marketplace/coupons/new');
+    expect(api.callMarketplaceApi).toHaveBeenLastCalledWith('test-token', 'POST', '/seller/coupons', {
+      title: 'Autumn offer',
+      description: 'Local members',
+      discount_type: 'percent',
+      discount_value: 15,
+      status: 'active',
+      applies_to: 'all_listings',
+      code: 'AUTUMN'
+    });
+
+    const rejectedForm = await agent
+      .get('/marketplace/coupons/new')
+      .set('Cookie', signedAuthCookieHeader());
+    expect(rejectedForm.text).toContain('<a href="#coupon_title">This coupon conflicts with an existing offer.</a>');
+    expect(rejectedForm.text).toContain('value=" Autumn offer "');
+
+    api.callMarketplaceApi.mockRejectedValueOnce(
+      new api.ApiError('The edited coupon is not valid.', 422, {})
+    );
+    const rejectedEdit = await postPath('/marketplace/coupons/5/update', {
+      title: ' Revised offer ',
+      description: 'Replayed edit',
+      discount_type: 'fixed',
+      discount_value: '4.50',
+      min_order_cents: '0',
+      status: 'paused'
+    });
+    expect(rejectedEdit.headers.location).toBe('/marketplace/coupons/5/edit');
+    expect(api.callMarketplaceApi).toHaveBeenLastCalledWith('test-token', 'PUT', '/seller/coupons/5', {
+      title: 'Revised offer',
+      description: 'Replayed edit',
+      discount_type: 'fixed',
+      discount_value: 4.5,
+      status: 'paused',
+      applies_to: 'all_listings',
+      min_order_cents: 0
+    });
+
+    api.callMarketplaceApi.mockResolvedValueOnce({
+      data: {
+        items: [{
+          id: 5,
+          title: 'Stored title',
+          discount_type: 'percent',
+          discount_value: 10,
+          status: 'active'
+        }]
+      }
+    });
+    const rejectedEditForm = await agent
+      .get('/marketplace/coupons/5/edit')
+      .set('Cookie', signedAuthCookieHeader());
+    expect(rejectedEditForm.text).toContain('<a href="#coupon_title">The edited coupon is not valid.</a>');
+    expect(rejectedEditForm.text).toContain('value=" Revised offer "');
+    expect(rejectedEditForm.text).toContain('Replayed edit');
+    expect(rejectedEditForm.text).toContain('value="4.50"');
+    expect(rejectedEditForm.text).toContain('value="0"');
   });
 
   it('submits Laravel marketplace listing and buyer action aliases', async () => {
@@ -31366,7 +31534,13 @@ describe('shared accessible frontend shell', () => {
         name: 'Acme Timebank',
         slug: 'acme',
         modules: { feed: true, listings: true, wallet: true },
-        features: { connections: true, events: true, volunteering: true, marketplace: true }
+        features: {
+          connections: true,
+          events: true,
+          volunteering: true,
+          marketplace: true,
+          merchant_coupons: true
+        }
       }
     });
     const agent = request.agent(app);
@@ -31382,7 +31556,7 @@ describe('shared accessible frontend shell', () => {
       .send({ _csrf: csrfMatch[1], title: '' });
 
     expect(response.status).toBe(302);
-    expect(response.headers.location).toBe('/acme/accessible/marketplace/coupons/new?status=coupon-title-required');
+    expect(response.headers.location).toBe('/acme/accessible/marketplace/coupons/new');
     expect(api.callMarketplaceApi).not.toHaveBeenCalled();
   });
 

@@ -7,25 +7,45 @@
 
 {% block mainContent %}
   {% include "marketplace/_nav.njk" %}
-  {% set marketplaceStatusSuccessHeadingKey = "states.success_title" %}
-  {% include "marketplace/_status-banner.njk" %}
+  {% if status %}
+    {% if status.type == "error" %}
+      <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+        <div role="alert">
+          <h2 class="govuk-error-summary__title">{{ t("govuk_alpha_commerce.common.error_title") }}</h2>
+          <div class="govuk-error-summary__body">
+            <ul class="govuk-list govuk-error-summary__list"><li>{{ status.message }}</li></ul>
+          </div>
+        </div>
+      </div>
+    {% else %}
+      <div class="govuk-notification-banner govuk-notification-banner--success" role="alert" aria-labelledby="govuk-notification-banner-title" data-module="govuk-notification-banner">
+        <div class="govuk-notification-banner__header">
+          <h2 class="govuk-notification-banner__title" id="govuk-notification-banner-title">{{ t("govuk_alpha.states.success_title") }}</h2>
+        </div>
+        <div class="govuk-notification-banner__content">
+          <p class="govuk-notification-banner__heading">{{ status.message }}</p>
+        </div>
+      </div>
+    {% endif %}
+  {% endif %}
 
-  <span class="govuk-caption-xl">Coupons at {{ tenantName or serviceName }}</span>
-  <h1 class="govuk-heading-xl">My coupons</h1>
-  <p class="govuk-body-l">Create discount coupons for your buyers, edit them or remove them.</p>
+  <span class="govuk-caption-l">{{ t("govuk_alpha_commerce.coupons.caption", { community: tenantName or serviceName }) }}</span>
+  <h1 class="govuk-heading-xl">{{ t("govuk_alpha_commerce.coupons.title") }}</h1>
+  <p class="govuk-body-l">{{ t("govuk_alpha_commerce.coupons.description") }}</p>
 
-  <a class="govuk-button" href="{{ urlFor('/marketplace/coupons/new') }}" data-module="govuk-button">Create a coupon</a>
+  <a class="govuk-button" href="{{ urlFor('/marketplace/coupons/new') }}" data-module="govuk-button">{{ t("govuk_alpha_commerce.coupons.create_button") }}</a>
 
   {% if not coupons.length %}
-    <p class="govuk-inset-text">You have not created any coupons yet. Create one to offer buyers a discount.</p>
+    <p class="govuk-inset-text">{{ t("govuk_alpha_commerce.coupons.empty") }}</p>
   {% else %}
     <table class="govuk-table">
+      <caption class="govuk-table__caption govuk-table__caption--s govuk-visually-hidden">{{ t("govuk_alpha_commerce.coupons.title") }}</caption>
       <thead class="govuk-table__head">
         <tr class="govuk-table__row">
-          <th scope="col" class="govuk-table__header">{{ t("coupons.code_label") }}</th>
-          <th scope="col" class="govuk-table__header">Discount</th>
-          <th scope="col" class="govuk-table__header">Status</th>
-          <th scope="col" class="govuk-table__header"><span class="govuk-visually-hidden">View</span></th>
+          <th scope="col" class="govuk-table__header">{{ t("govuk_alpha_commerce.coupons.code_label") }}</th>
+          <th scope="col" class="govuk-table__header">{{ t("govuk_alpha_commerce.coupons.discount_label") }}</th>
+          <th scope="col" class="govuk-table__header">{{ t("govuk_alpha_commerce.coupons.status_label") }}</th>
+          <th scope="col" class="govuk-table__header"><span class="govuk-visually-hidden">{{ t("govuk_alpha_commerce.common.view") }}</span></th>
         </tr>
       </thead>
       <tbody class="govuk-table__body">
@@ -38,7 +58,7 @@
             <td class="govuk-table__cell">{{ coupon.discountLabel }}</td>
             <td class="govuk-table__cell"><strong class="govuk-tag {{ coupon.statusTagClass }}">{{ coupon.statusLabel }}</strong></td>
             <td class="govuk-table__cell">
-              <a class="govuk-link" href="{{ urlFor('/marketplace/coupons/' + (coupon.id | string) + '/edit') }}">{{ t("jobs_t3.edit_button") }}</a>
+              <a class="govuk-link" href="{{ urlFor('/marketplace/coupons/' + (coupon.id | string) + '/edit') }}">{{ t("govuk_alpha_commerce.coupons.action_edit") }}</a>
             </td>
           </tr>
         {% endfor %}

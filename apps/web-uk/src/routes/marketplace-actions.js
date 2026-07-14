@@ -291,13 +291,14 @@ function couponPayload(body) {
     payload.code = code;
   }
 
-  const minOrder = positiveInteger(body.min_order_cents);
-  if (minOrder !== null) {
-    payload.min_order_cents = minOrder;
+  const minOrderRaw = trimmed(body.min_order_cents);
+  if (minOrderRaw !== '' && Number.isFinite(Number(minOrderRaw))) {
+    payload.min_order_cents = Math.max(0, Math.trunc(Number(minOrderRaw)));
   }
 
-  const maxUses = positiveInteger(body.max_uses);
-  if (maxUses !== null) {
+  const maxUsesRaw = trimmed(body.max_uses);
+  const maxUses = Number.isFinite(Number(maxUsesRaw)) ? Math.trunc(Number(maxUsesRaw)) : 0;
+  if (maxUsesRaw !== '' && maxUses > 0) {
     payload.max_uses = maxUses;
   }
 
@@ -307,6 +308,55 @@ function couponPayload(body) {
   }
 
   return payload;
+}
+
+function couponFormSessionKey(req, key) {
+  const tenantSlug = trimmed(
+    req.accessibleRouting?.tenant?.slug
+      || req.accessibleRouting?.tenantSlug
+      || 'default'
+  );
+  return `marketplaceCouponForm:${tenantSlug}:${key}`;
+}
+
+function couponFormValues(body) {
+  return {
+    title: String(body.title || '').slice(0, 200),
+    code: String(body.code || '').slice(0, 64),
+    description: String(body.description || '').slice(0, 2000),
+    discountType: trimmed(body.discount_type, 20),
+    discountValue: String(body.discount_value || '').slice(0, 50),
+    minOrderCents: String(body.min_order_cents || '').slice(0, 50),
+    maxUses: String(body.max_uses || '').slice(0, 50),
+    validUntil: String(body.valid_until || '').slice(0, 20),
+    status: trimmed(body.status, 20)
+  };
+}
+
+function couponValidationErrors(body) {
+  const errors = [];
+  if (trimmed(body.title) === '') {
+    errors.push({ key: 'govuk_alpha_commerce.coupons.error_title' });
+  }
+  const discountType = allowed(body.discount_type, COUPON_DISCOUNT_TYPES, 'percent');
+  const rawValue = trimmed(body.discount_value);
+  if (discountType !== 'bogo' && (rawValue === '' || !Number.isFinite(Number(rawValue)) || Number(rawValue) <= 0)) {
+    errors.push({ key: 'govuk_alpha_commerce.coupons.error_discount_value' });
+  }
+  return errors;
+}
+
+function rememberCouponForm(req, key, values, errors = []) {
+  if (!req.session) return;
+  req.session[couponFormSessionKey(req, key)] = { values, errors };
+}
+
+function apiCouponError(error, fallbackKey) {
+  if (error instanceof ApiError && error.status === 422) {
+    const message = trimmed(error.message, 2000);
+    if (message && message !== 'API request failed') return { text: message };
+  }
+  return { key: fallbackKey };
 }
 
 router.post('/create', asyncRoute(async (req, res) => {
@@ -884,40 +934,56 @@ router.post('/slots/:id(\\d+)/delete', asyncRoute(async (req, res) => {
 }));
 
 router.post('/coupons/new', asyncRoute(async (req, res) => {
-  if (!tokenFrom(req)) return redirectTo(res, loginRedirect());
+  const token = tokenFrom(req);
+  if (!token) return redirectTo(res, loginRedirect());
+  const values = couponFormValues(req.body);
+  const errors = couponValidationErrors(req.body);
   const payload = couponPayload(req.body);
-  if (payload.title === '') {
-    return redirectTo(res, '/marketplace/coupons/new?status=coupon-title-required');
+  if (errors.length > 0) {
+    rememberCouponForm(req, 'create', values, errors);
+    return redirectTo(res, '/marketplace/coupons/new');
   }
 
-  return runAction(
-    req,
-    res,
-    'POST',
-    '/seller/coupons',
-    payload,
-    '/marketplace/coupons?status=coupon-created',
-    '/marketplace/coupons/new?status=coupon-create-failed'
-  );
+  try {
+    await callApi(token, 'POST', '/seller/coupons', payload);
+    delete req.session[couponFormSessionKey(req, 'create')];
+    return redirectTo(res, '/marketplace/coupons?status=coupon-created');
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    rememberCouponForm(req, 'create', values, [
+      apiCouponError(error, 'govuk_alpha_commerce.coupons.error_create')
+    ]);
+    return redirectTo(res, '/marketplace/coupons/new');
+  }
 }));
 
 router.post('/coupons/:id(\\d+)/update', asyncRoute(async (req, res) => {
-  if (!tokenFrom(req)) return redirectTo(res, loginRedirect());
+  const token = tokenFrom(req);
+  if (!token) return redirectTo(res, loginRedirect());
   const id = Number(req.params.id);
+  const values = couponFormValues(req.body);
+  const errors = couponValidationErrors(req.body);
   const payload = couponPayload(req.body);
-  if (payload.title === '') {
-    return redirectTo(res, `/marketplace/coupons/${id}/edit?status=coupon-title-required`);
+  if (errors.length > 0) {
+    rememberCouponForm(req, `edit:${id}`, values, errors);
+    return redirectTo(res, `/marketplace/coupons/${id}/edit`);
   }
 
-  return runAction(
-    req,
-    res,
-    'PUT',
-    `/seller/coupons/${id}`,
-    payload,
-    `/marketplace/coupons/${id}/edit?status=coupon-saved`,
-    `/marketplace/coupons/${id}/edit?status=coupon-save-failed`
-  );
+  try {
+    await callApi(token, 'PUT', `/seller/coupons/${id}`, payload);
+    delete req.session[couponFormSessionKey(req, `edit:${id}`)];
+    return redirectTo(res, `/marketplace/coupons/${id}/edit?status=coupon-saved`);
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    if (error instanceof ApiError && error.status === 422) {
+      rememberCouponForm(req, `edit:${id}`, values, [
+        apiCouponError(error, 'govuk_alpha_commerce.coupons.status_coupon_save_failed')
+      ]);
+      return redirectTo(res, `/marketplace/coupons/${id}/edit`);
+    }
+    rememberCouponForm(req, `edit:${id}`, values);
+    return redirectTo(res, `/marketplace/coupons/${id}/edit?status=coupon-save-failed`);
+  }
 }));
 
 router.post('/coupons/:id(\\d+)/delete', asyncRoute(async (req, res) => {
