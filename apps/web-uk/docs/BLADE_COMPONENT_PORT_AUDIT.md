@@ -618,6 +618,13 @@ failures retain entered values without inventing field errors. Focused create,
 reply, and one-use proof passes, as does the complete `52/52`-suite,
 `1,681/1,681`-test non-mutating gate.
 
+2026-07-14 group-discussion timestamp follow-up: discussion and reply dates now
+match Blade's machine-readable `<time datetime>` semantics, with the decorative
+middle dot hidden from assistive technology. Focused detail/source proof passes,
+along with lint and both localization audits. Three complete aggregate attempts
+timed out without a verdict under current machine load; the immediately prior
+validation baseline remains the latest complete `52/52`, `1,681/1,681` pass.
+
 2026-07-13 group-create layout and validation follow-up: the default-English
 page now matches Blade's heading-before-errors hierarchy and full-width form,
 including the two-thirds-width location input without an invented prominent
