@@ -1,6 +1,6 @@
 # Current Laravel-First Accessible Frontend Status
 
-Last audited: 2026-07-13
+Last audited: 2026-07-14
 
 This is the short, current coordination document for `apps/web-uk`. Read it
 before starting or resuming accessible-frontend work. It overrides older route,
@@ -112,7 +112,7 @@ commit as the implementation it describes.
 ## Audited Baseline
 
 The frontend baseline for the current checkout includes the Event registration
-answer-validation refresh built from ASP.NET-repository commit `66c08363`, and
+and account-hub reconciliation slices through repository commit `2687ae41`, and
 the Laravel source baseline is `903d03d3`. The first SHA names the
 repository snapshot containing Web UK; it does not make ASP.NET authoritative.
 Refresh the Laravel Blade/API source and Web UK implementation before relying on
@@ -126,7 +126,7 @@ these numbers after either source moves.
 | Missing Laravel routes | 6 | All are Event workflows |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 48/48 suites, 1,630/1,630 tests | Fresh green code gate |
+| Jest | 48/48 suites, 1,631/1,631 tests | Fresh green code gate |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
 | Static locale usage | 6,986 references, 5,315 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 320 templates, 0 conservative matches | Current hard-coded-copy audit |
@@ -318,7 +318,7 @@ validation, consent/waiver version, conditional visibility, guidance, and cancel
 controls instead of hiding fields already supported by the Laravel contract.
 Invalid or handled-conflict editor submissions now replay all authoring values
 with Blade's localized error summary; incomplete input stops before mutation.
-The full non-mutating gate passes 48/48 suites and 1,630/1,630 tests with green lint,
+The full non-mutating gate passes 48/48 suites and 1,631/1,631 tests with green lint,
 brand, CSS, route, and localization gates. No Laravel runtime or database
 mutation was run.
 
