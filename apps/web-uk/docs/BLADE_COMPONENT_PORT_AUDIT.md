@@ -554,6 +554,12 @@ Feed comment author avatars now use the same backend-origin projection at every
 nested reply depth while retaining Blade's recursive comment hierarchy and
 32-pixel decorative-avatar semantics. Focused recursive-comment proof passes
 `1/1`; the complete non-mutating and static gates remain green.
+Organisation detail no longer promotes the API-only `excerpt` field into a
+lead paragraph when Blade has no description, and review avatars now resolve
+Laravel-relative paths against the configured backend origin. Focused
+organisation proof passes `24/24`; the complete non-mutating gate passes
+`52/52` suites and `1,682/1,682` tests, with lint, brand, CSS, locale, route,
+API-ledger, and `19/19` Blade-marker gates green.
 This certifies broad historical read/auth/gate/body coverage, not every
 mutation, upload, download, destructive side effect, or manual assistive-
 technology state. Saved-collection create/update/delete and collection-
