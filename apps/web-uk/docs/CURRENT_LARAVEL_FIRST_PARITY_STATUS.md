@@ -171,7 +171,7 @@ Refresh the Laravel Blade/API source and Web UK implementation before relying on
 these numbers after either source moves.
 
 At this documentation audit, the product-source baseline was
-`1747cbe8df58ec1dc286efdb111e1eb65eeac71e`. The post-bank implementation,
+`05e1f03fa947d904cad642d3ac73fca4835fb858`. The post-bank implementation,
 contract, resilience, component-audit, attached Event-poll, and Listing-
 analytics slices are above the frozen bank and remain **published and
 unscored**. The documentation remediation is
@@ -186,7 +186,7 @@ together from a clean published checkout.
   with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
   Only this fixed-rubric audit contributes to the current bank.
 - **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `1747cbe8`, including the later implementation, contract,
+  baseline `05e1f03f`, including the later implementation, contract,
   resilience, and component-audit slices. Their evidence is useful, but they
   contribute zero points until one complete fixed-rubric re-audit explicitly
   replaces the baseline.
@@ -205,7 +205,7 @@ together from a clean published checkout.
 | Missing Laravel routes | 1 | Event offline check-in code generation |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 52/52 suites, 1,683/1,683 tests | Latest uninterrupted complete non-mutating gate at product baseline `1747cbe8` |
+| Jest | 52/52 suites, 1,684/1,684 tests | Latest uninterrupted complete non-mutating gate at product baseline `05e1f03f` |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
 | Static locale usage | 7,577 references, 5,784 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
@@ -1473,6 +1473,25 @@ zero-match, 19/19 canonical Blade-marker, and diff checks are green. No Laravel
 request, database, migration, mutation, container, or production operation was
 performed. This published component-audit improvement remains unscored, so the
 frozen bank remains 622/1,000 pending a complete fixed-rubric re-audit.
+
+## 2026-07-14 Advanced Search Result Boundary Parity
+
+Frozen evidence at `2026-07-14T23:02:52.2403732+01:00` against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and Web UK product commit
+`05e1f03fa947d904cad642d3ac73fca4835fb858`. Advanced Search now normalizes
+listing, member, Event, and Group result fields with Blade's trimming,
+null-coalescing, positive-ID, and zero-preserving rules before rendering. This
+prevents blank source headings, invalid negative/zero links, false fallback
+biographies or dates, and a nonzero fallback replacing `members_count: 0`.
+
+Focused default-English proof passes `3/3`; the uninterrupted complete
+non-mutating gate passes `52/52` suites and `1,684/1,684` tests. Lint, brand,
+CSS, route matrix, API ledger, locale structure/static keys/templates, and
+`19/19` canonical Blade markers are green. The marker comparison used public
+read-only GETs only; no Laravel database, migration, mutation, upload,
+download, container, or production operation was performed. This published
+component-audit improvement remains unscored, so the frozen bank remains
+`622/1,000` pending a complete fixed-rubric re-audit.
 
 ## 2026-07-14 Listing Report Validation Replay
 

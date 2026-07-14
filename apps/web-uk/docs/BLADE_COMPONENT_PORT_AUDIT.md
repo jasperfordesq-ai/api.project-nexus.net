@@ -566,6 +566,12 @@ title may use the source name fallback, and invalid IDs render text without an
 invalid detail link. Focused Search proof passes `5/5`; the complete non-
 mutating gate passes `52/52` suites and `1,683/1,683` tests with the same static
 and `19/19` Blade-marker gates green.
+Advanced Search now applies the corresponding frozen Blade partial boundaries
+across listing, member, Event, and Group cards: trimmed presentation values,
+null-coalesced alternate fields, positive-only links, and zero-preserving
+member counts. Focused advanced-search proof passes `3/3`; the complete non-
+mutating gate passes `52/52` suites and `1,684/1,684` tests with the same static
+and `19/19` Blade-marker gates green.
 This certifies broad historical read/auth/gate/body coverage, not every
 mutation, upload, download, destructive side effect, or manual assistive-
 technology state. Saved-collection create/update/delete and collection-
