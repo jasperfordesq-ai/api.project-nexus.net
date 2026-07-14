@@ -90,6 +90,7 @@ describe('Laravel-first shared partial localization', () => {
     expect(confirmedBanner).toContain(t('cookie_banner.confirm_change_link'));
     expect(confirmedBanner).toContain(t('cookie_banner.confirm_change_suffix'));
     expect(confirmedBanner).toContain(t('cookie_banner.hide'));
+    expect(confirmedBanner).not.toContain('role="button"');
 
     expect(footer).toContain(t('footer.nav_label'));
     expect(footer).toContain(t('footer.meta_label'));
