@@ -83,6 +83,7 @@ public class TenantResolutionMiddleware
         "/api/v2/notifications/unsubscribe",    // Laravel-compatible one-click unsubscribe
         "/api/webhooks/postmark",               // Shared-secret webhook; handles auth itself
         "/api/v2/webhooks/postmark",            // Laravel-compatible Postmark webhook
+        "/api/v2/prerender/invalidate",         // Shared-secret/HMAC webhook resolves target tenant from signed payload
         "/api/passkeys/authenticate/begin",    // Passkey auth determines tenant from request body
         "/api/passkeys/authenticate/finish",   // Passkey auth determines tenant from session
         "/api/v1/federation",                  // Federation external API uses its own auth

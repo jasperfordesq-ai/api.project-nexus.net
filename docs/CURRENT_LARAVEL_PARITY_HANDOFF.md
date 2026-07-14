@@ -12,7 +12,29 @@ parity job after a session interruption. The implementation branches may still
 be moving, so treat every numeric snapshot below as advisory. Regenerate the
 live state before editing code or claiming progress.
 
-## Latest Resume Point: Group Auto-Assignment Workflow
+## Latest Resume Point: Prerender Invalidation And Reset-All
+
+The external invalidation alias now matches Laravel's bearer/HMAC/platform-super-admin
+authentication modes, timestamp and replay protection, route canonicalization and
+500-route bound, external rate limit, active-tenant lookup, real safe bundle-deletion
+count, durable recache job, and audit envelope. Recache intent commits before deletion;
+filesystem containment rejects traversal, encoded separators, reparse/symlink escapes,
+and status-bearing snapshots. The admin control plane now requires platform-super-admin
+privilege, while the explicitly anonymous webhook still performs its own authentication.
+
+Reset-all requires the exact confirmation, rate-limits the operator, serializes global
+state, cancels/fences older work, creates one global high-priority force rebuild with a
+fresh active-tenant route count, transactionally audits it, and returns 202. Focused
+runtime proof passes 7/7 on isolated PostgreSQL; the combined admin ownership gate
+passes 121/121; comparator fixtures and Debug/Release builds are green. The live
+comparator is 2,601/2,608 with only the seven document-era vetting writes missing.
+Provisional scores are 875/1000 implementation, 750/1000 certification, and 79%
+overall. Resume by tracing those legacy routes against the forward-only safeguarding
+model; never let document evidence authorize contact. Fiat settlement, complete-suite/
+CI, unchanged-frontend smoke, schema/localization depth, federation transport, and
+live-provider certification remain open.
+
+## Previous Resume Point: Group Auto-Assignment Workflow
 
 Administrator group auto-assignment list/create/update/delete now use a typed
 `group_auto_assign_rules` aggregate rather than recorded-only compatibility writes.

@@ -43,6 +43,40 @@ Before any production deployment or production-container action, stop and read
 deployment or touching production containers. Never modify the Laravel repo or
 Laravel Edition containers from this worktree.
 
+## 2026-07-14 ASP.NET Prerender Control-Plane Checkpoint (Locally Verified)
+
+The external `POST /api/v2/prerender/invalidate` hook and administrator
+`POST /api/v2/admin/prerender/reset-all` operation now have explicit Laravel-
+compatible owners. Invalidation accepts a configured constant-time bearer token,
+timestamped HMAC over the raw body with a five-minute skew window and one-time nonce,
+or a platform-super-admin session. It canonicalizes and de-duplicates at most 500
+routes, rejects traversal/ambiguous/encoded separator aliases, rate-limits external
+callers, commits durable recache intent before deletion, and reports only snapshot
+bundles actually removed. Filesystem containment rejects reparse/symlink escapes and
+status-bearing bundles; ordinary tenant administrators cannot enter the control plane.
+
+Reset-all requires the exact `RESET ALL SNAPSHOTS` confirmation, enforces the canonical
+one-per-five-minute operator limit, serializes the global control state, fences every
+older queued/claimed/running job, enqueues one high-priority force rebuild for the
+fresh active-tenant plan, writes its success audit in the same transaction, and returns
+Laravel's 202 data envelope. Prerender job/audit state is now platform-global rather
+than incorrectly hidden under the calling tenant.
+
+Focused PostgreSQL runtime proof passes 7/7 and the combined prerender plus broad admin
+route-ownership gate passes 121/121. Comparator fixtures pass; Debug API/test and
+Release API builds have zero errors (only the two pre-existing Event Safety nullable
+warnings and four old xUnit warnings). The refreshed live comparator reports 4,554
+ASP.NET operations and **2,601/2,608 matches (99.7%, 7 static misses)**. Those seven
+are exactly the document-era vetting create/bulk/update/delete/upload/verify/reject
+writes.
+
+Current provisional global scores are **875/1000 implementation** and **750/1000
+certification confidence**. The honest combined finish-line estimate is **79%**, up
+from the goal baseline of 42% and the previous checkpoint of 78%. Legacy-evidence
+vetting safety, real fiat settlement, complete-suite/CI proof, unchanged-frontend
+browser proof, schema/localization depth, federation transport, and live-provider
+evidence remain open. No production resource or frontend source was touched.
+
 ## 2026-07-14 ASP.NET Group Auto-Assignment Checkpoint (Locally Verified)
 
 All four canonical administrator auto-assignment routes now own a real typed workflow

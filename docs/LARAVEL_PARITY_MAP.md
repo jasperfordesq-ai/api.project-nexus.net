@@ -6,16 +6,16 @@ Canonical source: `C:\platforms\htdocs\staging` (read-only).
 
 ## Latest Verified Backend Slice
 
-Administrator group auto-assignment list/create/update/delete now use a typed,
-tenant-filtered aggregate with canonical partial updates, same-tenant group validation,
-poisoned-row concealment, serialized locks, and transactional audit evidence. Migration
-146 applies on both maintained PostgreSQL histories with clean model drift. Focused
-proof passes 2/2 on each database, the combined ownership gate passes 116/116,
-comparator fixtures pass, and Debug/Release builds are green. The live inventory is
-**2,599/2,608 (99.7%, 9 missing)**. Document-era vetting writes and prerender,
-real fiat settlement, complete-suite/CI proof, unchanged-frontend runtime proof,
-schema/localization depth, federation transport, and live-provider certification
-remain open.
+External prerender invalidation now implements bearer/HMAC/platform-super-admin auth,
+raw-body signature and replay protection, canonical bounded routes, safe real bundle
+deletion, and durable-before-destructive recache ordering. Reset-all confirms, rate-
+limits, serializes, fences old jobs, creates one authoritative global force rebuild,
+transactionally audits it, and returns 202. Focused PostgreSQL proof passes 7/7, the
+combined admin ownership gate passes 121/121, comparator fixtures pass, and Debug/
+Release builds are green. The live inventory is **2,601/2,608 (99.7%, 7 missing)**,
+all document-era vetting writes. Legacy-evidence safety, real fiat settlement,
+complete-suite/CI proof, unchanged-frontend runtime proof, schema/localization depth,
+federation transport, and live-provider certification remain open.
 
 ## Inventory Baseline
 

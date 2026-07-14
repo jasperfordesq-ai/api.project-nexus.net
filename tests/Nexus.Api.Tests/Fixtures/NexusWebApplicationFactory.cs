@@ -105,6 +105,8 @@ public class NexusWebApplicationFactory : WebApplicationFactory<Program>, IAsync
                 ["RateLimiting:PersonalWallet:TransferWindowSeconds"] = "1",
                 ["RateLimiting:PersonalWallet:UserSearchPermitLimit"] = "1000",
                 ["RateLimiting:PersonalWallet:UserSearchWindowSeconds"] = "1",
+                ["Prerender:WebhookToken"] = "nexus-prerender-test-webhook-token",
+                ["Prerender:CachePath"] = Path.Combine(Path.GetTempPath(), "nexus-prerender-integration-cache"),
                 ["RateLimiting:VolunteerOrganisationWallet:DepositPermitLimit"] = "1000",
                 ["RateLimiting:VolunteerOrganisationWallet:DepositWindowSeconds"] = "1",
                 ["Cors:AllowedOrigins:0"] = "https://wallet-ui.example.test",

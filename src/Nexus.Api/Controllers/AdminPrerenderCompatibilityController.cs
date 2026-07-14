@@ -3,11 +3,14 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Data;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Nexus.Api.Authorization;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
 using Nexus.Api.Extensions;
@@ -15,7 +18,7 @@ using Nexus.Api.Extensions;
 namespace Nexus.Api.Controllers;
 
 [ApiController]
-[Authorize(Policy = "AdminOnly")]
+[Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
 public sealed class AdminPrerenderCompatibilityController : ControllerBase
 {
     private const string JobsKey = "admin_prerender.jobs";
@@ -29,12 +32,18 @@ public sealed class AdminPrerenderCompatibilityController : ControllerBase
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
         PropertyNameCaseInsensitive = true
     };
-
     private readonly NexusDbContext _db;
+    private readonly IConfiguration _configuration;
+    private readonly IAuthorizationService _authorization;
 
-    public AdminPrerenderCompatibilityController(NexusDbContext db)
+    public AdminPrerenderCompatibilityController(
+        NexusDbContext db,
+        IConfiguration configuration,
+        IAuthorizationService authorization)
     {
         _db = db;
+        _configuration = configuration;
+        _authorization = authorization;
     }
 
     [HttpGet("/api/admin/prerender/summary")]
@@ -316,38 +325,104 @@ public sealed class AdminPrerenderCompatibilityController : ControllerBase
 
     [HttpPost("/api/admin/prerender/invalidate")]
     [HttpPost("/api/v2/admin/prerender/invalidate")]
-    public async Task<IActionResult> Invalidate([FromBody] JsonElement body)
+    [HttpPost("/api/v2/prerender/invalidate")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Invalidate()
     {
+        Request.EnableBuffering();
+        using var reader = new StreamReader(Request.Body, Encoding.UTF8, detectEncodingFromByteOrderMarks: false, bufferSize: 1024, leaveOpen: true);
+        var rawBody = await reader.ReadToEndAsync();
+        Request.Body.Position = 0;
+
+        var auth = await AuthenticateInvalidationAsync(rawBody);
+        if (!auth.Authorized)
+        {
+            return Error("Unauthorized", StatusCodes.Status401Unauthorized, "UNAUTHENTICATED");
+        }
+
+        JsonElement body;
+        try
+        {
+            using var document = JsonDocument.Parse(rawBody);
+            body = document.RootElement.Clone();
+        }
+        catch (JsonException)
+        {
+            return Error("Invalid JSON payload", StatusCodes.Status400BadRequest, "VALIDATION_INVALID");
+        }
+
         var tenantId = ReadInt(body, "tenant_id", "tenantId") ?? 0;
         if (tenantId <= 0)
         {
             return Error("tenant_id is required", StatusCodes.Status400BadRequest, "VALIDATION_REQUIRED_FIELD");
         }
 
-        if (!await ActiveTenants().AnyAsync(t => t.Id == tenantId))
+        var tenant = await ActiveTenants().FirstOrDefaultAsync(t => t.Id == tenantId);
+        if (tenant == null)
         {
             return Error("Tenant not found", StatusCodes.Status404NotFound, "NOT_FOUND");
         }
 
-        var routes = ReadStringArray(body, "routes");
+        if (!body.TryGetProperty("routes", out var routesElement) || routesElement.ValueKind != JsonValueKind.Array)
+        {
+            return Error("routes[] is required and must be non-empty", StatusCodes.Status400BadRequest, "VALIDATION_REQUIRED_FIELD");
+        }
+
+        var rawRoutes = routesElement.EnumerateArray().ToList();
+        if (rawRoutes.Count > 500)
+        {
+            return Error("No more than 500 routes may be invalidated at once", StatusCodes.Status422UnprocessableEntity, "VALIDATION_INVALID");
+        }
+
+        var routes = new List<string>();
+        foreach (var item in rawRoutes)
+        {
+            if (item.ValueKind != JsonValueKind.String || NormalizeRoute(item.GetString()) is not { } route)
+            {
+                var invalid = item.ValueKind == JsonValueKind.String ? item.GetString() : "(non-string)";
+                return Error($"Invalid route: {invalid}", StatusCodes.Status400BadRequest, "VALIDATION_INVALID");
+            }
+
+            if (!routes.Contains(route, StringComparer.Ordinal)) routes.Add(route);
+        }
+
         if (routes.Count == 0)
         {
             return Error("routes[] is required and must be non-empty", StatusCodes.Status400BadRequest, "VALIDATION_REQUIRED_FIELD");
         }
 
-        foreach (var route in routes)
+        if (body.TryGetProperty("recache", out var recacheElement) && recacheElement.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
         {
-            if (!IsValidRoute(route))
-            {
-                return Error($"Invalid route: {route}", StatusCodes.Status400BadRequest, "VALIDATION_INVALID");
-            }
+            return Error("recache must be a boolean", StatusCodes.Status422UnprocessableEntity, "VALIDATION_INVALID");
         }
 
-        var jobId = (int?)null;
-        if (ReadBool(body, "recache") ?? true)
+        if (auth.Mode != "admin_session" && !await TryConsumeRateAsync(
+                tenantId,
+                $"invalidate:{auth.Mode}:{HttpContext.Connection.RemoteIpAddress}",
+                60,
+                TimeSpan.FromMinutes(1)))
         {
+            await AddAuditAsync("invalidate", "denied", tenantId, null, new { reason = "rate_limit_exceeded", auth_mode = auth.Mode, limit = 60 });
+            return Error("Too many requests", StatusCodes.Status429TooManyRequests, "RATE_LIMITED");
+        }
+
+        if (auth.Mode == "hmac" && auth.Nonce is not null && !await TryRegisterWebhookNonceAsync(tenantId, auth.Nonce))
+        {
+            await AddAuditAsync("invalidate", "denied", tenantId, null, new { reason = "webhook_replay" });
+            return Error("Unauthorized", StatusCodes.Status401Unauthorized, "UNAUTHENTICATED");
+        }
+
+        var recache = !body.TryGetProperty("recache", out recacheElement) || recacheElement.GetBoolean();
+        var jobId = (int?)null;
+
+        if (recache)
+        {
+            // Commit durable replacement intent before removing a live bundle.
+            // A database failure must leave the stale-but-known-good snapshot
+            // in place instead of turning the route into a permanent miss.
+            await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            await AcquireControlLockAsync();
             var jobs = await LoadJobsAsync();
-            var tenant = await ActiveTenants().FirstAsync(t => t.Id == tenantId);
             var job = new PrerenderJobRecord
             {
                 Id = jobs.Count == 0 ? 1 : jobs.Max(j => j.Id) + 1,
@@ -356,17 +431,19 @@ public sealed class AdminPrerenderCompatibilityController : ControllerBase
                 TenantSlug = tenant.Slug,
                 Routes = string.Join(',', routes),
                 Priority = 5,
-                RequestedByUserId = User.GetUserId(),
-                RequestedByEmail = User.GetEmail(),
+                RequestedByUserId = auth.Mode == "admin_session" ? User.GetUserId() : null,
+                RequestedByEmail = auth.Mode == "admin_session" ? User.GetEmail() : null,
                 QueuedAt = DateTime.UtcNow.ToString("O")
             };
             jobs.Add(job);
             await SaveJobsAsync(jobs);
             jobId = job.Id;
+            await transaction.CommitAsync();
         }
 
-        await AddAuditAsync("invalidate", "ok", tenantId, jobId, new { routes, invalidated = routes.Count });
-        return Data(new { invalidated = routes.Count, tenant_id = tenantId, routes, job_id = jobId });
+        var invalidated = DeleteSnapshotBundles(tenant, routes);
+        await AddAuditAsync("invalidate", "ok", tenantId, jobId, new { routes, invalidated, recache, auth_mode = auth.Mode });
+        return Data(new { invalidated, tenant_id = tenantId, routes, job_id = jobId });
     }
 
     [HttpGet("/api/admin/prerender/analytics")]
@@ -479,6 +556,81 @@ public sealed class AdminPrerenderCompatibilityController : ControllerBase
     {
         await AddAuditAsync("reset_queue", "ok", null, null, null);
         return Data(new { rows_reset = 0, breaker_cleared = true });
+    }
+
+    [HttpPost("/api/admin/prerender/reset-all")]
+    [HttpPost("/api/v2/admin/prerender/reset-all")]
+    public async Task<IActionResult> ResetAll([FromBody] JsonElement body)
+    {
+        if (!string.Equals(ReadString(body, "confirmation"), "RESET ALL SNAPSHOTS", StringComparison.Ordinal))
+        {
+            return Error("Type RESET ALL SNAPSHOTS to confirm", StatusCodes.Status422UnprocessableEntity, "VALIDATION_INVALID");
+        }
+
+        var userId = User.GetUserId() ?? 0;
+        var controlTenantId = await GetControlTenantIdAsync();
+        if (!await TryConsumeRateAsync(controlTenantId, $"reset_all:{userId}", 1, TimeSpan.FromMinutes(5)))
+        {
+            await AddAuditAsync("reset_all", "denied", null, null, new { reason = "rate_limit_exceeded", limit = 1 });
+            return Error("Reset all is limited to once every five minutes", StatusCodes.Status429TooManyRequests, "RATE_LIMITED");
+        }
+
+        var tenants = await ActiveTenants().ToListAsync();
+        if (tenants.Count == 0)
+        {
+            await AddAuditAsync("reset_all", "error", null, null, new { reason = "no_active_tenants" });
+            return Error("No active tenant render targets are available", StatusCodes.Status503ServiceUnavailable, "PRERENDER_RESET_FAILED");
+        }
+
+        var plannedRoutes = tenants.Count * ExpectedRoutes.Length;
+        if (plannedRoutes <= 0)
+        {
+            return Error("Authoritative route plan is empty", StatusCodes.Status503ServiceUnavailable, "PRERENDER_RESET_FAILED");
+        }
+
+        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+        await AcquireControlLockAsync();
+        var jobs = await LoadJobsAsync();
+        var inFlight = jobs.Where(job => job.Status is "pending_fence" or "queued" or "claimed" or "running").ToList();
+        var cancelledActive = inFlight.Count(job => job.Status is "claimed" or "running");
+        var finishedAt = DateTime.UtcNow.ToString("O");
+        foreach (var job in inFlight)
+        {
+            job.Status = "cancelled";
+            job.ErrorMessage = "fenced by authoritative reset-all";
+            job.FinishedAt = finishedAt;
+        }
+
+        var rebuild = new PrerenderJobRecord
+        {
+            Id = jobs.Count == 0 ? 1 : jobs.Max(job => job.Id) + 1,
+            Status = "queued",
+            TenantId = null,
+            TenantSlug = null,
+            Routes = null,
+            Force = true,
+            DryRun = false,
+            Priority = 1,
+            PlannedCount = plannedRoutes,
+            QueuedAt = DateTime.UtcNow.ToString("O"),
+            RequestedByUserId = userId,
+            RequestedByEmail = User.GetEmail(),
+            RequestedByName = User.Identity?.Name
+        };
+        jobs.Add(rebuild);
+        await SaveJobsAsync(jobs);
+
+        var result = new
+        {
+            job_id = rebuild.Id,
+            cancelled_jobs = inFlight.Count,
+            cancelled_active_jobs = cancelledActive,
+            tenant_count = tenants.Count,
+            planned_routes = plannedRoutes
+        };
+        await AddAuditAsync("reset_all", "ok", null, rebuild.Id, result);
+        await transaction.CommitAsync();
+        return StatusCode(StatusCodes.Status202Accepted, new { success = true, data = result });
     }
 
     [HttpGet("/api/admin/prerender/export/{kind}.csv")]
@@ -608,13 +760,204 @@ public sealed class AdminPrerenderCompatibilityController : ControllerBase
         });
     }
 
-    private IQueryable<Tenant> ActiveTenants() => _db.Tenants.AsNoTracking().Where(t => t.IsActive);
+    private IQueryable<Tenant> ActiveTenants() => _db.Tenants.IgnoreQueryFilters().AsNoTracking().Where(t => t.IsActive);
 
     private IActionResult Data(object data) => Ok(new { success = true, data });
 
     private IActionResult Error(string message, int status, string code)
     {
         return StatusCode(status, new { success = false, error = message, code });
+    }
+
+    private async Task<InvalidationAuthentication> AuthenticateInvalidationAsync(string rawBody)
+    {
+        var token = _configuration["Prerender:WebhookToken"]?.Trim() ?? string.Empty;
+        if (token.Length > 0)
+        {
+            var authorization = Request.Headers.Authorization.FirstOrDefault();
+            if (authorization?.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) == true &&
+                FixedTimeEquals(token, authorization[7..].Trim()))
+            {
+                return new InvalidationAuthentication(true, "bearer", null);
+            }
+
+            var signature = Request.Headers["X-Nexus-Signature"].FirstOrDefault();
+            var timestampHeader = Request.Headers["X-Nexus-Timestamp"].FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(signature) &&
+                long.TryParse(timestampHeader, out var timestamp) &&
+                Math.Abs(DateTimeOffset.UtcNow.ToUnixTimeSeconds() - timestamp) <= 300)
+            {
+                var expected = Convert.ToHexString(HMACSHA256.HashData(
+                    Encoding.UTF8.GetBytes(token),
+                    Encoding.UTF8.GetBytes($"{timestamp}.{rawBody}"))).ToLowerInvariant();
+                if (FixedTimeEquals(expected, signature.Trim().ToLowerInvariant()))
+                {
+                    var nonce = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes($"{timestamp}:{signature}"))).ToLowerInvariant();
+                    return new InvalidationAuthentication(true, "hmac", nonce);
+                }
+            }
+        }
+
+        var admin = await _authorization.AuthorizeAsync(User, null, NexusAuthorizationPolicies.PlatformSuperAdminOnly);
+        return admin.Succeeded
+            ? new InvalidationAuthentication(true, "admin_session", null)
+            : new InvalidationAuthentication(false, "unknown", null);
+    }
+
+    private static bool FixedTimeEquals(string expected, string actual)
+    {
+        var expectedBytes = Encoding.UTF8.GetBytes(expected);
+        var actualBytes = Encoding.UTF8.GetBytes(actual);
+        return expectedBytes.Length == actualBytes.Length && CryptographicOperations.FixedTimeEquals(expectedBytes, actualBytes);
+    }
+
+    private async Task<bool> TryRegisterWebhookNonceAsync(int tenantId, string nonce)
+    {
+        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+        await AcquireControlLockAsync();
+        var now = DateTime.UtcNow;
+        var prefix = "admin_prerender.webhook_nonce.";
+        var expiredRows = await _db.TenantConfigs.IgnoreQueryFilters()
+            .Where(row => row.TenantId == tenantId && row.Key.StartsWith(prefix))
+            .ToListAsync();
+        foreach (var expired in expiredRows.Where(row =>
+                     !DateTime.TryParse(row.Value, out var expiresAt) || expiresAt.ToUniversalTime() <= now))
+        {
+            _db.TenantConfigs.Remove(expired);
+        }
+
+        var key = prefix + nonce;
+        if (expiredRows.Any(row => row.Key == key && _db.Entry(row).State != EntityState.Deleted)) return false;
+        _db.TenantConfigs.Add(new TenantConfig
+        {
+            TenantId = tenantId,
+            Key = key,
+            Value = now.AddMinutes(10).ToString("O"),
+            CreatedAt = now,
+            UpdatedAt = now
+        });
+        await _db.SaveChangesAsync();
+        await transaction.CommitAsync();
+        return true;
+    }
+
+    private async Task<bool> TryConsumeRateAsync(int tenantId, string partition, int limit, TimeSpan window)
+    {
+        await using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+        await AcquireControlLockAsync();
+        var now = DateTime.UtcNow;
+        var partitionHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(partition))).ToLowerInvariant();
+        var key = "admin_prerender.rate." + partitionHash;
+        var row = await _db.TenantConfigs.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(config => config.TenantId == tenantId && config.Key == key);
+        RateWindowState? state = null;
+        if (row != null)
+        {
+            try { state = JsonSerializer.Deserialize<RateWindowState>(row.Value, StoreJsonOptions); }
+            catch (JsonException) { /* Treat corrupt limiter state as an expired window. */ }
+        }
+        if (state == null || state.ExpiresAt <= now)
+        {
+            state = new RateWindowState { ExpiresAt = now.Add(window), Count = 0 };
+        }
+
+        state.Count++;
+        var value = JsonSerializer.Serialize(state, StoreJsonOptions);
+        if (row == null)
+        {
+            _db.TenantConfigs.Add(new TenantConfig { TenantId = tenantId, Key = key, Value = value, CreatedAt = now, UpdatedAt = now });
+        }
+        else
+        {
+            row.Value = value;
+            row.UpdatedAt = now;
+        }
+
+        await _db.SaveChangesAsync();
+        await transaction.CommitAsync();
+        return state.Count <= limit;
+    }
+
+    private int DeleteSnapshotBundles(Tenant tenant, IReadOnlyCollection<string> routes)
+    {
+        var configuredRoot = _configuration["Prerender:CachePath"];
+        if (string.IsNullOrWhiteSpace(configuredRoot) || !Directory.Exists(configuredRoot)) return 0;
+
+        var host = HostForTenant(tenant).Trim().TrimEnd('.').ToLowerInvariant();
+        if (Uri.CheckHostName(host) == UriHostNameType.Unknown && !string.Equals(host, "localhost", StringComparison.Ordinal)) return 0;
+
+        var root = Path.GetFullPath(configuredRoot);
+        var hostRoot = Path.GetFullPath(Path.Combine(root, host));
+        if (!IsWithinRoot(root, hostRoot)) return 0;
+
+        var deleted = 0;
+        foreach (var route in routes)
+        {
+            try
+            {
+                var relative = route == "/" ? string.Empty : route.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
+                var bundle = Path.GetFullPath(Path.Combine(hostRoot, relative));
+                if ((route != "/" && !IsWithinRoot(hostRoot, bundle)) || !Directory.Exists(bundle) || ContainsReparsePoint(hostRoot, bundle)) continue;
+
+                var index = Path.Combine(bundle, "index.html");
+                if (!System.IO.File.Exists(index) || System.IO.File.Exists(Path.Combine(bundle, "_status"))) continue;
+                System.IO.File.Delete(index);
+                foreach (var sidecar in new[] { "index.html.sha256", "index.md", "_tenant.json" })
+                {
+                    var path = Path.Combine(bundle, sidecar);
+                    if (System.IO.File.Exists(path)) System.IO.File.Delete(path);
+                }
+
+                try { Directory.Delete(bundle, recursive: false); } catch (IOException) { }
+                if (!System.IO.File.Exists(index)) deleted++;
+            }
+            catch (IOException)
+            {
+                // Leave a bundle intact when the platform cannot remove it;
+                // the returned count must never claim an unsuccessful deletion.
+            }
+            catch (UnauthorizedAccessException)
+            {
+                // Same fail-closed count semantics as an I/O failure.
+            }
+            catch (ArgumentException)
+            {
+                // A route that is valid at the URL layer may still be invalid
+                // for the current host filesystem (for example ':' on Windows).
+            }
+        }
+
+        return deleted;
+    }
+
+    private static bool IsWithinRoot(string root, string candidate)
+    {
+        var prefix = root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        return candidate.StartsWith(prefix, OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+    }
+
+    private static bool ContainsReparsePoint(string root, string candidate)
+    {
+        if (!Directory.Exists(root)) return false;
+        var current = root;
+        if ((System.IO.File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0) return true;
+        var relative = Path.GetRelativePath(root, candidate);
+        foreach (var segment in relative.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))
+        {
+            if (segment is "" or ".") continue;
+            current = Path.Combine(current, segment);
+            if (Directory.Exists(current) && (System.IO.File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0) return true;
+        }
+
+        return false;
+    }
+
+    private async Task AcquireControlLockAsync()
+    {
+        if (_db.Database.ProviderName?.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            await _db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock(731947205)");
+        }
     }
 
     private async Task<List<PrerenderJobRecord>> LoadJobsAsync()
@@ -688,8 +1031,9 @@ public sealed class AdminPrerenderCompatibilityController : ControllerBase
 
     private async Task<string?> GetTenantConfigAsync(string key)
     {
-        var tenantId = User.GetTenantId() ?? 0;
+        var tenantId = await GetControlTenantIdAsync();
         return await _db.TenantConfigs
+            .IgnoreQueryFilters()
             .AsNoTracking()
             .Where(c => c.TenantId == tenantId && c.Key == key)
             .Select(c => c.Value)
@@ -698,8 +1042,8 @@ public sealed class AdminPrerenderCompatibilityController : ControllerBase
 
     private async Task UpsertTenantConfigAsync(string key, string value)
     {
-        var tenantId = User.GetTenantId() ?? throw new InvalidOperationException("Tenant context is required.");
-        var existing = await _db.TenantConfigs.FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Key == key);
+        var tenantId = await GetControlTenantIdAsync();
+        var existing = await _db.TenantConfigs.IgnoreQueryFilters().FirstOrDefaultAsync(c => c.TenantId == tenantId && c.Key == key);
         if (existing == null)
         {
             _db.TenantConfigs.Add(new TenantConfig
@@ -718,6 +1062,12 @@ public sealed class AdminPrerenderCompatibilityController : ControllerBase
         }
 
         await _db.SaveChangesAsync();
+    }
+
+    private async Task<int> GetControlTenantIdAsync()
+    {
+        var tenantId = await ActiveTenants().OrderBy(tenant => tenant.Id).Select(tenant => tenant.Id).FirstOrDefaultAsync();
+        return tenantId > 0 ? tenantId : throw new InvalidOperationException("No active tenant is available for prerender control state.");
     }
 
     private static object FormatJob(PrerenderJobRecord job)
@@ -791,7 +1141,38 @@ public sealed class AdminPrerenderCompatibilityController : ControllerBase
 
     private static bool IsValidRoute(string route)
     {
-        return route.StartsWith('/') && route.All(c => char.IsLetterOrDigit(c) || "/._~%:@!$()*+,;=-?".Contains(c));
+        return NormalizeRoute(route) == route;
+    }
+
+    private static string? NormalizeRoute(string? route)
+    {
+        if (string.IsNullOrEmpty(route) || route.Length > 1024 || route[0] != '/' ||
+            route.Any(c => !char.IsAsciiLetterOrDigit(c) && !"/._~%:@!$()*+,;=-".Contains(c)))
+        {
+            return null;
+        }
+
+        if (route != "/") route = route.TrimEnd('/');
+        if (route.Length == 0) route = "/";
+        if (route.Contains("//", StringComparison.Ordinal)) return null;
+
+        var segments = route.Split('/', StringSplitOptions.None);
+        if (segments.Any(segment => segment is "." or "..")) return null;
+
+        for (var i = 0; i < route.Length; i++)
+        {
+            if (route[i] != '%') continue;
+            if (i + 2 >= route.Length || !Uri.IsHexDigit(route[i + 1]) || !Uri.IsHexDigit(route[i + 2])) return null;
+            var encoded = route.Substring(i + 1, 2);
+            if (encoded.Equals("00", StringComparison.OrdinalIgnoreCase) ||
+                encoded.Equals("25", StringComparison.OrdinalIgnoreCase) ||
+                encoded.Equals("2e", StringComparison.OrdinalIgnoreCase) ||
+                encoded.Equals("2f", StringComparison.OrdinalIgnoreCase) ||
+                encoded.Equals("5c", StringComparison.OrdinalIgnoreCase)) return null;
+            i += 2;
+        }
+
+        return route;
     }
 
     private static bool IsValidOptionalSlug(string? slug) => string.IsNullOrWhiteSpace(slug) || IsValidRequiredSlug(slug);
@@ -904,5 +1285,13 @@ public sealed class AdminPrerenderCompatibilityController : ControllerBase
         public string? Ip { get; init; }
         public string? UserAgent { get; init; }
         public string CreatedAt { get; init; } = DateTime.UtcNow.ToString("O");
+    }
+
+    private sealed record InvalidationAuthentication(bool Authorized, string Mode, string? Nonce);
+
+    private sealed class RateWindowState
+    {
+        public DateTime ExpiresAt { get; set; }
+        public int Count { get; set; }
     }
 }

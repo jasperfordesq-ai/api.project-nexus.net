@@ -5,8 +5,13 @@
 
 using System.Net;
 using System.Net.Http.Json;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Nexus.Api.Data;
 using Nexus.Api.Tests.Fixtures;
 
 namespace Nexus.Api.Tests;
@@ -15,6 +20,16 @@ namespace Nexus.Api.Tests;
 public class AdminPrerenderCompatibilityTests : IntegrationTestBase
 {
     public AdminPrerenderCompatibilityTests(NexusWebApplicationFactory factory) : base(factory) { }
+
+    public override async Task InitializeAsync()
+    {
+        await base.InitializeAsync();
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var admin = await db.Users.IgnoreQueryFilters().SingleAsync(user => user.Email == "admin@test.com");
+        admin.IsSuperAdmin = true;
+        await db.SaveChangesAsync();
+    }
 
     [Fact]
     public async Task ReadEndpoints_ReturnLaravelReactPrerenderShapes()
@@ -93,6 +108,11 @@ public class AdminPrerenderCompatibilityTests : IntegrationTestBase
         purge.GetProperty("pattern").GetString().Should().Be("/about");
         purge.GetProperty("dry_run").GetBoolean().Should().BeTrue();
 
+        var cacheRoot = Path.Combine(Path.GetTempPath(), "nexus-prerender-integration-cache");
+        var bundle = Path.Combine(cacheRoot, "test-tenant.localhost", "about");
+        Directory.CreateDirectory(bundle);
+        await File.WriteAllTextAsync(Path.Combine(bundle, "index.html"), "<h1>stale</h1>");
+
         var invalidate = await ReadDataAsync(await Client.PostAsJsonAsync("/api/v2/admin/prerender/invalidate", new
         {
             tenant_id = TestData.Tenant1.Id,
@@ -101,6 +121,7 @@ public class AdminPrerenderCompatibilityTests : IntegrationTestBase
         }));
         invalidate.GetProperty("invalidated").GetInt32().Should().Be(1);
         invalidate.GetProperty("tenant_id").GetInt32().Should().Be(TestData.Tenant1.Id);
+        Directory.Exists(bundle).Should().BeFalse();
 
         var autoRecache = await ReadDataAsync(await Client.PostAsJsonAsync("/api/v2/admin/prerender/auto-recache", new { apply = false }));
         autoRecache.GetProperty("applied").GetBoolean().Should().BeFalse();
@@ -127,6 +148,118 @@ public class AdminPrerenderCompatibilityTests : IntegrationTestBase
         var csv = await Client.GetAsync("/api/v2/admin/prerender/export/jobs.csv");
         csv.StatusCode.Should().Be(HttpStatusCode.OK);
         (await csv.Content.ReadAsStringAsync()).Should().StartWith("id,status,priority");
+    }
+
+    [Fact]
+    public async Task ExternalInvalidate_AcceptsBearerAndOneTimeHmac_ButRejectsReplay()
+    {
+        ClearAuthToken();
+        const string token = "nexus-prerender-test-webhook-token";
+        var bearer = new HttpRequestMessage(HttpMethod.Post, "/api/v2/prerender/invalidate")
+        {
+            Content = JsonContent.Create(new { tenant_id = TestData.Tenant1.Id, routes = new[] { "/about/", "/about" }, recache = false })
+        };
+        bearer.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        var bearerData = await ReadDataAsync(await Client.SendAsync(bearer));
+        bearerData.GetProperty("routes").EnumerateArray().Select(row => row.GetString()).Should().Equal("/about");
+        bearerData.GetProperty("job_id").ValueKind.Should().Be(JsonValueKind.Null);
+
+        var raw = JsonSerializer.Serialize(new { tenant_id = TestData.Tenant1.Id, routes = new[] { "/jobs" }, recache = true });
+        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
+        var signature = Convert.ToHexString(HMACSHA256.HashData(
+            Encoding.UTF8.GetBytes(token),
+            Encoding.UTF8.GetBytes($"{timestamp}.{raw}"))).ToLowerInvariant();
+
+        HttpRequestMessage SignedRequest()
+        {
+            var request = new HttpRequestMessage(HttpMethod.Post, "/api/v2/prerender/invalidate")
+            {
+                Content = new StringContent(raw, Encoding.UTF8, "application/json")
+            };
+            request.Headers.Add("X-Nexus-Timestamp", timestamp);
+            request.Headers.Add("X-Nexus-Signature", signature);
+            return request;
+        }
+
+        using var first = SignedRequest();
+        var firstResponse = await Client.SendAsync(first);
+        firstResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var firstData = await ReadDataAsync(firstResponse);
+        firstData.GetProperty("job_id").GetInt32().Should().BeGreaterThan(0);
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            (await db.TenantConfigs.IgnoreQueryFilters().CountAsync(row =>
+                row.TenantId == TestData.Tenant1.Id &&
+                row.Key.StartsWith("admin_prerender.webhook_nonce."))).Should().Be(1);
+        }
+
+        using var replay = SignedRequest();
+        var replayResponse = await Client.SendAsync(replay);
+        replayResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        var replayJson = await replayResponse.Content.ReadFromJsonAsync<JsonElement>();
+        replayJson.GetProperty("code").GetString().Should().Be("UNAUTHENTICATED");
+    }
+
+    [Fact]
+    public async Task ResetAll_RequiresConfirmation_ThenFencesJobsAndReturnsAcceptedPlan()
+    {
+        await AuthenticateAsAdminAsync();
+
+        await Client.PostAsJsonAsync("/api/v2/admin/prerender/jobs", new
+        {
+            tenant_slug = "test-tenant",
+            routes = "/about",
+            dry_run = false,
+            force = false,
+            priority = 5
+        });
+
+        var invalid = await Client.PostAsJsonAsync("/api/v2/admin/prerender/reset-all", new { confirmation = "reset" });
+        invalid.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+
+        var reset = await Client.PostAsJsonAsync("/api/v2/admin/prerender/reset-all", new { confirmation = "RESET ALL SNAPSHOTS" });
+        reset.StatusCode.Should().Be(HttpStatusCode.Accepted);
+        var json = await reset.Content.ReadFromJsonAsync<JsonElement>();
+        json.GetProperty("success").GetBoolean().Should().BeTrue();
+        var data = json.GetProperty("data");
+        data.GetProperty("cancelled_jobs").GetInt32().Should().Be(1);
+        data.GetProperty("tenant_count").GetInt32().Should().Be(2);
+        data.GetProperty("planned_routes").GetInt32().Should().Be(10);
+
+        var jobs = await ReadDataAsync(await Client.GetAsync("/api/v2/admin/prerender/jobs?limit=20"));
+        jobs.GetProperty("items").EnumerateArray().Should().Contain(row =>
+            row.GetProperty("id").GetInt32() == data.GetProperty("job_id").GetInt32() &&
+            row.GetProperty("status").GetString() == "queued" &&
+            row.GetProperty("force").GetBoolean());
+
+        var audit = await ReadDataAsync(await Client.GetAsync("/api/v2/admin/prerender/audit?action=reset_all"));
+        audit.GetProperty("items").EnumerateArray().Should().ContainSingle(row => row.GetProperty("outcome").GetString() == "ok");
+    }
+
+    [Fact]
+    public async Task ControlPlane_RejectsTenantAdminAndUnsignedExternalCaller()
+    {
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            var admin = await db.Users.IgnoreQueryFilters().SingleAsync(user => user.Email == "admin@test.com");
+            admin.IsSuperAdmin = false;
+            await db.SaveChangesAsync();
+        }
+
+        await AuthenticateAsAdminAsync();
+        (await Client.GetAsync("/api/v2/admin/prerender/summary")).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        ClearAuthToken();
+        var unsigned = await Client.PostAsJsonAsync("/api/v2/prerender/invalidate", new
+        {
+            tenant_id = TestData.Tenant1.Id,
+            routes = new[] { "/about" }
+        });
+        unsigned.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        var json = await unsigned.Content.ReadFromJsonAsync<JsonElement>();
+        json.GetProperty("code").GetString().Should().Be("UNAUTHENTICATED");
     }
 
     [Fact]
