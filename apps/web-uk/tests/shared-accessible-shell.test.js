@@ -29963,7 +29963,10 @@ describe('shared accessible frontend shell', () => {
             price_currency: 'GBP',
             condition: 'good',
             location: 'Belfast',
-            image: { thumbnail_url: '/uploads/bike-thumb.jpg' }
+            image: {
+              url: '/uploads/bike-full.jpg',
+              thumbnail_url: '/uploads/bike-thumb.jpg'
+            }
           },
           {
             id: 43,
@@ -29995,6 +29998,8 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Community bike');
     expect(response.text).toContain('Freshly serviced');
     expect(response.text).toContain('GBP 15.50');
+    expect(response.text).toContain('src="/uploads/bike-thumb.jpg"');
+    expect(response.text).not.toContain('src="/uploads/bike-full.jpg"');
     expect(response.text).toContain('Hybrid tool kit');
     expect(response.text).toContain('3 time credits');
     expect(response.text).not.toContain('GBP 12.50 or 3 time credits');

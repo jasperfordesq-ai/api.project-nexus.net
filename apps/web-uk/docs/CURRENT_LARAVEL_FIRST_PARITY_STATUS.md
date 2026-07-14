@@ -413,10 +413,13 @@ advanced-search, and shared collection cards; detail and checkout retain the
 intentional hybrid cash-or-credit wording and purple tag. The index category
 list also uses Blade's exact class set, and query-status data remains
 request-localized for controller compatibility without rendering the generic
-banner that is absent from the Blade index.
+banner that is absent from the Blade index. Browse and shared collection cards
+now also prefer Laravel's `image.thumbnail_url` over the full image URL exactly
+like Blade, while detail keeps the full gallery projection.
 
 Focused browse, hybrid-detail, and 64-case status-localization proof passes
-66/66. The complete Jest gate passes 49/49 suites and 1,649/1,649 tests; lint,
+66/66, and the broader marketplace proof passes 43/43. The complete Jest gate
+passes 49/49 suites and 1,649/1,649 tests; lint,
 the 7,337-reference / 5,618-unique-key zero-unresolved locale audit, and the
 322-template zero-match audit are green. The route matrix remains 688/689 and
 the ledger remains 590 contracts with no untested consumer. No Laravel

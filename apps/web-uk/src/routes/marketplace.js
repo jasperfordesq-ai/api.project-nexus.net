@@ -509,6 +509,14 @@ function cardPriceTagClass(row) {
   return 'govuk-tag--green';
 }
 
+function cardImageUrl(row) {
+  const image = row && row.image;
+  const value = typeof image === 'string'
+    ? image
+    : (image && (image.thumbnail_url || image.url));
+  return safeRelativeOrAbsoluteUrl(value);
+}
+
 function imageUrls(row) {
   const urls = [];
   const images = Array.isArray(row.images) ? row.images : [];
@@ -585,6 +593,7 @@ function decorateListing(listing) {
     sellerName,
     images,
     primaryImage: images[0] || '',
+    cardImage: cardImageUrl(row),
     isOwnItem: Boolean(row.is_own || row.is_owner || row.owned_by_current_user),
     href: id ? `/marketplace/${id}` : '/marketplace'
   };

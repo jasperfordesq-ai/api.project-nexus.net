@@ -735,7 +735,10 @@ listings show only time credits with the blue tag on cards, while detail and
 checkout retain the intentional cash-or-credit wording and purple tag. The
 index category list uses Blade's exact class set, and the controller still
 resolves query-status tokens without rendering the generic banner absent from
-Blade. Focused browse/hybrid plus status-localization proof passes 66/66; the
+Blade. Card media now prefers `image.thumbnail_url` over the full image URL as
+the Blade index and shared partial do, without changing the detail gallery.
+Focused browse/hybrid plus status-localization proof passes 66/66, and broader
+marketplace proof passes 43/43; the
 full gate passes 49/49 suites and 1,649/1,649 tests, with 7,337 static
 references, 5,618 unique keys, zero unresolved or conservative template
 matches across 322 templates, unchanged 688/689 route coverage and 590-contract
