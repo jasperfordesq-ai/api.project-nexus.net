@@ -7,6 +7,11 @@
 
 {% set organisationName = organisation.name or t("govuk_alpha_organisations.jobs.title") %}
 
+{% block head %}
+  {{ super() }}
+  <script type="application/ld+json">{{ organisationStructuredData | safe }}</script>
+{% endblock %}
+
 {% block mainContent %}
   {% if organisation.id %}
     <a class="govuk-back-link" href="{{ urlFor('/organisations/' + (organisation.id | string)) }}">{{ organisationName }}</a>

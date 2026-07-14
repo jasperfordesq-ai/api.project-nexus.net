@@ -460,6 +460,15 @@ function numberLabel(value, formatNumber) {
   return new Intl.NumberFormat('en-GB', { maximumFractionDigits: 0 }).format(number);
 }
 
+function inlineScriptJson(value) {
+  return JSON.stringify(value)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+}
+
 function normalizeRequestHost(req) {
   const forwardedHost = String(req.headers['x-forwarded-host'] || '').split(',')[0].trim();
   const raw = String(forwardedHost || req.hostname || req.headers.host || '').trim().toLowerCase();
@@ -1426,10 +1435,27 @@ app.get('/organisations/:id(\\d+)/jobs', requireOrganisationAuth, (req, res) => 
   };
 
   const renderJobs = (organisation) => {
+    const name = String(organisation.name ?? '').trim()
+      || res.locals.t('govuk_alpha_organisations.jobs.title');
+    const description = String(organisation.description ?? '').trim();
+    const website = String(organisation.website ?? '').trim();
+    const email = String(organisation.email ?? organisation.contact_email ?? '').trim();
+    const logo = String(organisation.logo_url ?? '').trim();
+    const structuredData = {
+      '@context': 'https://schema.org',
+      '@type': 'Organization',
+      name
+    };
+    if (description) structuredData.description = Array.from(description).slice(0, 300).join('');
+    if (logo) structuredData.logo = logo;
+    if (website) structuredData.url = website;
+    if (email) structuredData.email = email;
+
     res.render('organisations-jobs', {
       title: res.locals.t('govuk_alpha_organisations.jobs.title'),
       activeNav: 'explore',
-      organisation,
+      organisation: { ...organisation, name },
+      organisationStructuredData: inlineScriptJson(structuredData),
       jobs: []
     });
   };

@@ -16907,6 +16907,43 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('href="/jobs/501"');
   });
 
+  it('matches the Blade organisation jobs fallback and script-safe Organization data', async () => {
+    const api = require('../src/lib/api');
+    const t = createTranslator('en');
+    api.getVolunteerOrganisation.mockResolvedValueOnce({
+      data: {
+        id: 42,
+        name: '   ',
+        description: 'A community </script><script>alert(1)</script> organisation.',
+        website: 'https://example.test',
+        contact_email: 'hello@example.test',
+        logo_url: '/uploads/organisations/logo.png'
+      }
+    });
+
+    const response = await request(app)
+      .get('/organisations/42/jobs')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain(t('govuk_alpha_organisations.jobs.heading', {
+      name: t('govuk_alpha_organisations.jobs.title')
+    }));
+    const structuredDataMatch = response.text.match(/<script type="application\/ld\+json">([^<]+)<\/script>/);
+    expect(structuredDataMatch).not.toBeNull();
+    expect(structuredDataMatch[1]).not.toContain('</script>');
+    expect(JSON.parse(structuredDataMatch[1])).toEqual({
+      '@context': 'https://schema.org',
+      '@type': 'Organization',
+      name: t('govuk_alpha_organisations.jobs.title'),
+      description: 'A community </script><script>alert(1)</script> organisation.',
+      logo: '/uploads/organisations/logo.png',
+      url: 'https://example.test',
+      email: 'hello@example.test'
+    });
+    expect(response.text).not.toContain('<script>alert(1)</script>');
+  });
+
   it('redirects unsigned visitors from organisation jobs before data lookup', async () => {
     const api = require('../src/lib/api');
     api.getOrganisationJobs.mockClear();
