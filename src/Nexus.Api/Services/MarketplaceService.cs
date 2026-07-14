@@ -384,6 +384,7 @@ public class MarketplaceService
 
         var order = new MarketplaceOrder
         {
+            OrderNumber = MarketplaceOrder.GenerateOrderNumber(),
             MarketplaceListingId = listingId,
             BuyerUserId = buyerUserId,
             SellerUserId = listing.UserId,

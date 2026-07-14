@@ -61,6 +61,84 @@ public sealed class MarketplacePaymentServiceTests
     }
 
     [Fact]
+    public async Task ConfirmPaid_DeliversLocalizedBuyerAndSellerEmailAndBellExactlyOnce()
+    {
+        await using var db = CreateDb();
+        var gateway = new FakeGateway { Configured = true };
+        var email = new RecordingEmailService();
+        var service = CreateService(db, gateway, email);
+        var order = SeedPayableOrder(db);
+        (await service.CreateIntentAsync(42, 11, order.Id, CancellationToken.None)).Succeeded.Should().BeTrue();
+        gateway.Retrieved = gateway.Created! with
+        {
+            Status = "succeeded",
+            AmountReceivedMinor = 2599,
+            LatestChargeId = "ch_paid_notifications"
+        };
+
+        (await service.ConfirmAsync(42, 11, gateway.Created!.Id, CancellationToken.None)).Succeeded.Should().BeTrue();
+        (await service.ConfirmAsync(42, 11, gateway.Created!.Id, CancellationToken.None)).Succeeded.Should().BeTrue();
+
+        email.Calls.Should().HaveCount(2);
+        email.Calls.Single(call => call.To == "buyer@example.test").Subject
+            .Should().Be($"Payment received — {order.OrderNumber}");
+        email.Calls.Single(call => call.To == "seller@example.test").Subject
+            .Should().Be($"Bestellung bezahlt – {order.OrderNumber}");
+        email.Calls.Single(call => call.To == "seller@example.test").HtmlBody
+            .Should().Contain("Provider &amp; Seller").And.Contain("25.99 EUR");
+
+        var bells = await db.Notifications.OrderBy(row => row.UserId).ToListAsync();
+        bells.Should().HaveCount(2);
+        bells.Single(row => row.UserId == 11).Should().Match<Notification>(row =>
+            row.TenantId == 42 && row.Type == "marketplace_order" &&
+            row.Title == "Marketplace order" &&
+            row.Body == $"Payment received for order #{order.OrderNumber}: 25.99 EUR" &&
+            row.Link == $"/marketplace/orders/{order.Id}");
+        bells.Single(row => row.UserId == 22).Body
+            .Should().Be($"Bestellung Nr. {order.OrderNumber} wurde bezahlt: 25.99 EUR");
+
+        var deliveries = await db.MarketplaceOrderNotificationDeliveries
+            .OrderBy(row => row.UserId).ThenBy(row => row.Channel).ToListAsync();
+        deliveries.Should().HaveCount(4);
+        deliveries.Should().OnlyContain(row => row.Event == "paid" && row.Status == "delivered" && row.Attempts == 1);
+        deliveries.Where(row => row.Channel == "bell").Should().OnlyContain(row => !string.IsNullOrWhiteSpace(row.EvidenceId));
+        deliveries.Where(row => row.Channel == "email").Should().OnlyContain(row => row.EvidenceId!.StartsWith("mail-"));
+    }
+
+    [Fact]
+    public async Task ConfirmPaid_EmailFailureDoesNotRollbackPaymentOrSuppressBells()
+    {
+        await using var db = CreateDb();
+        var gateway = new FakeGateway { Configured = true };
+        var email = new RecordingEmailService { RejectAddress = "seller@example.test" };
+        var service = CreateService(db, gateway, email);
+        var order = SeedPayableOrder(db);
+        (await service.CreateIntentAsync(42, 11, order.Id, CancellationToken.None)).Succeeded.Should().BeTrue();
+        gateway.Retrieved = gateway.Created! with { Status = "succeeded", AmountReceivedMinor = 2599 };
+
+        var result = await service.ConfirmAsync(42, 11, gateway.Created!.Id, CancellationToken.None);
+
+        result.Succeeded.Should().BeTrue();
+        order.Status.Should().Be("paid");
+        (await db.MarketplacePayments.CountAsync()).Should().Be(1);
+        (await db.Notifications.CountAsync()).Should().Be(2);
+        var sellerEmail = await db.MarketplaceOrderNotificationDeliveries.SingleAsync(row =>
+            row.UserId == 22 && row.Channel == "email");
+        sellerEmail.Status.Should().Be("failed");
+        sellerEmail.LastError.Should().Be("email_provider_rejected");
+        (await db.MarketplaceOrderNotificationDeliveries.CountAsync(row => row.Status == "delivered")).Should().Be(3);
+
+        email.RejectAddress = null;
+        (await service.ConfirmAsync(42, 11, gateway.Created!.Id, CancellationToken.None)).Succeeded.Should().BeTrue();
+
+        email.Calls.Should().HaveCount(3, "only the failed seller email should be retried");
+        (await db.Notifications.CountAsync()).Should().Be(2);
+        await db.Entry(sellerEmail).ReloadAsync();
+        sellerEmail.Status.Should().Be("delivered");
+        sellerEmail.Attempts.Should().Be(2);
+    }
+
+    [Fact]
     public async Task MissingProviderAndMismatchedEconomics_FailClosedWithoutLocalPaymentEvidence()
     {
         await using var db = CreateDb();
@@ -358,6 +436,62 @@ public sealed class MarketplacePaymentServiceTests
         (await db.WebhookEvents.CountAsync()).Should().Be(1);
     }
 
+    [Fact]
+    public async Task MarketplaceWebhook_PaymentSucceededSettlesAndNotifiesUnchangedFrontendFlowOnce()
+    {
+        await using var db = CreateDb();
+        const string secret = "whsec_marketplace_payment_test";
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Stripe:WebhookSecret_Marketplace"] = secret,
+            ["Marketplace:PlatformFeePercent"] = "5",
+            ["Marketplace:EscrowEnabled"] = "false",
+            ["App:FrontendUrl"] = "https://app.example.test"
+        }).Build();
+        var gateway = new FakeGateway { Configured = true };
+        var email = new RecordingEmailService();
+        var paymentService = new MarketplacePaymentService(
+            db, gateway, configuration, NullLogger<MarketplacePaymentService>.Instance, emailService: email);
+        var order = SeedPayableOrder(db);
+        (await paymentService.CreateIntentAsync(42, 11, order.Id, CancellationToken.None)).Succeeded.Should().BeTrue();
+        gateway.Retrieved = gateway.Created! with
+        {
+            Status = "succeeded",
+            AmountReceivedMinor = 2599,
+            LatestChargeId = "ch_webhook_paid"
+        };
+        var controller = new MarketplaceController(
+            new MarketplaceService(db, NullLogger<MarketplaceService>.Instance),
+            db,
+            paymentService: paymentService,
+            configuration: configuration);
+        var body = JsonSerializer.Serialize(new
+        {
+            id = "evt_payment_signed_1",
+            type = "payment_intent.succeeded",
+            data = new { @object = new { id = gateway.Created!.Id } }
+        });
+        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secret));
+        var signature = Convert.ToHexString(hmac.ComputeHash(Encoding.UTF8.GetBytes($"{timestamp}.{body}"))).ToLowerInvariant();
+        var http = new DefaultHttpContext();
+        http.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(body));
+        http.Request.ContentLength = Encoding.UTF8.GetByteCount(body);
+        http.Request.Headers["Stripe-Signature"] = $"t={timestamp},v1={signature}";
+        controller.ControllerContext = new ControllerContext { HttpContext = http };
+
+        (await controller.StripeWebhook(CancellationToken.None)).Should().BeOfType<OkObjectResult>();
+        http.Request.Body.Position = 0;
+        (await controller.StripeWebhook(CancellationToken.None)).Should().BeOfType<OkObjectResult>();
+
+        order.Status.Should().Be("paid");
+        (await db.MarketplacePayments.CountAsync()).Should().Be(1);
+        (await db.WebhookEvents.CountAsync(row => row.EventType == "payment_intent.succeeded")).Should().Be(1);
+        (await db.Notifications.CountAsync()).Should().Be(2);
+        (await db.MarketplaceOrderNotificationDeliveries.CountAsync()).Should().Be(4);
+        email.Calls.Should().HaveCount(2);
+    }
+
     private static NexusDbContext CreateDb()
     {
         var tenant = new TenantContext();
@@ -370,6 +504,28 @@ public sealed class MarketplacePaymentServiceTests
 
     private static MarketplaceOrder SeedPayableOrder(NexusDbContext db)
     {
+        db.Tenants.Add(new Tenant { Id = 42, Slug = "acme", Name = "Acme" });
+        db.Users.AddRange(
+            new User
+            {
+                Id = 11, TenantId = 42, Email = "buyer@example.test", FirstName = "Buyer",
+                LastName = "Example", PreferredLanguage = "en"
+            },
+            new User
+            {
+                Id = 22, TenantId = 42, Email = "seller@example.test", FirstName = "Seller",
+                LastName = "Example", PreferredLanguage = "de"
+            });
+        db.MarketplaceListings.Add(new MarketplaceListing
+        {
+            Id = 100,
+            TenantId = 42,
+            UserId = 22,
+            Title = "Provider & Seller",
+            Description = "Payment notification fixture",
+            Status = "active",
+            ModerationStatus = "approved"
+        });
         var seller = new MarketplaceSellerProfile
         {
             TenantId = 42,
@@ -424,8 +580,46 @@ public sealed class MarketplacePaymentServiceTests
         ["Marketplace:EscrowEnabled"] = "false"
     }).Build();
 
-    private static MarketplacePaymentService CreateService(NexusDbContext db, IMarketplaceStripeGateway gateway) =>
-        new(db, gateway, Configuration(), NullLogger<MarketplacePaymentService>.Instance);
+    private static MarketplacePaymentService CreateService(
+        NexusDbContext db,
+        IMarketplaceStripeGateway gateway,
+        IEmailService? email = null) =>
+        new(db, gateway, Configuration(), NullLogger<MarketplacePaymentService>.Instance, emailService: email);
+
+    private sealed class RecordingEmailService : IEmailService
+    {
+        public List<EmailCall> Calls { get; } = [];
+        public string? RejectAddress { get; set; }
+
+        public Task<bool> SendEmailAsync(string to, string subject, string htmlBody, string? textBody = null,
+            CancellationToken ct = default) =>
+            Task.FromResult(!string.Equals(to, RejectAddress, StringComparison.OrdinalIgnoreCase));
+
+        public Task<EmailDeliveryResult> SendEmailWithEvidenceAsync(string to, string subject, string htmlBody,
+            string? textBody = null, string? idempotencyKey = null, CancellationToken ct = default)
+        {
+            Calls.Add(new(to, subject, htmlBody, textBody, idempotencyKey));
+            var accepted = !string.Equals(to, RejectAddress, StringComparison.OrdinalIgnoreCase);
+            return Task.FromResult(new EmailDeliveryResult(
+                accepted,
+                "test-mail",
+                accepted ? $"mail-{Calls.Count}" : null,
+                accepted ? null : "email_provider_rejected"));
+        }
+
+        public Task<bool> SendPasswordResetEmailAsync(string to, string resetToken, string userName, string resetUrl,
+            CancellationToken ct = default) => Task.FromResult(true);
+        public Task<bool> SendWelcomeEmailAsync(string to, string userName, string tenantName,
+            CancellationToken ct = default) => Task.FromResult(true);
+        public Task<bool> IsHealthyAsync(CancellationToken ct = default) => Task.FromResult(true);
+    }
+
+    private sealed record EmailCall(
+        string To,
+        string Subject,
+        string HtmlBody,
+        string? TextBody,
+        string? IdempotencyKey);
 
     private sealed class FakeGateway : IMarketplaceStripeGateway
     {

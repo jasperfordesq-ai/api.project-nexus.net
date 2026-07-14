@@ -2076,7 +2076,7 @@ public class MarketplaceController : ControllerBase
         return new
     {
         id = order.Id,
-        order_number = $"ORD-{order.Id:D6}",
+        order_number = order.OrderNumber,
         listing_id = order.MarketplaceListingId,
         marketplace_listing_id = order.MarketplaceListingId,
         buyer_id = order.BuyerUserId,

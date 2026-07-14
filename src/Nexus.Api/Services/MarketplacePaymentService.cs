@@ -4,6 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 using System.Globalization;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
@@ -276,7 +277,8 @@ public sealed class MarketplacePaymentService(
     IMarketplaceStripeGateway stripe,
     IConfiguration configuration,
     ILogger<MarketplacePaymentService> logger,
-    PushNotificationService? pushNotifications = null)
+    PushNotificationService? pushNotifications = null,
+    IEmailService? emailService = null)
 {
     private static readonly HashSet<string> SupportedCurrencies = new(StringComparer.Ordinal)
     {
@@ -630,7 +632,22 @@ public sealed class MarketplacePaymentService(
         var existingEvent = await db.WebhookEvents.IgnoreQueryFilters().AsNoTracking()
             .SingleOrDefaultAsync(x => x.TenantId == order.TenantId && x.Provider == "stripe-marketplace" &&
                                        x.ExternalEventId == externalEventId, ct);
-        if (existingEvent is not null) return new(new { received = true, applied = existingEvent.Status == "processed" });
+        if (existingEvent is not null)
+        {
+            var existingPayment = await db.MarketplacePayments.IgnoreQueryFilters()
+                .SingleOrDefaultAsync(x => x.TenantId == order.TenantId &&
+                                           x.StripePaymentIntentId == paymentIntentId, ct);
+            if (existingPayment is not null)
+            {
+                try { await DeliverPaidNotificationsAsync(order, existingPayment, ct); }
+                catch (Exception exception) when (exception is not OperationCanceledException || !ct.IsCancellationRequested)
+                {
+                    logger.LogWarning(exception,
+                        "Marketplace paid notification healing failed for replayed event {EventId}.", externalEventId);
+                }
+            }
+            return new(new { received = true, applied = existingEvent.Status == "processed" });
+        }
 
         var result = await ConfirmBoundOrderAsync(order, paymentIntentId, ct);
         if (!result.Succeeded) return result;
@@ -698,41 +715,370 @@ public sealed class MarketplacePaymentService(
             !string.Equals(intent.DestinationAccountId, seller.StripeAccountId, StringComparison.Ordinal))
             return Error("PAYMENT_ERROR", "Stripe destination account does not match the seller.", 400);
 
-        await using var transaction = db.Database.IsRelational()
+        MarketplacePayment payment;
+        await using (var transaction = db.Database.IsRelational()
             ? await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted, ct)
-            : null;
-        if (transaction is not null)
+            : null)
         {
-            await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock({tenantId}, {order.Id})", ct);
-            await db.Entry(order).ReloadAsync(ct);
+            if (transaction is not null)
+            {
+                await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock({tenantId}, {order.Id})", ct);
+                await db.Entry(order).ReloadAsync(ct);
+            }
+            var existing = await db.MarketplacePayments.IgnoreQueryFilters()
+                .SingleOrDefaultAsync(x => x.TenantId == tenantId && x.StripePaymentIntentId == paymentIntentId, ct);
+            if (existing is not null)
+            {
+                payment = existing;
+            }
+            else
+            {
+                if (order.Status != "pending_payment") return Error("PAYMENT_ERROR", "Order is not awaiting payment.", 400);
+                payment = new MarketplacePayment
+                {
+                    TenantId = tenantId,
+                    MarketplaceOrderId = order.Id,
+                    StripePaymentIntentId = intent.Id,
+                    StripeChargeId = intent.LatestChargeId,
+                    FundsFlow = "destination_charge",
+                    Amount = FromMinor(amountMinor, currency),
+                    Currency = currency,
+                    PlatformFee = FromMinor(feeMinor, currency),
+                    SellerPayout = FromMinor(payoutMinor, currency),
+                    PaymentMethod = intent.PaymentMethod,
+                    Status = "succeeded",
+                    PayoutStatus = "paid",
+                    PaidOutAt = DateTime.UtcNow
+                };
+                db.MarketplacePayments.Add(payment);
+                order.Status = "paid";
+                order.PaymentExpiresAt = null;
+                order.UpdatedAt = DateTime.UtcNow;
+                await db.SaveChangesAsync(ct);
+            }
+            if (transaction is not null) await transaction.CommitAsync(ct);
         }
-        var existing = await db.MarketplacePayments.IgnoreQueryFilters()
-            .SingleOrDefaultAsync(x => x.TenantId == tenantId && x.StripePaymentIntentId == paymentIntentId, ct);
-        if (existing is not null) return new(Projection(existing));
-        if (order.Status != "pending_payment") return Error("PAYMENT_ERROR", "Order is not awaiting payment.", 400);
-        var payment = new MarketplacePayment
+
+        try
         {
-            TenantId = tenantId,
-            MarketplaceOrderId = order.Id,
-            StripePaymentIntentId = intent.Id,
-            StripeChargeId = intent.LatestChargeId,
-            FundsFlow = "destination_charge",
-            Amount = FromMinor(amountMinor, currency),
-            Currency = currency,
-            PlatformFee = FromMinor(feeMinor, currency),
-            SellerPayout = FromMinor(payoutMinor, currency),
-            PaymentMethod = intent.PaymentMethod,
-            Status = "succeeded",
-            PayoutStatus = "paid",
-            PaidOutAt = DateTime.UtcNow
-        };
-        db.MarketplacePayments.Add(payment);
-        order.Status = "paid";
-        order.PaymentExpiresAt = null;
-        order.UpdatedAt = DateTime.UtcNow;
-        await db.SaveChangesAsync(ct);
-        if (transaction is not null) await transaction.CommitAsync(ct);
+            await DeliverPaidNotificationsAsync(order, payment, ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception,
+                "Marketplace paid notification dispatch failed after settlement for tenant {TenantId}, order {OrderId}.",
+                tenantId, order.Id);
+        }
         return new(Projection(payment));
+    }
+
+    private async Task DeliverPaidNotificationsAsync(
+        MarketplaceOrder order,
+        MarketplacePayment payment,
+        CancellationToken ct)
+    {
+        var listingTitle = await db.MarketplaceListings.IgnoreQueryFilters().AsNoTracking()
+            .Where(row => row.TenantId == order.TenantId && row.Id == order.MarketplaceListingId)
+            .Select(row => row.Title)
+            .SingleOrDefaultAsync(ct) ?? string.Empty;
+        var tenant = await db.Tenants.IgnoreQueryFilters().AsNoTracking()
+            .SingleOrDefaultAsync(row => row.Id == order.TenantId, ct);
+        var link = $"/marketplace/orders/{order.Id}";
+        var amount = FormatPaidAmount(payment.Amount, payment.Currency);
+
+        await DeliverPaidBellAsync(order, order.BuyerUserId, buyer: true, amount, link, ct);
+        await DeliverPaidBellAsync(order, order.SellerUserId, buyer: false, amount, link, ct);
+        await DeliverPaidEmailAsync(order, order.BuyerUserId, buyer: true, amount, listingTitle, tenant, link, ct);
+        await DeliverPaidEmailAsync(order, order.SellerUserId, buyer: false, amount, listingTitle, tenant, link, ct);
+    }
+
+    private async Task DeliverPaidBellAsync(
+        MarketplaceOrder order,
+        int userId,
+        bool buyer,
+        string amount,
+        string link,
+        CancellationToken ct)
+    {
+        try
+        {
+            await using var transaction = db.Database.IsRelational()
+                ? await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted, ct)
+                : null;
+            if (transaction is not null)
+                await db.Database.ExecuteSqlInterpolatedAsync(
+                    $"SELECT pg_advisory_xact_lock({order.TenantId}, {order.Id})", ct);
+
+            var delivery = await ClaimPaidDeliveryAsync(order, userId, "bell", ct);
+            if (delivery is null) return;
+
+            var user = await db.Users.IgnoreQueryFilters().AsNoTracking()
+                .SingleOrDefaultAsync(row => row.TenantId == order.TenantId && row.Id == userId, ct);
+            if (user is null)
+            {
+                MarkDeliverySkipped(delivery);
+                await db.SaveChangesAsync(ct);
+                if (transaction is not null) await transaction.CommitAsync(ct);
+                return;
+            }
+
+            var copy = MarketplacePaidNotificationCopy.For(user.PreferredLanguage);
+            var message = RenderPaidText(buyer ? copy.BuyerBell : copy.SellerBell,
+                order.OrderNumber, amount, string.Empty);
+            var notification = new Notification
+            {
+                TenantId = order.TenantId,
+                UserId = userId,
+                Type = "marketplace_order",
+                Title = "Marketplace order",
+                Body = message,
+                Link = link,
+                CreatedAt = DateTime.UtcNow
+            };
+            db.Notifications.Add(notification);
+            await db.SaveChangesAsync(ct);
+            MarkDeliveryDelivered(delivery, notification.Id.ToString(CultureInfo.InvariantCulture));
+            await db.SaveChangesAsync(ct);
+            if (transaction is not null) await transaction.CommitAsync(ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception,
+                "Marketplace paid bell failed for tenant {TenantId}, order {OrderId}, user {UserId}.",
+                order.TenantId, order.Id, userId);
+            await TryMarkPaidDeliveryFailedAsync(order, userId, "bell", exception.Message, ct);
+        }
+    }
+
+    private async Task DeliverPaidEmailAsync(
+        MarketplaceOrder order,
+        int userId,
+        bool buyer,
+        string amount,
+        string listingTitle,
+        Tenant? tenant,
+        string link,
+        CancellationToken ct)
+    {
+        MarketplaceOrderNotificationDelivery? delivery;
+        try
+        {
+            await using var transaction = db.Database.IsRelational()
+                ? await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted, ct)
+                : null;
+            if (transaction is not null)
+                await db.Database.ExecuteSqlInterpolatedAsync(
+                    $"SELECT pg_advisory_xact_lock({order.TenantId}, {order.Id})", ct);
+            delivery = await ClaimPaidDeliveryAsync(order, userId, "email", ct);
+            if (delivery is null) return;
+            await db.SaveChangesAsync(ct);
+            if (transaction is not null) await transaction.CommitAsync(ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception,
+                "Marketplace paid email claim failed for tenant {TenantId}, order {OrderId}, user {UserId}.",
+                order.TenantId, order.Id, userId);
+            return;
+        }
+
+        var user = await db.Users.IgnoreQueryFilters().AsNoTracking()
+            .SingleOrDefaultAsync(row => row.TenantId == order.TenantId && row.Id == userId, ct);
+        if (user is null || string.IsNullOrWhiteSpace(user.Email))
+        {
+            await SetPaidDeliveryOutcomeAsync(delivery.Id, "skipped", null, null, ct);
+            return;
+        }
+        if (emailService is null)
+        {
+            await SetPaidDeliveryOutcomeAsync(delivery.Id, "failed", null, "email_service_unavailable", ct);
+            return;
+        }
+
+        var copy = MarketplacePaidNotificationCopy.For(user.PreferredLanguage);
+        var orderNumber = WebUtility.HtmlEncode(order.OrderNumber);
+        var encodedAmount = WebUtility.HtmlEncode(amount);
+        var encodedTitle = WebUtility.HtmlEncode(listingTitle);
+        var subject = RenderPaidText(buyer ? copy.BuyerSubject : copy.SellerSubject,
+            order.OrderNumber, amount, listingTitle);
+        var heading = buyer ? copy.BuyerTitle : copy.SellerTitle;
+        var body = RenderPaidText(buyer ? copy.BuyerBody : copy.SellerBody,
+            orderNumber, encodedAmount, encodedTitle);
+        var fullUrl = (tenant is null ? (configuration["App:FrontendUrl"] ?? "https://app.project-nexus.ie").TrimEnd('/')
+            : BuildTenantFrontendBase(tenant)) + link;
+        var safeUrl = WebUtility.HtmlEncode(fullUrl);
+        var safeName = WebUtility.HtmlEncode(string.IsNullOrWhiteSpace(user.FirstName) ? "Member" : user.FirstName);
+        var html = $"<h1>{WebUtility.HtmlEncode(heading)}</h1><p>Hello {safeName},</p><p>{body}</p><p><a href=\"{safeUrl}\">View Order</a></p>";
+        var text = $"{heading}\n{WebUtility.HtmlDecode(body.Replace("<strong>", string.Empty).Replace("</strong>", string.Empty))}\nView Order: {fullUrl}";
+        EmailDeliveryResult result;
+        try
+        {
+            result = await emailService.SendEmailWithEvidenceAsync(
+                user.Email,
+                subject,
+                html,
+                text,
+                $"marketplace-order:{order.TenantId}:{order.Id}:paid:{userId}:email",
+                ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception,
+                "Marketplace paid email transport failed for tenant {TenantId}, order {OrderId}, user {UserId}.",
+                order.TenantId, order.Id, userId);
+            await SetPaidDeliveryOutcomeAsync(delivery.Id, "failed", null, exception.Message, CancellationToken.None);
+            return;
+        }
+
+        await SetPaidDeliveryOutcomeAsync(
+            delivery.Id,
+            result.Accepted ? "delivered" : "failed",
+            result.Accepted ? result.ProviderMessageId ?? result.Provider : null,
+            result.Accepted ? null : result.FailureReason ?? "email_provider_rejected",
+            ct);
+    }
+
+    private async Task<MarketplaceOrderNotificationDelivery?> ClaimPaidDeliveryAsync(
+        MarketplaceOrder order,
+        int userId,
+        string channel,
+        CancellationToken ct)
+    {
+        var now = DateTime.UtcNow;
+        var delivery = await db.MarketplaceOrderNotificationDeliveries.IgnoreQueryFilters()
+            .SingleOrDefaultAsync(row => row.TenantId == order.TenantId &&
+                                         row.MarketplaceOrderId == order.Id &&
+                                         row.Event == "paid" &&
+                                         row.UserId == userId &&
+                                         row.Channel == channel, ct);
+        if (delivery is not null)
+        {
+            if (delivery.Status is "delivered" or "skipped") return null;
+            if (delivery.Status == "claimed" && delivery.ClaimedAt > now.AddMinutes(-10)) return null;
+            delivery.Status = "claimed";
+            delivery.Attempts++;
+            delivery.ClaimedAt = now;
+            delivery.DeliveredAt = null;
+            delivery.FailedAt = null;
+            delivery.EvidenceId = null;
+            delivery.LastError = null;
+            delivery.UpdatedAt = now;
+            return delivery;
+        }
+
+        delivery = new MarketplaceOrderNotificationDelivery
+        {
+            TenantId = order.TenantId,
+            MarketplaceOrderId = order.Id,
+            Event = "paid",
+            UserId = userId,
+            Channel = channel,
+            Status = "claimed",
+            Attempts = 1,
+            ClaimedAt = now,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        db.MarketplaceOrderNotificationDeliveries.Add(delivery);
+        return delivery;
+    }
+
+    private async Task SetPaidDeliveryOutcomeAsync(
+        long deliveryId,
+        string status,
+        string? evidenceId,
+        string? error,
+        CancellationToken ct)
+    {
+        var delivery = await db.MarketplaceOrderNotificationDeliveries.IgnoreQueryFilters()
+            .SingleAsync(row => row.Id == deliveryId, ct);
+        if (status == "delivered") MarkDeliveryDelivered(delivery, evidenceId);
+        else if (status == "skipped") MarkDeliverySkipped(delivery);
+        else MarkDeliveryFailed(delivery, error ?? "delivery_failed");
+        await db.SaveChangesAsync(ct);
+    }
+
+    private async Task TryMarkPaidDeliveryFailedAsync(
+        MarketplaceOrder order,
+        int userId,
+        string channel,
+        string error,
+        CancellationToken ct)
+    {
+        try
+        {
+            var delivery = await db.MarketplaceOrderNotificationDeliveries.IgnoreQueryFilters()
+                .SingleOrDefaultAsync(row => row.TenantId == order.TenantId &&
+                                             row.MarketplaceOrderId == order.Id &&
+                                             row.Event == "paid" && row.UserId == userId &&
+                                             row.Channel == channel, ct);
+            if (delivery is null || delivery.Status is "delivered" or "skipped") return;
+            MarkDeliveryFailed(delivery, error);
+            await db.SaveChangesAsync(ct);
+        }
+        catch (Exception markException)
+        {
+            logger.LogWarning(markException,
+                "Marketplace paid delivery failure evidence could not be persisted for order {OrderId}.", order.Id);
+        }
+    }
+
+    private static void MarkDeliveryDelivered(MarketplaceOrderNotificationDelivery delivery, string? evidenceId)
+    {
+        delivery.Status = "delivered";
+        delivery.DeliveredAt = DateTime.UtcNow;
+        delivery.FailedAt = null;
+        delivery.EvidenceId = evidenceId;
+        delivery.LastError = null;
+        delivery.UpdatedAt = DateTime.UtcNow;
+    }
+
+    private static void MarkDeliverySkipped(MarketplaceOrderNotificationDelivery delivery)
+    {
+        delivery.Status = "skipped";
+        delivery.DeliveredAt = null;
+        delivery.FailedAt = null;
+        delivery.EvidenceId = null;
+        delivery.LastError = null;
+        delivery.UpdatedAt = DateTime.UtcNow;
+    }
+
+    private static void MarkDeliveryFailed(MarketplaceOrderNotificationDelivery delivery, string error)
+    {
+        delivery.Status = "failed";
+        delivery.DeliveredAt = null;
+        delivery.FailedAt = DateTime.UtcNow;
+        delivery.EvidenceId = null;
+        delivery.LastError = error.Length <= 2000 ? error : error[..2000];
+        delivery.UpdatedAt = DateTime.UtcNow;
+    }
+
+    private static string RenderPaidText(string template, string orderNumber, string amount, string title) =>
+        template.Replace("{{order_number}}", orderNumber, StringComparison.Ordinal)
+            .Replace("{{amount}}", amount, StringComparison.Ordinal)
+            .Replace("{{title}}", title, StringComparison.Ordinal);
+
+    private static string FormatPaidAmount(decimal amount, string currency)
+    {
+        var normalized = NormalizeCurrency(currency) ?? "EUR";
+        return amount.ToString(CurrencyExponent(normalized) == 0 ? "0" : "0.00", CultureInfo.InvariantCulture) +
+               " " + normalized;
     }
 
     public async Task<MarketplacePaymentResult> StatusAsync(int tenantId, int userId, long paymentId, CancellationToken ct)

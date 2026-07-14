@@ -570,6 +570,7 @@ public class NexusDbContext : DbContext
     public DbSet<MarketplaceOffer> MarketplaceOffers => Set<MarketplaceOffer>();
     public DbSet<MarketplaceOrder> MarketplaceOrders => Set<MarketplaceOrder>();
     public DbSet<MarketplacePayment> MarketplacePayments => Set<MarketplacePayment>();
+    public DbSet<MarketplaceOrderNotificationDelivery> MarketplaceOrderNotificationDeliveries => Set<MarketplaceOrderNotificationDelivery>();
     public DbSet<MarketplaceDispute> MarketplaceDisputes => Set<MarketplaceDispute>();
     public DbSet<MarketplaceReport> MarketplaceReports => Set<MarketplaceReport>();
     public DbSet<MarketplaceSavedSearch> MarketplaceSavedSearches => Set<MarketplaceSavedSearch>();
@@ -849,6 +850,10 @@ public class NexusDbContext : DbContext
         {
             entity.ToTable("marketplace_orders");
             entity.HasAlternateKey(e => new { e.TenantId, e.Id });
+            entity.Property(e => e.OrderNumber).HasMaxLength(100);
+            entity.HasIndex(e => new { e.TenantId, e.OrderNumber })
+                .IsUnique()
+                .HasDatabaseName("uk_marketplace_order_number");
             entity.HasIndex(e => new { e.TenantId, e.WalletRefundTransactionId }).IsUnique().HasFilter("\"WalletRefundTransactionId\" IS NOT NULL");
             entity.Property(e => e.PaymentIntentId).HasMaxLength(255);
             entity.Property(e => e.StripeCheckoutMode).HasMaxLength(32);
@@ -880,6 +885,31 @@ public class NexusDbContext : DbContext
             entity.HasIndex(e => new { e.TenantId, e.MarketplaceOrderId });
             entity.HasIndex(e => new { e.TenantId, e.Status });
             entity.HasIndex(e => e.StripePaymentIntentId).IsUnique();
+            entity.HasOne<MarketplaceOrder>()
+                .WithMany()
+                .HasForeignKey(e => new { e.TenantId, e.MarketplaceOrderId })
+                .HasPrincipalKey(e => new { e.TenantId, e.Id })
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+        modelBuilder.Entity<MarketplaceOrderNotificationDelivery>(entity =>
+        {
+            entity.ToTable("marketplace_order_notification_deliveries", table =>
+            {
+                table.HasCheckConstraint("chk_marketplace_order_notification_delivery_channel", "\"Channel\" IN ('email','bell')");
+                table.HasCheckConstraint("chk_marketplace_order_notification_delivery_status", "\"Status\" IN ('claimed','delivered','failed','skipped')");
+                table.HasCheckConstraint("chk_marketplace_order_notification_delivery_attempts", "\"Attempts\" > 0");
+            });
+            entity.Property(e => e.Event).HasMaxLength(50);
+            entity.Property(e => e.Channel).HasMaxLength(20);
+            entity.Property(e => e.Status).HasMaxLength(20);
+            entity.Property(e => e.EvidenceId).HasMaxLength(255);
+            entity.HasIndex(e => new { e.TenantId, e.MarketplaceOrderId, e.Event, e.UserId, e.Channel })
+                .IsUnique()
+                .HasDatabaseName("uk_marketplace_order_delivery");
+            entity.HasIndex(e => new { e.TenantId, e.MarketplaceOrderId, e.Event })
+                .HasDatabaseName("idx_marketplace_order_delivery_event");
+            entity.HasIndex(e => new { e.TenantId, e.Status, e.ClaimedAt })
+                .HasDatabaseName("idx_marketplace_order_delivery_status");
             entity.HasOne<MarketplaceOrder>()
                 .WithMany()
                 .HasForeignKey(e => new { e.TenantId, e.MarketplaceOrderId })
@@ -1095,6 +1125,14 @@ public class NexusDbContext : DbContext
             if (entry.State == EntityState.Added && entry.Entity.TenantId == 0)
             {
                 entry.Entity.TenantId = tenantId;
+            }
+        }
+
+        foreach (var entry in ChangeTracker.Entries<MarketplaceOrder>())
+        {
+            if (entry.State == EntityState.Added && string.IsNullOrWhiteSpace(entry.Entity.OrderNumber))
+            {
+                entry.Entity.OrderNumber = MarketplaceOrder.GenerateOrderNumber();
             }
         }
     }

@@ -3,6 +3,9 @@
 // Author: Jasper Ford
 // See NOTICE file for attribution and acknowledgements.
 
+using System.Numerics;
+using System.Security.Cryptography;
+
 namespace Nexus.Api.Entities;
 
 public class MarketplaceCategory : ITenantEntity
@@ -139,8 +142,11 @@ public class MarketplaceOffer : ITenantEntity
 
 public class MarketplaceOrder : ITenantEntity
 {
+    private const string CrockfordBase32 = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+
     public int Id { get; set; }
     public int TenantId { get; set; }
+    public string OrderNumber { get; set; } = string.Empty;
     public int MarketplaceListingId { get; set; }
     public int BuyerUserId { get; set; }
     public int SellerUserId { get; set; }
@@ -165,6 +171,28 @@ public class MarketplaceOrder : ITenantEntity
     public DateTime? UpdatedAt { get; set; }
 
     public MarketplaceListing? Listing { get; set; }
+
+    public static string GenerateOrderNumber()
+    {
+        Span<byte> value = stackalloc byte[16];
+        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        value[0] = (byte)(timestamp >> 40);
+        value[1] = (byte)(timestamp >> 32);
+        value[2] = (byte)(timestamp >> 24);
+        value[3] = (byte)(timestamp >> 16);
+        value[4] = (byte)(timestamp >> 8);
+        value[5] = (byte)timestamp;
+        RandomNumberGenerator.Fill(value[6..]);
+
+        var number = new BigInteger(value, isUnsigned: true, isBigEndian: true);
+        Span<char> encoded = stackalloc char[26];
+        for (var index = encoded.Length - 1; index >= 0; index--)
+        {
+            number = BigInteger.DivRem(number, 32, out var remainder);
+            encoded[index] = CrockfordBase32[(int)remainder];
+        }
+        return $"MKT-{encoded}";
+    }
 }
 
 public class MarketplacePayment : ITenantEntity
@@ -187,6 +215,25 @@ public class MarketplacePayment : ITenantEntity
     public string PayoutStatus { get; set; } = "pending";
     public string? PayoutId { get; set; }
     public DateTime? PaidOutAt { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+
+public class MarketplaceOrderNotificationDelivery : ITenantEntity
+{
+    public long Id { get; set; }
+    public int TenantId { get; set; }
+    public int MarketplaceOrderId { get; set; }
+    public string Event { get; set; } = string.Empty;
+    public int UserId { get; set; }
+    public string Channel { get; set; } = string.Empty;
+    public string Status { get; set; } = "claimed";
+    public int Attempts { get; set; } = 1;
+    public DateTime ClaimedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? DeliveredAt { get; set; }
+    public DateTime? FailedAt { get; set; }
+    public string? EvidenceId { get; set; }
+    public string? LastError { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
