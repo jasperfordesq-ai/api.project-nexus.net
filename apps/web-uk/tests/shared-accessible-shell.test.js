@@ -10057,6 +10057,31 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('href="/listings">Browse listings</a>');
   });
 
+  it('matches Blade title trimming and positive-ID links for simple search results', async () => {
+    const api = require('../src/lib/api');
+    api.searchV2.mockResolvedValueOnce({
+      data: [
+        { type: 'listing', id: 42, title: '  Garden help  ', name: 'Ignored fallback' },
+        { type: 'user', id: 77, title: '   ', name: 'Must not render' },
+        { type: 'event', id: -5, title: 'Unlinked community event' },
+        { type: 'group', id: 9, name: 'Fallback group name' }
+      ],
+      meta: { search: { query: 'community', total: 4, type: 'all' } }
+    });
+
+    const response = await request(app)
+      .get('/search?q=community')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('href="/listings/42">Garden help</a>');
+    expect(response.text).not.toContain('Ignored fallback');
+    expect(response.text).not.toContain('Must not render');
+    expect(response.text).toContain('Unlinked community event');
+    expect(response.text).not.toContain('href="/events/-5"');
+    expect(response.text).toContain('href="/groups/9">Fallback group name</a>');
+  });
+
   it('submits and preserves a one-character search like Laravel Blade', async () => {
     const api = require('../src/lib/api');
     api.searchV2.mockResolvedValueOnce({

@@ -268,6 +268,22 @@ function groupedSearchResults(rows) {
   return grouped;
 }
 
+function simpleSearchResults(rows) {
+  return (Array.isArray(rows) ? rows : []).map((row) => {
+    const item = objectFrom(row);
+    const selectedTitle = item.title === null || item.title === undefined
+      ? item.name
+      : item.title;
+    const id = intFrom(item.id);
+
+    return {
+      ...item,
+      displayTitle: textFrom(selectedTitle),
+      linkId: id > 0 ? id : 0
+    };
+  });
+}
+
 function filteredSearchResults(rows, state) {
   const from = state.filters.date_from ? new Date(`${state.filters.date_from}T00:00:00Z`) : null;
   const to = state.filters.date_to ? new Date(`${state.filters.date_to}T23:59:59.999Z`) : null;
@@ -534,7 +550,7 @@ router.get('/', requireAuth, asyncRoute(async (req, res) => {
   try {
     const params = { q: query, type: SIMPLE_SEARCH_API_TYPES[type], per_page: 30 };
     const result = await searchV2(req.token, params);
-    const results = Array.isArray(result?.data) ? result.data : [];
+    const results = simpleSearchResults(result?.data);
     const returnedTotal = results.length;
     const totalResults = intFrom(result?.meta?.search?.total) || returnedTotal;
 
