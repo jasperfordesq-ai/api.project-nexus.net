@@ -1043,6 +1043,13 @@ rewriting.
   `aria-current="page"` item. Focused active/inactive rendered proof passes
   `2/2`, preventing browser history from visually overriding the current
   section while retaining ordinary visited styling on inactive links.
+- Signed Event detail now renders attached polls from Laravel's event-scoped
+  list plus full-detail contracts. Focused proof covers open voting without
+  leaked totals, closed rounded results, open already-voted secrecy, leading
+  and own-choice tags, no-options copy, and exact success/failure outcomes.
+  Anonymous poll depth remains an upstream bearer-API constraint; the current
+  full aggregate is also not green because an unrelated group-upload case hit
+  host `ENOBUFS`/timeout after the new Event assertion passed.
 - The post-slice complete non-mutating checkpoint passes `52/52` suites and
   `1,675/1,675` tests after replacing the stale member star-display guard with
   a current rating-tag/assistive-copy guard. Route, API-ledger, locale,

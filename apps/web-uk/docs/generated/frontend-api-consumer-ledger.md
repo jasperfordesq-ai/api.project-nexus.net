@@ -5,9 +5,9 @@ Status: **Generated snapshot — static consumer inventory, not certification**
 Generated from `src/lib/api.js`, routed Web UK consumers, tests, and Laravel `openapi.json`.
 This is static evidence: an OpenAPI match or test reference does not prove runtime behavior, role policy, side effects, cleanup, or frontend parity.
 
-- Generated: 2026-07-14T18:36:49.819Z
+- Generated: 2026-07-14T19:01:56.485Z
 - Laravel commit SHA: `903d03d3db78bbf87129ad35728be3b72819acaf`
-- Web UK repository commit SHA: `288beba0ca198cef51b5d8ba376b7b1e57731e7b`
+- Web UK repository commit SHA: `023625ead3294eea8118548966893e4427d99460`
 - Laravel working tree dirty: yes
 - Web UK repository working tree dirty: yes
 - Provenance caveat: Laravel and Web UK repository working trees were dirty when generated. Commit SHAs identify HEAD only; generated content may include uncommitted changes from the dirty working trees.
@@ -531,7 +531,7 @@ The JSON companion contains the full request/response, status/error, redirect, s
 | POST | `/api/v2/polls` | `createPoll` | documented | state-changing; disposable-environment runtime proof required<br>fixture-specific cleanup and final absence/equality proof required | src/routes/poll-actions.js | tests/api.test.js<br>tests/shared-accessible-shell.test.js |
 | GET | `/api/v2/polls?{query}` | `getPolls` | documented | read-only by HTTP method<br>not applicable | src/routes/events.js<br>src/routes/poll-actions.js<br>src/routes/polls.js | tests/api.test.js<br>tests/runtime/groups-mutation.spec.js<br>tests/shared-accessible-shell.test.js |
 | DELETE | `/api/v2/polls/{param}` | `deletePoll` | documented | state-changing; disposable-environment runtime proof required<br>fixture-specific cleanup and final absence/equality proof required | src/routes/poll-actions.js | tests/api.test.js<br>tests/runtime/groups-mutation.spec.js<br>tests/shared-accessible-shell.test.js |
-| GET | `/api/v2/polls/{param}` | `getPoll` | documented | read-only by HTTP method<br>not applicable | src/routes/poll-actions.js<br>src/routes/polls.js | tests/api.test.js<br>tests/shared-accessible-shell.test.js |
+| GET | `/api/v2/polls/{param}` | `getPoll` | documented | read-only by HTTP method<br>not applicable | src/routes/events.js<br>src/routes/poll-actions.js<br>src/routes/polls.js | tests/api.test.js<br>tests/shared-accessible-shell.test.js |
 | GET | `/api/v2/polls/{param}/export` | `getPollExport` | documented | read-only by HTTP method<br>not applicable | src/routes/poll-actions.js | tests/shared-accessible-shell.test.js |
 | POST | `/api/v2/polls/{param}/rank` | `rankPoll` | documented | state-changing; disposable-environment runtime proof required<br>fixture-specific cleanup and final absence/equality proof required | src/routes/poll-actions.js | tests/api.test.js<br>tests/shared-accessible-shell.test.js |
 | GET | `/api/v2/polls/{param}/ranked-results` | `getPollRankedResults` | documented | read-only by HTTP method<br>not applicable | src/routes/poll-actions.js | tests/shared-accessible-shell.test.js |

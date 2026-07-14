@@ -171,7 +171,7 @@ Refresh the Laravel Blade/API source and Web UK implementation before relying on
 these numbers after either source moves.
 
 At this documentation audit, the product-source baseline was
-`288beba0ca198cef51b5d8ba376b7b1e57731e7b`. The revoked-session confirmation,
+`023625ead3294eea8118548966893e4427d99460`. The revoked-session confirmation,
 Laravel method-spoof reconciliation, group-message contract, residual API-
 consumer correction, and backend-request timeout slices are above the frozen
 bank and remain **published and unscored**. The documentation remediation is
@@ -186,7 +186,7 @@ together from a clean published checkout.
   with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
   Only this fixed-rubric audit contributes to the current bank.
 - **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `288beba0`, including the later identity/session confirmation,
+  baseline `023625ea`, including the later identity/session confirmation,
   method-spoof reconciliation, group-message contract, residual API-consumer
   correction, and backend-request timeout slices. Their evidence is useful, but they
   contribute zero points until one complete fixed-rubric re-audit explicitly
@@ -206,9 +206,9 @@ together from a clean published checkout.
 | Missing Laravel routes | 1 | Event offline check-in code generation |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 52/52 suites, 1,675/1,675 tests | Latest recorded uninterrupted full gate after the frozen score; later improvements remain unscored until a complete rubric re-audit |
+| Jest | Latest current attempt: 51/52 suites, 1,675/1,676 tests; the Event-poll regression passed, while one unrelated group-upload case exceeded its 10-second budget and then reproduced as host `ENOBUFS`/timeout | The preceding uninterrupted pre-Event-poll gate was 52/52 and 1,675/1,675; the current aggregate is not claimed green |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
-| Static locale usage | 7,375 references, 5,629 unique keys, 0 unresolved | Current complete-reference audit |
+| Static locale usage | 7,392 references, 5,642 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
 | Blade marker check | Current 19/19 | Current-source public GET marker comparison; not screenshot or visual certification |
 | Automated accessibility | Not currently certified: 28 passed, login failed, 58 did not run | Full aggregate requires a disposable Laravel environment; manual AT review remains open |
@@ -1330,6 +1330,29 @@ checks. No Laravel source, database, migration, mutation, upload, download,
 cleanup, or production operation was performed. This improves evidence
 classification only; the frozen bank remains 622/1,000 pending a complete
 rubric re-audit.
+
+## 2026-07-14 Attached Event Poll Parity
+
+Frozen evidence at `2026-07-14T20:02:09.0937158+01:00` against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and published Web UK product commit
+`023625ead3294eea8118548966893e4427d99460`. Signed Event detail now loads the
+event-scoped poll list, resolves each full poll through Laravel's detail
+contract, rejects a mismatched event identity, and renders Blade's open ballot,
+closed results, already-voted ballot-secrecy, and no-options states. Result
+percentages use the source rounded accessible label, leading and own-choice
+tags are preserved, and vote success/failure outcomes use the exact Event
+catalog.
+
+Focused rendered/status proof passes `1/1`; lint, brand, CSS, route, API-ledger,
+static-key, 322-template, and diff checks are green. The current complete Jest
+attempt is not green: `51/52` suites and `1,675/1,676` tests passed, including
+the new Event-poll case, while the unrelated group multipart-upload case first
+exceeded its 10-second ceiling and then reproduced as host `ENOBUFS`/timeout in
+isolation. No Laravel database, migration, mutation, upload, download,
+container, or production operation ran. Anonymous attached-poll rendering
+remains constrained by Laravel's bearer-authenticated poll API. This published
+component-audit improvement remains unscored, so the frozen bank remains
+`622/1,000` pending a complete fixed-rubric re-audit.
 
 ## 2026-07-14 Active Subnavigation Styling Parity
 
