@@ -373,7 +373,7 @@ The seven redirect/auth rows formerly marked Started have real mounted routes,
 focused behavior evidence, and material Laravel integration, so this review
 corrects them to Partial without claiming their explicitly listed gaps closed.
 
-The current aggregate evidence includes `47/47` Jest suites and `1,605/1,605`
+The current aggregate evidence includes `48/48` Jest suites and `1,625/1,625`
 tests, green lint/brand/CSS gates, `683` of `689` Laravel routes matched (`690`
 local declarations, `6` classified API-boundary gaps, `5` documented extras,
 and `3` ignored infrastructure routes), structurally complete
@@ -384,6 +384,9 @@ flaky results, and a live `19/19` Blade marker comparison. All four exhaustive
 Laravel runtime quarters reached terminal classification against the former
 local database; their schema-related failures are historical after the
 production-snapshot restore and the current read-only aggregate remains unrun.
+Group conversation detail now also follows Blade's full-width main layout,
+wrapping participant identity/tag/action rows, reaction fieldset legend, and
+GOV.UK module initialization hooks; focused default-English proof passes `1/1`.
 This certifies broad historical read/auth/gate/body coverage, not every
 mutation, upload, download, destructive side effect, or manual assistive-
 technology state. Saved-collection create/update/delete and collection-

@@ -26971,8 +26971,14 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('You');
     expect(response.text).toContain('Administrator');
     expect(response.text).toContain('Casey Quinn');
+    const mainHtml = response.text.match(/<main[^>]*>([\s\S]*?)<\/main>/)[1];
+    expect(mainHtml).not.toContain('govuk-grid-column-two-thirds');
+    expect(response.text).toContain('<li class="govuk-!-margin-bottom-2" style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap">');
     expect(response.text).toContain('<img class="nexus-alpha-avatar" src="/uploads/55/casey.jpg" alt="" loading="lazy" decoding="async" width="48" height="48">');
     expect(response.text).toContain('<span class="nexus-alpha-avatar nexus-alpha-avatar--placeholder" aria-hidden="true">Y</span>');
+    expect(response.text).toContain('<details class="govuk-details" data-module="govuk-details">');
+    expect(response.text).toContain('<legend class="govuk-fieldset__legend govuk-fieldset__legend--s">Add a reaction</legend>');
+    expect(response.text).toMatch(/<button type="submit" class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button">/);
     expect(response.text).toContain('<mark class="nexus-alpha-search-match">Hello</mark> team,<br>the rota is ready.');
     expect(response.text).toContain('<mark class="nexus-alpha-search-match">Hello</mark> again — I have published the final rota.');
     expect(response.text).toContain('&lt;script&gt;alert(&quot;unsafe&quot;)&lt;/script&gt;');
