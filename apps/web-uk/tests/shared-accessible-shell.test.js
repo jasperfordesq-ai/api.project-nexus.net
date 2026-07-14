@@ -12727,7 +12727,12 @@ describe('shared accessible frontend shell', () => {
       category: { id: 3, name: 'Community' },
       author: { id: 77, name: 'Ada Lovelace' },
       published_at: '2026-07-01T12:00:00Z',
-      reading_time: 4
+      reading_time: 4,
+      meta_title: 'Community garden launch',
+      meta_description: 'A safe summary for search and sharing.',
+      og_image_url: 'https://cdn.example.test/garden-og.jpg',
+      canonical_url: 'https://example.test/blog/community-news',
+      updated_at: '2026-07-02T12:00:00Z'
     };
 
     api.getBlogPosts.mockResolvedValue({
@@ -12822,9 +12827,21 @@ describe('shared accessible frontend shell', () => {
     expect(detail.status).toBe(200);
     expect(api.getBlogPost).toHaveBeenCalledWith('', 'community-news');
     expect(detail.text).toContain(t('blog.back_to_blog'));
+    expect(detail.text).toContain('<title>Community garden launch - Project NEXUS Accessible</title>');
+    expect(detail.text).toContain('<meta name="description" content="A safe summary for search and sharing.">');
+    expect(detail.text).toContain('<link rel="canonical" href="https://example.test/blog/community-news">');
+    expect(detail.text).toContain('<meta property="og:type" content="article">');
+    expect(detail.text).toContain('<meta property="og:title" content="Community garden launch">');
+    expect(detail.text).toContain('<meta property="og:image" content="https://cdn.example.test/garden-og.jpg">');
+    expect(detail.text).toContain('<meta property="article:published_time" content="2026-07-01T12:00:00.000Z">');
+    expect(detail.text).toContain('<meta property="article:modified_time" content="2026-07-02T12:00:00.000Z">');
+    expect(detail.text).toContain('<script type="application/ld+json">');
+    expect(detail.text).toContain('"@type":"Article"');
     expect(detail.text).toContain('Community garden opens');
     expect(detail.text).toContain('The community garden opened this week.');
-    expect(detail.text).toContain(t('blog.author_label'));
+    expect(detail.text).not.toContain(t('blog.author_label'));
+    expect(detail.text).not.toContain('Ada Lovelace');
+    expect(detail.text).toContain('&middot;');
     expect(detail.text).toContain(tc('blog.likes_count', 0, { count: 0 }));
     expect(detail.text).toContain(t('blog.comments_heading'));
     expect(detail.text).toContain(t('blog.comments_signin'));

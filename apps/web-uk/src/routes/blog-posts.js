@@ -4,6 +4,7 @@
 // See NOTICE file for attribution and acknowledgements.
 
 const express = require('express');
+const { URL } = require('node:url');
 const {
   getBlogPosts,
   getBlogPost,
@@ -49,6 +50,48 @@ function isAuthError(error) {
 
 function isNotFound(error) {
   return error instanceof ApiError && error.status === 404;
+}
+
+function safeHttpUrl(value) {
+  const candidate = trimmed(value);
+  if (!candidate) return '';
+  try {
+    const parsed = new URL(candidate);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed.href : '';
+  } catch {
+    return '';
+  }
+}
+
+function isoDateTime(value) {
+  const candidate = trimmed(value);
+  if (!candidate) return '';
+  const parsed = new Date(candidate);
+  return Number.isNaN(parsed.getTime()) ? '' : parsed.toISOString();
+}
+
+function scriptSafeJson(value) {
+  return JSON.stringify(value)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+}
+
+function articleStructuredData(post, publisherName) {
+  const data = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: post.metaTitle || post.title,
+    description: post.metaDescription || undefined,
+    image: post.ogImage || undefined,
+    datePublished: post.publishedIso || undefined,
+    dateModified: post.updatedIso || undefined,
+    author: { '@type': 'Organization', name: publisherName },
+    publisher: { '@type': 'Organization', name: publisherName }
+  };
+  return scriptSafeJson(data);
 }
 
 function redirectTo(res, pathname) {
@@ -105,6 +148,12 @@ function normalizePost(rawPost) {
     },
     publishedAt: trimmed(post.published_at || post.created_at || post.createdAt),
     updatedAt: trimmed(post.updated_at || post.updatedAt),
+    publishedIso: isoDateTime(post.published_at || post.created_at || post.createdAt),
+    updatedIso: isoDateTime(post.updated_at || post.updatedAt),
+    metaTitle: trimmed(post.meta_title, 200),
+    metaDescription: trimmed(post.meta_description || post.excerpt || post.summary, 300),
+    ogImage: trimmed(post.og_image_url || post.featured_image || post.featuredImage || post.image_url || post.image),
+    canonicalUrl: safeHttpUrl(post.canonical_url),
     readingTime: positiveInteger(post.reading_time || post.readingTime),
     likeCount: positiveInteger(post.like_count || post.likes_count) || 0,
     hasLiked: Boolean(post.has_liked || post.hasLiked)
@@ -344,7 +393,7 @@ router.get('/:slug([a-zA-Z0-9_-]+)', asyncRoute(async (req, res) => {
   }
 
   return res.render('blog/detail', {
-    title: post.title || res.locals.t('blog.title'),
+    title: post.metaTitle || post.title || res.locals.t('blog.title'),
     activeNav: 'blog',
     post,
     comments,
@@ -352,6 +401,8 @@ router.get('/:slug([a-zA-Z0-9_-]+)', asyncRoute(async (req, res) => {
     isAuthenticated: Boolean(token),
     likeCount: post.likeCount,
     hasLiked: post.hasLiked,
+    opengraphImageUrl: post.ogImage,
+    articleStructuredData: articleStructuredData(post, res.locals.tenantName || res.locals.serviceName),
     statusBanner: statusBanner(req.query && req.query.status, res.locals.t)
   });
 }, { notFoundTitle: 'Post not found' }));
