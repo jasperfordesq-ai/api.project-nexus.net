@@ -946,15 +946,58 @@ router.get('/groups/:conversationId(\\d+)', requireAuth, asyncRoute(async (req, 
       displaySenderName: senderName(message, currentUserId, res.locals.t)
     };
   }).reverse();
+  const messageIds = messages
+    .map(message => positiveInteger(message.id))
+    .filter(messageId => messageId !== null);
+  let reactionsByMessage = {};
+  if (messageIds.length) {
+    try {
+      const reactionsResult = await callMessage(
+        req.token,
+        'GET',
+        `/reactions/batch?ids=${messageIds.join(',')}`
+      );
+      const reactionData = dataFrom(reactionsResult);
+      reactionsByMessage = reactionData && reactionData.reactions && typeof reactionData.reactions === 'object'
+        ? reactionData.reactions
+        : {};
+    } catch {
+      reactionsByMessage = {};
+    }
+  }
   const visibleMessages = searchQuery
     ? messages.filter(message => String(message.body || message.content || '').toLowerCase().includes(searchQuery.toLowerCase()))
     : messages;
-  const renderedMessages = visibleMessages.map(message => ({
-    ...message,
-    searchSegments: searchQuery
-      ? messageSearchSegments(message.body || message.content, searchQuery)
-      : []
-  }));
+  const groupReactionEmojis = ['\u{1F44D}', '\u2764\uFE0F', '\u{1F602}', '\u{1F62E}', '\u{1F622}', '\u{1F64F}'];
+  const renderedMessages = visibleMessages.map(message => {
+    const reactionEntries = listFrom(reactionsByMessage[String(message.id)] || reactionsByMessage[message.id]);
+    const reactionCounts = [];
+    const myEmojis = [];
+    reactionEntries.forEach(reaction => {
+      const emoji = trimmed(reaction && reaction.emoji, 16);
+      const count = Math.trunc(Number(reaction && reaction.count) || 0);
+      const userIds = listFrom(reaction && reaction.user_ids)
+        .map(userId => positiveInteger(userId))
+        .filter(userId => userId !== null);
+      if (emoji && count > 0) {
+        reactionCounts.push({ emoji, count });
+      }
+      if (emoji && currentUserId !== null && userIds.includes(currentUserId) && !myEmojis.includes(emoji)) {
+        myEmojis.push(emoji);
+      }
+    });
+    return {
+      ...message,
+      reactionCounts,
+      reactionOptions: groupReactionEmojis.map(emoji => ({
+        emoji,
+        mine: myEmojis.includes(emoji)
+      })),
+      searchSegments: searchQuery
+        ? messageSearchSegments(message.body || message.content, searchQuery)
+        : []
+    };
+  });
 
   const access = messageAccess(req, restriction);
   const safeguarding = meta.safeguarding && typeof meta.safeguarding === 'object'
@@ -981,7 +1024,6 @@ router.get('/groups/:conversationId(\\d+)', requireAuth, asyncRoute(async (req, 
       hasMore: Boolean(meta.has_more),
       cursor: meta.cursor || ''
     },
-    reactionEmojis: ['\u{1F44D}', '\u2764\uFE0F', '\u{1F602}', '\u{1F62E}', '\u{1F622}', '\u{1F64F}'],
     groupStatus: groupStatus(req.query.status, res.locals.t),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });

@@ -28373,6 +28373,24 @@ describe('shared accessible frontend shell', () => {
   it('renders the Laravel group conversation detail for signed-in members', async () => {
     const api = require('../src/lib/api');
     api.getProfile.mockResolvedValueOnce({ data: { id: 101, name: 'Avery Stone' } });
+    api.callMessageApi.mockImplementation(async (_token, method, pathName) => {
+      if (method === 'GET' && pathName === '/restriction-status') {
+        return { data: { direct_messaging_enabled: true, restricted: false } };
+      }
+      if (method === 'GET' && pathName === '/reactions/batch?ids=12,13,14') {
+        return {
+          data: {
+            reactions: {
+              12: [
+                { emoji: '👍', count: 2, user_ids: [101, 55] },
+                { emoji: '❤️', count: 1, user_ids: [55] }
+              ]
+            }
+          }
+        };
+      }
+      throw new Error(`Unexpected message API call ${method} ${pathName}`);
+    });
     api.callConversationApi.mockImplementation(async (_token, method, pathName) => {
       if (method === 'GET' && pathName === '/33/messages?per_page=50&direction=older&cursor=abc') {
         return {
@@ -28424,6 +28442,7 @@ describe('shared accessible frontend shell', () => {
     expect(response.status).toBe(200);
     expect(api.callConversationApi).toHaveBeenCalledWith('test-token', 'GET', '/33/messages?per_page=50&direction=older&cursor=abc');
     expect(api.callConversationApi).toHaveBeenCalledWith('test-token', 'GET', '/33/participants');
+    expect(api.callMessageApi).toHaveBeenCalledWith('test-token', 'GET', '/reactions/batch?ids=12,13,14');
     expect(response.text).toContain('Project team');
     expect(response.text).toContain('Your message has been sent to the group.');
     expect(response.text).toContain('Members');
@@ -28438,6 +28457,10 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('<span class="nexus-alpha-avatar nexus-alpha-avatar--placeholder" aria-hidden="true">Y</span>');
     expect(response.text).toContain('<details class="govuk-details" data-module="govuk-details">');
     expect(response.text).toContain('<legend class="govuk-fieldset__legend govuk-fieldset__legend--s">Add a reaction</legend>');
+    expect(response.text).toContain('<span class="govuk-tag govuk-tag--grey govuk-!-margin-right-1">👍 2</span>');
+    expect(response.text).toContain('<span class="govuk-tag govuk-tag--grey govuk-!-margin-right-1">❤️ 1</span>');
+    expect(response.text).toMatch(/class="govuk-button govuk-!-margin-bottom-0"[^>]*>\s*<span aria-hidden="true">👍<\/span>\s*<span class="govuk-visually-hidden">Remove your 👍 reaction<\/span>/);
+    expect(response.text).toMatch(/class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0"[^>]*>\s*<span aria-hidden="true">❤️<\/span>\s*<span class="govuk-visually-hidden">React with ❤️<\/span>/);
     expect(response.text).toMatch(/<button type="submit" class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button">/);
     expect(response.text).toContain('<mark class="nexus-alpha-search-match">Hello</mark> team,<br>the rota is ready.');
     expect(response.text).toContain('<mark class="nexus-alpha-search-match">Hello</mark> again — I have published the final rota.');

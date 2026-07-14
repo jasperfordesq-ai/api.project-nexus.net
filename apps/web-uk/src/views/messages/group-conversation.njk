@@ -129,6 +129,14 @@
                 <div class="govuk-body">{{ (message.body or message.content) | nl2br | safe }}</div>
               {% endif %}
 
+              {% if message.reactionCounts and message.reactionCounts.length %}
+                <p class="govuk-body govuk-!-margin-bottom-2">
+                  {% for reaction in message.reactionCounts %}
+                    <span class="govuk-tag govuk-tag--grey govuk-!-margin-right-1">{{ t("govuk_alpha_messages.reactions.count_label", { emoji: reaction.emoji, count: reaction.count }) }}</span>
+                  {% endfor %}
+                </p>
+              {% endif %}
+
               {% if canSend and not message.is_deleted %}
                 <details class="govuk-details" data-module="govuk-details">
                   <summary class="govuk-details__summary">
@@ -138,13 +146,13 @@
                     <fieldset class="govuk-fieldset">
                       <legend class="govuk-fieldset__legend govuk-fieldset__legend--s">{{ t("govuk_alpha_messages.reactions.add_legend") }}</legend>
                       <div class="govuk-button-group">
-                        {% for emoji in reactionEmojis %}
+                        {% for reaction in message.reactionOptions %}
                           <form method="post" action="{{ urlFor('/messages/groups/' + (conversation.id | string) + '/m/' + (message.id | string) + '/react') }}" class="govuk-!-display-inline">
                             <input type="hidden" name="_csrf" value="{{ csrfToken }}">
-                            <input type="hidden" name="emoji" value="{{ emoji }}">
-                            <button type="submit" class="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" data-module="govuk-button">
-                              <span aria-hidden="true">{{ emoji }}</span>
-                              <span class="govuk-visually-hidden">{{ t("govuk_alpha_messages.reactions.react_with", { emoji: emoji }) }}</span>
+                            <input type="hidden" name="emoji" value="{{ reaction.emoji }}">
+                            <button type="submit" class="govuk-button{% if not reaction.mine %} govuk-button--secondary{% endif %} govuk-!-margin-bottom-0" data-module="govuk-button">
+                              <span aria-hidden="true">{{ reaction.emoji }}</span>
+                              <span class="govuk-visually-hidden">{% if reaction.mine %}{{ t("govuk_alpha_messages.reactions.remove_with", { emoji: reaction.emoji }) }}{% else %}{{ t("govuk_alpha_messages.reactions.react_with", { emoji: reaction.emoji }) }}{% endif %}</span>
                             </button>
                           </form>
                         {% endfor %}
