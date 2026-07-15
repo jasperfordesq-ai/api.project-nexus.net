@@ -186,7 +186,7 @@ together from a clean published checkout.
   with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
   Only this fixed-rubric audit contributes to the current bank.
 - **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `e2918257`, including the later implementation, contract,
+  baseline `81d456ba`, including the later implementation, contract,
   resilience, and component-audit slices. Their evidence is useful, but they
   contribute zero points until one complete fixed-rubric re-audit explicitly
   replaces the baseline.
@@ -205,11 +205,11 @@ together from a clean published checkout.
 | Missing Laravel routes | 1 | Event offline check-in code generation |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 52/52 suites, 1,701/1,701 tests | Complete non-mutating inventory at product baseline `e2918257`: 51 suites/1,700 assertions in the host-memory aggregate plus the separately green canonical-path tenant-source suite/assertion |
+| Jest | 52/52 suites, 1,702/1,702 tests | Complete non-mutating inventory at product baseline `81d456ba`: 51 suites/1,701 assertions in the host-memory aggregate plus the separately green canonical-path tenant-source suite/assertion |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
-| Static locale usage | 7,617 references, 5,804 unique keys, 0 unresolved | Current complete-reference audit |
+| Static locale usage | 7,618 references, 5,804 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
-| Blade marker check | Current 19/19 | Current-source public GET marker comparison; not screenshot or visual certification |
+| Blade marker check | Current rerun unavailable: Laravel port 8088 not listening; preceding product `e2918257` passed 19/19 | Public GET marker comparison only; not screenshot or visual certification |
 | Automated accessibility | Not currently certified: 28 passed, login failed, 58 did not run | Full aggregate requires a disposable Laravel environment; manual AT review remains open |
 | Frontend API consumer ledger | 668 contracts: 451 OpenAPI matches, 217 unmatched, 0 dynamic; every unmatched contract resolves to a direct Laravel route declaration omitted from OpenAPI | Static method/path and ownership evidence; declaration classification is not runtime certification and remains unscored |
 
@@ -406,11 +406,37 @@ does not rewrite truthful current evidence to satisfy that historical pin.
 This component-audit improvement remains published and unscored, so the frozen
 bank remains `622/1,000` pending a complete fixed-rubric re-audit.
 
-Package-10 progress: the Listing index/detail/form and Feed hashtag/permalink
-component rows are now implementation-closed and certification-only. Their
-remaining side-effect/runtime, manual-accessibility, and backend-switching
-proof belongs to the disposable-runtime packages, package 11, and the separate
-ASP.NET readiness score; this classification adds no banked points.
+## 2026-07-15 Direct-Message Inbox Status Boundary
+
+Frozen evidence refreshed at `2026-07-15T05:28:10+01:00` against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and Web UK product commit
+`81d456ba432afe7fcf6ec56687aa94419f43c757`. The direct-message inbox now
+renders only Blade's archived/restored outcomes, with the exact
+`messages-status-title` label relationship, success role, and catalog copy.
+Arbitrary success flash values from unrelated routes are no longer consumed or
+exposed on the inbox.
+
+Focused populated/restored and unrelated-state proof passes `2/2`. The complete
+non-mutating 1,702-assertion inventory is green as 51/52 suites and
+1,701/1,702 assertions in the host-memory checkout plus the separately green
+canonical-path tenant-source suite/assertion. Brand, lint, CSS, and locale
+shape/static/template audits are green; static localization resolves 7,618
+references and 5,804 unique keys with zero unresolved, and 322 templates have
+zero conservative matches. The current public marker rerun was unavailable
+because the read-only Laravel service at port 8088 was not listening while Web
+UK returned 200; preceding product `e2918257` passed 19/19. Route and API
+consumers were unchanged. No Laravel authentication, database, migration,
+mutation, upload, download, cleanup, container, or production operation was
+performed. This component-audit improvement remains published and unscored, so
+the frozen bank remains `622/1,000` pending a complete fixed-rubric re-audit.
+
+Package-10 progress: the Listing index/detail/form, Feed hashtag/permalink, and
+Message conversations component rows are now implementation-closed or assigned
+to explicit upstream/certification owners. Their remaining side-effect/runtime,
+manual-accessibility, upstream group-reaction projection, and backend-switching
+proof belongs to the disposable-runtime packages, package 11, Laravel API
+ownership, and the separate ASP.NET readiness score; this classification adds
+no banked points.
 
 ### Finite P0/P1 Completion Queue
 
