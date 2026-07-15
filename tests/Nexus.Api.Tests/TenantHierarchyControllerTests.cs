@@ -29,33 +29,41 @@ public class TenantHierarchyControllerTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task GetHierarchy_AsAdmin_ReturnsOk()
+    public async Task GetHierarchy_AsAdmin_ReturnsForbidden()
     {
         await AuthenticateAsAdminAsync();
+        var r = await Client.GetAsync("/api/system/tenant-hierarchy");
+        r.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task GetHierarchy_AsPlatformSuperAdmin_ReturnsOk()
+    {
+        await AuthenticateAsPlatformSuperAdminAsync();
         var r = await Client.GetAsync("/api/system/tenant-hierarchy");
         r.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     [Fact]
-    public async Task GetChildren_AsAdmin_ReturnsOk()
+    public async Task GetChildren_AsPlatformSuperAdmin_ReturnsOk()
     {
-        await AuthenticateAsAdminAsync();
+        await AuthenticateAsPlatformSuperAdminAsync();
         var r = await Client.GetAsync($"/api/system/tenant-hierarchy/{TestData.Tenant1.Id}/children");
         r.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     [Fact]
-    public async Task GetParent_AsAdmin_ReturnsOkOrNotFound()
+    public async Task GetParent_AsPlatformSuperAdmin_ReturnsOkOrNotFound()
     {
-        await AuthenticateAsAdminAsync();
+        await AuthenticateAsPlatformSuperAdminAsync();
         var r = await Client.GetAsync($"/api/system/tenant-hierarchy/{TestData.Tenant1.Id}/parent");
         r.StatusCode.Should().BeOneOf(HttpStatusCode.OK, HttpStatusCode.NotFound);
     }
 
     [Fact]
-    public async Task DeleteHierarchy_NonExistent_ReturnsNotFound()
+    public async Task DeleteHierarchy_AsPlatformSuperAdmin_NonExistent_ReturnsNotFound()
     {
-        await AuthenticateAsAdminAsync();
+        await AuthenticateAsPlatformSuperAdminAsync();
         var r = await Client.DeleteAsync("/api/system/tenant-hierarchy/99999");
         r.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }

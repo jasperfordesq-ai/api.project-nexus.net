@@ -496,12 +496,27 @@ public sealed class VolunteerOrganisationRelationshipTests : IntegrationTestBase
         db.VolunteerOrganisations.Add(organisation);
         await db.SaveChangesAsync();
 
+        var log = new VolunteerLog
+        {
+            TenantId = TestData.Tenant1.Id,
+            UserId = TestData.AdminUser.Id,
+            OrganizationId = organisation.Id,
+            DateLogged = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1)),
+            Hours = 5m,
+            Description = "Payment uniqueness schema fixture",
+            Status = "approved",
+            CreatedAt = DateTime.UtcNow.AddDays(-1),
+            UpdatedAt = DateTime.UtcNow.AddDays(-1)
+        };
+        db.VolunteerLogs.Add(log);
+        await db.SaveChangesAsync();
+
         var first = new VolunteerOrganisationTransaction
         {
             TenantId = TestData.Tenant1.Id,
             VolunteerOrganisationId = organisation.Id,
             UserId = TestData.AdminUser.Id,
-            VolunteerLogId = 987654,
+            VolunteerLogId = log.Id,
             Type = "volunteer_payment",
             Amount = -5m,
             BalanceAfter = 95m,
