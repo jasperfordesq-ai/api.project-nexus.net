@@ -347,6 +347,11 @@ public class NexusDbContext : DbContext
     public DbSet<CaringResearchConsent> CaringResearchConsents => Set<CaringResearchConsent>();
     public DbSet<CaringResearchDatasetExport> CaringResearchDatasetExports => Set<CaringResearchDatasetExport>();
     public DbSet<VereinFederationConsent> VereinFederationConsents => Set<VereinFederationConsent>();
+    public DbSet<VereinMembershipFee> VereinMembershipFees => Set<VereinMembershipFee>();
+    public DbSet<VereinMemberDue> VereinMemberDues => Set<VereinMemberDue>();
+    public DbSet<VereinDuesPayment> VereinDuesPayments => Set<VereinDuesPayment>();
+    public DbSet<VereinEventShare> VereinEventShares => Set<VereinEventShare>();
+    public DbSet<VereinCrossInvitation> VereinCrossInvitations => Set<VereinCrossInvitation>();
     public DbSet<RegionalAnalyticsSubscription> RegionalAnalyticsSubscriptions => Set<RegionalAnalyticsSubscription>();
     public DbSet<RegionalAnalyticsReport> RegionalAnalyticsReports => Set<RegionalAnalyticsReport>();
     public DbSet<RegionalAnalyticsAccessLog> RegionalAnalyticsAccessLogs => Set<RegionalAnalyticsAccessLog>();
@@ -662,6 +667,7 @@ public class NexusDbContext : DbContext
             new DiscoveryConfiguration(_tenantContext),
             new ContactEmergencyConfiguration(_tenantContext),
             new CaringCommunityConfiguration(_tenantContext),
+            new VereinConfiguration(_tenantContext),
             new RegionalAnalyticsConfiguration(_tenantContext),
             new ProvisioningRequestConfiguration(_tenantContext),
             new ApiPartnerConfiguration(_tenantContext),
