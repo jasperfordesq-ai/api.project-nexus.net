@@ -96,4 +96,41 @@ test.describe('default-English resilient presentation gate', () => {
       await context.close();
     }
   });
+
+  test('registration recovers from invalid input without JavaScript or a backend mutation', async ({ browser, baseURL }) => {
+    test.setTimeout(90_000);
+    const context = await browser.newContext({
+      javaScriptEnabled: false,
+      viewport: { width: 320, height: 800 }
+    });
+    const page = await context.newPage();
+
+    try {
+      const registerUrl = new URL(`${mountPath}/register`, baseURL).toString();
+      const response = await page.goto(registerUrl, { waitUntil: 'domcontentloaded' });
+      expect(response).not.toBeNull();
+      expect(response.status()).toBeLessThan(400);
+
+      await page.locator('#first_name').fill('Ada');
+      await page.locator('input[name="form_started_at"]').evaluate((input) => {
+        input.value = String(Date.now() - 6000);
+      });
+
+      await Promise.all([
+        page.waitForURL(/\/register\?status=register-terms-required$/),
+        page.locator('form:has(#first_name) button[type="submit"]').click()
+      ]);
+
+      await expect(page.locator('h1')).toHaveCount(1);
+      await expect(page.locator('.govuk-error-summary')).toHaveCount(1);
+      await expect(page.locator('.govuk-error-summary')).toHaveAttribute('tabindex', '-1');
+      await expect(page.locator('.govuk-error-summary a[href="#last_name"]')).toHaveCount(1);
+      await expect(page.locator('#last_name')).toHaveAttribute('aria-describedby', /last_name-error/);
+      await expect(page.locator('#last_name-error')).toHaveCount(1);
+      await expect(page.locator('#first_name')).toHaveValue('Ada');
+      await expectNoHorizontalOverflow(page, `${mountPath}/register?status=register-terms-required`);
+    } finally {
+      await context.close();
+    }
+  });
 });

@@ -22,7 +22,8 @@
       {% if directStatus and directStatus.type == "error" %}
         {{ govukErrorSummary({
           titleText: t("govuk_alpha.states.error_title"),
-          errorList: [{ text: directStatus.message, href: directStatus.href }]
+          errorList: [{ text: directStatus.message, href: directStatus.href }],
+          attributes: { tabindex: "-1" }
         }) }}
       {% endif %}
 

@@ -72,13 +72,15 @@ green accessibility result nor an authorized ordinary-environment workflow.
 On 2026-07-15 the isolated current-checkout runner passed `14/14`
 representative public-page structure/axe cases and `4/4` keyboard, focus,
 client-validation, 320px reflow, forced-colour, and axe cases on
-`/hour-timebank/accessible`. A further default-English subset passed `5/5`:
+`/hour-timebank/accessible`. A further default-English subset passed `6/6`:
 Home, registration, Legal, and Listings at a 320 CSS-pixel viewport with
 serious/critical axe checks, plus server-rendered login, registration, and
-Contact forms with JavaScript disabled. Only loopback read fixtures were
-available; no Laravel runtime or database was contacted. This is partial
-automated browser evidence, not actual browser-zoom, full accessibility,
-assistive-technology, or runtime certification.
+Contact forms with JavaScript disabled. Invalid no-JavaScript registration also
+preserves entered values and returns linked inline errors in a programmatically
+focusable summary without calling the registration mutation. Only loopback read
+fixtures were available; no Laravel runtime or database was contacted. This is
+partial automated browser evidence, not actual browser-zoom, full
+accessibility, assistive-technology, or runtime certification.
 
 ## Current automated scope
 

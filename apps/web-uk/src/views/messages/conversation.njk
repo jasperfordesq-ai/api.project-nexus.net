@@ -22,7 +22,8 @@
       {% if error %}
         {{ govukErrorSummary({
           titleText: t("states.error_title"),
-          errorList: [{ text: error, href: "#content" }]
+          errorList: [{ text: error, href: "#content" }],
+          attributes: { tabindex: "-1" }
         }) }}
       {% endif %}
 

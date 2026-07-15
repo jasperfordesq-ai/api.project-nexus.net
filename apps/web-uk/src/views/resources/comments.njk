@@ -47,7 +47,8 @@
         {% else %}
           {{ govukErrorSummary({
             titleText: status.title,
-            errorList: [{ text: status.message, href: "#" + (status.anchor or "comments") }]
+            errorList: [{ text: status.message, href: "#" + (status.anchor or "comments") }],
+            attributes: { tabindex: "-1" }
           }) }}
         {% endif %}
       {% endif %}

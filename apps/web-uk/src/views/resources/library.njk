@@ -35,7 +35,8 @@
     {% else %}
       {{ govukErrorSummary({
         titleText: status.title,
-        errorList: [{ text: status.message, href: "#q" }]
+        errorList: [{ text: status.message, href: "#q" }],
+        attributes: { tabindex: "-1" }
       }) }}
     {% endif %}
   {% endif %}

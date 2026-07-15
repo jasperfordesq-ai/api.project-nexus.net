@@ -37,6 +37,14 @@ describe('GOV.UK error summary source contract', () => {
           violations.push(`${path.relative(viewsDirectory, templatePath)}:${lineNumberAt(source, match.index)}`);
         }
       }
+
+      const macroCalls = source.matchAll(/govukErrorSummary\(\{[\s\S]*?\}\)\s*\}\}/g);
+      for (const match of macroCalls) {
+        const hasNegativeTabindex = /\battributes\s*:\s*\{[\s\S]*?\btabindex\s*:\s*(?:(["'])-1\1|-1(?=\s|[,}]))/i.test(match[0]);
+        if (!hasNegativeTabindex) {
+          violations.push(`${path.relative(viewsDirectory, templatePath)}:${lineNumberAt(source, match.index)}`);
+        }
+      }
     }
 
     expect(violations).toEqual([]);
