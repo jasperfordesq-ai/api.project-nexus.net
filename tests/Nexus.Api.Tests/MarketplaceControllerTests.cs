@@ -8,6 +8,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
@@ -56,7 +57,7 @@ public class MarketplaceControllerTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task AdminApproveListing_AsAdmin_ReturnsOk()
+    public async Task AdminApproveListing_AsAdmin_ReturnsLaravelMessageAndPersistsApproval()
     {
         await AuthenticateAsMemberAsync();
         var create = await Client.PostAsJsonAsync("/api/marketplace/listings", new
@@ -74,7 +75,17 @@ public class MarketplaceControllerTests : IntegrationTestBase
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var content = await response.Content.ReadFromJsonAsync<JsonElement>();
-        content.GetProperty("data").GetProperty("moderationStatus").GetString().Should().Be("approved");
+        content.GetProperty("success").GetBoolean().Should().BeTrue();
+        content.GetProperty("data").GetProperty("message").GetString().Should().Be("Listing approved.");
+
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var listing = await db.MarketplaceListings
+            .IgnoreQueryFilters()
+            .SingleAsync(row => row.TenantId == TestData.Tenant1.Id && row.Id == id);
+        listing.ModerationStatus.Should().Be("approved");
+        listing.ModeratedByUserId.Should().Be(TestData.AdminUser.Id);
+        listing.ModeratedAt.Should().NotBeNull();
     }
 
     [Fact]
