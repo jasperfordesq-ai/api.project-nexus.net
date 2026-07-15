@@ -1773,6 +1773,20 @@ zoom, screenshots, screen-reader output, the disposable-Laravel aggregate, and
 human assistive-technology review remain open. This slice is unscored; the
 canonical bank remains `663/1,000` until another complete fixed-rubric audit.
 
+Published product SHA `b6166484` adds a reproducible
+`manual:accessibility:isolated` command for directed browser review of the
+current checkout. It keeps the existing random-loopback Web UK listener and
+bounded mock alive until interrupted, clears inherited backend overrides, and
+retains the mock's GET/HEAD-only enforcement. A canonical signed-out login GET
+returned `200` with one main landmark, one H1, and the mounted form action; the
+complete non-mutating gate passes `52/52` suites and `1,734/1,734` tests, with
+green syntax, lint, documentation-consistency, and diff checks. The available
+in-app browser connector failed before tab creation with `Cannot redefine
+property: process`, so no directed keyboard or assistive-technology pass is
+claimed from this run. No Laravel or ASP.NET source, database, migration,
+authentication, mutation, container, or production operation was used. The
+canonical bank remains `663/1,000` until another complete fixed-rubric audit.
+
 - GOV.UK crown, logotype, official header identity, OGL block, or Crown
   copyright wording.
 - Laravel/PHP implementation details.
