@@ -1,6 +1,6 @@
 # Current ASP.NET Contract Status
 
-Last verified: 2026-07-15 20:58 +01:00
+Last verified: 2026-07-15 22:39 +01:00
 
 Status: **Canonical current - ASP.NET score and certification source**
 
@@ -51,10 +51,11 @@ change.
 The 2026-07-15 system-wide re-audit keeps this score unchanged. Eleven backend
 implementation/test commits were published to `origin/main` after the restart
 scorecard. A later user-authorized transaction committed two test expectation
-corrections and merged nine verified schema slices; that transaction is now
-published but still has no fixed-rubric scoring transaction or refreshed
-complete exact-SHA suite/CI aggregate. All are recorded below instead of being
-converted into an estimated percentage.
+corrections and merged nine verified schema slices. The separately authorized
+post-pause CI remediation has now produced a complete green exact-SHA aggregate
+at `dbafc5c3`, but none of these changes has received a fixed-rubric scoring
+transaction. All are recorded below instead of being converted into an
+estimated percentage.
 
 | Category | Banked | Maximum | Open |
 | --- | ---: | ---: | ---: |
@@ -114,12 +115,14 @@ These named values form an audit trail. They are not competing current scores.
 The latest banked backend implementation inspected for this page is
 `5fa15e0e79993464622b1c3ef053fcdd01679991`, with Laravel frozen at
 `903d03d3db78bbf87129ad35728be3b72819acaf`. The latest published backend
-product/schema/CI commit is
+product/API/schema implementation boundary remains
 `c767050a3eabd064bdf647695b9699b98186342b`. It follows schema merge
 `df8c8b96c80804785e9c84f9f7c75337088d6024` and adds the missing runtime
-creation migration for `compatibility_audit_entries` plus contract, test, and
-CI corrections. It remains published but unscored. Later pause-documentation
-commits change no backend implementation and add no backend points.
+creation migration for `compatibility_audit_entries` plus contract and test
+corrections. Required-CI workflow commit `b3f946b3fd3de51fa444008a7daee80d3de1bcd2`
+and test/evidence commit `dbafc5c329c55a15b4329ff90804d725dbf8b089`
+are later published, unscored evidence boundaries; neither changes the product
+implementation or banked points.
 
 ### Published But Not Rescored
 
@@ -188,15 +191,32 @@ All eleven contribute **zero banked points** at this snapshot.
   without a terminal summary; coverage merge failed and Docker publish was
   skipped. It adds zero points. The precise schema verdict and recommission
   package are in [`CURRENT_SCHEMA_READINESS.md`](CURRENT_SCHEMA_READINESS.md).
+- `b3f946b3` installs the required no-coverage, four-shard workflow after the
+  user explicitly resumed a bounded commit/push/fix-until-green CI phase.
+  Deterministic allocation covers 3,361 logical tests exactly once as
+  841 + 840 + 840 + 840. This workflow evidence adds zero points without a
+  fixed-rubric scoring transaction.
+- `dbafc5c3` gives each wallet-concurrency request a distinct explicit
+  idempotency key so the test exercises five independent transfer attempts
+  rather than valid replay of one request. Exact-SHA GitHub Actions run
+  [29451087913](https://github.com/jasperfordesq-ai/api.project-nexus.net/actions/runs/29451087913)
+  finished terminal green: Build, frozen-React Frontend, all four test shards,
+  and Docker Build & Push succeeded. Downloaded TRX artifacts contained 3,385
+  runtime rows (841 + 840 + 840 + 864), all passed with 0 failed, skipped,
+  error, timeout, or aborted. The 24-row difference from logical allocation is
+  shard-4 parameterized-row expansion. Coverage intentionally remains outside
+  this required gate. This complete exact-SHA aggregate is published but still
+  adds zero banked points pending the required scoring transaction.
 
 ### Dirty And In Flight
 
-The user-authorized merge transaction cleared the two backend test edits and
-the former stat-only migration entry. All active task worktrees are clean at
-this publication boundary. The published Web UK public-copy/test changes and
-repository operational guardrails are separately disclosed and remain
-unscored. The shard harness remains committed at `60715dfd`. Dirty, isolated,
-or projected work never increases the banked score.
+Immediately before this documentation transaction, `HEAD` and `origin/main`
+matched at `dbafc5c3` and the active worktree was clean. The published Web UK
+public-copy/test changes and repository operational guardrails are separately
+disclosed and remain unscored. The original shard harness remains committed at
+`60715dfd`; `b3f946b3` is its required-CI workflow boundary. This documentation
+transaction itself, and any dirty, isolated, or projected work, contributes
+zero banked points.
 
 ### 2026-07-15 Windows Update Interruption
 
@@ -221,8 +241,10 @@ independent proof gates that must remain visible in status reports:
 - schema, migration, upgrade, and data-integrity evidence for remaining
   workflows;
 - residual security, tenant-isolation, authorization, and localization depth;
-- complete build, full-suite, and exact-SHA CI evidence rather than focused
-  tests alone;
+- fixed-rubric assessment of the now-green complete build, full-suite, and
+  exact-SHA CI evidence; the required push gate is satisfied at `dbafc5c3`, but
+  the category remains banked at 45/100 until a scoring transaction accepts a
+  movement;
 - unchanged canonical React browser/runtime proof against ASP.NET;
 - unchanged, Laravel-certified Web UK switched to ASP.NET by configuration only
   and rerun through the same workflow/accessibility suite;
@@ -234,14 +256,18 @@ provisioned disposable Laravel environment. The ordinary local Laravel database
 is a confidential production-derived snapshot and is never a test fixture.
 
 Before the local schema merge, discovery was 3,333 tests across 2,778 methods
-and 391 classes. The merge adds nine schema test classes, so those counts must
-not be quoted as the current post-merge denominator until discovery is rerun.
-Deterministic shards 1-16 completed green during a moving-SHA investigation.
-Shard 17 finished 68/69: slice 1 passed 38/38 and slice 2 passed 30/31; the
-remaining impersonation workflow expected 200 but received 403 at
-`AdminExplicitParityControllerTests.cs:846`. Shards 18-48 were not run. There
-is no complete same-SHA suite or exact-SHA CI aggregate at `df8c8b96`, so none
-of the remaining 55 build/test/CI points can move from this partial evidence.
+and 391 classes. The earlier 48-shard moving-SHA investigation remained partial
+at `df8c8b96`; its counts and failure are historical and must not be used as the
+current denominator.
+
+The post-pause allocator at `dbafc5c3` discovered and allocated 3,361 logical
+tests exactly once across four whole-class shards (841, 840, 840, and 840).
+GitHub run 29451087913 completed the required exact-SHA aggregate. Its downloaded
+TRX files reported 841, 840, 840, and 864 executed runtime rows respectively,
+or 3,385 total; all passed with 0 failed, skipped, error, timeout, or aborted.
+Build, frozen-React Frontend, and Docker Build & Push also passed. This replaces
+the absent-aggregate certification fact, but it does not automatically move any
+of the 55 open build/test/CI points without a fixed-rubric scoring transaction.
 
 ## Finite Ordered Backend Queue
 
@@ -271,9 +297,11 @@ points bank only through the evidence transaction above.
 6. **Close security and localization deductions.** Finish tenant/authorization
    depth and the request/error/recipient-locale gaps listed in
    [`BACKEND_LOCALIZATION_CONTRACT.md`](BACKEND_LOCALIZATION_CONTRACT.md).
-7. **Bank complete build/test/CI evidence.** Run the complete relevant suites,
-   Release builds, migration gates, and exact-SHA CI; record failures rather
-   than substituting focused green tests.
+7. **Assess and bank complete build/test/CI evidence.** Review the exact
+   `dbafc5c3` green aggregate against the fixed rubric, combine it with any
+   still-required migration-specific proof, and record an explicit category
+   movement or no-movement decision. Rerun only when the candidate changes;
+   never substitute focused evidence for the recorded complete aggregate.
 8. **Certify both unchanged clients.** Run the canonical React workflows and,
    after Web UK's Laravel-first certification, the same unchanged Web UK code
    against ASP.NET by configuration only, including accessibility and provider

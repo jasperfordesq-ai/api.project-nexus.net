@@ -1,6 +1,6 @@
 # Current ASP.NET Schema Readiness
 
-Last verified: 2026-07-15 20:58 +01:00
+Last verified: 2026-07-15 22:39 +01:00
 
 Status: **Canonical current - schema pause and restart source; no standalone product score**
 
@@ -22,18 +22,20 @@ for production or for a backend switch.
 
 The contract-correction work exposed a real fresh-chain hole: the EF model and
 snapshot already contained `compatibility_audit_entries`, but the runtime
-migration chain did not create it. Published product/CI commit
+migration chain did not create it. Published product/schema commit
 `c767050a3eabd064bdf647695b9699b98186342b` adds runtime migration
 `20260715184200_AddCompatibilityAuditEntriesTable`. That repair is present in
-source. Its exact-SHA CI build passed, but the migrated Test job reached its
-75-minute limit without a terminal test summary. The run concluded
-**cancelled**, not green.
+source. Its original exact-SHA CI run reached the 75-minute limit without a
+terminal test summary and concluded **cancelled**. The later bounded CI workflow
+at `b3f946b3` and test/evidence SHA `dbafc5c3` retain the same schema
+implementation and completed the required exact-SHA suite terminal green.
 
 Therefore the honest state is:
 
 - migration-chain repair: **implemented and published**;
 - focused earlier schema slices: **strong disposable-database evidence**;
-- current exact-SHA full suite and CI: **not certified**;
+- required exact-SHA full suite and CI at `dbafc5c3`: **terminal green but not
+  yet accepted by a fixed-rubric scoring transaction**;
 - contract-identical Laravel schema/workflow coverage: **incomplete**;
 - production migration or deployed-history proof: **not performed and not
   authorized**.
@@ -44,7 +46,9 @@ Therefore the honest state is:
 | --- | --- | --- |
 | Laravel comparison source | `903d03d3db78bbf87129ad35728be3b72819acaf` | Frozen read-only contract/schema source used by the current inventory. |
 | Latest schema expansion branch | `97b8a4a004362aef8356e8d76333f1efc9d44b36` | Nine schema commits later merged into `main` by `df8c8b96`; no longer a separate workstream. |
-| Current backend product/schema/CI boundary | `c767050a3eabd064bdf647695b9699b98186342b` | Adds migration 163 and other contract/CI corrections; published but unscored. |
+| Schema implementation boundary | `c767050a3eabd064bdf647695b9699b98186342b` | Adds migration 163 and other contract corrections; published but unscored. |
+| Required-CI workflow boundary | `b3f946b3fd3de51fa444008a7daee80d3de1bcd2` | Four deterministic whole-class shards, with coverage intentionally outside the required push gate. |
+| Exact test/evidence boundary | `dbafc5c329c55a15b4329ff90804d725dbf8b089` | Required GitHub Actions run 29451087913 is terminal green; no schema implementation changed after `c767050a`. |
 | EF migration classes | 165 | Source classes in the current tree. |
 | Runtime-discovered migration IDs | 163 | Applicable chain from `InitialCreate` through `AddCompatibilityAuditEntriesTable`. |
 | Intentionally quarantined classes | 2 | `FederationCoreExpansion` is superseded by later DDL; `AddTenantUpdatedAt` would duplicate the initial column. |
@@ -76,10 +80,11 @@ names. Their retained evidence includes:
 - disposable container cleanup with no production or Laravel database touched.
 
 Those results remain valuable exact-branch evidence. They do not substitute for
-a complete exact-`c767050a` aggregate because migration 163 and later test/CI
-behavior are outside that earlier package.
+dedicated migration-163 blank/populated-upgrade assertions because migration
+163 is outside that earlier package. The later complete green CI aggregate is
+recorded separately below.
 
-For current `c767050a`, GitHub Actions run
+For the original `c767050a` boundary, GitHub Actions run
 [`29441392036`](https://github.com/jasperfordesq-ai/api.project-nexus.net/actions/runs/29441392036)
 reported:
 
@@ -95,10 +100,31 @@ The test log exercised migration-installed constraints and triggers after
 startup, which is evidence that the blank chain progressed beyond migration
 application. Without a terminal summary it is not a full-suite pass.
 
+The separately authorized required-CI remediation then published workflow
+boundary `b3f946b3` and test/evidence boundary `dbafc5c3`, with no intervening
+schema implementation change. GitHub Actions run
+[`29451087913`](https://github.com/jasperfordesq-ai/api.project-nexus.net/actions/runs/29451087913)
+finished terminal success:
+
+- `Build`, frozen-React `Frontend`, all four `Test` shards, and `Docker Build &
+  Push` succeeded;
+- the allocator covered 3,361 logical tests exactly once as
+  841 + 840 + 840 + 840;
+- downloaded TRX artifacts contained 3,385 executed rows as
+  841 + 840 + 840 + 864 because shard 4 expanded parameterized runtime rows;
+- all 3,385 rows passed, with 0 failed, skipped, error, timeout, or aborted; and
+- coverage remained intentionally outside the required push gate.
+
+This satisfies the complete-suite exact-SHA CI subgate for the named candidate.
+It does not prove the dedicated zero-to-163 replay assertions, a populated
+162-to-163 upgrade, remaining storage classifications, release safety, or a
+production upgrade. Docker image publication was not a production deployment;
+no production container or Laravel database was touched.
+
 ## What Is Still Missing
 
 Before the schema can be called current-lineage certified, the next schema
-session must complete one exact-SHA package:
+session must complete the remaining migration-specific package:
 
 1. add focused source/runtime tests for
    `AddCompatibilityAuditEntriesTable` and its constraints/indexes;
@@ -111,10 +137,10 @@ session must complete one exact-SHA package:
    behavior;
 5. rerun the static comparator at named Laravel and ASP.NET SHAs and classify
    the 216 missing exact names by contract/workflow significance;
-6. run the complete relevant suite and exact-SHA CI to a terminal green result,
-   without replacing a timeout with a partial-test claim; and
-7. only then perform a fixed-rubric scoring transaction if evidence closes a
-   deduction.
+6. perform a fixed-rubric scoring transaction only after the remaining
+   migration-specific evidence closes a deduction. The general complete-suite
+   exact-SHA CI subgate is already terminal green at `dbafc5c3` and must not be
+   misreported as populated-upgrade proof.
 
 Production remains a separate authorization and evidence gate. No pause audit
 inspected or changed production schema, and no generic production migration

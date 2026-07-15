@@ -22,10 +22,11 @@ that status file.
 
 Eleven backend commits from `60715dfd` through `9ad163c9` were published after
 the restart scorecard. They include real contract behavior as well as harness
-and expectation corrections, but they have not received a complete fixed-
-rubric rescore or exact-SHA certification aggregate. Read their compact ledger
-under “Published But Not Rescored” in the canonical status; do not infer new
-points from this map.
+and expectation corrections. They have not received a complete fixed-rubric
+rescore. A later post-pause exact-SHA CI aggregate is green at `dbafc5c3`, but
+that execution result does not semantically regenerate or accept this detailed
+map. Read their compact ledger under “Published But Not Rescored” in the
+canonical status; do not infer new points from this map.
 
 Published `main` subsequently advanced through merge `df8c8b96`, which adds the
 nine schema families recorded in `SCHEMA_PARITY.md` plus test/documentation
@@ -33,13 +34,16 @@ transactions. It adds no API controller/route implementation beyond the
 `9ad163c9` behavior boundary, so this API ledger remains anchored there and the
 published schema delta remains unscored.
 
-Published commit `c767050a` is a later unscored product/CI delta. It removes a
+Published commit `c767050a` is the latest unscored product/API behavior delta.
+It removes a
 large compatibility-controller scaffold, changes authorization, offline Event
 check-in, marketplace-report, fixture, test, and CI behavior, and adds runtime
 migration 163. This detailed API ledger has not been completely regenerated or
-semantically rescored for that delta. Treat `c767050a` as current published
-source, the rows below as evidence anchored at their named SHAs, and the full
-delta as open until an exact-SHA contract audit accepts it.
+semantically rescored for that delta. Later commits `b3f946b3` and `dbafc5c3`
+change the required CI workflow and wallet-concurrency test evidence only; they
+do not advance the product/API behavior boundary. Required CI is terminal green
+at `dbafc5c3`, but the rows below remain evidence anchored at their named SHAs
+and the `c767050a` semantic delta remains open until a contract audit accepts it.
 
 Frontend contract consumers are the canonical React client at
 `C:\platforms\htdocs\staging\react-frontend` and the unchanged Web UK client at

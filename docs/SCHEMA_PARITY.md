@@ -15,11 +15,13 @@ Published product/schema commit `c767050a3eabd064bdf647695b9699b98186342b`
 adds `20260715184200_AddCompatibilityAuditEntriesTable`, taking the source to
 165 migration classes and 163 runtime IDs. The table was already represented
 by the model and therefore does not change the static table totals below. Its
-exact-SHA CI Test job timed out, so the chain is repaired but not certified.
-Any
-older table/count without its own exact source pair is a historical,
-provenance-incomplete checkpoint and cannot support current score or
-upgrade-safety claims.
+original exact-SHA CI Test job timed out. The later required-CI workflow at
+`b3f946b3` and test/evidence SHA `dbafc5c3` retain the same schema implementation;
+run 29451087913 completed the full required suite terminal green. That closes
+the general exact-SHA CI subgate, not dedicated blank/populated migration-163,
+storage-classification, release, or production gates. Any older table/count
+without its own exact source pair is a historical, provenance-incomplete
+checkpoint and cannot support current score or upgrade-safety claims.
 
 Laravel source of truth: `C:\platforms\htdocs\staging\database\migrations` and
 `C:\platforms\htdocs\staging\app\Models`.
@@ -409,9 +411,12 @@ product commit `c767050a` adds migration source/runtime ID 163 without changing
 those static table-name totals, so the current tree has 165 migration classes.
 Each slice
 has its own focused build, test, model-drift, blank-replay, and populated-upgrade
-evidence above, but the combined merged lineage has not yet received a new
-canonical scoring transaction or complete published exact-SHA certification. The current
-banked schema category therefore remains **129/150**.
+evidence above. The combined lineage now has a complete required exact-SHA CI
+aggregate at `dbafc5c3`: the allocator covered 3,361 logical tests, downloaded
+TRX artifacts reported 3,385 runtime rows, and all passed. It has not yet
+received dedicated migration-163 blank/populated-upgrade proof or a new
+canonical scoring transaction. The current banked schema category therefore
+remains **129/150**.
 
 The five Verein names previously classified as genuine missing storage are now
 represented exactly and are therefore absent from this missing-name partition.

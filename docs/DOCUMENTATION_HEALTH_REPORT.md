@@ -1,6 +1,6 @@
 # Documentation Health And Pause-Readiness Report
 
-Last verified: 2026-07-15
+Last verified: 2026-07-15 22:39 +01:00
 
 Status: **Generated snapshot — documentation and handoff quality only, not product readiness**
 
@@ -44,8 +44,8 @@ client switching, CI, providers, or production are complete or certified.
 | --- | ---: | --- |
 | Mission and contract-decision integrity | 120/120 | ADR-0001 makes externally contract-identical behavior binding. Every first-read guide states the two-unchanged-frontends-by-two-backends target, Laravel authority, configuration-only switching, and prohibition on frontend forks. Historical “parity” is explicitly shorthand, never a weaker acceptance standard. |
 | Navigation, authority, and cold-start order | 110/110 | Root/docs/Web UK entry points route a new agent through AGENTS, CLAUDE, the pause handoff, ADR, separate ASP.NET/schema/Web UK status pages, then the resume-only runbook. Governance defines one authority for each decision, score, audience, and operational boundary. |
-| Exact pause state, provenance, and certification honesty | 140/140 | The pause handoff records named Laravel/ASP.NET/Web UK boundaries, banked versus published-unscored work, dirty generated-artifact provenance, independent product scores, CI timeout semantics, invalidation rules, and what must never be inferred from static counts or focused evidence. |
-| Schema readiness and recommission blueprint | 140/140 | The canonical schema page records 165 classes/163 runtime IDs/two quarantines, the migration-163 repair, earlier blank and populated evidence, 129/150 bank, exact diagnostic counts, timed-out exact-SHA CI, seven missing proof gates, safe disposable-database commands, and first tasks for the next phase. |
+| Exact pause state, provenance, and certification honesty | 140/140 | At the tagged D3 snapshot, the pause handoff records named Laravel/ASP.NET/Web UK boundaries, banked versus published-unscored work, dirty generated-artifact provenance, independent product scores, CI timeout semantics, invalidation rules, and what must never be inferred from static counts or focused evidence. The appended post-pause record preserves rather than rewrites that history. |
+| Schema readiness and recommission blueprint | 140/140 | At the tagged D3 snapshot, the schema record captured 165 classes/163 runtime IDs/two quarantines, the migration-163 repair, earlier blank and populated evidence, 129/150 bank, exact diagnostic counts, the then-timed-out exact-SHA CI result, seven missing proof gates, safe disposable-database commands, and first tasks for the next phase. The maintained current page now records the later green required-CI subgate separately. |
 | Workstream handoffs, prompts, ownership, and finite queues | 130/130 | The pause handoff supplies copy-ready read-only, backend, schema, and Web UK prompts. Canonical status pages preserve the backend eight-package queue and Web UK three-gate finish line. The runbook is fenced as resume-only and exclusive ownership rules protect shared hotspots. |
 | Development, testing, security, data, and operations safety | 110/110 | Maintained guides cover supported Docker development, real ports and fictitious seed identities, configuration, test evidence levels, tenant/security invariants, ordinary-Laravel-database prohibition, manual-only production authority, deployment quarantine, incidents, backups/restores, and exact-SHA limitations. Invalid shard documentation was corrected to `-ShardIndex`. |
 | Audience, contributor, legal, and governance coverage | 90/90 | Member, administrator, API consumer, developer/operator, support, vulnerability, contributor, and conduct audiences have discoverable entry points. Root and Web UK attribution agree on hOUR Timebank CLG and Sarah Bird. CONTRIBUTING, contributor terms, CODE_OF_CONDUCT, LICENSE, NOTICE, SUPPORT, SECURITY, CHANGELOG, and the ADR index are linked. |
@@ -76,9 +76,10 @@ same D3 denominator and closed explicit deductions:
   **712/1000**. The latest banked implementation is `5fa15e0e`; later backend,
   schema, test, and CI work remains published but unscored.
 - The [schema category](CURRENT_SCHEMA_READINESS.md) remains **129/150**. The
-  chain repair is implemented, but migration-163, complete exact-SHA suite/CI,
-  remaining storage classification, and release/production upgrades are not
-  certified.
+  chain repair is implemented and the required complete exact-SHA suite/CI is
+  terminal green at `dbafc5c3`, but dedicated migration-163 blank/populated-
+  upgrade proof, remaining storage classification, fixed-rubric acceptance,
+  and release/production upgrades are not certified.
 - [Web UK Baseline W1](../apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md)
   remains **663/1000**. Goal W2 has **no percentage** and three gates: isolated
   manual accessibility evidence/fixes, the accessibility-copy decision, then a
@@ -115,6 +116,11 @@ commit/push/fix-until-green CI phase. The refined candidate is therefore active
 again on post-pause `main`. Baseline D3 remains 1000/1000 for the named paused
 snapshot; the repository-freeze row is historical evidence and does not claim
 that the moving CI-resumption head currently passes the pause-readiness guard.
+
+That bounded phase later completed terminal green at test/evidence SHA
+`dbafc5c3` in GitHub Actions run 29451087913. Recording that later evidence does
+not rescore Baseline D3, alter its `pause/2026-07-15` tag, or imply product,
+schema-release, provider, unchanged-client, or production certification.
 
 ### Removed And Retained Remote Heads
 

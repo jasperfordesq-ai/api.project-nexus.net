@@ -1,6 +1,6 @@
 # Project Pause And Cold-Start Handoff — 2026-07-15
 
-Last verified: 2026-07-15
+Last verified: 2026-07-15 22:39 +01:00
 
 Status: **Canonical current — development-pause and cold-start source**
 
@@ -33,8 +33,10 @@ current boundary. It does not authorize implementation or production work.
 - Web UK Baseline W1 is **663/1000**. Corrected Goal W2 deliberately has no
   percentage; its finish line is three finite gates listed below.
 - The schema is **working and partly proved, not complete or release-certified**.
-  The current source contains 163 runtime migration IDs. Exact-SHA CI timed out
-  before a terminal test result.
+  The current source contains 163 runtime migration IDs. The frozen pause
+  boundary's exact-SHA CI timed out; the separately authorized post-pause CI
+  completion at `dbafc5c3` is recorded below and does not certify the remaining
+  migration-specific or release gates.
 - Historical `CURRENT_*_HANDOFF.md` files are evidence archives, not restart
   instructions. The current documents below override their scores and queues.
 
@@ -91,7 +93,7 @@ outcome. Static route matches alone are not contract identity.
 | Workstream | Canonical status | Honest pause verdict | First future package |
 | --- | --- | --- | --- |
 | ASP.NET contract identity | [`CURRENT_ASPNET_CONTRACT_STATUS.md`](CURRENT_ASPNET_CONTRACT_STATUS.md) | 712/1000 banked; 288 points remain; later commits are published but unscored | Re-establish exact SHAs and choose one of the eight ordered packages; do not estimate score movement |
-| ASP.NET schema | [`CURRENT_SCHEMA_READINESS.md`](CURRENT_SCHEMA_READINESS.md) | 129/150 banked; working/partly proved; 163 runtime IDs; current full exact-SHA result absent | Certify migration 163 on blank and populated disposable PostgreSQL, then complete same-SHA suite/CI |
+| ASP.NET schema | [`CURRENT_SCHEMA_READINESS.md`](CURRENT_SCHEMA_READINESS.md) | 129/150 banked; working/partly proved; 163 runtime IDs; the pause-boundary full exact-SHA result was absent, while the post-pause required CI gate is now green | Certify migration 163 on blank and populated disposable PostgreSQL; do not treat the green general suite as upgrade certification |
 | Web UK Laravel-first frontend | [`CURRENT_LARAVEL_FIRST_PARITY_STATUS.md`](../apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md) | W1 663/1000; W2 unscored; source-owned work is near its finite finish line but not certified | Isolated manual accessibility evidence/fixes, then copy decision, then W2 audit |
 | Dual-backend client switching | ASP.NET status plus [`BACKEND_SWITCHING_CONTRACT.md`](../apps/web-uk/docs/BACKEND_SWITCHING_CONTRACT.md) | Not certified for either unchanged client | Build exact consumer matrices and run unchanged-client workflows against ASP.NET |
 | Production | [production container guide](../.claude/production-containers.md) | No deployment was authorized by this pause audit | Remains a separate explicit-authority operation |
@@ -123,6 +125,10 @@ audit. The ordinary Laravel checkout also had a pre-existing lockfile change and
 untracked `.codex/` state; never erase or claim ownership of those paths.
 
 ## Schema Blueprint
+
+This section preserves what was known and missing at the frozen pause boundary.
+The later bounded CI completion is recorded in the resumption section below; it
+does not rewrite the pause tag or the remaining migration-specific gates.
 
 The short answer is not “the schema is broken.” The contract-correction work
 exposed a missing runtime migration for a table already present in the EF model
@@ -323,13 +329,47 @@ historical pause transaction had reverted it. Its evidence boundary is:
   the throughput blocker, so coverage is not part of the required push gate;
 - GitHub run `29448759052` was cancelled after 1m18s only because the final
   pause-documentation push superseded it; it is not pass/fail test evidence;
-- terminal exact-SHA CI evidence remains required before this resumed loop may
-  be called green.
+- at the time this record was first written, terminal exact-SHA CI evidence
+  remained required before the resumed loop could be called green; the
+  completion record follows.
 
 The annotated `pause/2026-07-15` tag remains the historical clean-pause
 boundary. `scripts/check-pause-readiness.ps1` certifies that tag, not a moving
 post-resumption `main`. Baseline D3 remains a score for the named paused
 snapshot; the current CI result must be reported separately.
+
+### CI Remediation Completion Record - 2026-07-15
+
+The bounded CI remediation completed without changing the frozen product score
+or authorizing general development:
+
+- `c767050a3eabd064bdf647695b9699b98186342b` remains the latest backend
+  product/API/schema implementation boundary;
+- `b3f946b3fd3de51fa444008a7daee80d3de1bcd2` is the four-shard required-CI
+  workflow boundary;
+- `dbafc5c329c55a15b4329ff90804d725dbf8b089` is the test/evidence SHA that
+  gives every concurrent wallet transfer its own explicit idempotency key;
+- GitHub Actions run
+  [`29451087913`](https://github.com/jasperfordesq-ai/api.project-nexus.net/actions/runs/29451087913)
+  finished terminal **success** for `dbafc5c3`: Build, frozen-React Frontend,
+  Test shards 1-4, and Docker Build & Push all succeeded;
+- deterministic allocation covered 3,361 logical tests exactly once as
+  841 + 840 + 840 + 840. The downloaded TRX files contained 3,385 executed
+  rows as 841 + 840 + 840 + 864 because shard 4 expanded parameterized runtime
+  rows; all 3,385 passed, with 0 failed, skipped, error, timeout, or aborted;
+- coverage remains intentionally outside the required push gate because the
+  earlier instrumentation path prevented VSTest from completing and flushing
+  terminal artifacts; and
+- Docker image publication is not a production deployment. No production
+  container was touched, and no Laravel repository or database action occurred.
+
+This closes the required complete-suite exact-SHA CI push gate for the named
+candidate only. It does not rescore the ASP.NET bank of **712/1000**, the
+build/test/CI category of **45/100**, the schema bank of **129/150**, or
+Documentation Health Baseline D3 of **1000/1000**. Dedicated migration-163
+blank/populated-upgrade proof, storage classification, providers, both
+unchanged-client runtime switches, release certification, and production proof
+remain open.
 
 ## Pause Integrity Rule
 

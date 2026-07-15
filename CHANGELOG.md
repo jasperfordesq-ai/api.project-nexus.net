@@ -19,6 +19,12 @@ for Git history, a release-certification record, or a current score source.
 - Coverage collection was removed from the required push gate after both local
   and GitHub evidence showed it prevented VSTest from completing and flushing
   test artifacts. All 3,361 API tests remain in the required gate.
+- Required CI completed terminal green at test/evidence SHA `dbafc5c3` in
+  GitHub Actions run 29451087913: Build, frozen-React Frontend, four API-test
+  shards, and Docker Build & Push succeeded. The allocator covered 3,361
+  logical tests; TRX execution expanded shard-4 parameterized rows to 3,385
+  total rows, all passed with 0 failed or skipped. This evidence remains
+  unscored and did not deploy production or touch the Laravel database.
 
 ### Direction
 
@@ -52,8 +58,10 @@ for Git history, a release-certification record, or a current score source.
 - Added the missing runtime migration for `compatibility_audit_entries`,
   advancing the current applicable chain to 163 IDs.
 - Retained the honest boundary: the schema is working and partly proved, but
-  current-lineage complete-suite, exact-SHA CI, remaining contract-storage,
-  and production-upgrade certification are open.
+  dedicated migration-163 blank/populated-upgrade proof, remaining contract-
+  storage classification, fixed-rubric acceptance, and production-upgrade
+  certification remain open. The general complete-suite exact-SHA CI subgate
+  is green at `dbafc5c3`; it is not upgrade certification.
 
 ### Repository Hygiene
 

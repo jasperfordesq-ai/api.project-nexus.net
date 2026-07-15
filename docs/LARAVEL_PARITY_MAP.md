@@ -23,7 +23,9 @@ The eleven backend commits published from `60715dfd` through `9ad163c9` after
 the restart scorecard remain a single unscored delta. Some change real semantic
 behavior and others correct the test harness or expectations. The canonical
 status lists them and keeps the bank at 712/1000 pending a complete scoring and
-certification transaction; this detailed map does not estimate their value.
+semantic-audit transaction. A later post-pause exact-SHA CI aggregate is green
+at `dbafc5c3`, but it does not regenerate or accept this detailed map; this map
+does not estimate their value.
 
 Published `main` now includes schema merge `df8c8b96`. Its nine schema slices
 are current published implementation evidence in `SCHEMA_PARITY.md`, not a silent
@@ -33,10 +35,13 @@ transaction accepts the merged lineage.
 
 Later published commit `c767050a` changes compatibility-controller,
 authorization, Event offline check-in, marketplace-report, migration, fixture,
-test, and CI behavior. It is current source but remains one unscored delta: this
-map has not received a complete exact-SHA semantic regeneration or scoring
-transaction for it. See `CURRENT_ASPNET_CONTRACT_STATUS.md` and
-`CURRENT_SCHEMA_READINESS.md` before using the detailed rows below.
+test, and CI behavior. It remains the latest product/API behavior source and one
+unscored delta: this map has not received a complete semantic regeneration or
+scoring transaction for it. Later `b3f946b3` and `dbafc5c3` commits change the
+required CI workflow and test evidence only. Their terminal-green exact-SHA run
+does not alter this map's semantic boundary. See
+`CURRENT_ASPNET_CONTRACT_STATUS.md` and `CURRENT_SCHEMA_READINESS.md` before
+using the detailed rows below.
 
 ## Latest Verified Backend Slice
 

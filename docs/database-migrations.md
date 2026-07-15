@@ -40,16 +40,22 @@ were not yet published, production-authorized, fully certified at the merge
 SHA, or banked. The later publication transaction puts that same migration chain
 on `origin/main`; it remains unbanked and not production-authorized.
 
-The current backend product/schema/CI boundary is later commit
+The current backend product/schema implementation boundary is later commit
 `c767050a3eabd064bdf647695b9699b98186342b`. It adds
 `20260715184200_AddCompatibilityAuditEntriesTable`, taking the repository to 165
 migration classes and 163 runtime-discovered IDs. The EF model/snapshot already
 represented the table, so this repairs a latent fresh-chain creation hole. CI
 run 29441392036 passed Build, but the migrated Test job was cancelled at its
-75-minute limit without a terminal summary. Read
+75-minute limit without a terminal summary. That original result remains
+historical. The separately authorized required-CI workflow at `b3f946b3` and
+test/evidence SHA `dbafc5c3` retain the same schema implementation; GitHub run
+29451087913 completed Build, Frontend, all four test shards, and Docker Build &
+Push terminal green. Its allocator covered 3,361 logical tests and its TRX files
+reported 3,385 executed rows, all passed with 0 failed or skipped. Read
 [`CURRENT_SCHEMA_READINESS.md`](CURRENT_SCHEMA_READINESS.md) before resuming;
-the current source is repaired but not exact-SHA suite, upgrade, production, or
-release certified.
+the current source and complete-suite CI subgate are green, but dedicated
+migration-163 blank/populated-upgrade, production, and release certification
+remain open. No production container or Laravel database was touched.
 
 ## Historical Runtime Chain And Replay Evidence (2026-07-12)
 
