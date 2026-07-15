@@ -7,8 +7,8 @@ Status: **Maintained reference — current comparison method with dated evidence
 Evidence provenance: the current static table inventory was regenerated on
 2026-07-15 against Laravel
 `903d03d3db78bbf87129ad35728be3b72819acaf` and the schema candidate based on
-committed ASP.NET tree `cb54e2d94ec0170c9aee6cdc06494f1daa5fbea5`, including
-`20260715135048_CookieInventoryStorageParity`. Any older table/count without
+committed ASP.NET tree `7981389be628d16baf93ca210b48900dc4788dab`, including
+`20260715144509_SalaryBenchmarkStorageParity`. Any older table/count without
 its own exact source pair is a historical, provenance-incomplete checkpoint and
 cannot support current score or upgrade-safety claims.
 
@@ -19,6 +19,45 @@ Use [`CURRENT_ASPNET_CONTRACT_STATUS.md`](CURRENT_ASPNET_CONTRACT_STATUS.md) for
 the current banked score and active schema/upgrade deductions. Dated sections
 here are retained evidence. Static table-name counts are never an overall score
 and remain historical until explicitly regenerated against named SHAs.
+
+## 2026-07-15 Salary Benchmark Storage Evidence
+
+Migration `20260715144509_SalaryBenchmarkStorageParity` closes the genuine
+`salary_benchmarks` gap. The current 13-column Laravel contract comes from the
+schema dump plus the active model/service: optional tenant, role keyword,
+industry/location, min/max/median salary, salary type, currency, year, source,
+and created timestamp. Laravel's guarded fallback migration describes a stale
+alternative shape and does not run when the existing table is present. ASP.NET
+therefore follows the converged live contract, preserves global null-tenant
+rows without a query filter, and adds an optional restrictive tenant FK plus
+the documented salary-type domain.
+
+Verification on committed predecessor
+`7981389be628d16baf93ca210b48900dc4788dab`:
+
+- a forced clean Release solution build passed in 7m21.57s with zero errors and
+  the seven known API/test warnings;
+- the focused `SalaryBenchmarkSchemaParityTests` class executed and passed 3/3
+  with 20 seconds of test execution;
+- `dotnet ef migrations has-pending-model-changes` reported no model drift;
+- a blank disposable PostgreSQL 16.4 database applied all 161 runtime
+  migrations and exposed 13 columns, three total indexes, one optional tenant
+  FK, and one salary-type check;
+- blank-database inserts resolved `annual`, `EUR`, `2026`, and timestamp
+  defaults, while an invalid salary type and a missing tenant reference were
+  rejected;
+- a second disposable database was held exactly at
+  `20260715135048_CookieInventoryStorageParity` with 160 migrations and no
+  salary table, then populated with one tenant and one cookie-inventory row;
+- exactly the salary migration upgraded that database to 161 without losing
+  either seeded row; global and tenant-specific salary rows then coexisted, and
+  invalid salary-type/tenant writes were rejected;
+- the regenerated schema comparator and its fixture passed, and both
+  disposable PostgreSQL containers were removed.
+
+This slice moves the static exact-name inventory from 240 to 241 matches. The
+banked schema category remains **129/150** until the canonical ASP.NET status
+document records an accepted scoring movement.
 
 ## 2026-07-15 Cookie Inventory Storage Evidence
 
@@ -289,25 +328,25 @@ comparison, not runtime migration proof, API/workflow parity, or a score.
 | Source | Count | Notes |
 | --- | ---: | --- |
 | Laravel migration files | 384 | PHP files under `database/migrations`. |
-| ASP.NET EF migration source files | 162 | Excludes designer files and the model snapshot. |
+| ASP.NET EF migration source files | 163 | Excludes designer files and the model snapshot. |
 | Laravel created tables | 301 | Unique `Schema::create(...)` names. |
 | Laravel touched tables | 131 | Unique `Schema::table(...)` names. |
 | Laravel explicit model tables | 268 | Unique explicit model `$table` declarations. |
 | Laravel source tables | 458 | Union of created, touched, and explicit model table names. |
-| ASP.NET tables | 438 | Union of EF `ToTable`, `[Table]`, and migration `CreateTable` names. |
-| Exact matched tables | 240 | Identical normalized names in both sources. |
-| Missing Laravel exact names | 218 | Laravel names with no identical ASP.NET name. |
+| ASP.NET tables | 439 | Union of EF `ToTable`, `[Table]`, and migration `CreateTable` names. |
+| Exact matched tables | 241 | Identical normalized names in both sources. |
+| Missing Laravel exact names | 217 | Laravel names with no identical ASP.NET name. |
 | ASP.NET-only exact names | 198 | ASP.NET names with no identical Laravel name. |
 
-The 218 missing exact names currently partition as follows. These categories
+The 217 missing exact names currently partition as follows. These categories
 are mutually exclusive, so their counts reconcile to the comparator total.
 
 | Classification | Count | Evidence boundary |
 | --- | ---: | --- |
 | Classified aliases | 24 | A differently named ASP.NET aggregate has been identified. `email_log` maps to the existing `email_logs` entity/table and deliverability consumers; `activity_log` maps to the tenant/user-scoped `member_activity_logs` ledger; `push_log` maps to the dedicated but differently shaped `push_notification_logs` delivery ledger; and `fadp_consent_records` maps to current-state `consent_records`, which supplies the member/admin FADP consent routes but is not yet proved equivalent to Laravel's append-only action/version/metadata ledger. Each alias remains a gap until its migration shape and external workflow are proved equivalent. |
 | Compatibility-storage gaps | 20 | Podcast: `podcast_episode_chapters`, `podcast_episode_listens`, `podcast_episode_reactions`, `podcast_episode_reports`, `podcast_episodes`, `podcast_media_cleanup_tasks`, `podcast_show_subscriptions`, and `podcast_shows`. Advertising: `ad_campaigns`, `ad_creatives`, `ad_impressions`, and `ad_clicks`, currently persisted as campaign/creative/aggregate JSON under tenant-config key `local_advertising.campaigns`. Appreciations: `appreciations` and `appreciation_reactions`, currently persisted under tenant-config key `social.appreciations`. Email suppression: `email_suppression`, currently persisted under tenant-config prefix `email_deliverability.suppression.`. Support triage: `support_reports`, currently persisted under tenant-config key `admin_explicit.support_reports`. FADP: `fadp_data_retention_config` and `fadp_processing_activities`, whose route writes are recorded in `compatibility_audit_entries` while the processing-register read also composes `legal_documents` and `gdpr_consent_types`. Tenant retention: `tenant_retention_policies` and `tenant_retention_runs`, persisted under tenant-config prefix `admin.retention.policy.` and key `admin.retention.runs`. Existing API compatibility does not replace these Laravel storage/evidence contracts, so these are not accepted aliases or exact matches. |
-| Unclassified missing names | 174 | No accepted alias or replacement classification has yet been recorded. |
-| **Total missing exact names** | **218** | **24 + 20 + 174.** |
+| Unclassified missing names | 173 | No accepted alias or replacement classification has yet been recorded. |
+| **Total missing exact names** | **217** | **24 + 20 + 173.** |
 
 The five Verein names previously classified as genuine missing storage are now
 represented exactly and are therefore absent from this missing-name partition.
@@ -324,8 +363,9 @@ to 184 before the pilot-inquiry closure reduces it to 183. Classifying
 closure reduces it to 180 and moves exact matches from 238 to 239. Classifying
 the three FADP names and two tenant-retention names reduces it to 175 before
 the cookie-inventory closure reduces it to 174 and moves exact matches from
-239 to 240. Exact-name coverage is therefore 240/458, or 52.4%; this remains a
-diagnostic inventory rather than an overall parity percentage.
+239 to 240. The salary-benchmark closure reduces it to 173 and moves exact
+matches from 240 to 241. Exact-name coverage is therefore 241/458, or 52.6%;
+this remains a diagnostic inventory rather than an overall parity percentage.
 
 The comparator's Markdown renderer was also corrected in this audit. Missing
 and ASP.NET-only rows now render concrete table names and source paths rather
