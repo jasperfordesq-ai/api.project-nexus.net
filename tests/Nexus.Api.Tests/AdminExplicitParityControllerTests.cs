@@ -23,7 +23,7 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
     public AdminExplicitParityControllerTests(NexusWebApplicationFactory factory) : base(factory) { }
 
     [Fact]
-    public async Task UnhandledGetAlias_ReturnsTenantScopedCompatibilityRead()
+    public async Task AdminAdCampaignsV2_ReturnsLaravelReactListContract()
     {
         await AuthenticateAsAdminAsync();
 
@@ -33,7 +33,8 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
         var json = await response.Content.ReadFromJsonAsync<JsonElement>();
         json.TryGetProperty("error", out _).Should().BeFalse();
         json.GetProperty("data").ValueKind.Should().Be(JsonValueKind.Array);
-        json.GetProperty("compatibility").GetProperty("mode").GetString().Should().Be("tenant_config_record");
+        json.GetProperty("meta").GetProperty("total").GetInt32().Should().BeGreaterThanOrEqualTo(0);
+        json.TryGetProperty("compatibility", out _).Should().BeFalse();
     }
 
     [Fact]

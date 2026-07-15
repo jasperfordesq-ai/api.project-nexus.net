@@ -114,6 +114,6 @@ public class AdminGroupsController : ControllerBase
         _db.GroupMembers.RemoveRange(members);
         _db.Groups.Remove(group);
         await _db.SaveChangesAsync();
-        return Ok(new { message = "Group deleted" });
+        return Ok(new { data = new { deleted = true, id } });
     }
 }
