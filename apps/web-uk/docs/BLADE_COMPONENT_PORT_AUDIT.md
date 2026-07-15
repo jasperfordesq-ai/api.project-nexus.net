@@ -1656,6 +1656,24 @@ database, migration, runtime request, container, or production operation was
 performed. This slice is unscored; the canonical bank remains `663/1,000`
 until another complete fixed-rubric audit.
 
+### 2026-07-15 Volunteering mutation path-assertion follow-up
+
+The shared volunteering dispatcher now has direct API-client proof for the
+OpenAPI-omitted accessibility-needs, donation, expense, incident, organisation
+settings, organisation-wallet deposit, and training paths. Seven cases pin
+Laravel's exact paths and verbs, bearer authority, accessibility/emergency,
+financial/currency, safety, organisation and training payload fields,
+unmodified success envelopes, and structured vetting-required `403`
+propagation. Together with the existing organisation, credential, hour and
+workflow assertions, this closes the currently generated omitted path set for
+this volunteering subfamily at the API-client boundary. Live safeguarding,
+ledger, upload and cleanup effects require the isolated disposable runtime.
+
+The focused API-client suite passes `235/235`. No Laravel or ASP.NET source,
+database, migration, runtime request, container, or production operation was
+performed. This slice is unscored; the canonical bank remains `663/1,000`
+until another complete fixed-rubric audit.
+
 - GOV.UK crown, logotype, official header identity, OGL block, or Crown
   copyright wording.
 - Laravel/PHP implementation details.

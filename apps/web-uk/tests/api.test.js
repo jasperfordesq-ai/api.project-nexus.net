@@ -2342,6 +2342,90 @@ describe('API Request Functions', () => {
       );
     });
 
+    it('should preserve volunteering accessibility, finance, safety, training, and organisation paths', async () => {
+      const cases = [
+        ['PUT', '/accessibility-needs', {
+          needs: [{
+            need_type: 'mobility',
+            description: 'Step-free access required',
+            accommodations_required: 'Accessible entrance',
+            emergency_contact_name: 'Sam Member',
+            emergency_contact_phone: '+353 1 555 0100'
+          }]
+        }],
+        ['POST', '/donations', {
+          amount: 25,
+          payment_method: 'bank_transfer',
+          message: 'Community garden',
+          is_anonymous: false,
+          giving_day_id: 7
+        }],
+        ['POST', '/expenses', {
+          organization_id: 42,
+          expense_type: 'supplies',
+          amount: 18.5,
+          description: 'Repair materials',
+          currency: 'EUR'
+        }],
+        ['POST', '/incidents', {
+          title: 'Minor equipment issue',
+          description: 'A damaged tool was removed from service immediately.',
+          severity: 'low',
+          category: 'equipment',
+          incident_type: 'other'
+        }],
+        ['PUT', '/organisations/42', {
+          name: 'Community Helpers',
+          description: 'Local volunteering projects',
+          contact_email: 'hello@example.test',
+          website: 'https://example.test'
+        }],
+        ['POST', '/organisations/42/wallet/deposit', { amount: 10, note: 'Opening balance' }],
+        ['POST', '/training', {
+          training_type: 'first_aid',
+          training_name: 'Emergency first aid',
+          provider: 'Training Co',
+          completed_at: '2026-07-01',
+          expires_at: '2027-07-01'
+        }]
+      ];
+
+      for (const [method, pathValue, body] of cases) {
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { accepted: true } })
+        });
+
+        await expect(api.callVolunteeringApi('test-token', method, pathValue, body))
+          .resolves.toEqual({ data: { accepted: true } });
+        expect(mockFetch).toHaveBeenLastCalledWith(
+          `http://localhost:5000/api/v2/volunteering${pathValue}`,
+          expect.objectContaining({
+            method,
+            headers: expect.objectContaining({ Authorization: 'Bearer test-token' }),
+            body: JSON.stringify(body)
+          })
+        );
+      }
+
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ message: 'Vetting is required.', code: 'VETTING_REQUIRED' })
+      });
+
+      await expect(api.callVolunteeringApi('test-token', 'POST', '/training', {
+        training_type: 'first_aid', training_name: 'Emergency first aid', completed_at: '2026-07-01'
+      })).rejects.toMatchObject({
+        name: 'ApiError',
+        status: 403,
+        message: 'Vetting is required.',
+        data: { message: 'Vetting is required.', code: 'VETTING_REQUIRED' }
+      });
+    });
+
     it('should upload volunteer credentials to Laravel with multipart file data', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
