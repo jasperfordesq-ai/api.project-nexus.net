@@ -98,14 +98,6 @@ const GROUP_MANAGE_ERROR_STATES = new Set([
   'member-failed', 'request-failed', 'request-safeguarding-restricted',
   'request-safeguarding-unavailable'
 ]);
-const GROUP_PAGE_SUCCESS_STATES = new Set([
-  'group-created', 'group-updated', 'group-deleted', 'group-joined', 'group-left'
-]);
-const GROUP_PAGE_ERROR_STATES = new Set([
-  'group-failed', 'group-safeguarding-restricted', 'group-safeguarding-unavailable',
-  'group-update-failed', 'group-delete-failed'
-]);
-
 function trimmed(value, limit = null) {
   const text = String(value || '').trim();
   return limit === null ? text : text.slice(0, limit);
@@ -635,20 +627,6 @@ function groupMembershipFailureStatus(error) {
   return 'group-failed';
 }
 
-function groupPageStatus(status, t = (key) => key) {
-  const value = trimmed(status);
-  const safeguardingKey = {
-    'group-safeguarding-restricted': 'safeguarding.errors.interaction_not_allowed',
-    'group-safeguarding-unavailable': 'safeguarding.errors.policy_unavailable'
-  }[value];
-  return {
-    successMessage: GROUP_PAGE_SUCCESS_STATES.has(value) ? t(`groups.states.${value}`) : null,
-    errorMessage: GROUP_PAGE_ERROR_STATES.has(value)
-      ? t(safeguardingKey || `groups.states.${value}`)
-      : null
-  };
-}
-
 function inviteGeneratedLink(result) {
   const data = dataFrom(result) || {};
   return trimmed(data.generated_link || data.generatedLink || data.invite_url || data.inviteUrl || '');
@@ -965,7 +943,6 @@ router.get('/', requireAuth, asyncRoute(async (req, res) => {
   const groups = collectionFrom(groupsResult)
     .map((group) => normalizeGroup(group, positiveInteger(group?.id)));
   const meta = groupsResult?.meta || {};
-  const statusMessages = groupPageStatus(req.query.status, res.locals.t);
   const nextQuery = new URLSearchParams();
   if (searchQuery) nextQuery.set('q', searchQuery);
   if (groupsFilter !== 'all') nextQuery.set('filter', groupsFilter);
@@ -982,8 +959,7 @@ router.get('/', requireAuth, asyncRoute(async (req, res) => {
       cursor: nextCursor,
       nextHref: urlFor(res, `/groups?${nextQuery.toString()}`)
     },
-    successMessage: statusMessages.successMessage || (req.flash ? req.flash('success')[0] : null),
-    errorMessage: statusMessages.errorMessage || (req.flash ? req.flash('error')[0] : null)
+    status: trimmed(req.query.status)
   });
 }, { redirectOn401: loginRedirect() }));
 
@@ -1139,8 +1115,6 @@ router.get('/:id(\\d+)', requireAuth, asyncRoute(async (req, res) => {
   const membershipStatus = trimmed(myMembership?.status || myMembership?.state);
   const isAdmin = isGroupAdmin(group);
   const isPending = membershipStatus === 'pending';
-  const statusMessages = groupPageStatus(req.query.status, res.locals.t);
-
   res.render('groups/detail', {
     title: group.name,
     group,
@@ -1156,8 +1130,7 @@ router.get('/:id(\\d+)', requireAuth, asyncRoute(async (req, res) => {
     isPending,
     groupCanParticipate: isMember,
     csrfToken: req.csrfToken ? req.csrfToken() : '',
-    successMessage: statusMessages.successMessage || (req.flash ? req.flash('success')[0] : null),
-    errorMessage: statusMessages.errorMessage || (req.flash ? req.flash('error')[0] : null)
+    status: trimmed(req.query.status)
   });
 }, { notFoundTitle: 'Group not found' }));
 

@@ -775,6 +775,28 @@ the page renders their exact safeguarding catalog copy, and the caption/error
 hierarchy matches Blade. The shared locale generator now imports the complete
 11-locale `safeguarding.php` namespace instead of allowing raw keys.
 
+2026-07-15 Group index/detail status follow-up: the index now renders only
+Blade's bounded `group-deleted` outcome with the exact `groups-status`
+relationship. Detail keeps its separate create/update/join/leave and
+safeguarding/error families, and now also renders the previously missing
+`group-posted`, `group-post-empty`, `group-post-failed`, and
+`group-post-forbidden` feed-compose outcomes with Blade's `grp-feed-status` or
+error-summary structure. Neither page consumes arbitrary cross-route flash
+values. Focused family and safeguarding proof passes `2/2`; the complete
+non-mutating inventory is green across a 1,702-assertion host-memory aggregate
+plus the separately verified canonical-path tenant-source assertion. Brand,
+lint, CSS, and all localization audits pass; static localization resolves 7,625
+references and 5,805 unique keys with zero unresolved, and 322 templates have
+zero conservative matches. Laravel port 8088 remains unavailable while Web UK
+returns 200, so the public marker gate is not rerun. No Laravel authentication,
+mutation, database access, upload, download, cleanup, or container operation
+was performed.
+
+Component-audit classification: the Groups index/forms/detail row is
+implementation-closed, with remaining tag-persistence contract, disposable
+feed/lifecycle runtime, tenant-gate, manual assistive-technology, and backend-
+switching proof assigned outside the Blade implementation queue.
+
 2026-07-14 direct-message inbox follow-up: active inbox/archive styling,
 filter and restore spacing, the 180-character last-message preview, and the
 conversation-created timestamp fallback now match Blade's default-English

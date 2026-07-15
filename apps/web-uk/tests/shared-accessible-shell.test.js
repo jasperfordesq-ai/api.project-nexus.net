@@ -20952,6 +20952,71 @@ describe('shared accessible frontend shell', () => {
     expect(restricted.text).not.toContain('govuk-notification-banner');
   });
 
+  it('keeps group index and detail outcomes within their exact Blade status families', async () => {
+    const api = require('../src/lib/api');
+    const t = createTranslator('en');
+    api.getGroups.mockResolvedValue({ data: [], meta: { has_more: false } });
+
+    const deleted = await request(app)
+      .get('/groups?status=group-deleted')
+      .set('Cookie', signedCookieHeader());
+    const unrelatedIndex = await request(app)
+      .get('/groups?status=group-created')
+      .set('Cookie', signedCookieHeader());
+
+    expect(deleted.status).toBe(200);
+    expect(deleted.text).toContain('aria-labelledby="groups-status"');
+    expect(deleted.text).toContain('id="groups-status"');
+    expect(deleted.text).toContain(t('groups.states.group-deleted'));
+    expect(unrelatedIndex.status).toBe(200);
+    expect(unrelatedIndex.text).not.toContain('groups-status');
+    expect(unrelatedIndex.text).not.toContain('govuk-notification-banner--success');
+
+    api.getGroup.mockResolvedValue({
+      data: {
+        id: 42,
+        name: 'Garden Helpers',
+        visibility: 'public',
+        viewer_membership: null
+      }
+    });
+    api.getGroupMembers.mockResolvedValue({ data: [] });
+    api.getEvents.mockResolvedValue({ data: [] });
+    api.callGroupApi.mockResolvedValue({ data: [] });
+
+    const created = await request(app)
+      .get('/groups/42?status=group-created')
+      .set('Cookie', signedCookieHeader());
+    const posted = await request(app)
+      .get('/groups/42?status=group-posted')
+      .set('Cookie', signedCookieHeader());
+    const postFailed = await request(app)
+      .get('/groups/42?status=group-post-failed')
+      .set('Cookie', signedCookieHeader());
+    const unrelatedDetail = await request(app)
+      .get('/groups/42?status=group-deleted')
+      .set('Cookie', signedCookieHeader());
+
+    expect(created.status).toBe(200);
+    expect(created.text).toContain('aria-labelledby="grp-status"');
+    expect(created.text).toContain('id="grp-status"');
+    expect(created.text).toContain(t('groups.states.group-created'));
+    expect(posted.status).toBe(200);
+    expect(posted.text).toContain('aria-labelledby="grp-feed-status"');
+    expect(posted.text).toContain('id="grp-feed-status"');
+    expect(posted.text).toContain(t('groups_t1.states.group-posted'));
+    expect(postFailed.status).toBe(200);
+    expect(postFailed.text).toContain('class="govuk-error-summary"');
+    expect(postFailed.text).toContain(t('groups_t1.states.group-post-failed'));
+    expect(unrelatedDetail.status).toBe(200);
+    expect(unrelatedDetail.text).not.toContain('grp-status');
+    expect(unrelatedDetail.text).not.toContain('grp-feed-status');
+
+    const routeSource = fs.readFileSync(path.join(__dirname, '../src/routes/groups.js'), 'utf8');
+    expect(routeSource).not.toContain("req.flash('success')");
+    expect(routeSource).not.toContain("req.flash('error')");
+  });
+
   it('renders the Laravel group invite page for signed-in group admins', async () => {
     const api = require('../src/lib/api');
     const t = createTranslator('en');

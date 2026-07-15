@@ -9,16 +9,11 @@
   <h1 class="govuk-heading-xl">{{ t("groups.title") }}</h1>
   <p class="govuk-body-l">{{ t("groups.description") }}</p>
 
-  {% if successMessage %}
-    {% set notificationMessage = successMessage %}
-    {% set notificationType = "success" %}
-    {% include "partials/notification-banner.njk" %}
-  {% endif %}
-
-  {% if errorMessage %}
-    {% set notificationMessage = errorMessage %}
-    {% set notificationType = null %}
-    {% include "partials/notification-banner.njk" %}
+  {% if status == "group-deleted" %}
+    <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="groups-status">
+      <div class="govuk-notification-banner__header"><h2 class="govuk-notification-banner__title" id="groups-status">{{ t("states.success_title") }}</h2></div>
+      <div class="govuk-notification-banner__content"><p class="govuk-notification-banner__heading">{{ t("groups.states.group-deleted") }}</p></div>
+    </div>
   {% endif %}
 
   <p class="govuk-body">
