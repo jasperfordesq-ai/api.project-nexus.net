@@ -1,6 +1,6 @@
 # Current Laravel-First Accessible Frontend Status
 
-Last audited: 2026-07-14
+Last audited: 2026-07-15
 
 Status: **Canonical current — sole Web UK coordination and scoring source**
 
@@ -186,7 +186,7 @@ together from a clean published checkout.
   with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
   Only this fixed-rubric audit contributes to the current bank.
 - **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `10538f3d`, including the later implementation, contract,
+  baseline `8db1c4ef`, including the later implementation, contract,
   resilience, and component-audit slices. Their evidence is useful, but they
   contribute zero points until one complete fixed-rubric re-audit explicitly
   replaces the baseline.
@@ -205,9 +205,9 @@ together from a clean published checkout.
 | Missing Laravel routes | 1 | Event offline check-in code generation |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 52/52 suites, 1,698/1,698 tests | Latest uninterrupted complete non-mutating gate at product baseline `10538f3d` |
+| Jest | 52/52 suites, 1,699/1,699 tests | Complete non-mutating inventory at product baseline `8db1c4ef`: 51 suites/1,698 assertions in the host-memory aggregate plus the separately green canonical-path tenant-source suite/assertion |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
-| Static locale usage | 7,604 references, 5,798 unique keys, 0 unresolved | Current complete-reference audit |
+| Static locale usage | 7,606 references, 5,799 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
 | Blade marker check | Current 19/19 | Current-source public GET marker comparison; not screenshot or visual certification |
 | Automated accessibility | Not currently certified: 28 passed, login failed, 58 did not run | Full aggregate requires a disposable Laravel environment; manual AT review remains open |
@@ -332,6 +332,30 @@ without tests. No Laravel authentication, database, migration, mutation,
 upload, download, cleanup, or production operation was performed. This
 component-audit improvement remains published and unscored, so the frozen bank
 remains `622/1,000` pending a complete fixed-rubric re-audit.
+
+## 2026-07-15 Listings Index Status Boundary
+
+Frozen evidence refreshed at `2026-07-15T02:28:56+01:00` against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and Web UK product commit
+`8db1c4ef1a5b959b29a51309a7df7cd475fde703`. The Listings index now renders
+only Blade's bounded `listing-deleted` success state, with the exact
+`listing-deleted-title` labelling relationship and catalog-backed deletion
+copy. Invented create/update success states, exchange/delete error states, and
+flash fallbacks no longer leak onto the browse page; unrelated tokens render
+no banner.
+
+Focused proof passes. Docker memory pressure prevented one uninterrupted
+aggregate, so the complete non-mutating 1,699-assertion inventory was verified
+as 51/52 suites and 1,698/1,699 assertions in a clean host-memory checkout plus
+the separately green canonical-path tenant-source suite/assertion. Brand,
+lint, CSS, locale shape/static/template audits, scoped diff, and the canonical
+19/19 Blade-marker comparison are green. Static localization resolves 7,606
+references and 5,799 unique keys with zero unresolved; 322 templates have zero
+conservative matches. Route and API consumers were unchanged by this slice.
+No Laravel authentication, database, migration, mutation, upload, download,
+cleanup, or production operation was performed. This component-audit
+improvement remains published and unscored, so the frozen bank remains
+`622/1,000` pending a complete fixed-rubric re-audit.
 
 ### Finite P0/P1 Completion Queue
 
