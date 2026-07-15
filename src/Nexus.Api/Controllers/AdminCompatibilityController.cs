@@ -1606,18 +1606,88 @@ public class AdminCompatibilityController : ControllerBase
     }
 
     [HttpDelete("listings/{id:int}")]
-    public async Task<IActionResult> DeleteListing(int id)
+    public async Task<IActionResult> DeleteListing(int id, CancellationToken ct)
     {
-        var listing = await _db.Listings.FirstOrDefaultAsync(l => l.Id == id);
+        var tenantId = _tenant.GetTenantIdOrThrow();
+        var listing = await _db.Listings
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(l => l.TenantId == tenantId && l.Id == id, ct);
         if (listing == null)
-            return NotFound(new { error = "Listing not found" });
+            return IsLaravelV2Request
+                ? LaravelError("NOT_FOUND", "Listing not found", StatusCodes.Status404NotFound)
+                : NotFound(new { error = "Listing not found" });
+
+        var owner = await _db.Users
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(user => user.TenantId == tenantId && user.Id == listing.UserId, ct);
+        var now = DateTime.UtcNow;
+        var adminId = GetCurrentUserId();
+
+        await using var transaction = await _db.Database.BeginTransactionAsync(ct);
+        await _db.ListingTags
+            .IgnoreQueryFilters()
+            .Where(row => row.TenantId == tenantId && row.ListingId == id)
+            .ExecuteDeleteAsync(ct);
+        await _db.ListingFavorites
+            .IgnoreQueryFilters()
+            .Where(row => row.TenantId == tenantId && row.ListingId == id)
+            .ExecuteDeleteAsync(ct);
+        await _db.ListingAnalytics
+            .IgnoreQueryFilters()
+            .Where(row => row.TenantId == tenantId && row.ListingId == id)
+            .ExecuteDeleteAsync(ct);
+
+        _db.Notifications.Add(new Notification
+        {
+            TenantId = tenantId,
+            UserId = listing.UserId,
+            Type = "listing_removed",
+            Title = "Listing removed",
+            Body = $"Your listing '{listing.Title}' was removed by a coordinator.",
+            Data = JsonSerializer.Serialize(new { listing_id = id }),
+            Link = "/listings",
+            CreatedAt = now
+        });
+        _db.AuditLogs.Add(new AuditLog
+        {
+            TenantId = tenantId,
+            UserId = adminId,
+            Action = "admin_delete_listing",
+            EntityType = "Listing",
+            EntityId = id,
+            OldValues = JsonSerializer.Serialize(new { listing.Title, listing.UserId }),
+            Severity = AuditSeverity.Warning,
+            CreatedAt = now
+        });
 
         _db.Listings.Remove(listing);
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
 
-        _logger.LogInformation("Admin {AdminId} deleted listing {ListingId}", GetCurrentUserId(), id);
+        if (owner is { Email.Length: > 0 })
+        {
+            try
+            {
+                var safeTitle = System.Net.WebUtility.HtmlEncode(listing.Title);
+                await _emailService.SendEmailAsync(
+                    owner.Email,
+                    $"Listing removed: {listing.Title}",
+                    $"<p>Your listing <strong>{safeTitle}</strong> was removed by a coordinator.</p><p><a href=\"/listings\">View your listings</a></p>",
+                    $"Your listing '{listing.Title}' was removed by a coordinator.",
+                    ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Listing removal email failed for listing {ListingId}", id);
+            }
+        }
 
-        return Ok(new { success = true });
+        _logger.LogInformation("Admin {AdminId} deleted listing {ListingId}", adminId, id);
+
+        return IsLaravelV2Request
+            ? LaravelData(new { deleted = true, id })
+            : Ok(new { success = true });
     }
 
     [HttpGet("listings/featured")]

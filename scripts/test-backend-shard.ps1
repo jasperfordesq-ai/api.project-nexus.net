@@ -11,6 +11,12 @@ param(
     [ValidateRange(1, 128)]
     [int]$ShardIndex = 1,
 
+    [ValidateRange(1, 128)]
+    [int]$SliceCount = 1,
+
+    [ValidateRange(1, 128)]
+    [int]$SliceIndex = 1,
+
     [ValidateRange(30, 3600)]
     # The fixture applies the complete migration chain before its first
     # integration case. On constrained Windows hosts that one-time setup can
@@ -28,6 +34,9 @@ $testProject = Join-Path $repoRoot 'tests\Nexus.Api.Tests\Nexus.Api.Tests.csproj
 
 if ($ShardIndex -gt $ShardCount) {
     throw "ShardIndex ($ShardIndex) cannot exceed ShardCount ($ShardCount)."
+}
+if ($SliceIndex -gt $SliceCount) {
+    throw "SliceIndex ($SliceIndex) cannot exceed SliceCount ($SliceCount)."
 }
 
 function Get-TestMethods {
@@ -111,6 +120,22 @@ try {
     $methods = @(Get-TestMethods)
     $manifest = @(New-ShardManifest $methods)
     $selected = $manifest[$ShardIndex - 1]
+    if ($SliceCount -gt 1) {
+        $selectedMethodNames = @($selected.methods | Where-Object {
+            $methodIndex = [Array]::IndexOf($selected.methods, $_)
+            $methodIndex % $SliceCount -eq ($SliceIndex - 1)
+        })
+        $methodTestCounts = @{}
+        foreach ($method in $methods) {
+            $methodTestCounts[$method.MethodName] = $method.TestCount
+        }
+        $selected = [pscustomobject]@{
+            shard_index = $selected.shard_index
+            test_count = ($selectedMethodNames | ForEach-Object { $methodTestCounts[$_] } | Measure-Object -Sum).Sum
+            method_count = $selectedMethodNames.Count
+            methods = $selectedMethodNames
+        }
+    }
 
     $manifestDocument = [pscustomobject]@{
         schema_version = 1
@@ -138,7 +163,8 @@ try {
     }
 
     Write-Host "Discovered $($manifestDocument.discovered_test_count) tests across $($manifestDocument.discovered_method_count) methods and $($manifestDocument.discovered_class_count) classes."
-    Write-Host "Shard $ShardIndex/$ShardCount contains $($selected.test_count) tests across $($selected.method_count) methods."
+    $sliceLabel = if ($SliceCount -gt 1) { ", slice $SliceIndex/$SliceCount" } else { "" }
+    Write-Host "Shard $ShardIndex/$ShardCount$sliceLabel contains $($selected.test_count) tests across $($selected.method_count) methods."
     foreach ($methodName in $selected.methods) {
         Write-Host " - $methodName"
     }
@@ -148,8 +174,8 @@ try {
     }
 
     if (!$env:NEXUS_TEST_POSTGRES) {
-        $containerName = "codex-nexus-shard-$PID-$ShardIndex"
-        $databaseName = "nexus_shard_$PID`_$ShardIndex"
+        $containerName = "codex-nexus-shard-$PID-$ShardIndex-$SliceIndex"
+        $databaseName = "nexus_shard_$PID`_$ShardIndex`_$SliceIndex"
         & docker run --rm -d `
             --name $containerName `
             -e POSTGRES_PASSWORD=postgres `
@@ -184,7 +210,12 @@ try {
     }
 
     $filter = ($selected.methods | ForEach-Object { "FullyQualifiedName~$_" }) -join '|'
-    $resultsDirectory = Join-Path $repoRoot "artifacts\backend-test-shards\$((Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ'))-shard-$ShardIndex-of-$ShardCount"
+    $resultLabel = if ($SliceCount -gt 1) {
+        "shard-$ShardIndex-of-$ShardCount-slice-$SliceIndex-of-$SliceCount"
+    } else {
+        "shard-$ShardIndex-of-$ShardCount"
+    }
+    $resultsDirectory = Join-Path $repoRoot "artifacts\backend-test-shards\$((Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ'))-$resultLabel"
     New-Item -ItemType Directory -Force -Path $resultsDirectory | Out-Null
 
     & dotnet test $testProject `
@@ -193,7 +224,7 @@ try {
         --no-build `
         --filter $filter `
         --logger "console;verbosity=normal" `
-        --logger "trx;LogFileName=shard-$ShardIndex-of-$ShardCount.trx" `
+        --logger "trx;LogFileName=$resultLabel.trx" `
         --results-directory $resultsDirectory `
         --blame-hang `
         --blame-hang-timeout "$($HangTimeoutSeconds)s" `

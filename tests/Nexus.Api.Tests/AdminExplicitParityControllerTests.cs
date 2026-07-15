@@ -970,6 +970,19 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
             .IgnoreQueryFilters()
             .AnyAsync(l => l.TenantId == TestData.Tenant1.Id && l.Id == listingId);
         deleted.Should().BeFalse();
+        var notification = await verifyDb.Notifications
+            .IgnoreQueryFilters()
+            .SingleAsync(n => n.TenantId == TestData.Tenant1.Id
+                              && n.UserId == TestData.MemberUser.Id
+                              && n.Type == "listing_removed");
+        notification.Link.Should().Be("/listings");
+        notification.Body.Should().Contain("Parity listing to delete");
+        var audit = await verifyDb.AuditLogs
+            .IgnoreQueryFilters()
+            .SingleAsync(row => row.TenantId == TestData.Tenant1.Id
+                                && row.Action == "admin_delete_listing"
+                                && row.EntityId == listingId);
+        audit.UserId.Should().Be(TestData.AdminUser.Id);
     }
 
     [Fact]
