@@ -1433,6 +1433,23 @@ database, migration, runtime request, container, or production operation was
 performed. This slice is unscored; the canonical bank remains `663/1,000`
 until another complete fixed-rubric audit.
 
+### 2026-07-15 Group-file download API assertion follow-up
+
+The signed group-file download now has direct API-client contract proof in
+addition to its routed proxy tests. The assertions pin Laravel's exact
+versioned binary path, normalized leading-slash handling, bearer authority,
+explicit GET, byte preservation, all forwarded cache/file metadata headers,
+the absence of an invented JSON content type or tenant-ID header, and Laravel's
+structured membership `403` error propagation. This narrows finite package 9
+for one further direct Laravel route declaration omitted from OpenAPI; live
+download authorization and storage cleanup still require the isolated
+disposable environment.
+
+The focused API-client suite passes `217/217`. No Laravel or ASP.NET source,
+database, migration, runtime request, download, container, or production
+operation was performed. This slice is unscored; the canonical bank remains
+`663/1,000` until another complete fixed-rubric audit.
+
 - GOV.UK crown, logotype, official header identity, OGL block, or Crown
   copyright wording.
 - Laravel/PHP implementation details.

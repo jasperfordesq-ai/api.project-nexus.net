@@ -3241,6 +3241,59 @@ describe('API Request Functions', () => {
       );
       expect(options.body).toBeInstanceOf(FormData);
     });
+
+    it('should download group-file bytes with Laravel headers and preserve authorization errors', async () => {
+      const bytes = Buffer.from('%PDF group handbook', 'utf8');
+      const responseHeaders = {
+        'content-type': 'application/pdf',
+        'content-disposition': 'attachment; filename="handbook.pdf"',
+        'content-length': String(bytes.length),
+        'cache-control': 'private, no-store',
+        pragma: 'no-cache',
+        expires: '0',
+        etag: '"group-file-99"',
+        'last-modified': 'Wed, 15 Jul 2026 08:00:00 GMT'
+      };
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: { get: (name) => responseHeaders[name] || null },
+        arrayBuffer: async () => bytes
+      });
+
+      await expect(api.downloadGroupFile('test-token', '/42/files/99/download'))
+        .resolves.toEqual({ status: 200, body: bytes, headers: responseHeaders });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/groups/42/files/99/download',
+        expect.objectContaining({
+          method: 'GET',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+      expect(mockFetch.mock.calls[0][1].headers).not.toHaveProperty('Content-Type');
+      expect(mockFetch.mock.calls[0][1].headers).not.toHaveProperty('X-Tenant-ID');
+
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ message: 'You are not a member of this group.', code: 'GROUP_MEMBERSHIP_REQUIRED' })
+      });
+
+      await expect(api.downloadGroupFile('test-token', '42/files/99/download'))
+        .rejects.toMatchObject({
+          name: 'ApiError',
+          status: 403,
+          message: 'You are not a member of this group.',
+          data: {
+            message: 'You are not a member of this group.',
+            code: 'GROUP_MEMBERSHIP_REQUIRED'
+          }
+        });
+    });
   });
 
   describe('callUserSettingsApi', () => {
