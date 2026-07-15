@@ -186,7 +186,7 @@ together from a clean published checkout.
   with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
   Only this fixed-rubric audit contributes to the current bank.
 - **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `0e24bbee`, including the later implementation, contract,
+  baseline `10538f3d`, including the later implementation, contract,
   resilience, and component-audit slices. Their evidence is useful, but they
   contribute zero points until one complete fixed-rubric re-audit explicitly
   replaces the baseline.
@@ -205,9 +205,9 @@ together from a clean published checkout.
 | Missing Laravel routes | 1 | Event offline check-in code generation |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 52/52 suites, 1,695/1,695 tests | Latest uninterrupted complete non-mutating gate at product baseline `732b05e4` |
+| Jest | 52/52 suites, 1,698/1,698 tests | Latest uninterrupted complete non-mutating gate at product baseline `10538f3d` |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
-| Static locale usage | 7,580 references, 5,784 unique keys, 0 unresolved | Current complete-reference audit |
+| Static locale usage | 7,604 references, 5,798 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
 | Blade marker check | Current 19/19 | Current-source public GET marker comparison; not screenshot or visual certification |
 | Automated accessibility | Not currently certified: 28 passed, login failed, 58 did not run | Full aggregate requires a disposable Laravel environment; manual AT review remains open |
@@ -309,6 +309,29 @@ migration, authentication, mutation, upload, download, cleanup, container, or
 production operation was performed. This significant-state improvement remains
 published and unscored, so the frozen bank remains `622/1,000` pending a
 complete fixed-rubric re-audit.
+
+## 2026-07-15 Saved Jobs Status Boundary
+
+Frozen evidence refreshed at `2026-07-15T01:48:49.0540051+01:00` against
+Laravel `903d03d3db78bbf87129ad35728be3b72819acaf` and Web UK product commit
+`10538f3ddb7c79a053c00b6746fd8a63112c1337`. The Saved opportunities page now
+renders only Blade's bounded `unsaved` success state, with the exact
+`saved-status` labelling relationship and one catalog-backed message. Other
+recognised Jobs status tokens no longer leak a generic banner onto the page.
+The template-localization audit also uses Node-18-compatible Map grouping
+instead of unsupported `Object.groupBy`.
+
+Focused saved-state and audit proof is green. The uninterrupted complete
+non-mutating gate passes `52/52` suites and `1,698/1,698` tests; brand, lint,
+CSS, route inventory, API ledger, locale shape/static/template audits, scoped
+diff, and the fresh canonical `19/19` Blade marker comparison are green. Route
+inventory remains `688/689`; the ledger remains 668 contracts with 451 exact
+OpenAPI matches, 217 direct Laravel declarations omitted from OpenAPI, zero
+undeclared or dynamic consumers, 370 state-changing contracts, and zero rows
+without tests. No Laravel authentication, database, migration, mutation,
+upload, download, cleanup, or production operation was performed. This
+component-audit improvement remains published and unscored, so the frozen bank
+remains `622/1,000` pending a complete fixed-rubric re-audit.
 
 ### Finite P0/P1 Completion Queue
 
