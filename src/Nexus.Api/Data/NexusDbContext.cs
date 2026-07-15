@@ -593,6 +593,7 @@ public class NexusDbContext : DbContext
     public DbSet<HealthCheckHistory> HealthCheckHistories => Set<HealthCheckHistory>();
     public DbSet<CookieInventoryItem> CookieInventoryItems => Set<CookieInventoryItem>();
     public DbSet<SalaryBenchmark> SalaryBenchmarks => Set<SalaryBenchmark>();
+    public DbSet<MemberResidencyVerification> MemberResidencyVerifications => Set<MemberResidencyVerification>();
     public DbSet<MarketplaceSavedSearch> MarketplaceSavedSearches => Set<MarketplaceSavedSearch>();
     public DbSet<MarketplaceCollection> MarketplaceCollections => Set<MarketplaceCollection>();
     public DbSet<MarketplaceCollectionItem> MarketplaceCollectionItems => Set<MarketplaceCollectionItem>();
@@ -688,6 +689,7 @@ public class NexusDbContext : DbContext
             new HealthCheckHistoryConfiguration(_tenantContext),
             new CookieInventoryConfiguration(),
             new SalaryBenchmarkConfiguration(),
+            new MemberResidencyVerificationConfiguration(_tenantContext),
             new RegionalAnalyticsConfiguration(_tenantContext),
             new ProvisioningRequestConfiguration(_tenantContext),
             new ApiPartnerConfiguration(_tenantContext),
