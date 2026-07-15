@@ -135,6 +135,10 @@ public class AdminProvisioningRequestsTests : IntegrationTestBase
         submit.StatusCode.Should().Be(HttpStatusCode.Created);
 
         await AuthenticateAsAdminAsync();
+        var ordinaryAdminList = await Client.GetAsync("/api/v2/super-admin/provisioning-requests?status=pending");
+        ordinaryAdminList.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        await AuthenticateAsPlatformSuperAdminAsync();
 
         var list = await Client.GetAsync("/api/v2/super-admin/provisioning-requests?status=pending");
         list.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -175,7 +179,7 @@ public class AdminProvisioningRequestsTests : IntegrationTestBase
         var submit = await Client.PostAsJsonAsync("/api/v2/provisioning-requests", LaravelPublicBody("reject-pilot"));
         submit.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        await AuthenticateAsAdminAsync();
+        await AuthenticateAsPlatformSuperAdminAsync();
         var list = await Client.GetAsync("/api/v2/super-admin/provisioning-requests");
         var listJson = await list.Content.ReadFromJsonAsync<JsonElement>();
         var id = listJson.GetProperty("data").EnumerateArray()
