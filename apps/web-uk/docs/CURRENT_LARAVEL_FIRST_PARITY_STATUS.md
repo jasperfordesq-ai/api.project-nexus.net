@@ -4,7 +4,7 @@ Last audited: 2026-07-15
 
 Status: **Canonical current — sole Web UK coordination and scoring source**
 
-<!-- doc-consistency: WEBUK_CURRENT_BANKED_SCORE=622/1000 -->
+<!-- doc-consistency: WEBUK_CURRENT_BANKED_SCORE=660/1000 -->
 
 This is the sole current coordination and scoring document for `apps/web-uk`.
 Read it before starting, resuming, or reporting accessible-frontend work. It
@@ -158,97 +158,117 @@ blocker set, route-gap set, or certification state materially changes. Put
 detailed row evidence in `BLADE_COMPONENT_PORT_AUDIT.md` in the same scoped
 commit as the implementation it describes.
 
-## Current Working Snapshot And Frozen Score
+## Current Fixed-Rubric Re-audit
 
-The frontend baseline for the current checkout includes the Event registration,
-account-hub reconciliation, Event Communications, lifecycle-history, recurrence-
-history, Event moderation, and Event Agenda slices. Event Agenda was published
-in `d21c6ed9`, followed by the accessibility data-boundary correction in
-`8eec911b`. The Laravel source baseline is `903d03d3`. The Web UK SHAs name
-repository snapshots containing the frontend; they do not make ASP.NET
-authoritative.
-Refresh the Laravel Blade/API source and Web UK implementation before relying on
-these numbers after either source moves.
-
-At this documentation audit, the product-source baseline was
-`b0a853b55384c3152331ac7b858d23b3c4e544d8`. The post-bank implementation,
-contract, resilience, component-audit, attached Event-poll, and Listing-
-analytics slices are above the frozen bank and remain **published and
-unscored**. The documentation remediation is
-published; unrelated ASP.NET backend work remains outside this score. The table below
-records the latest individually
-verified non-mutating gates; it is not a claim that every gate was rerun
-together from a clean published checkout.
+The current named baseline is Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` with published Web UK
+`1ded18bd5e49e09c06d697ac0699a9cc31181d25`, audited on 2026-07-15 in a clean
+detached worktree. Repository `main` and `origin/main` both identified that Web
+UK product snapshot when the audit began. The Event-detail status-family slice
+is included; ASP.NET backend files and its score remain outside this workstream.
 
 ### Repository-State Boundary
 
 - **Banked baseline:** Laravel `903d03d3db78bbf87129ad35728be3b72819acaf`
-  with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
-  Only this fixed-rubric audit contributes to the current bank.
-- **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `21fa1734`, including the later implementation, contract,
-  resilience, and component-audit slices. Their evidence is useful, but they
-  contribute zero points until one complete fixed-rubric re-audit explicitly
-  replaces the baseline.
-- **Dirty and uncommitted:** no Web UK product file is intended to remain dirty
-  after the evidence commit; unrelated ASP.NET backend work remains outside the
-  bank. Recheck `git status` before every report; no dirty file earns estimated
-  points.
+  with published Web UK `1ded18bd5e49e09c06d697ac0699a9cc31181d25`.
+  This complete fixed-rubric re-audit supersedes the 622-point checkpoint.
+- **Published but unscored:** none after `1ded18bd` at the audit boundary. A
+  later product commit must remain in this bucket until another complete
+  fixed-rubric audit names and scores it.
+- **Dirty and uncommitted:** no Web UK product source was dirty at the named
+  snapshot. Regenerated evidence files belong to this documentation transaction;
+  unrelated backend-owned worktree entries contribute no Web UK points.
 
-### Latest Recorded Gates
+### Current Verification Gates
 
 | Measure | Audited result | Meaning |
 |---|---:|---|
-| Laravel accessible HTML routes | 689 | Current source inventory |
+| Laravel accessible HTML routes | 689 | Current source inventory at the named Laravel SHA |
 | Web UK routes | 695 | Includes deliberate local compatibility routes |
 | Matched Laravel routes | 688/689 (99.85%) | Declaration coverage only |
 | Missing Laravel routes | 1 | Event offline check-in code generation |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 52/52 suites, 1,703/1,703 tests | Complete non-mutating inventory at product baseline `21fa1734`: 51 suites/1,702 assertions in the host-memory aggregate plus the separately green canonical-path tenant-source suite/assertion |
-| Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
-| Static locale usage | 7,625 references, 5,805 unique keys, 0 unresolved | Current complete-reference audit |
+| Jest | 52/52 suites, 1,706/1,706 tests | One uninterrupted `--runInBand` run in the clean detached `1ded18bd` worktree; 255.86 seconds |
+| Brand, lint, and CSS | Passed | Current source gates |
+| Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Zero missing/extra structural keys |
+| Static locale usage | 7,634 references, 5,819 unique keys, 0 unresolved | Complete current-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
-| Blade marker check | Current rerun unavailable: Laravel port 8088 not listening; preceding product `e2918257` passed 19/19 | Public GET marker comparison only; not screenshot or visual certification |
-| Automated accessibility | Not currently certified: 28 passed, login failed, 58 did not run | Full aggregate requires a disposable Laravel environment; manual AT review remains open |
-| Frontend API consumer ledger | 668 contracts: 451 OpenAPI matches, 217 unmatched, 0 dynamic; every unmatched contract resolves to a direct Laravel route declaration omitted from OpenAPI | Static method/path and ownership evidence; declaration classification is not runtime certification and remains unscored |
+| Blade marker check | Current rerun unavailable because Laravel port 8088 was not listening; preceding product `e2918257` passed 19/19 | Public GET marker comparison only; not screenshot or visual certification |
+| Automated accessibility | Not currently certified: the last aggregate recorded 28 passed, login failed, and 58 did not run | A full aggregate and manual assistive-technology review remain open |
+| Frontend API consumer ledger | 668 contracts: 451 OpenAPI matches, 217 unmatched, 0 dynamic; all 217 unmatched contracts resolve to direct Laravel route declarations omitted from OpenAPI; 370 are state-changing and 0 lack detected tests | Static/mock ownership evidence, not disposable-runtime certification |
 
-### Frozen Completion Baseline
-
-The score in this section is the only banked Web UK percentage. Later
-implementation checkpoints in this file record useful published or in-flight
-improvements, but they do not add points unless a complete fixed-rubric audit
-explicitly replaces this named baseline. Report them as "later improvements,
-unscored", never by silently estimating a higher percentage.
-
-This scoring baseline is frozen at `2026-07-14T09:37:38Z` against Laravel
-`903d03d3db78bbf87129ad35728be3b72819acaf` and published Web UK
-`a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`. Both SHAs equal their respective
-`origin/main`; `apps/web-uk` has no dirty in-flight work. The Laravel repository
-retains only its pre-existing `react-frontend/package-lock.json` modification
-and untracked `.codex/` path.
-
-This is a named new baseline, not a silent rewrite of an older percentage. It
-uses the fixed Laravel-first rubric below because prior reports blended route
-coverage, implementation, and certification. Its runtime score is also reset
-because the opening correction in `BLADE_COMPONENT_PORT_AUDIT.md` invalidates
-every side-effect result run against the ordinary production-derived Laravel
-database. No Web UK implementation regression caused that reset.
+### Current Banked Score
 
 | Fixed rubric | Earned | Exact deduction |
 |---|---:|---|
-| Route/inventory representation | 99/100 | -1: the offline signed Event check-in code POST remains undeclared in Web UK because Laravel exposes no safe equivalent frontend contract. |
-| Observable Blade/workflow implementation | 278/300 | -8: Event moderation membership/order/online state and check-in behavior are not contract-identical; -14: unresolved component-audit significant states still need finite default-English closure rather than declaration-only coverage. |
-| API contract/state coverage plus static/mock verification | 170/200 | -25: the frozen baseline had 219 ledger rows without an exact OpenAPI match; -5: auth/role/status/side-effect assertions were not complete across every significant state. The newer generated inventory improvement is unscored until a full rubric audit replaces this baseline. |
-| Disposable Laravel runtime certification | 0/200 | -200: no separately provisioned and verified disposable Laravel environment has been evidenced, so all live mutation/upload/download/destructive certification remains open. |
-| Screenshot/manual accessibility/WCAG certification | 35/150 | -40: no representative screenshot comparison set; -30: no actual screen-reader speech-output sign-off; -25: manual keyboard/no-JS/zoom/reflow/forced-colour coverage is incomplete; -20: the current full accessibility aggregate is not certified. |
-| Production hardening and reproducible docs | 40/50 | -4: persistent session production proof; -3: production secret/configuration proof; -3: request timeout/abort behavior remain open. |
-| **Laravel-first banked score** | **622/1000 (62.2%)** | Implementation-only subtotal is 547/600 (91.2%); it must not be reported as overall completion. |
+| Route/inventory representation | 99/100 | -1: Laravel exposes no safe equivalent frontend contract for the offline signed Event check-in-code POST. |
+| Observable Blade/workflow implementation | 289/300 | -8: Event moderation queue membership/order/`is_online` and check-in behavior remain upstream contract boundaries; -3: remaining genuine default-English significant-state component rows still require finite closure. |
+| API contract/state coverage plus static/mock verification | 190/200 | -10: exhaustive field-shape, publication, auth/role, status/error, and side-effect assertions are not complete for every significant contract. |
+| Disposable Laravel runtime certification | 0/200 | -200: no separately provisioned and verified disposable Laravel application/database/storage environment exists, so live mutation/upload/download/destructive certification is open. |
+| Screenshot/manual accessibility/WCAG certification | 35/150 | -40: no representative screenshot comparison set; -30: no screen-reader speech-output sign-off; -25: manual keyboard/no-JS/zoom/reflow/forced-colour coverage is incomplete; -20: the current full accessibility aggregate is not certified. |
+| Production hardening and reproducible docs | 47/50 | -3: the implemented Redis-session, fail-closed secret, timeout/failure, readiness, and release controls still need deployed-environment proof. |
+| **Laravel-first banked score** | **660/1000 (66.0%)** | Implementation-only subtotal is 578/600 (96.3%); it must never be reported as overall certification. |
 
-ASP.NET switchability is not included in the 622 points and is not rescored by
-this frontend workstream. It remains a separate backend-owned certification:
-unchanged Web UK must pass against ASP.NET by configuration change only after
-that backend is declared ready.
+The score moves **622 -> 660 (+38)** at this named snapshot: observable
+implementation gains 11 points, API/static/mock coverage gains 20, and
+hardening/docs gains 7. The final point above the earlier 659 recommendation is
+the published Event-detail status-family closure in `1ded18bd`; it is backed by
+the clean 1,706-test run. Runtime stays 0/200 and manual/accessibility remains
+35/150, so the score does not imply that the frontend is ready for production.
+
+ASP.NET switchability is not included in these 660 points. It remains a
+separate backend-owned certification: the unchanged Web UK code must pass
+against ASP.NET by configuration change only after that backend is ready.
+
+### Finite P0/P1 Completion Queue
+
+The remaining Laravel-first queue is still 12 bounded packages:
+
+1. **P0 - Disposable environment:** provision and prove an isolated Laravel
+   application, database, and storage environment that cannot address the
+   ordinary production-derived database.
+2. **P0 - Runtime foundation:** certify auth, tenant, role, feature/module,
+   empty/populated, validation, and authorization behavior there.
+3. **P0 - Identity/value side effects:** certify accounts, profiles, settings,
+   sessions/passkeys, wallet/transfers/donations, messages/connections, and
+   cleanup.
+4. **P0 - Community side effects:** certify feed, comments/reactions, groups,
+   listings, Events, polls, goals, and cleanup.
+5. **P0 - Commerce/work side effects:** certify marketplace, jobs,
+   volunteering, organisations, podcasts, resources, uploads/downloads, and
+   cleanup.
+6. **P0 - Privileged/export side effects:** certify administrator/owner
+   actions, moderation, binary exports, destructive confirmations, and final
+   absence.
+7. **P0 - Event moderation boundary:** obtain a Laravel projection for
+   Blade-equivalent queue membership/order and `is_online`, then consume it
+   unchanged.
+8. **P0 - Event check-in boundary:** obtain a safe Laravel offline signed-code
+   contract or an explicit source-contract decision for the missing POST.
+9. **P1 - API publication/assertion closure:** resolve the 217 direct Laravel
+   route declarations omitted from OpenAPI and finish field/auth/status/error/
+   side-effect assertions.
+10. **P1 - Component-audit closure:** close or explicitly assign the remaining
+    three default-English significant-state point deductions.
+11. **P1 - Visual and manual WCAG:** complete representative screenshots,
+    keyboard/no-JS/zoom/reflow/forced-colour/focus/error checks, the full
+    accessibility aggregate, and screen-reader sign-off.
+12. **P1 - Deployed hardening proof:** verify persistent sessions, secrets,
+    timeout/failure handling, readiness, release/rollback controls, and lift the
+    deployment hold only with explicit approval.
+
+The exact Windows Update interruption and the pre-restart product boundary are
+recorded in
+[`RESTART_INCIDENT_2026-07-15.md`](../../../docs/RESTART_INCIDENT_2026-07-15.md).
+
+## Superseded Dated Evidence Archive
+
+Everything below this divider is append-only dated implementation evidence.
+Its repeated statements that the bank remained 622/1000 were true before this
+complete re-audit and are now historical. They do not override the current
+score, repository boundary, or queue above, even where an old heading or
+sentence used the word "current".
 
 ## 2026-07-15 Event Index Significant States
 

@@ -1,6 +1,6 @@
 # Backend Localization Contract
 
-Last verified: 2026-07-14
+Last verified: 2026-07-15
 
 Status: **Maintained reference — ASP.NET backend localization ledger, not a score**
 
@@ -15,21 +15,18 @@ backend score and evidence boundary remain in
 | Evidence | Exact revision |
 | --- | --- |
 | Laravel behavior baseline | `903d03d3db78bbf87129ad35728be3b72819acaf` |
-| ASP.NET committed source inspected | `9c5fb1a46c40e4986c8f973075164b1d74bd101d` |
-| Inspection date | 2026-07-14 |
+| ASP.NET committed source inspected | `1ded18bd5e49e09c06d697ac0699a9cc31181d25` |
+| Inspection date | 2026-07-15 |
 
 The Laravel repository at `C:\platforms\htdocs\staging` was inspected read-only
 at the named commit. The ASP.NET findings below were read from `HEAD:` blobs,
 not from the working tree. No local database, production service, or container
 was used.
 
-At inspection time, the ASP.NET worktree also contained uncommitted marketplace
-and event-safety changes. In particular,
-`src/Nexus.Api/Services/MarketplacePaidNotificationCopy.cs` was untracked and
-several marketplace controller, entity, service, DbContext, migration, and test
-files were modified. Those files are **in flight and excluded from every claim
-on this page**. A later commit must be inspected and this SHA boundary refreshed
-before any of that work becomes localization evidence.
+The marketplace paid, payout, onboarding-completion, and refund notification
+copy described below is committed at this boundary. The inspection still uses
+`HEAD:` blobs only: unrelated working-tree files and any future uncommitted copy
+remain excluded from every claim on this page.
 
 ## Laravel Contract To Preserve
 
@@ -64,7 +61,8 @@ statuses differ by endpoint.
 | Runtime resource lookup | `TranslationService` returns explicit locale/key rows, but controllers, validation, authorization, and exception middleware do not consume it as a request-scoped localization provider. | **Missing as a platform contract.** Explicit catalog endpoints work; general backend copy remains separate hard-coded strings. |
 | Validation/error envelopes | Several focused v2 controllers and middleware emit Laravel-like `errors` arrays, and v2 authorization has a dedicated handler. Other controllers return incompatible `error`, `message`, `code`, `success`, or ASP.NET model-binding shapes. [`ExceptionHandlingMiddleware.cs`](../src/Nexus.Api/Middleware/ExceptionHandlingMiddleware.cs) uses a separate English `error/type/trace_id` envelope. | **Partial and not locale-correct.** Envelope, status, field, and translated-message parity must be certified per consumed endpoint. |
 | Email templates | [`EmailTemplateService.cs`](../src/Nexus.Api/Services/EmailTemplateService.cs) provides tenant-scoped, versioned templates and interpolation. [`EmailNotificationService.cs`](../src/Nexus.Api/Services/EmailNotificationService.cs) prefers an active tenant template. | **Partial.** Templates have no locale dimension or recipient-locale resolver. Missing templates fall back to hard-coded English, then to a debug-style key/value email for unsupported keys. |
-| In-app and push notifications | [`Notification.cs`](../src/Nexus.Api/Entities/Notification.cs) stores already-rendered `Title` and `Body`; creation sites generally supply fixed strings. | **Uncertified.** There is no shared translation key/parameters/locale record or recipient-locale rendering boundary comparable to Laravel's `LocaleContext`. |
+| In-app and push notifications | [`Notification.cs`](../src/Nexus.Api/Entities/Notification.cs) stores already-rendered `Title` and `Body`; creation sites generally supply fixed strings. Marketplace payment flows are a focused exception described below. | **Uncertified as a platform contract.** There is no shared translation key/parameters/locale record or recipient-locale rendering boundary comparable to Laravel's `LocaleContext`. |
+| Marketplace payment notifications | [`MarketplacePaidNotificationCopy.cs`](../src/Nexus.Api/Services/MarketplacePaidNotificationCopy.cs), [`MarketplacePayoutNotificationCopy.cs`](../src/Nexus.Api/Services/MarketplacePayoutNotificationCopy.cs), and the onboarding-completion table in [`MarketplacePaymentService.cs`](../src/Nexus.Api/Services/MarketplacePaymentService.cs) provide recipient-preference lookup with primary-language normalization and English fallback across all 11 Laravel locales. [`MarketplaceRefundNotificationCopy.cs`](../src/Nexus.Api/Services/MarketplaceRefundNotificationCopy.cs) localizes the partial-refund seller path across those locales; full-refund buyer/seller and partial-refund buyer copy remains fixed English. Durable channel evidence suppresses replay for the implemented paid/refund paths. | **Implemented for these named marketplace paths only.** This does not create request locale negotiation, a shared runtime catalog, or a scope-safe recipient locale context for other notification families. |
 | Event invitation locale evidence | [`EventRegistrationProductService.Delivery.cs`](../src/Nexus.Api/Services/EventRegistrationProductService.Delivery.cs) carries `recipient_locale`, and [`EventInvitationDeliveryProcessor.cs`](../src/Nexus.Api/Services/EventInvitationDeliveryProcessor.cs) verifies and records that locale across delivery evidence. | **Locale selection/evidence only.** The committed invitation title, message, email CTA, push, in-app, and realtime copy is still rendered in English regardless of the recorded locale. |
 
 ## Committed Test Evidence
@@ -85,10 +83,14 @@ localization as a whole:
 - `EventRegistrationProductParityTests` proves locale normalization, member
   preference selection over campaign fallback, and persisted recipient-locale
   delivery evidence.
+- `MarketplacePaymentServiceTests` proves localized paid buyer/seller email and
+  bell delivery, localized Connect-completion notification, English-buyer/
+  German-seller partial-refund delivery, durable per-channel evidence, and
+  replay suppression for the focused marketplace paths.
 - [`VolunteerHoursDecisionEmailTests.cs`](../tests/Nexus.Api.Tests/VolunteerHoursDecisionEmailTests.cs)
   proves tenant-template precedence and the current English fallback behavior.
 
-There is no committed test containing `Accept-Language` or `Content-Language`,
+There is still no committed test containing `Accept-Language` or `Content-Language`,
 no request-priority matrix, no multi-locale v2 validation/error comparison, and
 no cross-recipient email/in-app/push test proving that two recipients receive
 the same event in their respective preferred languages. Those absences are

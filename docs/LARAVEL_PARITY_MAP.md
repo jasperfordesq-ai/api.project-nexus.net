@@ -1,13 +1,12 @@
 # Laravel Full-Parity Map
 
-Last reviewed: 2026-07-14
+Last reviewed: 2026-07-15
 
 Status: **Maintained reference — detailed evidence and gap map, not a current score**
 
-Evidence provenance: the latest published-backend summary was reviewed on
-2026-07-14 against Laravel
+Evidence provenance: the published backend was re-audited on 2026-07-15 against Laravel
 `903d03d3db78bbf87129ad35728be3b72819acaf` and ASP.NET implementation
-`9875fb5dd33e3ab5c33ea77a83fcfb0b8c6c0b00`; dirty backend work is excluded.
+`1ded18bd5e49e09c06d697ac0699a9cc31181d25`; dirty backend work is excluded.
 Every older inventory lacking its own exact source pair is historical and
 provenance-incomplete, regardless of words such as “latest” retained inside a
 checkpoint.
@@ -22,54 +21,38 @@ regenerated before it is described as current.
 
 ## Latest Verified Backend Slice
 
-Marketplace card settlement, Connect onboarding, paid-transition delivery, and
-escrow settlement now
-have durable provider boundaries. Destination-charge payments retain provider-bound
-economics, while seller onboarding creates/reuses Express accounts, generates
-tenant-correct links, polls all three completion capabilities, reconciles signed
-replay-safe `account.updated` events, and emits one localized completion bell.
-The first paid transition independently delivers localized buyer/seller email and
-in-app bells, records per-channel idempotent delivery evidence, retries failed or
-stale claims, and preserves payment state when a notification channel fails. Orders
-now persist non-enumerable `MKT-{ULID}` identities. Migrations
-`20260714105831_MarketplacePaymentSettlementParity` and
-`20260714115746_MarketplaceConnectOnboardingParity`, plus
-`20260714132232_MarketplacePaidNotificationParity` and
-`20260714150317_MarketplaceEscrowSettlementParity`, apply on disposable upgraded
-PostgreSQL with no pending model changes. The final focused payment/Connect/
-notification/escrow proof passes 20/20. Escrow checkout now uses a separate
-charge and durable hold; buyer delivery confirmation starts the dispute window;
-an hourly job creates a source-charge-bound Connect transfer only after all
-release gates pass and emits one localized seller payout bell. Refund execution,
-provider-backed dispute resolution and webhook reconciliation, live-provider,
-full-suite/CI, and unchanged-frontend runtime certification remain open.
+Marketplace card settlement, Connect onboarding, paid-transition delivery,
+escrow settlement, provider refunds, signed external-refund reconciliation,
+held-escrow and paid-transfer charge-dispute recovery, and refund notifications
+now have committed provider boundaries. Destination-charge and separate-charge
+economics are provider-bound; unsafe or incomplete evidence fails closed.
+Connect creates/reuses Express accounts, generates tenant-correct links, polls
+completion capabilities, reconciles signed replay-safe `account.updated`
+events, and emits an idempotent localized completion bell. Paid, payout, and
+refund delivery records per-channel evidence so provider or notification replay
+does not duplicate a delivered channel.
 
-Admin buyer dispute resolution now also executes full or partial provider
-refunds. Destination charges request transfer and application-fee reversal;
-paid separate-charge payouts reverse only the seller share under stable
-idempotency. `20260714165402_MarketplaceRefundReconciliationParity` adds the
-durable refund ledger and refund-aware economic constraints and applies cleanly
-to disposable upgraded PostgreSQL. Signed external-refund/charge-dispute event
-reconciliation and evidence-backed refund notifications are implemented; live-
-provider proof remains open.
+The published migration sequence includes
+`20260714105831_MarketplacePaymentSettlementParity`,
+`20260714115746_MarketplaceConnectOnboardingParity`,
+`20260714132232_MarketplacePaidNotificationParity`,
+`20260714150317_MarketplaceEscrowSettlementParity`, and
+`20260714165402_MarketplaceRefundReconciliationParity`. Each slice has its named
+focused service/controller and disposable-schema evidence in the canonical
+status/runbook. Live Stripe/Connect execution, the complete suite, exact-SHA CI,
+and unchanged-client runtime certification remain open. Refund copy is not yet
+uniformly localized: the partial-refund seller path covers all 11 Laravel
+locales, while full-refund buyer/seller and partial-refund buyer copy remains
+English.
 
-Signed `charge.refunded` events now bind provider charge/intent identity, require
-destination-charge transfer and application-fee reversal evidence, reverse paid
-separate-charge transfers idempotently, and enter each expanded provider refund
-in the durable ledger once. Incomplete provider detail fails closed. Charge-
-dispute win/loss reconciliation and evidence-backed refund notifications are
-implemented; live-provider proof remains open.
-
-Signed charge-dispute events now freeze held escrow and restore it on a provider
-win or convert a provider loss into the durable refund ledger. Paid/scheduled
-payout disputes remain fail-closed until transfer reversal and reimbursement
-evidence is implemented.
-
-Paid separate-charge disputes now reverse and durably record the proportional
-seller share, then reimburse that exact share on a provider win. Destination-
-charge losses retrieve the charge transfer when needed and reverse it under a
-stable key. Refund notification evidence is implemented with durable per-channel
-replay suppression; live-provider proof remains open.
+Secure tenant SSO/OIDC is also committed. Public discovery, redirect, callback,
+and browser exchange now use signed durable state, browser/server PKCE, OIDC
+nonce and JWKS validation, public-HTTPS endpoint checks, tenant-qualified
+identity linking, domain and provisioning gates, one-time encrypted callback
+grants, refresh-token issuance, and logout-all invalidation. Focused fake-IdP,
+controller, migration-SQL, and disposable-PostgreSQL evidence is recorded at
+implementation `c20d064e`; live IdP/browser proof, complete-suite/CI evidence,
+and unchanged-client runtime certification remain open.
 
 The seven apparent document-era vetting gaps are retired OpenAPI-only artifacts:
 Laravel live routes omit them, the controller prohibits them, feature tests assert
@@ -117,7 +100,7 @@ planning.
 
 `scripts/compare-laravel-schema-parity.ps1` generated
 `artifacts/parity/schema/schema-parity.json` on 2026-07-13 after its fixture
-passed. The current live table baseline is 377 Laravel migrations, 131 ASP.NET
+passed. That checkpoint's live table baseline was 377 Laravel migrations, 131 ASP.NET
 migration source files, 129 runtime IDs, 455 Laravel source tables, 378 .NET
 table names, 187 exact matches, 268 missing Laravel-side names, and 191 .NET-
 only names. The artifact is ignored by git; regenerate it before using the
@@ -154,6 +137,13 @@ implementation items across API, schema, frontend, and localization artifacts.
 The artifact is ignored by git; `docs/PARITY_BACKLOG.md` is the curated rollup.
 
 ## Source Evidence For Former Exclusions
+
+> **2026-07-15 marketplace/SSO correction:** The broad Marketplace/commerce and
+> Tenant SSO rows below predate the final committed slices. Where those rows say
+> real Stripe settlement, escrow, refunds/disputes, refund notifications, or the
+> public SSO redirect/callback are absent, the “Latest Verified Backend Slice”
+> above supersedes them. The rows remain useful as long-tail module inventories;
+> they are not the current evidence boundary.
 
 > **2026-07-10 admin/auth correction:** The broad `Admin users` row below is
 > historical where it describes scheduled runs as observability-only or lists
@@ -275,7 +265,7 @@ The artifact is ignored by git; `docs/PARITY_BACKLOG.md` is the curated rollup.
 | Regional Analytics | route file, services, PDF generator, billing, admin pages; schema migrations for `regional_analytics_subscriptions`, `regional_analytics_reports`, `regional_analytics_access_log`, and `regional_analytics_cache` | EF entities, mappings, tests, and migration now represent the four Laravel Regional Analytics tables; Laravel React super-admin subscription list/create/update/cancel, report queue, and access-log contracts are covered by `RegionalAnalyticsSuperAdminController.cs` plus focused regression tests; tenant-admin overview, heatmap, demand/supply, demographics, engagement trends, volunteer breakdown, help-request analytics, export JSON, and cache invalidation contracts are covered by `RegionalAnalyticsAdminController.cs` plus focused regression tests; partner report download now returns a valid minimal PDF derived from report metadata/payload instead of placeholder bytes | Billing, stored-file fidelity, scheduled report orchestration, deeper Laravel service workflow parity, runtime route smoke coverage, and localization remain gaps |
 | National KISS | `NationalKissDashboardController.php`, `NationalKissDashboardService.php`, Laravel React `NationalKissDashboardPage.tsx` | `NationalKissDashboardController.cs` now covers summary, comparative, trend, and cooperatives contracts with cross-tenant KISS aggregation, privacy-preserving member/recipient buckets, and focused regression tests | Laravel `tenants.tenant_category` schema alignment, `national.kiss_dashboard.view` permission parity, cache parity, runtime smoke coverage, and deeper service equivalence remain gaps |
 | Non-Stripe ID providers | `VeriffProvider.php`, `OnfidoProvider.php`, `JumioProvider.php`, `IdenfyProvider.php`, `RegistrationPolicyController::listProviders`, `TenantProviderCredentialService.php` | `NonStripeIdentityProviders.cs` adds Veriff, Onfido, Jumio, and iDenfy adapters; `ReactFrontendCompatibilityController` now returns Laravel-style admin provider list/policy payloads and saves encrypted tenant provider credentials in `tenant_provider_credentials` | Live/sandbox HTTP contract, provider-specific webhook end-to-end verification, and full admin workflow parity still need verification |
-| Tenant SSO providers | `AdminSsoProvidersController.php`, `SsoOidcService.php`, `tenant_sso_providers` migration | `AdminSsoProvidersController.cs`, `TenantSsoProviderService.cs`, `TenantSsoProvider.cs`, `tenant_sso_providers` migration | Admin provider CRUD/test surface now matched; public SSO redirect/callback, PKCE state, token validation, domain guard, and account-linking flow still need full parity |
+| Tenant SSO providers | `AdminSsoProvidersController.php`, `SsoOidcService.php`, `tenant_sso_providers` migration | `AdminSsoProvidersController.cs`, `TenantSsoProviderService.cs`, `SsoOidcAuthenticationService.cs`, `TenantSsoProvider.cs`, `SsoOidcFlow`, `OAuthCallbackGrant`, `OAuthIdentity`, and `20260714223452_SsoOidcAuthenticationParity` | Admin provider CRUD/test plus public discovery, redirect, callback, and browser exchange are implemented with signed state, browser/server PKCE, nonce/JWKS validation, public-HTTPS endpoint checks, tenant-qualified account linking, domain/provisioning gates, one-time grants, refresh-token issuance, and logout-all invalidation. Live IdP/browser proof, complete-suite/CI evidence, and unchanged-client runtime certification remain open. |
 | Mailchimp-like behavior | `MailchimpService.php` | no matched provider files; email templates exist | Decide equivalent behavior and implement or document replacement |
 | Partner API / portal | `app/Http/Controllers/Api/PartnerApi`, `app/Services/PartnerApi`, `react-frontend/src/partners` | API partner admin entity/service/controller | External partner API/auth/webhook parity incomplete |
 | Accessible frontend | `accessible-frontend/`, `routes/govuk-alpha.php`, `routes/govuk-alpha-parity/*`, and Laravel backend contracts used by those workflows | `apps/web-uk/` is the shared accessible frontend implementation target; Laravel Blade defines the product/UI behaviour and the Laravel backend defines the API contract; ASP.NET is not authoritative and belongs to a separate compatibility workstream | Advanced implementation with route/workflow/manual-certification gaps; static coverage does not certify production readiness or unchanged ASP.NET switching |
@@ -320,8 +310,9 @@ The artifact is ignored by git; `docs/PARITY_BACKLOG.md` is the curated rollup.
      request/response compatibility.
 
 4. **Marketplace / commerce / monetization**
-   - Complete marketplace listing, order, payment, escrow, pickup, coupon,
-     remaining merchant onboarding, local advertising, and promotion workflows.
+   - Complete the remaining marketplace listing, order, pickup, coupon,
+     merchant, local-advertising, and promotion workflows, and live-certify the
+     committed payment/Connect/escrow/refund/dispute paths.
    - Current evidence: Laravel React merchant-onboarding wizard status,
      step-1/2/3, and complete calls now have ASP.NET contract coverage.
      Buyer shipping selector options and seller shipping-options CRUD now return
@@ -365,10 +356,11 @@ The artifact is ignored by git; `docs/PARITY_BACKLOG.md` is the curated rollup.
      success envelopes for suspend/delete actions.
      Marketplace map-search nearby listing calls now support React `lat`/`lng`,
      `radius_km`, `q`, `category_id`, `limit`, and return `distance_km`.
-     Seller Stripe onboarding status/start calls now return the React
-     `stripe_onboarding_complete` status shape and empty-body start response
-     with both `onboarding_url` and `url` aliases, while real Stripe Connect
-     provider orchestration remains a payment-provider gap.
+      Seller Stripe onboarding status/start calls return the React
+      `stripe_onboarding_complete` status shape and both `onboarding_url` and
+      `url` aliases. The provider-backed flow now creates/reuses Express
+      accounts, polls completion, and reconciles signed account webhooks; live
+      Stripe credentials/browser execution remains the external proof gap.
      Listing create/edit media upload accepts Laravel React snake_case listing
      payloads and multipart `images[]`/`video` uploads. Pickup reservation,
      buyer my-pickups, and seller QR scan calls now return Laravel reservation

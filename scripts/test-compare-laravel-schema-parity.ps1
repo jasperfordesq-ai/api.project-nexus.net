@@ -142,6 +142,12 @@ public partial class Initial : Migration
 
     $markdown = Get-Content -Raw -LiteralPath $markdownPath
     Assert-True ($markdown.Contains('job_alerts')) 'Expected markdown report to include missing job_alerts table.'
+    Assert-True (-not $markdown.Contains('$(@{')) 'Markdown must not contain a literal PowerShell object expression.'
+
+    $expectedMissingRow = '| `job_alerts` | migration-create | `{0}` |' -f (Join-Path $sourceRoot 'database\migrations\2026_01_01_000000_create_fixture_tables.php')
+    $expectedExtraRow = '| `dotnet_only` | ef-totable | `{0}` |' -f (Join-Path $targetRoot 'src\Nexus.Api\Data\Configurations\FixtureConfiguration.cs')
+    Assert-True ($markdown.Contains($expectedMissingRow)) 'Expected a rendered Markdown row for missing job_alerts table.'
+    Assert-True ($markdown.Contains($expectedExtraRow)) 'Expected a rendered Markdown row for extra dotnet_only table.'
 
     Write-Host 'compare-laravel-schema-parity tests passed.'
 } finally {

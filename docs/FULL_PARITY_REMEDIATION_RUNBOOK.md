@@ -1,6 +1,6 @@
 # Full Laravel Parity Remediation Runbook
 
-Last reviewed: 2026-07-14
+Last reviewed: 2026-07-15
 
 Status: **Maintained reference — fixed rubric and cross-workstream completion gate**
 
@@ -20,6 +20,12 @@ deductions, read `CURRENT_ASPNET_CONTRACT_STATUS.md` and
 `../apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md`. This runbook owns
 the fixed rubric and evidence gates, but deliberately does not mirror either
 current overall score.
+
+The 2026-07-15 fixed-rubric re-audit is published in those two canonical status
+documents. The exact Windows Update interruption and the pre-restart boundary of
+all three open tasks are recorded in
+[`RESTART_INCIDENT_2026-07-15.md`](RESTART_INCIDENT_2026-07-15.md). Interrupted
+or recovered dirty work never changes a banked score.
 
 ## Objective
 

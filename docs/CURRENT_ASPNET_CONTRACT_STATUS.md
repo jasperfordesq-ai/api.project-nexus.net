@@ -1,6 +1,6 @@
 # Current ASP.NET Contract Status
 
-Last verified: 2026-07-15
+Last verified: 2026-07-15 06:18 +01:00
 
 Status: **canonical current ASP.NET score and certification source**
 
@@ -39,6 +39,11 @@ The **current banked score is 712/1000 (71.2%)** under Fixed Rubric Baseline 1.
 The denominator is fixed; newly discovered work is recorded as a deduction or
 a separately named Laravel-drift baseline, never as a silent denominator
 change.
+
+The complete 2026-07-15 restart re-audit keeps this score unchanged. No commit
+after the last banked backend implementation closes a remaining scored backend
+gate: the migrated-schema fixture is evidence-only and every later committed
+product change through repository `HEAD` is Web UK work.
 
 | Category | Banked | Maximum | Open |
 | --- | ---: | ---: | ---: |
@@ -95,13 +100,13 @@ These named values form an audit trail. They are not competing current scores.
 
 ## Repository State At This Verification
 
-The latest banked backend implementation inspected for this page was
+The latest banked backend implementation inspected for this page is
 `5fa15e0e79993464622b1c3ef053fcdd01679991`, with
-Laravel frozen at `903d03d3db78bbf87129ad35728be3b72819acaf` on
-2026-07-15 02:40:58 +01:00. The currently inspected ASP.NET HEAD and
-`origin/main` were both `fefbb5ce03b83c95cd78fb338b7a5c41da9b6745`.
-Web UK-only commits do not add ASP.NET points and belong in the Web UK status
-report.
+Laravel frozen at `903d03d3db78bbf87129ad35728be3b72819acaf`. At the re-audit
+boundary, repository `HEAD` and `origin/main` are both
+`1ded18bd5e49e09c06d697ac0699a9cc31181d25`. The backend evidence commit
+`7ef75d1c4434bf8ba5855602154b5f3370a96b6e` and all subsequent committed
+changes are evidence-only or Web UK-only, so they do not add ASP.NET points.
 
 ### Published But Not Rescored
 
@@ -115,7 +120,7 @@ shaped validation order. At the frozen Laravel SHA and ASP.NET implementation
 SHA, the Release test assembly built with 0 warnings and 0 errors, the focused
 fresh-migrated PostgreSQL set passed 14/14, and the five affected classes passed
 57/57 in 303.8 seconds. This adds **zero banked points** because the complete
-3,330-test suite and exact-SHA CI remain open.
+3,331-test suite and exact-SHA CI remain open.
 
 Published commit `923db629dea331ee093018887c4533d2c4e7133e` added the
 exact-SHA canonical React call-site generator. Published correction
@@ -138,9 +143,29 @@ sanitizer slices are committed and banked. The corrected tenant-bootstrap set pa
 and its containing public-compatibility class passes 11/11 against a separately
 named disposable PostgreSQL database through `NEXUS_TEST_POSTGRES`; the related
 SSO public-controller integration check also passes 1/1 on that database. The
-separate dirty event-safety migration remains outside this checkpoint and
-contributes zero ASP.NET points here. There are no dirty Web UK files at this
-snapshot. Dirty files never increase the banked score.
+worktree reports `20260713015034_EventSafetyWorkflowParity.cs` as modified, but
+its content hash is identical to `HEAD`; it is a stat-only worktree difference,
+not a substantive backend change. `scripts/test-backend-shard.ps1` is untracked;
+the restart interrupted its first attempted shard before a terminal aggregate,
+so it contributes zero build/test/CI points.
+
+The isolated `codex/schema-parity-20260714` worktree is aligned to repository
+`1ded18bd` and preserves an uncommitted five-table Verein slice. Its older-base
+clean build, 3/3 focused tests, blank migration replay, populated upgrade, valid
+inserts/defaults, and cross-tenant rejection are useful evidence. Its current-
+lineage migration designer is stale and must be regenerated and fully rerun
+before commit. The slice therefore contributes zero banked schema points. There
+are no dirty Web UK product files at this snapshot. Dirty or projected work
+never increases the banked score.
+
+### 2026-07-15 Windows Update Interruption
+
+Windows Update initiated the first planned restart at **02:44:42 Irish time**;
+two planned servicing restarts followed, and the final operating-system start
+was 02:49:14. Codex task execution did not resume until about 05:20. The exact
+event-log sequence, installed updates, and pre-restart boundaries are recorded
+in [`RESTART_INCIDENT_2026-07-15.md`](RESTART_INCIDENT_2026-07-15.md). No
+interrupted or recovered work was converted into score movement.
 
 Re-run `git status --short`, compare the published checkpoint with `HEAD`, and
 refresh this section before every status report. Do not infer points from file
@@ -168,7 +193,8 @@ Stateful Web UK certification against Laravel must use a separately
 provisioned disposable Laravel environment. The ordinary local Laravel database
 is a confidential production-derived snapshot and is never a test fixture.
 
-The 2026-07-15 suite investigation discovered 3,330 tests in 389 classes. A
+The 2026-07-15 suite investigation discovered 3,331 tests across 2,776 methods
+and 391 classes. A
 single full Release run reached the 30-minute process limit without an
 aggregate. Four isolated alphabetic shards also reached their 15-minute limits;
 the B-F shard exposed four named failures. The published migrated-schema harness

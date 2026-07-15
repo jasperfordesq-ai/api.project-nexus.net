@@ -1,6 +1,6 @@
 # Database Migration Workflow
 
-Last reviewed: 2026-07-14
+Last reviewed: 2026-07-15
 
 Status: **Maintained reference — current migration workflow with historical evidence**
 
@@ -15,11 +15,18 @@ For the current migration/schema deductions and named evidence baseline, read
 chain below is a retained 2026-07-12 checkpoint; its count and latest migration
 must not be presented as the current repository chain.
 
-The current published migration tail includes marketplace payment settlement
-`20260714105831_MarketplacePaymentSettlementParity` and Connect onboarding
-`20260714115746_MarketplaceConnectOnboardingParity`. Their replay, preflight,
-and model-drift evidence is recorded in `SCHEMA_PARITY.md`. Always obtain the
-runtime migration list from the current checkout before an upgrade claim.
+At committed main `1ded18bd5e49e09c06d697ac0699a9cc31181d25`, the published
+backend migration tail runs from marketplace payment settlement
+`20260714105831_MarketplacePaymentSettlementParity` through Connect onboarding,
+paid-notification, escrow-settlement, refund-ledger, SSO/OIDC, and finally
+`20260714234546_SocialCommentMentionParity`. Commit `fefbb5ce` changed the
+integration fixture to apply the complete EF migration chain instead of using
+`EnsureCreated`; its fresh-migrated PostgreSQL subset passed 14/14 and the five
+affected classes passed 57/57. That is focused migrated-schema evidence, not a
+complete-suite, CI, production-upgrade, or deployment claim. Replay, preflight,
+and model-drift evidence for individual migrations is recorded in
+`SCHEMA_PARITY.md`. Always obtain the runtime migration list from the current
+checkout before an upgrade claim.
 
 ## Historical Runtime Chain And Replay Evidence (2026-07-12)
 
@@ -242,8 +249,10 @@ replaying either intentionally excluded duplicate.
 
 The following PostgreSQL report is deliberately read-only and is intended for
 an operator working on a database upgraded at least through
-`20260711192124_VolunteerHoursLedgerParity`; the current recorded chain ends at
-`20260712060051_DirectMessageStateParity`. It identifies candidates;
+`20260711192124_VolunteerHoursLedgerParity`. At the historical 2026-07-12
+checkpoint used to author this report, the recorded chain ended at
+`20260712060051_DirectMessageStateParity`; that is not the current repository
+tail. The report identifies candidates;
 it does not decide their meaning. Do not auto-fix, relink, delete, cancel, or
 recreate any returned row. Each row needs a documented manual disposition that
 states the intended business event, the existing sender/receiver balance

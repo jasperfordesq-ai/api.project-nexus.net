@@ -1,16 +1,17 @@
 # Schema Parity Map
 
-Last reviewed: 2026-07-14
+Last reviewed: 2026-07-15
 
 Status: **Maintained reference — current comparison method with dated evidence**
 
-Evidence provenance: maintained policy and the latest published backend prose
-were reviewed on 2026-07-14 against Laravel
-`903d03d3db78bbf87129ad35728be3b72819acaf` and repository commit
-`9c5fb1a46c40e4986c8f973075164b1d74bd101d`. Dirty migrations/entities are
-excluded. Any older table/count without its own exact source pair is a
-historical, provenance-incomplete checkpoint and cannot support current score
-or upgrade-safety claims.
+Evidence provenance: the current static table inventory was regenerated on
+2026-07-15 against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and committed ASP.NET tree
+`1ded18bd5e49e09c06d697ac0699a9cc31181d25`. Uncommitted schema-worktree
+entities, configurations, migrations, tests, and documentation are excluded.
+Any older table/count without its own exact source pair is a historical,
+provenance-incomplete checkpoint and cannot support current score or
+upgrade-safety claims.
 
 Laravel source of truth: `C:\platforms\htdocs\staging\database\migrations` and
 `C:\platforms\htdocs\staging\app\Models`.
@@ -19,6 +20,48 @@ Use [`CURRENT_ASPNET_CONTRACT_STATUS.md`](CURRENT_ASPNET_CONTRACT_STATUS.md) for
 the current banked score and active schema/upgrade deductions. Dated sections
 here are retained evidence. Static table-name counts are never an overall score
 and remain historical until explicitly regenerated against named SHAs.
+
+## 2026-07-15 Current Static Inventory And Classification Boundary
+
+This is the current repeatable, read-only source inventory. It is a table-name
+comparison, not runtime migration proof, API/workflow parity, or a score.
+
+| Source | Count | Notes |
+| --- | ---: | --- |
+| Laravel migration files | 384 | PHP files under `database/migrations`. |
+| ASP.NET EF migration source files | 155 | Excludes designer files and the model snapshot. |
+| Laravel created tables | 301 | Unique `Schema::create(...)` names. |
+| Laravel touched tables | 131 | Unique `Schema::table(...)` names. |
+| Laravel explicit model tables | 268 | Unique explicit model `$table` declarations. |
+| Laravel source tables | 458 | Union of created, touched, and explicit model table names. |
+| ASP.NET tables | 425 | Union of EF `ToTable`, `[Table]`, and migration `CreateTable` names. |
+| Exact matched tables | 227 | Identical normalized names in both sources. |
+| Missing Laravel exact names | 231 | Laravel names with no identical ASP.NET name. |
+| ASP.NET-only exact names | 198 | ASP.NET names with no identical Laravel name. |
+
+The 231 missing exact names currently partition as follows. These categories
+are mutually exclusive, so their counts reconcile to the comparator total.
+
+| Classification | Count | Evidence boundary |
+| --- | ---: | --- |
+| Classified aliases | 20 | A differently named ASP.NET aggregate has been identified. Each alias remains a gap until its migration shape and external workflow are proved equivalent. |
+| Podcast compatibility-storage gaps | 8 | `podcast_episode_chapters`, `podcast_episode_listens`, `podcast_episode_reactions`, `podcast_episode_reports`, `podcast_episodes`, `podcast_media_cleanup_tasks`, `podcast_show_subscriptions`, and `podcast_shows`. Existing API compatibility does not replace these Laravel storage/evidence contracts. |
+| Genuine Verein/Clubs gaps | 5 | `verein_cross_invitations`, `verein_dues_payments`, `verein_event_shares`, `verein_member_dues`, and `verein_membership_fees`. |
+| Unclassified missing names | 198 | No accepted alias or replacement classification has yet been recorded. |
+| **Total missing exact names** | **231** | **20 + 8 + 5 + 198.** |
+
+The separate schema worktree, currently based at
+`1ded18bd5e49e09c06d697ac0699a9cc31181d25`, contains an uncommitted attempt to
+add the five Verein tables. It is not banked evidence and adds **zero** score
+points. If its EF migration is regenerated from that current lineage and the
+slice passes disposable-PostgreSQL upgrade/model-drift and focused workflow
+tests, the static exact-match projection would move from 227 to 232. The current
+banked schema category therefore remains **129/150**.
+
+The comparator's Markdown renderer was also corrected in this audit. Missing
+and ASP.NET-only rows now render concrete table names and source paths rather
+than literal PowerShell object expressions; the fixture test rejects that
+malformed output.
 
 ## 2026-07-14 Marketplace Connect Onboarding Schema Evidence
 
@@ -531,12 +574,12 @@ of semantic absence. It highlights the domains that need table-by-table review:
 | --- | ---: | --- |
 | `caring_*` | 0 | Caring Community and KISS exact-name `caring_*` schema gaps are currently cleared in the static schema comparator; `caring_emergency_alerts`, `caring_federation_peers`, `caring_sub_regions`, `caring_care_providers`, `caring_caregiver_links`, `caring_cover_requests`, `caring_support_categories`, `caring_support_relationships`, `caring_tandem_suggestion_log`, `caring_help_requests`, `caring_project_announcements`, `caring_project_updates`, `caring_project_subscriptions`, `caring_smart_nudges`, `caring_paper_onboarding_intakes`, `caring_favours`, `caring_municipality_feedback`, `caring_trust_tier_config`, `municipality_surveys`, `municipality_survey_questions`, `municipality_survey_responses`, `caring_hour_estates`, `caring_hour_transfers`, `caring_hour_gifts`, `caring_kiss_treffen`, `caring_invite_codes`, `caring_kpi_baselines`, `caring_loyalty_redemptions`, `caring_regional_point_accounts`, `caring_regional_point_transactions`, `caring_research_partners`, `caring_research_consents`, and `caring_research_dataset_exports` are now represented in .NET. Laravel's `municipal_report_templates`, `municipal_verifications`, shared `categories.substitution_coefficient`, `users.trust_tier`, `safeguarding_reports`, `safeguarding_report_actions`, and member-facing `user_safeguarding_preferences` are also represented. Success stories intentionally use tenant-config key `caring.success_stories` to mirror Laravel's tenant-setting storage. |
 | `vol_*` | 17 | The 115-ID runtime inventory retains canonical `vol_logs` with tenant-composite user/organisation/opportunity/reviewer/Caring provenance, hours/status checks, active natural-key uniqueness, personal transaction links, organisation-payment links, and volunteer-hour XP evidence. Migration 111 never inserts legacy value: evidence-free approved whole-hour organisation rows become `pending`, while approved Caring sub-hour rows remain valid. The eight member/organisation/admin hour routes and Caring relationship logging share the same locked workflow; direct Caring input retains raw fractional semantics for whole-hour flooring/regional points before rounded storage. QR attendance separately has migration-backed token/status/coordinator evidence and remains deliberately free of credit/XP side effects. The current live count reports 17 exact-name gaps because other Laravel `vol_*` tables/aliases remain; broader workflow semantics, the full 3,007-test suite, CI, and unchanged-frontend certification still require reconciliation. |
-| `federation_*` | 17 | Receiver-scoped partnership decisions now persist native status/audit state, but exact federation-level permission columns, rejection actor/time/reason metadata, initial-sync/outbox state, and broader partner/network schema still need reconciliation. |
-| `course_*` | 15 | Course module has no clear .NET implementation surface. |
+| `federation_*` | 16 | Receiver-scoped partnership decisions now persist native status/audit state, but exact federation-level permission columns, rejection actor/time/reason metadata, initial-sync/outbox state, and broader partner/network schema still need reconciliation. |
+| `course_*` | 14 | Course module has no clear .NET implementation surface. |
 | `job_*` | 13 | Job schema is partially present but not exact-name complete. |
-| `marketplace_*` | 6 | Marketplace implementation is materially incomplete; `marketplace_seller_loyalty_settings` and `marketplace_seller_regional_point_settings` are now represented for the Caring loyalty and regional-points bridges. |
-| `podcast*` | 7 | Podcast API route compatibility now exists via tenant-config state; dedicated podcast tables/media-processing schema remain open gaps. |
-| `verein_*` | 5 | `verein_federation_consents` is now represented for municipality events-calendar sharing; the remaining Verein/Clubs schema still needs real domain schema and workflow parity. |
+| `marketplace_*` | 2 | Marketplace provider/account and settlement slices reduced the exact-name table gap, but the remaining source names and their workflows still require reconciliation. |
+| `podcast*` | 8 | Podcast API route compatibility now exists, but the eight dedicated Laravel storage/media/evidence tables listed in the current classification remain open gaps. |
+| `verein_*` | 5 | `verein_federation_consents` is represented for municipality events-calendar sharing; the five named Verein/Clubs storage gaps remain unbanked. |
 | `regional_*` | 0 | Regional Analytics subscription, report, access-log, and cache schema tables are now represented; API/service/report workflow parity remains open. |
 
 ## Acceptance Criteria For Schema Parity

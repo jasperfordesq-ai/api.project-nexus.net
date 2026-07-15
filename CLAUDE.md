@@ -1,6 +1,6 @@
 # Project NEXUS .NET Edition - Agent Guide
 
-Last reviewed: 2026-07-14
+Last reviewed: 2026-07-15
 
 > WARNING: Before deploying or touching any production container, read
 > `.claude/production-containers.md`.
@@ -151,9 +151,12 @@ equivalent:
 - Regional Analytics and National KISS dashboard/reporting.
 - Non-Stripe identity providers present in Laravel: Veriff, Onfido, Jumio, and
   Idenfy.
-- Tenant SSO/OIDC login flow: provider administration is implemented, but
-  redirect/callback, PKCE state, token validation, account linking, and
-  domain-guarded provisioning still require parity work.
+- Tenant SSO/OIDC login flow: provider administration plus the public
+  redirect/callback and browser exchange are implemented with signed durable
+  state, browser and server PKCE, nonce/JWKS validation, public-HTTPS endpoint
+  checks, tenant-qualified identity linking, domain/provisioning policy gates,
+  one-time callback grants, and refresh-token issuance. Live IdP/browser proof,
+  the complete suite, and exact-SHA CI remain certification gaps.
 - Mailchimp-like audience/template/sync behavior where Laravel still exposes it.
 - Partner API and partner portal surfaces.
 - Super-admin and platform-level federation/tenant controls.

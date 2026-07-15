@@ -275,7 +275,7 @@ function Write-MarkdownReport {
         $lines.Add('| Table | Laravel source kinds | Laravel files |')
         $lines.Add('| --- | --- | --- |')
         foreach ($row in $missing) {
-            $lines.Add("| `$($row.table)` | $($row.laravel_kinds) | `$($row.laravel_files)` |")
+            $lines.Add(('| `{0}` | {1} | `{2}` |' -f $row.table, $row.laravel_kinds, $row.laravel_files))
         }
     }
 
@@ -289,7 +289,7 @@ function Write-MarkdownReport {
         $lines.Add('| Table | ASP.NET source kinds | ASP.NET files |')
         $lines.Add('| --- | --- | --- |')
         foreach ($row in $extra) {
-            $lines.Add("| `$($row.table)` | $($row.aspnet_kinds) | `$($row.aspnet_files)` |")
+            $lines.Add(('| `{0}` | {1} | `{2}` |' -f $row.table, $row.aspnet_kinds, $row.aspnet_files))
         }
     }
 

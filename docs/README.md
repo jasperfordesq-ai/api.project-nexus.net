@@ -1,6 +1,6 @@
 # Project NEXUS .NET Documentation
 
-Last reviewed: 2026-07-14
+Last reviewed: 2026-07-15
 
 This directory contains the maintained documentation for the Project NEXUS .NET
 Edition. The canonical Laravel source for parity is
@@ -18,6 +18,7 @@ configuration only, with Laravel defining the contract ASP.NET must satisfy.
 | [BACKEND_LOCALIZATION_CONTRACT.md](BACKEND_LOCALIZATION_CONTRACT.md) | Maintained ASP.NET backend localization contract: fixed Laravel/ASP.NET SHAs, request and recipient locale behavior, committed evidence, dirty-worktree boundary, and certification gaps. |
 | [DOCUMENTATION_GOVERNANCE.md](DOCUMENTATION_GOVERNANCE.md) | Canonical document hierarchy, fixed scoring/reporting rules, history labels, safety requirements, and documentation-health gate. |
 | [DOCUMENTATION_HEALTH_REPORT.md](DOCUMENTATION_HEALTH_REPORT.md) | Fixed Baseline D1 documentation-health score and reproducible evidence; explicitly separate from product completion. |
+| [RESTART_INCIDENT_2026-07-15.md](RESTART_INCIDENT_2026-07-15.md) | Exact Irish-time Windows Update restart sequence, pre-restart task boundaries, recovery distinction, and zero-point interrupted-work rule. |
 | [CURRENT_LARAVEL_PARITY_HANDOFF.md](CURRENT_LARAVEL_PARITY_HANDOFF.md) | Chronological backend implementation history and older commands. Its former scores and “latest” checkpoints are historical; do not use it for current status. |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Runtime boundaries, application surfaces, and invariants for the .NET edition. |
 | [MODULES.md](MODULES.md) | Module-by-module Laravel source paths, .NET target paths, and parity status. |

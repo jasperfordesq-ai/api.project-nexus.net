@@ -1,6 +1,6 @@
 # Documentation Health Report
 
-Last verified: 2026-07-14
+Last verified: 2026-07-15 06:24 +01:00
 
 Status: **Generated snapshot — documentation quality only, not product readiness**
 
@@ -8,13 +8,13 @@ Status: **Generated snapshot — documentation quality only, not product readine
 
 ## Baseline D1
 
-Documentation Health Baseline D1 scores the verified documentation snapshot
-**100/100**. It was prepared against product-source baseline
-`327984b02de82350b8f17b6cb885a3a27c7d95be` and Laravel source commit
-`903d03d3db78bbf87129ad35728be3b72819acaf`. A documentation-only commit may sit
-above that product baseline without changing its evidence. Re-run every gate
-below and update the repository-state note before reporting this score after
-either product source moves.
+Documentation Health Baseline D1 scores the re-audited documentation snapshot
+**100/100**. It was verified against Web UK/repository product baseline
+`1ded18bd5e49e09c06d697ac0699a9cc31181d25` and Laravel source commit
+`903d03d3db78bbf87129ad35728be3b72819acaf`. The documentation transaction may
+sit above that product baseline without changing its product evidence. Re-run
+every gate below and update the repository-state note before reporting this
+score after either product source moves.
 
 This is not a parity or readiness score. Read the live product totals only from
 [`CURRENT_ASPNET_CONTRACT_STATUS.md`](CURRENT_ASPNET_CONTRACT_STATUS.md) and
@@ -33,8 +33,8 @@ unfinished, uncertified, published-but-unscored, or dirty product work.
 | Stable scoring and repository-state reporting | 20/20 | One banked score exists per workstream; reports separate banked, published-but-unscored, and dirty work; implementation/certification evidence is not converted into competing percentages. |
 | Data and production safety | 20/20 | The ordinary production-derived Laravel database is read-only; stateful certification requires a verified disposable environment; production actions require explicit authorization and the component-specific production map; legacy blanket deployment notes are quarantined. |
 | Provenance and historical integrity | 15/15 | Long-lived status-like documents carry state labels; old plans/checkpoints are fenced; generated route/API artifacts record generation time, exact SHAs, dirty state, input hashes where applicable, and a provenance caveat. |
-| Product-document coverage and accuracy | 10/10 | Current docs cover the 2x2 target, backend queue, Web UK queue, localization contract, module map, admin secondary surface, migrations, deployment boundaries, and known certification gaps without presenting presence/counts as correctness. |
-| Automated consistency and link hygiene | 5/5 | Consistency, generated-artifact, relative-link, focused generator-test, and whitespace/diff gates pass. |
+| Product-document coverage and accuracy | 10/10 | Current docs cover the 2x2 target, backend queue, Web UK queue, localization contract, module map, schema inventory, migrations, deployment boundaries, known certification gaps, and the exact restart incident without presenting presence/counts as correctness. |
+| Automated consistency and link hygiene | 5/5 | Consistency, generated-artifact, relative-link, schema/Web UK generator-test, and whitespace/diff gates pass. |
 | **Total** | **100/100** | **Documentation health only.** |
 
 The denominator and category weights are fixed for Baseline D1. A future defect
@@ -51,20 +51,33 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-documentation-
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-markdown-links.ps1
 npm --prefix apps/web-uk test -- --runInBand tests/api-consumer-ledger.test.js tests/api-consumer-method-spoof.test.js tests/route-matrix-generator.test.js
 npm --prefix apps/web-uk test -- --runInBand tests/shared-accessible-shell.test.js -t "documents route matrix and backend-switching preparation without readiness claims"
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-compare-laravel-schema-parity.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/compare-laravel-schema-parity.ps1
 git diff --check
 ```
 
 Latest results:
 
-- documentation consistency: passed;
-- relative Markdown links: 126 checked across 72 files, zero missing;
-- generator/document contract tests: 3 suites, 8 tests passed;
-- focused shared-shell documentation assertion: 1 passed and 783 skipped by
+- documentation consistency: passed at the current score and generated-count
+  boundaries;
+- relative Markdown links: 139 checked across 75 files, zero missing;
+- Web UK generator/document contract tests: 3 suites, 10 tests passed;
+- focused shared-shell documentation assertion: 1 passed and 815 skipped by
   name filter;
+- complete Web UK clean-snapshot gate: 52/52 suites and 1,706/1,706 tests;
 - route inventory: 689 Laravel routes, 688 matched, 1 missing;
-- API consumer ledger: 663 contracts, 448 OpenAPI matches, 215 unmatched,
-  0 dynamic; these dirty-tree generated counts are unscored product evidence;
-- `git diff --check`: passed with line-ending conversion warnings only;
+- API consumer ledger: 668 contracts, 451 OpenAPI matches, 217 unmatched,
+  0 dynamic; all unmatched rows resolve to direct Laravel route declarations;
+- schema comparator fixture: passed, including exact rendered Markdown-row and
+  malformed-placeholder rejection;
+- full read-only schema comparator: 458 Laravel tables, 425 ASP.NET tables, 227
+  exact names, 231 apparent gaps, 198 ASP.NET-only names, with a valid Markdown
+  artifact and no literal object-expression placeholders;
+- restart evidence is preserved in
+  [`RESTART_INCIDENT_2026-07-15.md`](RESTART_INCIDENT_2026-07-15.md), including
+  exact Irish times, Windows Update cause, update identifiers, and the banked-
+  versus-interrupted work boundary;
+- `git diff --check`: passed for the complete re-audit transaction;
 - independent adversarial re-audit: passed after all reported contradictions
   and evidence mismatches were corrected.
 
