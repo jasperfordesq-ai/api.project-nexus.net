@@ -83,24 +83,38 @@ function Get-TestMethods {
 }
 
 function New-ShardManifest([object[]]$methods) {
+    $classes = @($methods | Group-Object ClassName | ForEach-Object {
+        [pscustomobject]@{
+            ClassName = $_.Name
+            TestCount = ($_.Group | Measure-Object TestCount -Sum).Sum
+            Methods = @($_.Group.MethodName | Sort-Object)
+        }
+    })
+
     $buckets = @(for ($index = 1; $index -le $ShardCount; $index++) {
         [pscustomobject]@{
             ShardIndex = $index
             TestCount = 0
+            Classes = [Collections.Generic.List[string]]::new()
             Methods = [Collections.Generic.List[string]]::new()
         }
     })
 
-    foreach ($method in @($methods | Sort-Object @{ Expression = 'TestCount'; Descending = $true }, MethodName)) {
+    foreach ($class in @($classes | Sort-Object @{ Expression = 'TestCount'; Descending = $true }, ClassName)) {
         $bucket = $buckets | Sort-Object TestCount, ShardIndex | Select-Object -First 1
-        $bucket.Methods.Add($method.MethodName)
-        $bucket.TestCount += $method.TestCount
+        $bucket.Classes.Add($class.ClassName)
+        foreach ($methodName in $class.Methods) {
+            $bucket.Methods.Add($methodName)
+        }
+        $bucket.TestCount += $class.TestCount
     }
 
     return @($buckets | Sort-Object ShardIndex | ForEach-Object {
         [pscustomobject]@{
             shard_index = $_.ShardIndex
             test_count = $_.TestCount
+            class_count = $_.Classes.Count
+            classes = @($_.Classes | Sort-Object)
             method_count = $_.Methods.Count
             methods = @($_.Methods | Sort-Object)
         }
@@ -144,7 +158,7 @@ try {
         discovered_test_count = ($methods | Measure-Object TestCount -Sum).Sum
         discovered_method_count = $methods.Count
         discovered_class_count = @($methods.ClassName | Select-Object -Unique).Count
-        allocation = 'largest-method-first greedy balancing, then method name and shard index'
+        allocation = 'largest-class-first greedy balancing, then class name and shard index'
         shards = $manifest
     }
 
@@ -164,9 +178,10 @@ try {
 
     Write-Host "Discovered $($manifestDocument.discovered_test_count) tests across $($manifestDocument.discovered_method_count) methods and $($manifestDocument.discovered_class_count) classes."
     $sliceLabel = if ($SliceCount -gt 1) { ", slice $SliceIndex/$SliceCount" } else { "" }
-    Write-Host "Shard $ShardIndex/$ShardCount$sliceLabel contains $($selected.test_count) tests across $($selected.method_count) methods."
-    foreach ($methodName in $selected.methods) {
-        Write-Host " - $methodName"
+    $selectedClassCount = if ($null -ne $selected.class_count) { $selected.class_count } else { 'sliced' }
+    Write-Host "Shard $ShardIndex/$ShardCount$sliceLabel contains $($selected.test_count) tests across $selectedClassCount classes and $($selected.method_count) methods."
+    foreach ($className in @($selected.classes)) {
+        Write-Host " - $className"
     }
 
     if ($ListOnly) {
@@ -209,7 +224,9 @@ try {
         $env:NEXUS_TEST_POSTGRES = "Host=127.0.0.1;Port=$($Matches[1]);Database=$databaseName;Username=postgres;Password=postgres;Pooling=false"
     }
 
-    $filter = ($selected.methods | ForEach-Object { "FullyQualifiedName~$_" }) -join '|'
+    # Exact method filters keep theories together without allowing similarly
+    # prefixed class or method names to overlap adjacent shards.
+    $filter = ($selected.methods | ForEach-Object { "FullyQualifiedName=$_" }) -join '|'
     $resultLabel = if ($SliceCount -gt 1) {
         "shard-$ShardIndex-of-$ShardCount-slice-$SliceIndex-of-$SliceCount"
     } else {
@@ -218,17 +235,20 @@ try {
     $resultsDirectory = Join-Path $repoRoot "artifacts\backend-test-shards\$((Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ'))-$resultLabel"
     New-Item -ItemType Directory -Force -Path $resultsDirectory | Out-Null
 
-    & dotnet test $testProject `
-        --configuration Release `
-        --no-restore `
-        --no-build `
-        --filter $filter `
-        --logger "console;verbosity=normal" `
-        --logger "trx;LogFileName=$resultLabel.trx" `
-        --results-directory $resultsDirectory `
-        --blame-hang `
-        --blame-hang-timeout "$($HangTimeoutSeconds)s" `
-        --blame-hang-dump-type none
+    $testArguments = @(
+        'test', $testProject,
+        '--configuration', 'Release',
+        '--no-restore',
+        '--no-build',
+        '--filter', $filter,
+        '--logger', 'console;verbosity=normal',
+        '--logger', "trx;LogFileName=$resultLabel.trx",
+        '--results-directory', $resultsDirectory,
+        '--blame-hang',
+        '--blame-hang-timeout', "$($HangTimeoutSeconds)s",
+        '--blame-hang-dump-type', 'none'
+    )
+    & dotnet @testArguments
     exit $LASTEXITCODE
 } finally {
     if ($null -eq $previousConnection) {
