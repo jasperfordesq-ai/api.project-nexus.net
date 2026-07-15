@@ -9,18 +9,6 @@
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-full">
 
-      {% if successMessage %}
-        {% set notificationMessage = successMessage %}
-        {% set notificationType = "success" %}
-        {% include "partials/notification-banner.njk" %}
-      {% endif %}
-
-      {% if errorMessage %}
-        {% set notificationMessage = errorMessage %}
-        {% set notificationType = null %}
-        {% include "partials/notification-banner.njk" %}
-      {% endif %}
-
       <span class="govuk-caption-l">{{ t("feed.caption", { community: communityName }) }}</span>
       <h1 class="govuk-heading-xl">{{ t("feed.title") }}</h1>
       <p class="govuk-body-l">{{ t("feed.description") }}</p>

@@ -590,9 +590,7 @@ router.get('/', asyncRoute(withTokenRefresh(async (req, res) => {
     nextHref: feedNextHref(meta, perPage, selectedType, selectedMode, selectedSubtype),
     csrfToken: req.csrfToken ? req.csrfToken() : '',
     statusMessage,
-    successMessage: req.flash ? req.flash('success')[0] : null,
-    feedLoadError: feedErrorMessage,
-    errorMessage: req.flash ? req.flash('error')[0] : null
+    feedLoadError: feedErrorMessage
   });
 })));
 

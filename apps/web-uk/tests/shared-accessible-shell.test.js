@@ -13487,6 +13487,32 @@ describe('shared accessible frontend shell', () => {
     expect(updateFailed.text).not.toContain('>Important</h2>');
   });
 
+  it('keeps feed index feedback bounded to Blade status tokens', async () => {
+    const api = require('../src/lib/api');
+    api.getFeedPosts.mockResolvedValue({ data: [], meta: { has_more: false } });
+
+    const created = await request(app)
+      .get('/feed?status=post-created')
+      .set('Cookie', signedCookieHeader());
+    const unrelated = await request(app)
+      .get('/feed?status=unrelated')
+      .set('Cookie', signedCookieHeader());
+
+    expect(created.status).toBe(200);
+    expect(created.text).toContain('Your post has been added.');
+    expect(created.text).toContain('govuk-notification-banner--success');
+    expect(unrelated.status).toBe(200);
+    expect(unrelated.text).not.toContain('govuk-notification-banner--success');
+    expect(unrelated.text).not.toContain('feed-action-error-title');
+
+    const routeSource = fs.readFileSync(path.join(__dirname, '../src/routes/feed.js'), 'utf8');
+    const templateSource = fs.readFileSync(path.join(__dirname, '../src/views/feed/index.njk'), 'utf8');
+    expect(routeSource).not.toContain("successMessage: req.flash");
+    expect(routeSource).not.toContain("errorMessage: req.flash");
+    expect(templateSource).not.toContain('{% if successMessage %}');
+    expect(templateSource).not.toContain('{% if errorMessage %}');
+  });
+
   it('renders the signed Laravel feed hashtag detail page with post cards', async () => {
     const api = require('../src/lib/api');
 

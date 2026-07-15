@@ -1078,6 +1078,23 @@ item, comment, poll, moderation, share, save, and mute POST result redirects
 through `res.locals.urlFor`, with focused shared-mount validation redirect
 coverage for `/acme/accessible/feed/posts`.
 
+2026-07-15 Feed index status-boundary follow-up: Feed now accepts only the
+bounded success, compose-error, and action-error query tokens rendered by
+`feed.blade.php`. The index no longer consumes or renders arbitrary session
+flash values from unrelated routes. Focused success/unrelated-token proof
+passes, and the complete non-mutating inventory is green across a 1,700-
+assertion host-memory aggregate plus the separately verified canonical-path
+tenant-source assertion. Brand, lint, CSS, all localization audits, and the
+19/19 canonical public marker gate pass; routes and API consumers are
+unchanged. No Laravel request requiring authentication, mutation, database
+access, upload, download, or cleanup was performed.
+
+Component-audit classification: the Feed hashtag/permalink row is
+implementation-closed and certification-only. Its remaining runtime/schema,
+tenant-gate, manual assistive-technology, and backend-switching proof belongs
+to the disposable-runtime, accessibility, and separate ASP.NET packages; none
+is an unresolved Blade implementation row.
+
 Group-exchange action redirect note: `src/routes/group-exchange-actions.js`
 now sends auth, validation, success, failure, and API-auth-error POST redirects
 through `res.locals.urlFor`, with focused shared-mount validation redirect
