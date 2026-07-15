@@ -6831,11 +6831,39 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('3 unread');
     expect(response.text).toContain('2 unread messages');
     expect(response.text).toContain('The conversation has been restored.');
+    expect(response.text).toContain('aria-labelledby="messages-status-title"');
+    expect(response.text).toContain('id="messages-status-title"');
     expect(response.text).toContain('action="/messages/77/restore"');
     expect(response.text).toContain('class="govuk-link govuk-link--no-visited-state" href="/messages?archived=1" aria-current="page"');
     expect(response.text).toContain('href="/messages?archived=1&amp;filter=Avery&amp;cursor=next-page"');
     expect(response.text).toContain('Load more');
     expect(response.text).toContain('More conversations');
+  });
+
+  it('keeps the direct-message inbox status bounded to Blade archive outcomes', async () => {
+    const api = require('../src/lib/api');
+    api.getConversations.mockResolvedValue({ data: [], meta: { has_more: false } });
+    api.getUnreadCount.mockResolvedValue({ data: { count: 0 } });
+
+    const archived = await request(app)
+      .get('/messages?status=conversation-archived')
+      .set('Cookie', signedCookieHeader());
+    const unrelated = await request(app)
+      .get('/messages?status=unrelated')
+      .set('Cookie', signedCookieHeader());
+
+    expect(archived.status).toBe(200);
+    expect(archived.text).toContain('The conversation has been archived.');
+    expect(archived.text).toContain('aria-labelledby="messages-status-title"');
+    expect(archived.text).toContain('id="messages-status-title"');
+    expect(unrelated.status).toBe(200);
+    expect(unrelated.text).not.toContain('messages-status-title');
+    expect(unrelated.text).not.toContain('govuk-notification-banner--success');
+
+    const routeSource = fs.readFileSync(path.join(__dirname, '../src/routes/messages.js'), 'utf8');
+    const templateSource = fs.readFileSync(path.join(__dirname, '../src/views/messages/index.njk'), 'utf8');
+    expect(routeSource).not.toContain("req.flash('success')");
+    expect(templateSource).not.toContain('{% if successMessage %}');
   });
 
   it('gives whitespace-only conversation names a localized accessible fallback', async () => {

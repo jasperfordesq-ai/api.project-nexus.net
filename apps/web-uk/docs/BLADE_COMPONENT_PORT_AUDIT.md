@@ -781,6 +781,26 @@ conversation-created timestamp fallback now match Blade's default-English
 presentation. Focused inbox proof passes `5/5`; the aggregate remains
 `48/48` suites and `1,632/1,632` tests with green lint and localization gates.
 
+2026-07-15 direct-message inbox status follow-up: archived/restored outcomes
+now use Blade's exact bounded query states, `messages-status-title` relationship,
+success role, and catalog copy. The inbox no longer consumes or renders
+arbitrary success flash values from unrelated routes. Focused populated and
+unrelated-state proof passes `2/2`; the complete non-mutating inventory is green
+across a 1,701-assertion host-memory aggregate plus the separately verified
+canonical-path tenant-source assertion. Brand, lint, CSS, and all localization
+audits pass; static localization resolves 7,618 references and 5,804 unique
+keys with zero unresolved, and 322 templates have zero conservative matches.
+The current public marker rerun was unavailable because the read-only Laravel
+service at port 8088 was not listening while Web UK returned 200; the immediately
+preceding product baseline passed 19/19. No Laravel authentication, mutation,
+database access, upload, download, cleanup, or container operation was
+performed.
+
+Component-audit classification: the Message conversations row is
+implementation-closed, with remaining upstream group-reaction projection,
+disposable direct/group runtime, translated-text, manual assistive-technology,
+and backend-switching proof assigned outside the Blade implementation queue.
+
 2026-07-14 Marketplace listing-form follow-up: create/edit now uses Blade's
 exact default-English commerce catalog and hierarchy, tenant bootstrap currency
 default, safe no-JavaScript input replay, and three local validation states.

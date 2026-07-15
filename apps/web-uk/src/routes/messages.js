@@ -316,13 +316,6 @@ function directStatus(status, t) {
   } : null;
 }
 
-function inboxSuccessMessage(status, t) {
-  return {
-    'conversation-archived': t('govuk_alpha.messages.conversation_archived'),
-    'conversation-restored': t('govuk_alpha.messages.conversation_restored')
-  }[trimmed(status)] || null;
-}
-
 function groupName(group, t = null) {
   return trimmed(group && (group.group_name || group.groupName || group.name))
     || (t ? t('govuk_alpha_messages.groups.untitled') : 'Group conversation');
@@ -1084,8 +1077,7 @@ router.get('/', requireAuth, asyncRoute(async (req, res) => {
       cursor: trimmed(meta.cursor || meta.next_cursor)
     },
     csrfToken: req.csrfToken ? req.csrfToken() : '',
-    successMessage: inboxSuccessMessage(req.query.status, res.locals.t)
-      || (req.flash ? req.flash('success')[0] : null)
+    status: trimmed(req.query.status)
   });
 }));
 
