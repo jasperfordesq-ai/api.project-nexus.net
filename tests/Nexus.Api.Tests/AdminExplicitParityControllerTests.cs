@@ -445,7 +445,7 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
             last_name = "Member",
             email,
             password = "Created123!",
-            role = "moderator",
+            role = "broker",
             send_welcome_email = false
         });
 
@@ -456,7 +456,7 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
         data.GetProperty("id").GetInt32().Should().BeGreaterThan(0);
         data.GetProperty("name").GetString().Should().Be("Created Member");
         data.GetProperty("email").GetString().Should().Be(email);
-        data.GetProperty("role").GetString().Should().Be("moderator");
+        data.GetProperty("role").GetString().Should().Be("broker");
         data.GetProperty("status").GetString().Should().Be("active");
         createJson.GetProperty("meta").GetProperty("base_url").GetString().Should().NotBeNullOrWhiteSpace();
 
@@ -467,7 +467,7 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
             created.TenantId.Should().Be(TestData.Tenant1.Id);
             created.FirstName.Should().Be("Created");
             created.LastName.Should().Be("Member");
-            created.Role.Should().Be("moderator");
+            created.Role.Should().Be("broker");
             created.IsActive.Should().BeTrue();
             created.PasswordHash.Should().NotBe("NEEDS_RESET");
         }
