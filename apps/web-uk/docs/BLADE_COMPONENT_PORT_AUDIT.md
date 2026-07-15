@@ -1690,6 +1690,22 @@ database, migration, runtime request, container, or production operation was
 performed. This slice is unscored; the canonical bank remains `663/1,000`
 until another complete fixed-rubric audit.
 
+### 2026-07-15 Merchant onboarding path-assertion follow-up
+
+The merchant-onboarding dispatcher now has direct API-client proof for identity
+step 1 and bodyless completion in addition to business-address step 2. The
+cases pin Laravel's unprefixed `/api/v2/merchant-onboarding/*` paths, POST verbs,
+bearer authority, seller/business identity payload, deliberate body omission on
+completion, unmodified step/completion envelopes, and structured identity
+`422` validation propagation. This closes the currently generated omitted
+merchant-onboarding path set at the API-client boundary; live eligibility,
+provider-account state and persistence require the isolated disposable runtime.
+
+The focused API-client suite passes `237/237`. No Laravel or ASP.NET source,
+database, migration, runtime request, container, or production operation was
+performed. This slice is unscored; the canonical bank remains `663/1,000`
+until another complete fixed-rubric audit.
+
 - GOV.UK crown, logotype, official header identity, OGL block, or Crown
   copyright wording.
 - Laravel/PHP implementation details.

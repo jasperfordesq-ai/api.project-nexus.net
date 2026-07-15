@@ -3772,6 +3772,71 @@ describe('API Request Functions', () => {
         })
       );
     });
+
+    it('should preserve merchant identity and bodyless completion contracts', async () => {
+      const identity = {
+        seller_type: 'business',
+        display_name: 'Community Repairs',
+        business_name: 'Community Repairs Limited'
+      };
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { step: 1, saved: true } })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { completed: true } })
+        });
+
+      await expect(api.callMerchantOnboardingApi('test-token', 'POST', '/step-1', identity))
+        .resolves.toEqual({ data: { step: 1, saved: true } });
+      await expect(api.callMerchantOnboardingApi('test-token', 'POST', '/complete'))
+        .resolves.toEqual({ data: { completed: true } });
+
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        1,
+        'http://localhost:5000/api/v2/merchant-onboarding/step-1',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' }),
+          body: JSON.stringify(identity)
+        })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        2,
+        'http://localhost:5000/api/v2/merchant-onboarding/complete',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
+        })
+      );
+      expect(mockFetch.mock.calls[1][1]).not.toHaveProperty('body');
+
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 422,
+        headers: { get: () => 'application/json' },
+        json: async () => ({
+          message: 'The business identity is incomplete.',
+          errors: { business_name: ['The business name field is required.'] },
+          code: 'VALIDATION_FAILED'
+        })
+      });
+      await expect(api.callMerchantOnboardingApi('test-token', 'POST', '/step-1', {
+        seller_type: 'business', display_name: 'Community Repairs'
+      })).rejects.toMatchObject({
+        name: 'ApiError',
+        status: 422,
+        message: 'The business identity is incomplete.',
+        data: {
+          errors: { business_name: ['The business name field is required.'] },
+          code: 'VALIDATION_FAILED'
+        }
+      });
+    });
   });
 
   describe('callProfileApi', () => {
