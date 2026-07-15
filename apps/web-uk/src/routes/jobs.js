@@ -1730,7 +1730,6 @@ router.get('/saved', asyncRoute(async (req, res) => {
     jobsMeta,
     nextHref: jobsMeta.has_more && jobsMeta.cursor ? savedJobsHref(jobsMeta.cursor) : '',
     status: req.query.status || '',
-    successMessage: statusMessage(req, req.query.status),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }));

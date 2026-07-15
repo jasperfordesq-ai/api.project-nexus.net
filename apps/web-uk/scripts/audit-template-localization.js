@@ -172,7 +172,14 @@ for (const file of files) {
   }
 }
 
-const byKey = Object.entries(Object.groupBy(matches, ({ key }) => key))
+const matchesByKey = matches.reduce((groups, record) => {
+  const records = groups.get(record.key) || [];
+  records.push(record);
+  groups.set(record.key, records);
+  return groups;
+}, new Map());
+
+const byKey = Array.from(matchesByKey.entries())
   .map(([key, records]) => ({ key, matches: records.length, literal: records[0].literal }))
   .sort((left, right) => right.matches - left.matches || left.key.localeCompare(right.key));
 

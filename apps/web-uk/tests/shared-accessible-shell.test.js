@@ -17394,6 +17394,9 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('Browse opportunities');
     expect(response.text).toContain('Saved');
     expect(response.text).toContain('Opportunity removed from your saved list.');
+    expect(response.text).toContain('aria-labelledby="saved-status"');
+    expect(response.text).toContain('id="saved-status"');
+    expect((response.text.match(/Opportunity removed from your saved list\./g) || [])).toHaveLength(1);
     expect(response.text).toContain('href="/jobs/501"');
     expect(response.text).toContain('Volunteer Coordinator');
     expect(response.text).toContain('Posted by Community Club');
@@ -17410,6 +17413,21 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).toContain('govuk-pagination__icon--next');
     expect(response.text).toContain('cursor=next-saved');
     expect(response.text).not.toContain('Laravel Blade route');
+  });
+
+  it('ignores unrelated job status query values on the saved jobs page like Blade', async () => {
+    const api = require('../src/lib/api');
+    api.callJobApi.mockResolvedValue({ data: [] });
+
+    const response = await request(app)
+      .get('/jobs/saved?status=created')
+      .set('Cookie', signedCookieHeader());
+
+    expect(response.status).toBe(200);
+    expect(response.text).toContain('You have not saved any opportunities yet.');
+    expect(response.text).not.toContain('Your opportunity has been posted.');
+    expect(response.text).not.toContain('govuk-notification-banner--success');
+    expect(response.text).not.toContain('id="saved-status"');
   });
 
   it('matches Blade saved-job authoritative fields, integer counts, and salary range', async () => {

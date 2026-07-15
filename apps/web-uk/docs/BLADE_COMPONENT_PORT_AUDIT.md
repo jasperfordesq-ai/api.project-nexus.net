@@ -1218,6 +1218,16 @@ rewriting.
 - `views/jobs.blade.php` and `partials/job-card.blade.php` now map to the browse route/template with Blade's tenant caption, catalog-backed filters/results/cards, single empty fallback on non-auth load failure, and next-page icon/semantics. Focused default-English populated, signed-out, and failure rendering is green.
 - `views/job-detail.blade.php` now resolves owner identity from Laravel `/api/v2/users/me`, shows owner management rather than save/apply controls, and renders the optional Laravel `/api/v2/jobs/{id}/match` result with Blade's catalog and progress semantics. Type, commitment, remote, and caption fallbacks are catalog/tenant backed. Similar-opportunity rendering and a public CV-upload configuration contract remain open because Laravel exposes no equivalent member-facing API data for them.
 - `views/jobs-saved.blade.php`, `partials/job-card.blade.php`, and `AlphaController::savedJobs()` now map to `src/routes/jobs.js` and `src/views/jobs/saved.njk` with Blade's tenant caption, catalog-backed card labels and plural counts, single empty fallback on non-auth load failure, unsave control, and next-page icon/semantics. Focused default-English rendering is green; broader gaps remain tracked in the Jobs workflows row.
+- The saved-jobs status boundary now renders only Blade's bounded `unsaved`
+  success state, with the exact `saved-status` labelling relationship and one
+  catalog-backed message. Other recognised Jobs status tokens no longer leak a
+  generic banner onto this page. Focused populated/empty/status proof passes,
+  and the uninterrupted non-mutating aggregate passes `52/52` suites and
+  `1,698/1,698` tests.
+- The template-localization audit no longer depends on unsupported
+  `Object.groupBy`; its Map-based grouping runs on the project's Node 18+
+  contract. Focused proof and the complete aggregate pass, and the current
+  audit reports 322 templates with zero conservative matches.
 - `views/jobs-applications.blade.php` now maps to the Web UK applications route/template with Blade's tenant caption, exact filter set, catalog-backed status/card/action copy, single empty fallback on non-auth load failure, and next-page icon/semantics. Focused default-English populated, signed-out, and failure rendering is green.
 - `views/jobs-postings.blade.php` now maps to My postings with Blade's tenant caption, catalog-backed status/count/action copy, single empty fallback on non-auth load failure, next-page icon/semantics, and a warning/details confirmation before the destructive delete form. Focused default-English populated, signed-out, and failure rendering is green.
 - `views/jobs-form.blade.php` now maps Laravel v2 structured create/update validation failures into a replayed GOV.UK error summary, preserving submitted values and linking allowlisted API fields to the corresponding form control. Focused create/edit and field-error replay passes `7/7`; disposable mutation and manual assistive-technology certification remain governed by the Jobs workflows row.
