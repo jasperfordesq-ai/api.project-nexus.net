@@ -32,6 +32,15 @@ all three open tasks are recorded in
 [`RESTART_INCIDENT_2026-07-15.md`](RESTART_INCIDENT_2026-07-15.md). Interrupted
 or recovered dirty work never changes a banked score.
 
+## Development Pause Fence — 2026-07-15
+
+Development is paused. Read
+[`PROJECT_PAUSE_HANDOFF_2026-07-15.md`](PROJECT_PAUSE_HANDOFF_2026-07-15.md)
+before using this runbook. The loop below is a method for a future explicitly
+authorized phase; it is not standing authority to implement, migrate, deploy,
+commit, push, provision infrastructure, or touch production merely because this
+file was opened. A new user instruction must name the workstream and scope.
+
 ## Objective
 
 The required end state is a two-frontends-by-two-backends contract-identity
@@ -1997,10 +2006,11 @@ from the appropriate canonical queue, then apply the shared loop and evidence
 rules below. The older Workstream A/B material above remains historical planning
 context only.
 
-## Autonomous Execution Loop
+## Resume-Only Autonomous Execution Loop
 
-Both sessions must use this loop until their workstream's completion gate is
-met or only genuine external blockers remain:
+After explicit user authorization resumes a named workstream, its session must
+use this loop until that workstream's completion gate is met or only genuine
+external blockers remain:
 
 1. **Refresh:** read instructions and handoffs; inspect both repos' heads,
    status, recent commits, generated matrices, failing tests, and active local
@@ -2023,8 +2033,9 @@ met or only genuine external blockers remain:
 8. **Repeat:** immediately choose the next highest-impact gap. Do not stop after
    planning, documentation, one passing slice, or an improved score.
 
-Sessions launched with this runbook are authorized to implement, test, document,
-commit, and push verified in-scope changes. This does not authorize production
+Only a new explicit user instruction can authorize implementation, testing,
+documentation changes, commits, or pushes in a resumed phase. This runbook
+defines how to execute that authorized scope; it never authorizes production
 deployment, production-container changes, destructive external actions, or
 modification of the Laravel reference repo.
 

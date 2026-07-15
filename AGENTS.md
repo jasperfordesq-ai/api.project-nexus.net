@@ -11,6 +11,15 @@
 
 This file exists for agentic tools (OpenAI Codex, etc.) that read `AGENTS.md` by convention.
 
+## Development Pause
+
+Development paused on **15 July 2026**. Opening this repository does not resume
+an autonomous implementation loop. Before proposing or performing new work,
+read [`docs/PROJECT_PAUSE_HANDOFF_2026-07-15.md`](./docs/PROJECT_PAUSE_HANDOFF_2026-07-15.md)
+and obtain an explicit user instruction naming the workstream. The pause
+handoff records the exact product/schema evidence boundary, cold-start order,
+copy-ready prompts, and repository-freeze proof.
+
 **Authoritative project instructions live in [CLAUDE.md](./CLAUDE.md).** Read that
 file. It is the single source of truth for:
 

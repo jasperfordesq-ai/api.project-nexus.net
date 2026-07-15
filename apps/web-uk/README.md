@@ -4,6 +4,10 @@ Last reviewed: 2026-07-15
 
 Status: **Experimental Laravel-first implementation - not production-ready**
 
+Development paused on **15 July 2026**. Start with the root
+[pause and cold-start handoff](../../docs/PROJECT_PAUSE_HANDOFF_2026-07-15.md);
+opening this app does not authorize resumption.
+
 This Express/Nunjucks frontend uses GOV.UK Frontend and GOV.UK Design System
 patterns for Project NEXUS. **It is not a UK Government service and is not
 affiliated with or endorsed by GOV.UK.**
@@ -23,6 +27,8 @@ complete and externally contract-identical behavior is independently certified.
 
 Start with:
 
+- [project pause and cold-start handoff](../../docs/PROJECT_PAUSE_HANDOFF_2026-07-15.md) -
+  first-read boundary and restart protocol while development is paused;
 - [current Laravel-first status](docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md) -
   sole Web UK score, evidence boundary, ownership, and queue;
 - [current ASP.NET contract status](../../docs/CURRENT_ASPNET_CONTRACT_STATUS.md) -

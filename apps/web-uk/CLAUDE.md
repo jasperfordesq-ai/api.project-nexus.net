@@ -1,5 +1,10 @@
 # CLAUDE.md - Project NEXUS Shared Accessible Frontend
 
+> **DEVELOPMENT PAUSE:** Development paused on 15 July 2026. Read
+> [`../../docs/PROJECT_PAUSE_HANDOFF_2026-07-15.md`](../../docs/PROJECT_PAUSE_HANDOFF_2026-07-15.md)
+> and obtain a new explicit user instruction before editing. Opening this file
+> does not resume the former implementation loop.
+
 ## Shared Accessible Frontend Direction
 
 `apps/web-uk` is the implementation target for Project NEXUS's future shared
@@ -54,6 +59,8 @@ it must conform to those contracts and must not cause frontend forks. See
 
 Route and backend preparation docs live beside this app:
 
+- `../../docs/PROJECT_PAUSE_HANDOFF_2026-07-15.md` (read first while paused;
+  exact cold-start boundary and restart protocol)
 - `docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md` (read first; current blockers,
   ownership boundaries, and next-job order)
 - `docs/CURRENT_WEB_UK_HANDOFF.md` (historical chronological archive only; not
@@ -65,8 +72,8 @@ Route and backend preparation docs live beside this app:
 - `../../docs/CURRENT_ASPNET_CONTRACT_STATUS.md` (separate backend-owned score
   and unchanged-client switching gate; not a Web UK score source)
 
-If an agent is resuming this work after an interrupted session, start with
-`docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md`, then use
+If the user explicitly resumes this work, start with the root pause handoff,
+then `docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md`, then use
 `docs/BLADE_COMPONENT_PORT_AUDIT.md` for detailed evidence. Treat
 `docs/CURRENT_WEB_UK_HANDOFF.md` as chronological implementation history rather
 than a reliable current snapshot.
@@ -305,7 +312,13 @@ contain this project-specific legal/identity copy:
 
 **No React. No Next.js. No alternative CSS frameworks. SSR HTML only.**
 
-## Laravel Blade Visual Parity Rules
+## Laravel Blade Visual Rules And Historical Candidate Notes
+
+The design rules below remain maintained. Detailed page/candidate descriptions
+in this section are historical implementation notes, not a current gap count or
+resume queue. The canonical current status and generated route/API inventories
+override them. Refresh source and those artifacts before relying on an
+individual candidate statement in a future authorized phase.
 
 The Web UK accessible frontend must not invent a separate visual language.
 Follow the Laravel Blade accessible frontend for:
@@ -640,11 +653,11 @@ res.redirect(res.locals.urlFor('/listings'));
 {% endif %}
 ```
 
-## Test Credentials (Local Development Only)
+## Backend Credentials And Safe Fixtures
 
-| Email | Password | Tenant |
-|-------|----------|--------|
-| admin@acme.test | NexusV2!Demo#2026 | acme |
-| member@acme.test | NexusV2!Demo#2026 | acme |
-
-**Note:** Production uses different secure passwords. See `asp.net-backend/.claude/production-server.md`.
+Web UK has no canonical live-login credentials. Source-owned and manual
+accessibility work must use Web UK-owned fixtures and mocks. The fictitious
+ASP.NET Development seed identities documented by the root local-development
+guide are relevant only to a separately authorized backend-switching phase;
+they must not be used as a Laravel-first baseline or against any ordinary
+Laravel environment. Never seek production credentials from this guide.

@@ -13,6 +13,7 @@ configuration only, with Laravel defining the contract ASP.NET must satisfy.
 
 | Document | Purpose |
 | --- | --- |
+| [PROJECT_PAUSE_HANDOFF_2026-07-15.md](PROJECT_PAUSE_HANDOFF_2026-07-15.md) | **Read first while paused.** Canonical 15 July 2026 product/schema boundary, mandatory cold-start order, workstream blueprint, copy-ready prompts, and repository-freeze record. It does not authorize resumption. |
 | [user/README.md](user/README.md) | Member/end-user guidance for sign-in, community features, account safety, accessibility, language, and support. |
 | [admin/README.md](admin/README.md) | Tenant/community administrator responsibilities and safe workflow boundaries. |
 | [api/README.md](api/README.md) | API consumer guide for auth, tenancy, exact endpoint shapes, retries, uploads, and side effects. |

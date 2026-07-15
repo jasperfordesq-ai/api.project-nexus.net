@@ -30,6 +30,9 @@ compatible before the same unchanged frontend can switch to it. See
 
 Current status is deliberately split by workstream:
 
+- [`docs/PROJECT_PAUSE_HANDOFF_2026-07-15.md`](docs/PROJECT_PAUSE_HANDOFF_2026-07-15.md)
+  is the first document to read after the 15 July 2026 development pause. It
+  records the exact cold-start boundary and does not authorize resumption.
 - [`docs/CURRENT_ASPNET_CONTRACT_STATUS.md`](docs/CURRENT_ASPNET_CONTRACT_STATUS.md)
   is the current ASP.NET contract-identity score, evidence boundary, and
   remaining queue.
@@ -83,6 +86,7 @@ attribution requirements.
 ## Documentation
 
 - [CLAUDE.md](CLAUDE.md) - authoritative agent guide, invariants, commands, and parity policy.
+- [docs/PROJECT_PAUSE_HANDOFF_2026-07-15.md](docs/PROJECT_PAUSE_HANDOFF_2026-07-15.md) - canonical pause boundary, cold-start read order, restart prompts, and freeze record.
 - [docs/README.md](docs/README.md) - maintained documentation index.
 - [docs/user/README.md](docs/user/README.md) - backend-neutral member and end-user guidance.
 - [docs/admin/README.md](docs/admin/README.md) - tenant and community administrator guidance.

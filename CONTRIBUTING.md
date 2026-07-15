@@ -14,6 +14,13 @@ certified against ASP.NET.
 Project NEXUS .NET Edition is released under **AGPL-3.0-or-later**. By contributing,
 you agree that your contributions will be licensed under the same terms.
 
+> **Development pause:** Maintainer-led development paused on 15 July 2026.
+> Before preparing a contribution, read
+> [`docs/PROJECT_PAUSE_HANDOFF_2026-07-15.md`](docs/PROJECT_PAUSE_HANDOFF_2026-07-15.md)
+> and confirm that the proposed scope belongs to a newly authorized phase. The
+> pause does not close ordinary issue/PR discussion, but no historical runbook
+> grants standing authority to resume project work.
+
 By submitting a contribution, you also agree to the
 [Project NEXUS .NET Edition Contributor Terms](CONTRIBUTOR_TERMS.md), including the
 licence, patent, ownership, third-party-code, and AI-disclosure terms

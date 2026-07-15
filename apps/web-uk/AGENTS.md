@@ -3,6 +3,11 @@
 Authoritative instructions for this accessible frontend live in
 [CLAUDE.md](./CLAUDE.md). Read that file before editing.
 
+Development paused on **15 July 2026**. Read the root
+[`PROJECT_PAUSE_HANDOFF_2026-07-15.md`](../../docs/PROJECT_PAUSE_HANDOFF_2026-07-15.md)
+before this file and obtain a new explicit user instruction before resuming
+Web UK work. The historical execution loop is not standing authorization.
+
 Urgent first-read rules:
 
 - `apps/web-uk` is the implementation target for the future shared accessible
@@ -45,6 +50,7 @@ Urgent first-read rules:
 
 Maintained docs that future agents must keep current:
 
+- `../../docs/PROJECT_PAUSE_HANDOFF_2026-07-15.md` (cold-start entry point while paused)
 - `docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md` (read first)
 - `../../docs/CURRENT_ASPNET_CONTRACT_STATUS.md` (separate backend-owned score
   and later switching gate; not an input to Laravel-first frontend design)

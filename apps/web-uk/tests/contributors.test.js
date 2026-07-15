@@ -72,6 +72,13 @@ describe('contributors.json validation', () => {
       expect(steven.role).toBe('Community insight, product thinking');
     });
 
+    it('should have Sarah Bird as a contributor', () => {
+      const groups = getContributorGroups();
+      const sarah = groups.contributors.find(c => c.name === 'Sarah Bird');
+      expect(sarah).toBeDefined();
+      expect(sarah.role).toBe('CEO, Timebanking UK');
+    });
+
     it('should have at least one acknowledgement', () => {
       const groups = getContributorGroups();
       expect(groups.acknowledgements.length).toBeGreaterThan(0);
@@ -109,6 +116,7 @@ describe('contributors.json validation', () => {
       expect(names).toContain('Jasper Ford');
       expect(names).toContain('Mary Casey');
       expect(names).toContain('Steven J. Kelly');
+      expect(names).toContain('Sarah Bird');
       expect(names).toContain('West Cork Development Partnership');
       expect(names).toContain('Fergal Conlon');
     });

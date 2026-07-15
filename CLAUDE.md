@@ -2,6 +2,12 @@
 
 Last reviewed: 2026-07-15
 
+> **DEVELOPMENT PAUSE:** Development paused on 15 July 2026. Read
+> [`docs/PROJECT_PAUSE_HANDOFF_2026-07-15.md`](docs/PROJECT_PAUSE_HANDOFF_2026-07-15.md)
+> before any new phase. Opening the repository is not authorization to resume
+> implementation, migrations, deployment, or an autonomous loop. A new user
+> instruction must name the workstream.
+
 > WARNING: Before deploying or touching any production container, read
 > `.claude/production-containers.md`.
 >
@@ -94,6 +100,9 @@ See `docs/REACT_FRONTEND_RETIREMENT.md` for the maintained policy.
 Do not copy fast-changing counts into this first-read guide. Read and refresh the
 workstream-specific status source instead:
 
+- `docs/PROJECT_PAUSE_HANDOFF_2026-07-15.md` is the cold-start entry point while
+  development remains paused. It owns the read order, exact pause boundary,
+  restart prompts, and repository-freeze record.
 - `docs/CURRENT_ASPNET_CONTRACT_STATUS.md` is the current ASP.NET fixed-rubric
   score, evidence boundary, published-but-unscored work, and next queue.
 - `docs/CURRENT_SCHEMA_READINESS.md` is the current one-page schema verdict,

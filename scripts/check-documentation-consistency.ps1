@@ -132,12 +132,16 @@ foreach ($relativePath in $entryPointPaths) {
         'must link the canonical ASP.NET contract status.'
     Assert-Contains $relativePath $text 'CURRENT_LARAVEL_FIRST_PARITY_STATUS\.md' `
         'must link the canonical Web UK status.'
+    Assert-Contains $relativePath $text 'PROJECT_PAUSE_HANDOFF_2026-07-15\.md' `
+        'must link the canonical paused-development handoff.'
 }
 
 $statusLikeDocuments = @(
     'PHASE63_73_DEPLOY_NOTES.md',
     'apps/admin/README.md',
     'docs/CURRENT_ASPNET_CONTRACT_STATUS.md',
+    'docs/CURRENT_SCHEMA_READINESS.md',
+    'docs/PROJECT_PAUSE_HANDOFF_2026-07-15.md',
     'docs/BACKEND_LOCALIZATION_CONTRACT.md',
     'docs/DOCUMENTATION_HEALTH_REPORT.md',
     'docs/FULL_PARITY_REMEDIATION_RUNBOOK.md',
@@ -280,6 +284,44 @@ if ($null -ne $status) {
     Assert-Contains 'docs/CURRENT_ASPNET_CONTRACT_STATUS.md' $status `
         'df8c8b96c80804785e9c84f9f7c75337088d6024' `
         'must identify the published but unscored schema merge exactly.'
+}
+
+$pauseHandoff = Get-DocumentText 'docs/PROJECT_PAUSE_HANDOFF_2026-07-15.md'
+if ($null -ne $pauseHandoff) {
+    Assert-Contains 'docs/PROJECT_PAUSE_HANDOFF_2026-07-15.md' $pauseHandoff `
+        '<!--\s*doc-consistency:\s*PROJECT_PAUSE_DATE=2026-07-15\s*-->' `
+        'must preserve the exact pause-date marker.'
+    Assert-Contains 'docs/PROJECT_PAUSE_HANDOFF_2026-07-15.md' $pauseHandoff `
+        '<!--\s*doc-consistency:\s*PROJECT_PAUSE_STATE=PAUSED\s*-->' `
+        'must preserve the paused-state marker.'
+    foreach ($requiredLink in @(
+        'ADR-0001-contract-identical-backends.md',
+        'CURRENT_ASPNET_CONTRACT_STATUS.md',
+        'CURRENT_SCHEMA_READINESS.md',
+        'CURRENT_LARAVEL_FIRST_PARITY_STATUS.md',
+        'FULL_PARITY_REMEDIATION_RUNBOOK.md'
+    )) {
+        Assert-Contains 'docs/PROJECT_PAUSE_HANDOFF_2026-07-15.md' $pauseHandoff `
+            ([regex]::Escape($requiredLink)) `
+            "must link the cold-start authority '$requiredLink'."
+    }
+    foreach ($boundary in @(
+        'c767050a3eabd064bdf647695b9699b98186342b',
+        '903d03d3db78bbf87129ad35728be3b72819acaf',
+        '712/1000',
+        '129/150',
+        'PROJECT_PAUSE_STATE=PAUSED'
+    )) {
+        Assert-Contains 'docs/PROJECT_PAUSE_HANDOFF_2026-07-15.md' $pauseHandoff `
+            ([regex]::Escape($boundary)) `
+            "must preserve the pause boundary '$boundary'."
+    }
+    Assert-Contains 'docs/PROJECT_PAUSE_HANDOFF_2026-07-15.md' $pauseHandoff `
+        '(?i)externally contract-identical' `
+        'must state the corrected backend objective.'
+    Assert-Contains 'docs/PROJECT_PAUSE_HANDOFF_2026-07-15.md' $pauseHandoff `
+        '(?i)opening (?:or cloning )?the repository does not resume' `
+        'must make the pause fence explicit.'
 }
 
 $webUkStatus = Get-DocumentText 'apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md'
@@ -795,6 +837,8 @@ $currentScoreDocuments = @(
     'docs/README.md',
     'docs/ARCHITECTURE.md',
     'docs/CURRENT_ASPNET_CONTRACT_STATUS.md',
+    'docs/CURRENT_SCHEMA_READINESS.md',
+    'docs/PROJECT_PAUSE_HANDOFF_2026-07-15.md',
     'docs/FULL_PARITY_REMEDIATION_RUNBOOK.md',
     'docs/CURRENT_LARAVEL_PARITY_HANDOFF.md',
     'docs/LARAVEL_PARITY_MAP.md'

@@ -19,6 +19,11 @@ is binding for the later backend switch: ASP.NET must be externally
 contract-identical to Laravel for this unchanged frontend. Web UK must not carry
 an ASP.NET-specific workaround.
 
+Development is paused. Read the root
+[`PROJECT_PAUSE_HANDOFF_2026-07-15.md`](../../../docs/PROJECT_PAUSE_HANDOFF_2026-07-15.md)
+before using this queue. This page records the next packages but does not
+authorize a session to start them.
+
 ## Current Goal Scope Correction
 
 The active Web UK goal was corrected on 2026-07-15. Frontend completion no
@@ -102,11 +107,13 @@ make that backend satisfy the already-established Laravel contract. Later
 switching proof must change backend configuration only and rerun the same
 unchanged Web UK suite.
 
-## Concurrent-Session Ownership
+## Future Concurrent-Session Ownership (When Explicitly Resumed)
 
-The accessible-frontend session owns `apps/web-uk/**` only. The ASP.NET parity
-session owns backend work, including `src/Nexus.Api/**`,
-`tests/Nexus.Api.Tests/**`, and backend migrations. During concurrent work:
+No session is authorized by this document while development is paused. If the
+user explicitly resumes concurrent work, the accessible-frontend session owns
+`apps/web-uk/**` only. The ASP.NET contract-identity session owns backend work,
+including `src/Nexus.Api/**`, `tests/Nexus.Api.Tests/**`, and backend
+migrations. During authorized concurrent work:
 
 1. Run `git status --short` and `git log -1 --oneline` before every slice.
 2. Preserve every unrelated dirty file. Never reset, restore, move, or stage it.
