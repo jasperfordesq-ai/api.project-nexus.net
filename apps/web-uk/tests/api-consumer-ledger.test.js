@@ -213,7 +213,7 @@ Route::post('/auth/login', [AuthController::class, 'login']);
     expect(report.summary.matchedOpenApi).toBe(3);
     expect(report.summary.missingOpenApi).toBe(1);
     expect(report.summary.routeDeclaredOpenApiOmissions).toBe(1);
-    expect(report.summary.routeDeclaredOpenApiOmissionsWithoutDirectApiClientAssertions).toBe(0);
+    expect(report.summary.routeDeclaredOpenApiOmissionHelpersWithoutDirectApiAssertions).toBe(0);
     expect(report.summary.withoutLaravelRouteDeclaration).toBe(0);
     expect(report.summary.dynamicUnresolved).toBe(0);
     expect(report.generatedAt).toBe('2026-07-14T00:00:00.000Z');
@@ -249,7 +249,7 @@ Route::post('/auth/login', [AuthController::class, 'login']);
       status: 'route-declared-openapi-omission',
       path: '/api/v2/events/legacy'
     }));
-    expect(legacyRow.directApiClientAssertion).toBe(true);
+    expect(legacyRow.directApiHelperAssertion).toBe(true);
     expect(fs.existsSync(path.join(outDir, 'frontend-api-consumer-ledger.json'))).toBe(true);
     expect(fs.existsSync(path.join(outDir, 'frontend-api-consumer-ledger.md'))).toBe(true);
     const json = JSON.parse(fs.readFileSync(path.join(outDir, 'frontend-api-consumer-ledger.json'), 'utf8'));
@@ -261,6 +261,6 @@ Route::post('/auth/login', [AuthController::class, 'login']);
     expect(markdown).toContain('Laravel commit SHA: `3333333333333333333333333333333333333333`');
     expect(markdown).toContain('Web UK repository working tree dirty: no');
     expect(markdown).toContain('Provenance caveat: Deterministic unit-test provenance.');
-    expect(markdown).toContain('OpenAPI-omitted contracts without direct API-client assertions: 0');
+    expect(markdown).toContain('Unique OpenAPI-omitted helpers without direct API-client assertions: 0');
   });
 });

@@ -5,9 +5,9 @@ Status: **Generated snapshot — static consumer inventory, not certification**
 Generated from `src/lib/api.js`, routed Web UK consumers, tests, and Laravel `openapi.json`.
 This is static evidence: an OpenAPI match or test reference does not prove runtime behavior, role policy, side effects, cleanup, or frontend parity.
 
-- Generated: 2026-07-15T07:00:19.561Z
+- Generated: 2026-07-15T07:05:54.371Z
 - Laravel commit SHA: `903d03d3db78bbf87129ad35728be3b72819acaf`
-- Web UK repository commit SHA: `e49c8ca972965a206af2eb9432157a640e80103f`
+- Web UK repository commit SHA: `95c38e10514627eb10fb71391a78914aa23d43d7`
 - Laravel working tree dirty: yes
 - Web UK repository working tree dirty: yes
 - Provenance caveat: Laravel and Web UK repository working trees were dirty when generated. Commit SHAs identify HEAD only; generated content may include uncommitted changes from the dirty working trees.
@@ -19,7 +19,7 @@ This is static evidence: an OpenAPI match or test reference does not prove runti
 - Dynamic unresolved contracts: 0
 - State-changing contracts: 370
 - Rows without detected tests: 0
-- OpenAPI-omitted contracts without direct API-client assertions: 0
+- Unique OpenAPI-omitted helpers without direct API-client assertions: 0
 - API source SHA-256: `8c2b84a8b700f79d614f657aaf286aa497169f3d6846606fcaf70c2141b1dc22`
 - Laravel OpenAPI SHA-256: `0f62bf532901e6925b630d6a8ed0add7cd2c2bd9395b773c6a1a6581c0d38722`
 - Laravel API routes SHA-256: `acbff7276a6480855e89cec7a9c3971ff839b51ed536c8d48ee621bcb48b694f`

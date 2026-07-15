@@ -1522,11 +1522,12 @@ and saved-collection queries, public and signed reaction reads, newsletter
 token and given-review reads, job CV and resource binary downloads, identifier
 encoding, data/meta envelopes, bearer boundaries, bytes/file/cache metadata,
 and structured binary `404` propagation. Together with the preceding focused
-slices, all `217` omitted contracts across `85` unique helpers now have a
-direct `tests/api.test.js` assertion reference.
+slices, all `85` unique helpers behind the `217` omitted contracts now have a
+direct `tests/api.test.js` assertion reference. This helper-level result does
+not claim that every path dispatched through a shared helper is asserted.
 
-Ledger schema 2 makes this boundary durable per row and reports
-`routeDeclaredOpenApiOmissionsWithoutDirectApiClientAssertions: 0`; focused
+Ledger schema 2 makes this boundary durable and reports
+`routeDeclaredOpenApiOmissionHelpersWithoutDirectApiAssertions: 0`; focused
 API-client and generator proof passes `231/231`, and the complete non-mutating
 gate passes `52/52` suites and `1,721/1,721` tests. This closes only the direct-
 helper assertion subqueue. Exhaustive significant request/response fields,
