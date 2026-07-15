@@ -1374,6 +1374,32 @@ side-effect/runtime variants, the named Event API boundaries, manual
 assistive-technology review, and ASP.NET switching remain assigned to their
 separate owners and certification packages.
 
+### 2026-07-15 Saved-search run failure follow-up
+
+Saved-search runs now mirror Blade's failure boundary. A successful run uses
+Laravel's returned normalized query parameters without an extra collection
+read. If only the `last_run_at` update fails, Web UK recovers the owner-visible
+saved row and redirects to its normalized query and filters without inventing
+the unsupported `search-run-failed` status or dropping the user's search. Auth
+failures still redirect to sign-in, and missing rows remain a fail-closed 404.
+
+Focused success, update-failure, missing-row, and unrelated-status proof passes
+`5/5`. The complete non-mutating gate passes `52/52` suites and
+`1,709/1,709` tests. Brand, lint, CSS, locale shape/static-key/template, and
+scoped diff gates are green; static localization resolves 7,634 references and
+5,819 unique keys with zero unresolved, and 322 templates have zero
+conservative matches. No Laravel request, authentication, database, migration,
+mutation, upload, download, cleanup, container, or production operation was
+performed.
+
+Component-audit classification: the Simple/advanced search and saved-search
+delete row is implementation-closed for default-English significant states.
+Disposable saved-search persistence remains upstream-blocked by Laravel's
+documented `getJsonInput()` failure; runtime certification, manual assistive-
+technology review, and backend switching remain assigned to their separate
+packages. This published slice is unscored; the canonical bank remains
+`660/1,000` until another complete fixed-rubric audit.
+
 - GOV.UK crown, logotype, official header identity, OGL block, or Crown
   copyright wording.
 - Laravel/PHP implementation details.

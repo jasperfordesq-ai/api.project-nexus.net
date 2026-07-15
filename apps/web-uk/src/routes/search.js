@@ -402,6 +402,7 @@ function savedSearchRows(result, t) {
       id: intFrom(object.id),
       name: textFrom(object.name, t ? t('govuk_alpha_search.saved.delete_summary') : 'Saved search'),
       query: textFrom(queryParams.q),
+      queryParams: queryParamsFrom(queryParams),
       hasLastResultCount: object.last_result_count !== null && object.last_result_count !== undefined,
       lastResultCount: object.last_result_count === null || object.last_result_count === undefined
         ? ''
@@ -564,9 +565,19 @@ router.post('/saved/:id(\\d+)/run', asyncRoute(async (req, res) => {
   } catch (error) {
     if (redirectAuthIfNeeded(error, res)) return undefined;
     if (shouldRenderNotFound(error)) throw error;
-  }
 
-  return redirectTo(res, searchAdvancedUrl({}, 'search-run-failed'));
+    try {
+      const savedResult = await getSavedSearches(token);
+      const savedSearch = savedSearchById(savedResult, Number(req.params.id), res.locals.t);
+      if (savedSearch !== null) {
+        return redirectTo(res, searchAdvancedUrl(savedSearch.queryParams));
+      }
+    } catch {
+      // Preserve the original run failure when the recovery read also fails.
+    }
+
+    throw error;
+  }
 }));
 
 // Search results page

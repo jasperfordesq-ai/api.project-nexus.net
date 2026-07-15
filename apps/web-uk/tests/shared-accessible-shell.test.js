@@ -10544,7 +10544,94 @@ describe('shared accessible frontend shell', () => {
 
     expect(response.status).toBe(302);
     expect(response.headers.location).toBe('/search/advanced?q=gardening&type=users&sort=oldest&skills=repair%2Cteaching');
+    expect(api.getSavedSearches).not.toHaveBeenCalled();
     expect(api.runSavedSearch).toHaveBeenCalledWith('test-token', 12);
+  });
+
+  it('preserves Blade saved-search filters without inventing a status when the run update fails', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    api.getSavedSearches.mockResolvedValueOnce({
+      data: [
+        {
+          id: 12,
+          name: 'Garden helpers',
+          query_params: {
+            q: ' gardening ',
+            type: 'users',
+            sort: 'oldest',
+            category_id: '3',
+            skills: ' Repair, teaching, repair ',
+            date_from: '2026-07-01',
+            date_to: 'not-a-date',
+            location: ' Town '
+          }
+        }
+      ]
+    });
+    api.runSavedSearch.mockRejectedValueOnce(new Error('last_run_at update failed'));
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/search/saved/12/run')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.location).toBe('/search/advanced?q=gardening&type=users&sort=oldest&category_id=3&skills=repair%2Cteaching&date_from=2026-07-01&location=Town');
+    expect(response.headers.location).not.toContain('status=');
+    expect(api.getSavedSearches).toHaveBeenCalledWith('test-token');
+    expect(api.runSavedSearch).toHaveBeenCalledWith('test-token', 12);
+  });
+
+  it('fails a missing saved-search run closed without a fallback collection read', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+    const agent = request.agent(app);
+
+    api.runSavedSearch.mockRejectedValueOnce(new api.ApiError('Saved search not found', 404));
+
+    const first = await agent
+      .get('/contact')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+    const csrfMatch = first.text.match(/name="_csrf" value="([^"]+)"/);
+
+    const response = await agent
+      .post('/search/saved/999/run')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`)
+      .type('form')
+      .send({ _csrf: csrfMatch[1] });
+
+    expect(response.status).toBe(404);
+    expect(api.runSavedSearch).toHaveBeenCalledWith('test-token', 999);
+    expect(api.getSavedSearches).not.toHaveBeenCalled();
+  });
+
+  it('ignores the non-Blade saved-search run failure status', async () => {
+    const api = require('../src/lib/api');
+    const cookieSignature = require('cookie-signature');
+    const signedToken = `s:${cookieSignature.sign('test-token', process.env.COOKIE_SECRET)}`;
+
+    api.getSavedSearches.mockResolvedValueOnce({ data: [] });
+    api.getListingCategories.mockResolvedValueOnce({ data: [] });
+    api.getPopularListingTags.mockResolvedValueOnce({ data: [] });
+
+    const response = await request(app)
+      .get('/search/advanced?status=search-run-failed')
+      .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
+
+    expect(response.status).toBe(200);
+    expect(response.text).not.toContain('id="search-status-title"');
+    expect(response.text).not.toContain('govuk-error-summary');
   });
 
   it('renders the Laravel-backed connections network page', async () => {
