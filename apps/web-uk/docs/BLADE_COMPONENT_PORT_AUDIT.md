@@ -1538,6 +1538,23 @@ No Laravel or ASP.NET source, database, migration, runtime request, download,
 container, or production operation was performed. This slice is unscored; the
 canonical bank remains `663/1,000` until another complete fixed-rubric audit.
 
+### 2026-07-15 Course dispatcher path-assertion follow-up
+
+The shared course dispatcher now has direct API-client proof for the remaining
+OpenAPI-omitted authoring, enrolment, lesson, publication, review, section,
+grading, and quiz-attempt paths. Twelve method/path/payload cases pin bearer
+authority, body omission on DELETE, exact nested identifiers, unmodified
+success envelopes, and structured publication-conflict `409` propagation.
+Together with the pre-existing completion/delete/list assertions, this closes
+the currently generated OpenAPI-omitted course path set at the API-client
+boundary. Routed significant states and mocked payload tests remain in place;
+live effects and cleanup remain assigned to the disposable environment.
+
+The focused API-client suite passes `227/227`. No Laravel or ASP.NET source,
+database, migration, runtime request, container, or production operation was
+performed. This slice is unscored; the canonical bank remains `663/1,000`
+until another complete fixed-rubric audit.
+
 - GOV.UK crown, logotype, official header identity, OGL block, or Crown
   copyright wording.
 - Laravel/PHP implementation details.

@@ -2943,6 +2943,61 @@ describe('API Request Functions', () => {
       );
     });
 
+    it('should preserve the Laravel course authoring, learner, review, and grading dispatch paths', async () => {
+      const cases = [
+        ['POST', '/42/enroll', { confirmation: true }],
+        ['POST', '/42/lessons', { title: 'Introduction', section_id: 3 }],
+        ['PUT', '/42/lessons/7', { title: 'Updated introduction' }],
+        ['DELETE', '/42/lessons/7', undefined],
+        ['POST', '/42/publish', { confirmation: 'publish' }],
+        ['POST', '/42/reviews', { rating: 5, comment: 'Clear and useful' }],
+        ['POST', '/42/sections', { title: 'Getting started' }],
+        ['PUT', '/42/sections/3', { title: 'Start here' }],
+        ['DELETE', '/42/sections/3', undefined],
+        ['POST', '/42/unpublish', { reason: 'Needs revision' }],
+        ['POST', '/attempts/19/grade', { score: 8, feedback: 'Good work' }],
+        ['POST', '/quizzes/11/attempt', { answers: { 2: ['a'] } }]
+      ];
+
+      for (const [method, pathValue, body] of cases) {
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { accepted: true } })
+        });
+
+        await expect(api.callCourseApi('test-token', method, pathValue, body))
+          .resolves.toEqual({ data: { accepted: true } });
+
+        expect(mockFetch).toHaveBeenLastCalledWith(
+          `http://localhost:5000/api/v2/courses${pathValue}`,
+          expect.objectContaining({
+            method,
+            headers: expect.objectContaining({ Authorization: 'Bearer test-token' }),
+            ...(body === undefined ? {} : { body: JSON.stringify(body) })
+          })
+        );
+        if (body === undefined) {
+          expect(mockFetch.mock.calls.at(-1)[1]).not.toHaveProperty('body');
+        }
+      }
+
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 409,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ message: 'The course state changed.', code: 'COURSE_VERSION_CONFLICT' })
+      });
+
+      await expect(api.callCourseApi('test-token', 'POST', '/42/publish', { confirmation: 'publish' }))
+        .rejects.toMatchObject({
+          name: 'ApiError',
+          status: 409,
+          message: 'The course state changed.',
+          data: { message: 'The course state changed.', code: 'COURSE_VERSION_CONFLICT' }
+        });
+    });
+
     it('should call Laravel v2 member course enrolments with auth', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
