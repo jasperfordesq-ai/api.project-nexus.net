@@ -1498,6 +1498,22 @@ source, database, migration, runtime request, container, or production
 operation was performed. This slice is unscored; the canonical bank remains
 `663/1,000` until another complete fixed-rubric audit.
 
+### 2026-07-15 Gamification dispatcher API assertion follow-up
+
+The shared gamification dispatcher now has direct API-client proof for all six
+Laravel route declarations that are consumed by Web UK but omitted from
+OpenAPI. The assertions pin the legacy `/api/achievements/progress` exception,
+the five `/api/v2/gamification/*` paths, bearer authority, explicit GETs, query
+preservation, unmodified data/meta projections, and structured feature-disabled
+`403` propagation. This closes direct API-client coverage for the largest
+remaining unique helper in finite package 9; live feature/role/fixture variants
+remain assigned to the disposable environment.
+
+The focused API-client suite passes `222/222`. No Laravel or ASP.NET source,
+database, migration, runtime request, container, or production operation was
+performed. This slice is unscored; the canonical bank remains `663/1,000`
+until another complete fixed-rubric audit.
+
 - GOV.UK crown, logotype, official header identity, OGL block, or Crown
   copyright wording.
 - Laravel/PHP implementation details.

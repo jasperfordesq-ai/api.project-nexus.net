@@ -4580,6 +4580,53 @@ describe('API Request Functions', () => {
   });
 
   describe('Laravel gamification helpers', () => {
+    it('should dispatch legacy achievement and v2 gamification reads without rewriting projections', async () => {
+      const cases = [
+        ['/achievements/progress', '/api/achievements/progress', { data: { completed: 4, total: 12 } }],
+        ['/community-dashboard', '/api/v2/gamification/community-dashboard', { data: { members: 34 } }],
+        ['/engagement-history', '/api/v2/gamification/engagement-history', { data: [], meta: { total: 0 } }],
+        ['/member-spotlight?limit=3', '/api/v2/gamification/member-spotlight?limit=3', { data: [{ id: 77 }] }],
+        ['/nexus-score', '/api/v2/gamification/nexus-score', { data: { score: 81, band: 'high' } }],
+        ['/personal-journey', '/api/v2/gamification/personal-journey', { data: { milestones: [] } }]
+      ];
+
+      for (const [, , responseBody] of cases) {
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => responseBody
+        });
+      }
+
+      for (let index = 0; index < cases.length; index += 1) {
+        const [pathValue, expectedPath, responseBody] = cases[index];
+        await expect(api.callGamificationApi('test-token', 'GET', pathValue)).resolves.toEqual(responseBody);
+        expect(mockFetch).toHaveBeenNthCalledWith(
+          index + 1,
+          `http://localhost:5000${expectedPath}`,
+          expect.objectContaining({
+            method: 'GET',
+            headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
+          })
+        );
+      }
+
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ message: 'Gamification is not enabled.', code: 'FEATURE_DISABLED' })
+      });
+
+      await expect(api.callGamificationApi('test-token', 'GET', '/nexus-score'))
+        .rejects.toMatchObject({
+          name: 'ApiError',
+          status: 403,
+          message: 'Gamification is not enabled.',
+          data: { message: 'Gamification is not enabled.', code: 'FEATURE_DISABLED' }
+        });
+    });
+
     it('should fetch own and member gamification profiles through the exact Laravel v2 contract', async () => {
       mockFetch
         .mockResolvedValueOnce({
