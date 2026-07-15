@@ -130,7 +130,7 @@ public class AuthorizationTests : IntegrationTestBase
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var content = await response.Content.ReadFromJsonAsync<JsonElement>();
-        content.GetProperty("email").GetString().Should().Be("member@test.com");
+        content.GetProperty("data").GetProperty("email").GetString().Should().Be("member@test.com");
     }
 
     #endregion

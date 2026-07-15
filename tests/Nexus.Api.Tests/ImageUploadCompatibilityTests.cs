@@ -34,7 +34,7 @@ public class ImageUploadCompatibilityTests : IntegrationTestBase
         var userResponse = await Client.GetAsync("/api/users/me");
         userResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         var userJson = await userResponse.Content.ReadFromJsonAsync<JsonElement>();
-        userJson.GetProperty("avatar_url").GetString().Should().Be(imageUrl);
+        userJson.GetProperty("data").GetProperty("avatar_url").GetString().Should().Be(imageUrl);
     }
 
     [Fact]
