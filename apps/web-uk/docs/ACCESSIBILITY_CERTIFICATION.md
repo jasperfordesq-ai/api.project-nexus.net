@@ -44,6 +44,7 @@ attempts a backend mutation:
 ```powershell
 npm run test:accessibility:isolated -- --grep=representative.public-page
 npm run test:accessibility:isolated -- --grep=forced-colour
+npm run test:accessibility:isolated -- --grep=default-English
 ```
 
 Do not treat the isolated runner as Laravel runtime certification. It exists to
@@ -71,10 +72,13 @@ green accessibility result nor an authorized ordinary-environment workflow.
 On 2026-07-15 the isolated current-checkout runner passed `14/14`
 representative public-page structure/axe cases and `4/4` keyboard, focus,
 client-validation, 320px reflow, forced-colour, and axe cases on
-`/hour-timebank/accessible`. Only its loopback read fixtures were available;
-no Laravel runtime or database was contacted. This is partial automated browser
-evidence, not full accessibility, assistive-technology, or runtime
-certification.
+`/hour-timebank/accessible`. A further default-English subset passed `5/5`:
+Home, registration, Legal, and Listings at a 320 CSS-pixel viewport with
+serious/critical axe checks, plus server-rendered login, registration, and
+Contact forms with JavaScript disabled. Only loopback read fixtures were
+available; no Laravel runtime or database was contacted. This is partial
+automated browser evidence, not actual browser-zoom, full accessibility,
+assistive-technology, or runtime certification.
 
 ## Current automated scope
 
