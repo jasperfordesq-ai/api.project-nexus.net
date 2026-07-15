@@ -34,6 +34,23 @@ $env:ACCESSIBILITY_TENANT_SLUG = 'alpha'
 npm run test:accessibility
 ```
 
+For public-page and client-side interaction checks that do not require real
+Laravel state, use the isolated read-only runner with a focused Playwright
+grep. It starts a loopback-only mock backend with bounded tenant,
+registration-policy, and platform-stat fixtures. The mock rejects all backend
+methods except `GET` and `HEAD`, and the runner exits unsuccessfully if a test
+attempts a backend mutation:
+
+```powershell
+npm run test:accessibility:isolated -- --grep=representative.public-page
+npm run test:accessibility:isolated -- --grep=forced-colour
+```
+
+Do not treat the isolated runner as Laravel runtime certification. It exists to
+exercise current-checkout rendering, browser structure, keyboard/focus,
+client-side validation, reflow, forced colours, and axe without any route to
+the ordinary Laravel database.
+
 The latest fully successful historical verification on 2026-07-12 exercised the complete 87-case Chromium scope
 against a fresh current-checkout listener and Laravel at
 `http://127.0.0.1:8088`. After a missing bearer token on member-only Knowledge
@@ -50,6 +67,14 @@ stopped after 28 passes when its invalid login wrote failed-login limiter state;
 one case failed and 58 did not run. The database was subsequently restored
 wholesale from the verified production safety dump. That attempt is neither a
 green accessibility result nor an authorized ordinary-environment workflow.
+
+On 2026-07-15 the isolated current-checkout runner passed `14/14`
+representative public-page structure/axe cases and `4/4` keyboard, focus,
+client-validation, 320px reflow, forced-colour, and axe cases on
+`/hour-timebank/accessible`. Only its loopback read fixtures were available;
+no Laravel runtime or database was contacted. This is partial automated browser
+evidence, not full accessibility, assistive-technology, or runtime
+certification.
 
 ## Current automated scope
 
