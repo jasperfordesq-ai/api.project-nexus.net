@@ -105,12 +105,16 @@ Eighteen annotated tags under `archive/pre-pause/*` preserve:
 
 The first CI experiment parsed, but its isolated local validation spent about 15
 minutes in coverage collection and ended without a TRX or coverage report. The
-refined candidate completed static discovery but removed coverage and had no
-GitHub workflow run. A racing cherry-pick placed the refined candidate on
-`main`, and the final pause history immediately reverted it. The two exact
-patches are recoverable from `archive/pre-pause/unfinished-ci-sharding` and
-`archive/pre-pause/ci-sharding-candidate`; neither changes the final tagged
-tree, and both require a new authorized phase plus terminal proof before use.
+refined candidate completed static discovery and removed coverage. Both exact
+patches were preserved at `archive/pre-pause/unfinished-ci-sharding` and
+`archive/pre-pause/ci-sharding-candidate`, and neither changes the historical
+`pause/2026-07-15` tree.
+
+After that tag was created, the user explicitly authorized a bounded
+commit/push/fix-until-green CI phase. The refined candidate is therefore active
+again on post-pause `main`. Baseline D3 remains 1000/1000 for the named paused
+snapshot; the repository-freeze row is historical evidence and does not claim
+that the moving CI-resumption head currently passes the pause-readiness guard.
 
 ### Removed And Retained Remote Heads
 

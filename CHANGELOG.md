@@ -10,6 +10,16 @@ for Git history, a release-certification record, or a current score source.
 
 ## Unreleased — Development Paused 2026-07-15
 
+### Authorized CI Resumption
+
+- After the clean pause tag, the user explicitly resumed a bounded
+  commit/push/fix-until-green CI phase. The required API suite now uses four
+  isolated, deterministic whole-class shards with per-shard TRX artifacts;
+  general product development and production operations remain paused.
+- Coverage collection was removed from the required push gate after both local
+  and GitHub evidence showed it prevented VSTest from completing and flushing
+  test artifacts. All 3,361 API tests remain in the required gate.
+
 ### Direction
 
 - Corrected the ASP.NET goal from loosely described Laravel “parity” to

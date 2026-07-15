@@ -14,8 +14,9 @@ current boundary. It does not authorize implementation or production work.
 
 ## One-Minute Handoff
 
-- Development is **paused**. Opening or cloning the repository does not resume
-  any autonomous loop.
+- General product development remains **paused**. Opening or cloning the repository does not resume
+  any autonomous loop. The bounded CI remediation recorded near the end of
+  this document was separately and explicitly authorized by the user.
 - Do not implement, migrate, deploy, start production containers, or mutate the
   Laravel repository or its ordinary local database without a new, explicit
   user instruction.
@@ -301,6 +302,34 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-pause-readines
 
 It must pass at `pause/2026-07-15`; otherwise the repository is not in the
 documented clean-pause state.
+
+## Authorized CI Resumption Record — 2026-07-15
+
+The user subsequently gave an explicit instruction to commit and push all
+active work, monitor CI, and keep fixing and republishing until the required CI
+run is green. That instruction authorizes only this bounded publication and CI
+remediation loop. It does not authorize production deployment, production
+containers, Laravel writes, or general product implementation.
+
+The no-coverage four-shard candidate was therefore reintroduced after the
+historical pause transaction had reverted it. Its evidence boundary is:
+
+- deterministic discovery allocates all 3,361 API tests exactly once across
+  four whole-class shards: 841, 840, 840, and 840 tests;
+- a focused disposable PostgreSQL integration shard completed locally in
+  3m02s and finalized a passing TRX;
+- the equivalent one-method coverage probe produced no TRX or coverage output
+  within 15 minutes, matching GitHub evidence that coverage instrumentation was
+  the throughput blocker, so coverage is not part of the required push gate;
+- GitHub run `29448759052` was cancelled after 1m18s only because the final
+  pause-documentation push superseded it; it is not pass/fail test evidence;
+- terminal exact-SHA CI evidence remains required before this resumed loop may
+  be called green.
+
+The annotated `pause/2026-07-15` tag remains the historical clean-pause
+boundary. `scripts/check-pause-readiness.ps1` certifies that tag, not a moving
+post-resumption `main`. Baseline D3 remains a score for the named paused
+snapshot; the current CI result must be reported separately.
 
 ## Pause Integrity Rule
 
