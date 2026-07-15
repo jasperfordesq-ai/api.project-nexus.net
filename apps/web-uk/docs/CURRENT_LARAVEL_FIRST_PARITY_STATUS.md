@@ -1,6 +1,6 @@
 # Current Laravel-First Accessible Frontend Status
 
-Last audited: 2026-07-15
+Last audited: 2026-07-15 18:00 +01:00
 
 Status: **Canonical current — sole Web UK coordination and scoring source**
 
@@ -44,9 +44,11 @@ audit or a claim of completion.
 For status reporting, call the fixed-rubric certification snapshot **Web UK
 Baseline W1** and the corrected source-owned goal **Web UK Goal W2**. W1 remains
 `663/1000`. W2 has no percentage until a new complete audit defines and applies
-its rubric; report it only as **one bounded manual-accessibility package
-remaining**. Do not silently convert W1 to a smaller denominator or describe
-either value as “about finished.”
+its rubric. Report its finish line as **three explicit gates: one bounded
+manual-accessibility evidence/fix package, one upstream accessibility-copy
+parity decision, and one fixed-rubric W2 scoring/certification transaction**.
+Do not silently convert W1 to a smaller denominator or describe either value as
+“about finished.”
 
 ## Goal And Source Of Truth
 
@@ -218,13 +220,25 @@ workstream.
   corrections, and production-build hardening. The generated-artifact refresh
   at `a3f18f06` records its dirty-state caveat. No later commit is converted
   into points until a complete audit names its rubric, evidence, deductions,
-  and new total. The current documentation transaction also removes unsupported
-  public keyboard/screen-reader assurances and adds zero points.
-- **Current repository boundary:** pre-documentation product `HEAD` and
-  `origin/main` are `9ad163c969a935407297eb459a9840798a1a9e78`; the latest
-  Web UK product commit before backend-only advances is `6864f7be`. Web UK was
-  clean when the system-wide audit hold began. Unrelated backend-owned dirty
-  files contribute no Web UK points.
+  and new total.
+- **Locally committed but unpushed:** documentation transaction `2d933f7c`
+  removes part of the unsupported public keyboard/screen-reader assurance,
+  updates focused tests, and replaces stale Web UK user/developer
+  documentation. Follow-up `9a3337eb` corrects the local container contract.
+  The audit reconciliation containing this page also withholds the remaining
+  `accessibility.commitment_body` and `home.supporting_text` claims, which say
+  the unmanually-certified service works well with keyboards and screen
+  readers. These changes add zero points until published and included in the
+  next complete W2 audit.
+- **Current repository boundary:** `origin/main` remains
+  `9ad163c969a935407297eb459a9840798a1a9e78`; local schema merge
+  `df8c8b96c80804785e9c84f9f7c75337088d6024` sits below the audit
+  reconciliation containing this page. The latest remote Web UK product commit
+  before backend-only advances is `6864f7be`; the later local Web UK delta is
+  the two committed audit corrections above plus the final public-copy/test
+  reconciliation. At the committed audit boundary no Web UK product files are
+  dirty. All local deltas remain unpushed and unscored; unrelated
+  backend/schema work contributes no Web UK points.
 
 ### Current Verification Gates
 
@@ -236,10 +250,10 @@ workstream.
 | Missing Laravel routes | 1 | Event offline check-in code generation |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 55/55 suites, 1,755/1,755 tests | One uninterrupted current-source `--runInBand` run; 204.59 seconds |
+| Jest | 55/55 suites, 1,755/1,755 tests at `6864f7be`; post-`2d933f7c` focused legal/accessibility proof 2/2 and generator/document proof 3 suites, 10/10 tests | The complete uninterrupted `--runInBand` run took 204.59 seconds at the named remote Web UK product boundary. It was not rerun after the local audit changed the legal route, accessibility template, and focused test; do not present it as a current-local aggregate. |
 | Brand, lint, and CSS | Passed | Current source gates |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Zero missing/extra structural keys |
-| Static locale usage | 7,635 references, 5,820 unique keys, 0 unresolved | Complete current-reference audit |
+| Static locale usage | 7,629 references, 5,814 unique keys, 0 unresolved | Complete post-suppression current-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
 | Blade marker check | Current rerun unavailable because Laravel port 8088 is not listening; preceding product `e2918257` passed 19/19 | Public GET marker comparison only; not screenshot or visual certification |
 | Automated accessibility | The corrected isolated command enforces the finite safe selection and passes 24/24: 14 public structure/axe cases, 4 keyboard/focus/client-validation/reflow/forced-colour cases, and 6 default-English narrow-reflow/no-JavaScript cases. Its GET/HEAD-only mock rejected the earlier accidental authenticated login POST; caller-supplied grep arguments cannot widen the command to stateful cases. Product `b6166484` provides the manual-inspection mode over the same random-loopback fixture. | Current safe-fixture automated evidence is green. The browser connection has since been repaired, but the directed keyboard/zoom/visual and screen-reader package has not yet been performed; no manual outcome is claimed. Live Laravel and the stateful aggregate are outside Goal W2. |
@@ -277,8 +291,8 @@ against ASP.NET by configuration change only after that backend is ready.
 
 ### Finite P0/P1 Completion Queue
 
-The corrected frontend-owned queue has one bounded package. Optional live
-Laravel runtime work and future ASP.NET switching are not in this queue:
+The corrected frontend-owned finish line has three explicit gates. Optional
+live Laravel runtime work and future ASP.NET switching are not in this queue:
 
 1. **P0 - Safe-fixture manual accessibility:** complete representative Web UK
    visual review plus keyboard, no-JS, zoom/reflow, forced-colour, focus/error,
@@ -287,6 +301,19 @@ Laravel runtime work and future ASP.NET switching are not in this queue:
    connection is repaired, but directed manual and screen-reader review remains
    open and must be recorded without converting automated evidence into manual
    sign-off.
+2. **P0 - Accessibility-copy source/parity decision:** Laravel Blade currently
+   renders public keyboard/screen-reader assurances that the open manual package
+   has not established. Web UK withholds those claims rather than publishing
+   unsupported assurances, creating a deliberate observable-copy deviation.
+   After gate 1, either evidence must support restoring the exact claims or the
+   Laravel accessible-content owner must correct/approve the source contract.
+   This audit did not modify the Laravel repository.
+3. **P0 - Fixed-rubric W2 certification:** after any accessibility findings are
+   fixed, the copy-parity decision is resolved, and the checkout is clean,
+   define the W2 denominator and run the complete
+   exact-SHA audit, record every deduction, and only then assign a W2
+   percentage. This is a scoring gate, not an additional implementation
+   package.
 The source-contract assertion package is complete. The generated manifest now
 contains zero rows: direct mocked tests exercise every previously outstanding
 admin Job, Event/calendar/export, Exchange, Feed hashtag, Help/Knowledge Base,
@@ -300,11 +327,15 @@ otherwise complete Web UK work: Event moderation queue membership/order plus
 fabricate either contract.
 
 Checkpoint footer: W1 frozen bank `663/1,000`; W2 percentage `not assigned`;
-frontend blocker owner `none`; finite frontend-owned package count `1`. Next
-tasks: start the isolated manual browser; review representative default-English
-pages at desktop and 320 CSS pixels; complete keyboard/focus/no-JS/zoom/forced-
-colour checks; capture screen-reader findings; fix and re-verify any concrete
-accessibility regression; then perform the new W2 audit before reporting a
+frontend blocker owner `Web UK plus Laravel accessible-content owner/user`;
+remaining evidence/fix package count `1`; remaining source-decision count `1`;
+remaining scoring transaction count `1`; remaining finish-line gate count `3`.
+Next tasks: start the isolated manual
+browser; review representative default-English pages at desktop and 320 CSS
+pixels; complete keyboard/focus/no-JS/zoom/forced-colour checks; capture
+screen-reader findings; fix and re-verify any concrete accessibility
+regression; resolve the public-copy source decision without silently diverging
+from Laravel; then perform the fixed-rubric W2 audit before reporting a
 completion percentage.
 
 The exact Windows Update interruption and the pre-restart product boundary are

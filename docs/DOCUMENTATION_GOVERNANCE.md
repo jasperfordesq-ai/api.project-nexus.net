@@ -40,8 +40,9 @@ Deployment inventory and product authority are separate documentation planes:
 | [`.claude/production-containers.md`](../.claude/production-containers.md) | Current production domains, containers, ports, proxy ownership, and component-specific operator procedures | Product source-of-truth status, contract correctness, parity score, or permission to deploy |
 | [`.claude/production-server.md`](../.claude/production-server.md) | Connection pointer and concise operational warnings | An independent deployment recipe or product architecture |
 | [`compose.prod.yml`](../compose.prod.yml) | A versioned description of legacy/experimental Compose topology | A blanket production release path; its Web UK ASP.NET override remains under an explicit deployment hold |
-| [`compose.production.yml`](../compose.production.yml) | A quarantined historical integration topology | A local or production startup command; every service requires the deliberately named quarantine profile |
-| [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml) | A manual-only, exact-SHA, confirmed entry point behind the production environment | Standing authorization or proof that its legacy backup/migration/rollback implementation is safe |
+| [`compose.production.yml`](../compose.production.yml) | A zero-service historical stub whose former topology remains in Git history | Any local or production startup command |
+| [`compose.fullstack.yml`](../compose.fullstack.yml) | A zero-service historical stub for the obsolete duplicate local topology | A supported local-development or production command |
+| [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml) | A manual-only exact-SHA validation scaffold with its legacy deploy job hard-disabled | A usable deployment entry point, standing authorization, or proof that the retained backup/migration/rollback body is safe |
 
 The fact that a legacy or experimental surface is deployed does not make it a
 product, UI, or API-contract source of truth. Laravel remains the current

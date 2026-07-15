@@ -46,12 +46,12 @@ The following files exist but are not approved production authorities:
 
 | File | Current problem |
 | --- | --- |
-| `compose.production.yml` | Obsolete whole-stack recipe with stale paths/settings. It is now quarantined behind a deliberately named opt-in profile, but remains unapproved and must not be executed. |
+| `compose.production.yml` | Obsolete whole-stack recipe with stale paths/settings. Its executable service definitions were removed; the file is now a zero-service historical stub and is not a production procedure. |
 | `compose.prod.yml` | Legacy topology whose Web UK override selects uncertified ASP.NET; deployment hold applies. |
-| `compose.fullstack.yml` | Duplicate local topology with stale ports and automatic frozen-React startup; it is quarantined behind a deliberately named profile. |
-| `.github/workflows/deploy.yml` | Automatic `main` deployment has been removed. The workflow now requires manual dispatch, an exact 40-character SHA, a production-confirmation input, and the named `production` environment; repository environment-approval rules must be verified separately. Its legacy backup/migration/rollback body still needs a safety redesign before use. |
+| `compose.fullstack.yml` | Duplicate local topology with stale ports and automatic frozen-React startup. Its executable service definitions were removed; the file is now a zero-service historical stub. |
+| `.github/workflows/deploy.yml` | The local checkout removes automatic `main` deployment, accepts only manual dispatch, validates an exact 40-character SHA before checkout, and verifies the resolved checkout. Its deploy job is also hard-disabled because the retained legacy backup/migration/rollback body is not approved. At the audit boundary this correction is unpushed: `origin/main` still contains the old `workflow_run` trigger. The named `production` environment has no protection rules and allows administrator bypass, so it is not an independent approval gate. |
 | `scripts/deploy.sh` | Can continue after a skipped/failed backup and restarts an auto-migrating API; it is not safe standing authorization. Status mode is read-only, but mutation modes require a reviewed replacement plan. |
-| `Makefile` production targets | Assume container EF tooling/database names that are not established by the runtime image/current topology. Do not use as a production runbook. |
+| `Makefile` migration/production targets | Assume container EF tooling/database names that are not established by the runtime image/current topology. They now fail closed unconditionally; retained recipe text is not an executable production runbook. |
 | `scripts/check-container-health.sh` | Contains stale container matching and recovery advice; do not use it as the current production inventory. |
 | backup/restore scripts and workflow | Competing retention/ownership models and an unverified restore drill exist. No backup is accepted until its exact artifact, checksum, completion, retention owner, and isolated restore evidence are recorded. |
 | `.github/workflows/health-check.yml` | Alert text now points to read-only incident triage and explicitly withholds restart authority. The public probes remain availability signals, not product certification. |
@@ -59,6 +59,24 @@ The following files exist but are not approved production authorities:
 These are system risks, not documentation-score deductions once accurately
 recorded. They remain implementation/operations work until explicitly repaired
 and verified.
+
+### Live remote release hazard at the audit boundary
+
+At 2026-07-15 17:50 +01:00, `origin/main` was still `9ad163c9` and therefore
+still carried the old deploy-on-success `workflow_run` trigger. CI run
+`29428797285` for that SHA remained `in_progress`, but its Integration Tests job
+had already failed, so that particular run cannot conclude successfully and
+cannot satisfy the old deploy job condition. The next successful CI run can
+still start the old deploy workflow until the manual-only correction is
+published. No push, cancellation, deployment, or production action was
+authorized or performed by this documentation audit. Recheck the run and remote
+workflow before relying on this dated boundary.
+
+The GitHub `production` environment was also verified with
+`protection_rules=[]` and `can_admins_bypass=true`. Naming that environment in a
+workflow does not supply independent human approval. Repository-wide default
+workflow permissions are read-only; workflows that create issues must request
+`issues: write` explicitly.
 
 ## Backup And Restore Evidence
 

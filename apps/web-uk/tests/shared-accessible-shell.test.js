@@ -1651,6 +1651,7 @@ describe('shared accessible frontend shell', () => {
 
     const hub = await request(app).get('/legal');
     const accessibility = await request(app).get('/accessibility');
+    const home = await request(app).get('/acme/accessible');
     const terms = await request(app).get('/legal/terms');
     const privacy = await request(app).get('/legal/privacy');
     const legacyTerms = await request(app).get('/terms');
@@ -1668,12 +1669,15 @@ describe('shared accessible frontend shell', () => {
     expect(hub.text).not.toContain('The legal hub will follow');
 
     expect(accessibility.status).toBe(200);
+    expect(home.status).toBe(200);
     expect(accessibility.text).toContain('Back to legal');
     expect(accessibility.text).toContain('WCAG 2.2 Level AA');
     expect(accessibility.text).toContain('Known limitations');
     expect(accessibility.text).toContain('Report an accessibility problem');
     expect(accessibility.text).not.toContain('Full keyboard support');
     expect(accessibility.text).not.toContain('screen-reader testing');
+    expect(accessibility.text).not.toContain('works well with keyboards, screen readers');
+    expect(home.text).not.toContain('works well with keyboards, screen readers');
     expect(accessibility.text).not.toContain('must match the production Laravel');
 
     expect(terms.status).toBe(200);
@@ -1722,6 +1726,7 @@ describe('shared accessible frontend shell', () => {
     expect(privacy.text).toContain(translate('ar', 'legal.fallback.privacy_points.0'));
     expect(accessibility.text).toContain(translate('ar', 'accessibility.intro', { name: 'Project NEXUS Accessible' }));
     expect(accessibility.text).toContain(translate('ar', 'accessibility.limitations_body'));
+    expect(accessibility.text).not.toContain(translate('ar', 'accessibility.commitment_body'));
     expect(accessibility.text).not.toContain(translate('ar', 'accessibility.features.keyboard.title'));
     expect(accessibility.text).not.toContain(translate('ar', 'accessibility.testing_body'));
   });

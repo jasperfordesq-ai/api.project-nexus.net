@@ -15,7 +15,7 @@ For the current migration/schema deductions and named evidence baseline, read
 chain below is a retained 2026-07-12 checkpoint; its count and latest migration
 must not be presented as the current repository chain.
 
-At committed main `9ad163c969a935407297eb459a9840798a1a9e78`, the published
+At remote `origin/main` commit `9ad163c969a935407297eb459a9840798a1a9e78`, the published
 backend migration tail runs from marketplace payment settlement
 `20260714105831_MarketplacePaymentSettlementParity` through Connect onboarding,
 paid-notification, escrow-settlement, refund-ledger, SSO/OIDC, and finally
@@ -28,11 +28,15 @@ and model-drift evidence for individual migrations is recorded in
 `SCHEMA_PARITY.md`. Always obtain the runtime migration list from the current
 checkout before an upgrade claim.
 
-The clean isolated schema candidate branch is local-only at `97b8a4a0` and
-contains nine commits/164 migration source files versus 155 on main. Its table
-projection and acceptance gaps are recorded in `SCHEMA_PARITY.md`. None of its
-candidate migrations is merged, published, production-authorized, or banked;
-do not mix its migration list with mainline runtime evidence.
+At the 2026-07-15 17:41 +01:00 audit boundary, the nine clean schema commits
+through `97b8a4a0` had been user-authorized for merge into local `main` at
+`df8c8b96`; that local boundary contains 164 migration source files and 162
+runtime IDs, while then-current `origin/main` at `9ad163c9` contains 155 source
+files. The refreshed table inventory and per-slice evidence are recorded in
+`SCHEMA_PARITY.md`. Publication can change this local/remote relationship, so
+verify both SHAs before repeating it. At the named boundary these migrations
+were not published, production-authorized, fully certified at the merge SHA, or
+banked.
 
 ## Historical Runtime Chain And Replay Evidence (2026-07-12)
 
@@ -502,8 +506,9 @@ focused/full tests -> PR/CI -> merge -> explicitly authorized deployment plan
 > migration, backup, restore, or deployment. Before any production action, read
 > `../.claude/production-containers.md`, obtain explicit authorization for the
 > exact component and SHA, and inspect the current operator scripts. The
-> production-oriented Make targets are helpers, not a standing runbook or proof
-> that a backup, workflow, or target is currently valid.
+> production-oriented Make targets are fail-closed historical recipes, not
+> helpers, a standing runbook, or proof that a backup, workflow, or target is
+> currently valid.
 
 ## Prerequisites
 
@@ -646,6 +651,9 @@ The `Makefile` migration/production targets are **unsupported and unapproved**.
 They assume SDK tooling inside the runtime API container and conflict with
 checked-in database names and current deployment boundaries. The presence of a
 prompt, health probe, target name, or GitHub workflow is not safety evidence.
+The file now fails closed unconditionally for every target except `help`.
+Historical recipes remain readable as archaeology but are not executable
+interfaces.
 
 ## Drift Detection
 

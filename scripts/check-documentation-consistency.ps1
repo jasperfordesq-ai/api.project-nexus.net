@@ -278,8 +278,8 @@ if ($null -ne $status) {
         '(?i)eleven backend commits|All eleven contribute' `
         'must disclose the published-but-unscored post-scorecard backend delta.'
     Assert-Contains 'docs/CURRENT_ASPNET_CONTRACT_STATUS.md' $status `
-        '97b8a4a004362aef8356e8d76333f1efc9d44b36' `
-        'must identify the isolated unbanked schema candidate exactly.'
+        'df8c8b96c80804785e9c84f9f7c75337088d6024' `
+        'must identify the local unpushed schema merge exactly.'
 }
 
 $webUkStatus = Get-DocumentText 'apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md'
@@ -308,6 +308,15 @@ if ($null -ne $webUkStatus) {
     Assert-Contains 'apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md' $webUkStatus `
         '38 later Web UK commits' `
         'must retain the published-but-unscored post-W1 Web UK boundary.'
+    Assert-Contains 'apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md' $webUkStatus `
+        'remaining finish-line gate count `3`' `
+        'must expose the complete W2 finish line instead of only the implementation package.'
+    Assert-Contains 'apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md' $webUkStatus `
+        '(?i)Accessibility-copy source/parity decision' `
+        'must retain the explicit Laravel accessibility-copy decision gate.'
+    Assert-Contains 'apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md' $webUkStatus `
+        '7,629 references, 5,814 unique keys, 0 unresolved' `
+        'must retain the post-suppression static locale result.'
 }
 
 $generatedArtifactPaths = @(
@@ -404,9 +413,61 @@ if ($null -ne $documentationHealth) {
     Assert-Contains 'docs/DOCUMENTATION_HEALTH_REPORT.md' $documentationHealth `
         '<!--\s*doc-consistency:\s*DOCUMENTATION_HEALTH_BASELINE=D2\s*-->' `
         'must expose the system-wide Baseline D2 marker.'
-    Assert-Contains 'docs/DOCUMENTATION_HEALTH_REPORT.md' $documentationHealth `
-        '<!--\s*doc-consistency:\s*DOCUMENTATION_HEALTH_SCORE=100/100\s*-->' `
-        'must expose the fixed Baseline D2 health-score marker.'
+    $healthScoreMarker = [regex]::Match(
+        $documentationHealth,
+        '<!--\s*doc-consistency:\s*DOCUMENTATION_HEALTH_SCORE=(?<score>\d{1,3})/100\s*-->'
+    )
+    if (-not $healthScoreMarker.Success) {
+        Add-Failure 'docs/DOCUMENTATION_HEALTH_REPORT.md: must expose a D2 health-score marker with a fixed /100 denominator.'
+    }
+    else {
+        $declaredHealthScore = [int]$healthScoreMarker.Groups['score'].Value
+        if ($declaredHealthScore -lt 0 -or $declaredHealthScore -gt 100) {
+            Add-Failure 'docs/DOCUMENTATION_HEALTH_REPORT.md: declared D2 health score must be between 0 and 100.'
+        }
+        Assert-Contains 'docs/DOCUMENTATION_HEALTH_REPORT.md' $documentationHealth `
+            ("(?m)^## Baseline D2 - {0}/100$" -f $declaredHealthScore) `
+            'must keep the D2 heading synchronized with the declared marker.'
+        Assert-Contains 'docs/DOCUMENTATION_HEALTH_REPORT.md' $documentationHealth `
+            ("(?i)Documentation Health Baseline D2 scores the remediated repository \*\*{0}/100\*\*" -f $declaredHealthScore) `
+            'must keep the D2 summary synchronized with the declared marker.'
+
+        $healthTable = [regex]::Match(
+            $documentationHealth,
+            '(?ms)^\| D2 category \| Score \| Evidence \|\r?\n^\| ---.*?\r?\n(?<rows>.*?)^\| \*\*Total\*\* \| \*\*(?<total>\d{1,3})/100\*\*'
+        )
+        if (-not $healthTable.Success) {
+            Add-Failure 'docs/DOCUMENTATION_HEALTH_REPORT.md: must expose a parseable D2 category table and total.'
+        }
+        else {
+            $earnedSum = 0
+            $maximumSum = 0
+            $categoryRows = [regex]::Matches(
+                $healthTable.Groups['rows'].Value,
+                '(?m)^\| (?!\*\*)(?<category>[^|]+?) \| (?<earned>\d{1,3})/(?<maximum>\d{1,3}) \|'
+            )
+            if ($categoryRows.Count -eq 0) {
+                Add-Failure 'docs/DOCUMENTATION_HEALTH_REPORT.md: D2 category table contains no scored rows.'
+            }
+            foreach ($row in $categoryRows) {
+                $earned = [int]$row.Groups['earned'].Value
+                $maximum = [int]$row.Groups['maximum'].Value
+                if ($earned -gt $maximum) {
+                    Add-Failure "docs/DOCUMENTATION_HEALTH_REPORT.md: D2 category '$($row.Groups['category'].Value.Trim())' exceeds its maximum."
+                }
+                $earnedSum += $earned
+                $maximumSum += $maximum
+            }
+
+            $tableTotal = [int]$healthTable.Groups['total'].Value
+            if ($maximumSum -ne 100) {
+                Add-Failure "docs/DOCUMENTATION_HEALTH_REPORT.md: D2 category maxima must sum to 100 (found $maximumSum)."
+            }
+            if ($earnedSum -ne $declaredHealthScore -or $tableTotal -ne $declaredHealthScore) {
+                Add-Failure "docs/DOCUMENTATION_HEALTH_REPORT.md: D2 marker, category sum, and displayed total must agree (marker $declaredHealthScore, rows $earnedSum, total $tableTotal)."
+            }
+        }
+    }
     foreach ($baseline in @('Baseline U1', 'Baseline S1', 'Baseline D2')) {
         Assert-Contains 'docs/DOCUMENTATION_HEALTH_REPORT.md' $documentationHealth ([regex]::Escape($baseline)) `
             "must preserve the named audit baseline '$baseline'."
@@ -476,26 +537,61 @@ if ($null -ne $productionServer) {
 
 $productionEnvironmentExample = Get-DocumentText '.env.production.example'
 if ($null -ne $productionEnvironmentExample) {
-    foreach ($key in @('Meilisearch__BaseUrl', 'RabbitMq__Host', 'RabbitMq__Port', 'RabbitMq__Username', 'RabbitMq__Password', 'RabbitMq__VirtualHost', 'RabbitMq__ExchangeName', 'SendGrid__Enabled', 'Gmail__Enabled', 'Gmail__SenderEmail', 'RABBITMQ_PASS')) {
+    foreach ($key in @('ConnectionStrings__DefaultConnection', 'Jwt__Secret', 'Jwt__Issuer', 'Jwt__Audience', 'FileUpload__UploadsRoot', 'Meilisearch__BaseUrl', 'RabbitMq__Host', 'RabbitMq__Port', 'RabbitMq__Username', 'RabbitMq__Password', 'RabbitMq__VirtualHost', 'RabbitMq__ExchangeName', 'SendGrid__Enabled', 'Gmail__Enabled', 'Gmail__SenderEmail', 'RABBITMQ_PASS')) {
         Assert-Contains '.env.production.example' $productionEnvironmentExample ([regex]::Escape($key)) `
             "must contain current configuration key '$key'."
     }
     Assert-NotContains '.env.production.example' $productionEnvironmentExample `
-        'PHASE63_73_DEPLOY_NOTES|Meilisearch__Host|RabbitMq__Uri|RABBITMQ_PASSWORD' `
+        'PHASE63_73_DEPLOY_NOTES|Meilisearch__Host|RabbitMq__Uri|RABBITMQ_PASSWORD|RabbitMq__Enabled=true|RabbitMq__Port=5671' `
         'must not retain obsolete deployment references or configuration keys.'
+    Assert-NotContains '.env.production.example' $productionEnvironmentExample `
+        '(?m)^(?:POSTGRES_PASSWORD|API_DOMAIN|PLATFORM_FRONTEND_DOMAIN|UK_FRONTEND_DOMAIN|ADMIN_FRONTEND_DOMAIN)=' `
+        'must not claim unused legacy Compose interpolation variables.'
 }
 
 $deployWorkflow = Get-DocumentText '.github/workflows/deploy.yml'
 if ($null -ne $deployWorkflow) {
-    Assert-NotContains '.github/workflows/deploy.yml' $deployWorkflow `
-        '(?m)^\s*workflow_run\s*:' `
-        'must not automatically deploy after a main/CI workflow run.'
+    $deployLines = [regex]::Split($deployWorkflow, "`r?`n")
+    $onIndex = [Array]::IndexOf($deployLines, 'on:')
+    $deployEvents = [System.Collections.Generic.List[string]]::new()
+    if ($onIndex -lt 0) {
+        Add-Failure '.github/workflows/deploy.yml: must contain an explicit on block.'
+    }
+    else {
+        for ($i = $onIndex + 1; $i -lt $deployLines.Count; $i++) {
+            $line = $deployLines[$i]
+            if ($line -match '^[A-Za-z_][A-Za-z0-9_-]*\s*:') { break }
+            if ($line -match '^  (?<event>[A-Za-z_][A-Za-z0-9_-]*)\s*:') {
+                $deployEvents.Add($Matches['event'])
+            }
+        }
+    }
+    if ($deployEvents.Count -ne 1 -or $deployEvents[0] -ne 'workflow_dispatch') {
+        Add-Failure ".github/workflows/deploy.yml: trigger set must be manual-only workflow_dispatch (found: $($deployEvents -join ', '))."
+    }
     Assert-Contains '.github/workflows/deploy.yml' $deployWorkflow `
         '(?m)^\s*confirm_production\s*:' `
         'must require an explicit production-confirmation input.'
     Assert-Contains '.github/workflows/deploy.yml' $deployWorkflow `
+        '(?m)^\s*if:\s*\$\{\{\s*false\s*\}\}\s*$' `
+        'must retain the hard deployment hold while the legacy body remains unapproved.'
+    Assert-Contains '.github/workflows/deploy.yml' $deployWorkflow `
         '\^\[0-9a-fA-F\]\{40\}\$' `
         'must reject anything other than an exact full commit SHA.'
+    Assert-Contains '.github/workflows/deploy.yml' $deployWorkflow `
+        '(?ms)env:\s*\r?\n\s*COMMIT_SHA:\s*\$\{\{\s*inputs\.commit_sha\s*\}\}.*if ! \[\[ "\$COMMIT_SHA" =~ \^\[0-9a-fA-F\]\{40\}\$ \]\]' `
+        'must pass the dispatch input through the environment before shell validation.'
+    Assert-NotContains '.github/workflows/deploy.yml' $deployWorkflow `
+        '(?m)^\s*(?:SHA|COMMIT_SHA)="\$\{\{\s*inputs\.commit_sha\s*\}\}"' `
+        'must not interpolate the untrusted dispatch input directly into shell source.'
+    $validationIndex = $deployWorkflow.IndexOf('name: Validate exact deploy version', [StringComparison]::Ordinal)
+    $checkoutIndex = $deployWorkflow.IndexOf('uses: actions/checkout@', [StringComparison]::Ordinal)
+    if ($validationIndex -lt 0 -or $checkoutIndex -lt 0 -or $validationIndex -gt $checkoutIndex) {
+        Add-Failure '.github/workflows/deploy.yml: exact-SHA validation must occur before checkout.'
+    }
+    Assert-Contains '.github/workflows/deploy.yml' $deployWorkflow `
+        '(?is)name:\s*Verify checked-out SHA.*git rev-parse HEAD.*ACTUAL_SHA.*EXPECTED_SHA' `
+        'must verify that checkout resolved to the authorized full SHA.'
 }
 
 $healthWorkflow = Get-DocumentText '.github/workflows/health-check.yml'
@@ -506,6 +602,16 @@ if ($null -ne $healthWorkflow) {
     Assert-NotContains '.github/workflows/health-check.yml' $healthWorkflow `
         'docker compose restart|RECOVERY_GUIDE\.md' `
         'must not tell an alert recipient to restart production or consult a missing guide.'
+    Assert-Contains '.github/workflows/health-check.yml' $healthWorkflow `
+        '(?ms)^permissions:\s*\r?\n\s*contents:\s*read\s*\r?\n\s*issues:\s*write' `
+        'must request the issue-write permission required by its alert path.'
+    foreach ($stepOutput in @('api_health.outputs.status', 'uk_health.outputs.status', 'app_health.outputs.status')) {
+        Assert-Contains '.github/workflows/health-check.yml' $healthWorkflow ([regex]::Escape($stepOutput)) `
+            "must include '$stepOutput' in the all-component failure condition."
+    }
+    Assert-NotContains '.github/workflows/health-check.yml' $healthWorkflow `
+        '(?m)^\s*labels:|body=\$BODY|echo\s+"body=' `
+        'must not depend on unprovisioned labels or write an untrusted response body to workflow outputs.'
 }
 
 $publicAccessibility = Get-DocumentText 'apps/web-uk/src/views/legal/accessibility.njk'
@@ -514,8 +620,15 @@ if ($null -ne $publicAccessibility) {
         'accessibility\.limitations_body' `
         'must keep translated limitations visible.'
     Assert-NotContains 'apps/web-uk/src/views/legal/accessibility.njk' $publicAccessibility `
-        'accessibility\.features_title|accessibility\.testing_body' `
-        'must not publish unsupported feature or manual-testing assurances.'
+        'accessibility\.features_title|accessibility\.testing_body|accessibility\.commitment_body' `
+        'must not publish unsupported feature, commitment, or manual-testing assurances.'
+}
+
+$publicHome = Get-DocumentText 'apps/web-uk/src/views/home.njk'
+if ($null -ne $publicHome) {
+    Assert-NotContains 'apps/web-uk/src/views/home.njk' $publicHome `
+        'home\.supporting_text' `
+        'must not publish the unsupported Home keyboard/screen-reader assurance.'
 }
 
 $productionCompose = Get-DocumentText 'compose.prod.yml'
@@ -577,15 +690,24 @@ if ($null -ne $migrationGuide) {
         'must not advertise the unsupported Make/container EF workflow.'
 }
 
+$legacyMakefile = Get-DocumentText 'Makefile'
+if ($null -ne $legacyMakefile) {
+    Assert-Contains 'Makefile' $legacyMakefile `
+        '(?ms)ifneq \(\$\(filter-out help,\$\(MAKECMDGOALS\)\),\)\s*\$\(error Unsupported legacy Makefile target\.' `
+        'must unconditionally reject every explicit target except help.'
+    Assert-NotContains 'Makefile' $legacyMakefile `
+        'ALLOW_UNSUPPORTED_LEGACY_MAKEFILE' `
+        'must not expose a bypass that re-enables unsupported targets.'
+}
+
 $quarantinedProductionCompose = Get-DocumentText 'compose.production.yml'
 if ($null -ne $quarantinedProductionCompose) {
     Assert-Contains 'compose.production.yml' $quarantinedProductionCompose `
         '(?i)QUARANTINED HISTORICAL INTEGRATION TOPOLOGY' `
         'must clearly quarantine the obsolete whole-stack topology.'
-    $profileCount = [regex]::Matches($quarantinedProductionCompose, 'profiles:\s*\["quarantined-do-not-run"\]').Count
-    if ($profileCount -ne 6) {
-        Add-Failure "compose.production.yml: every one of its 6 services must require the quarantine profile (found $profileCount)."
-    }
+    Assert-Contains 'compose.production.yml' $quarantinedProductionCompose `
+        '(?m)^services:\s*\{\}\s*$' `
+        'must expose zero executable services.'
 }
 
 $quarantinedFullStackCompose = Get-DocumentText 'compose.fullstack.yml'
@@ -593,10 +715,9 @@ if ($null -ne $quarantinedFullStackCompose) {
     Assert-Contains 'compose.fullstack.yml' $quarantinedFullStackCompose `
         '(?i)QUARANTINED LEGACY FULL-STACK LOCAL TOPOLOGY' `
         'must clearly quarantine the obsolete duplicate local topology.'
-    $profileCount = [regex]::Matches($quarantinedFullStackCompose, 'profiles:\s*\["legacy-fullstack-do-not-run"\]').Count
-    if ($profileCount -ne 6) {
-        Add-Failure "compose.fullstack.yml: every one of its 6 services must require the legacy quarantine profile (found $profileCount)."
-    }
+    Assert-Contains 'compose.fullstack.yml' $quarantinedFullStackCompose `
+        '(?m)^services:\s*\{\}\s*$' `
+        'must expose zero executable services.'
 }
 
 $runbook = Get-DocumentText 'docs/FULL_PARITY_REMEDIATION_RUNBOOK.md'
@@ -715,4 +836,4 @@ if ($failures.Count -gt 0) {
 }
 
 Write-Host 'Documentation consistency check passed.' -ForegroundColor Green
-Write-Host 'Validated canonical links and scores, state labels, 2x2 architecture, generated provenance, Web UK resume authority, Laravel database safety, and production documentation holds.'
+Write-Host 'Validated D2 audience hubs, canonical scores/state boundaries, 2x2 architecture, generated provenance, current credentials/ports/config keys, Web UK resume authority, Laravel database safety, and production/deployment quarantines.'

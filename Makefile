@@ -12,6 +12,12 @@
 .DEFAULT_GOAL := help
 SHELL := /bin/bash
 
+# Fail closed. These legacy targets are retained only for historical reference
+# while supported callers move to the maintained PowerShell/.NET/Compose paths.
+ifneq ($(filter-out help,$(MAKECMDGOALS)),)
+$(error Unsupported legacy Makefile target. Read docs/database-migrations.md and docs/system/OPERATIONS.md)
+endif
+
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------

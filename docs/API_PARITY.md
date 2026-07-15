@@ -27,6 +27,12 @@ rubric rescore or exact-SHA certification aggregate. Read their compact ledger
 under “Published But Not Rescored” in the canonical status; do not infer new
 points from this map.
 
+Local `main` subsequently advanced to unpushed merge `df8c8b96`, which adds the
+nine schema families recorded in `SCHEMA_PARITY.md` plus test/documentation
+transactions. It adds no API controller/route implementation beyond the
+`9ad163c9` behavior boundary, so this API ledger remains anchored there and the
+merged schema delta remains unscored.
+
 Frontend contract consumers are the canonical React client at
 `C:\platforms\htdocs\staging\react-frontend` and the unchanged Web UK client at
 `apps/web-uk`. Web UK is Laravel-first but not yet runtime-certified; Laravel

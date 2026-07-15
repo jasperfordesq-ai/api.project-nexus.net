@@ -1,6 +1,6 @@
 # Current ASP.NET Contract Status
 
-Last verified: 2026-07-15 17:13 +01:00
+Last verified: 2026-07-15 18:00 +01:00
 
 Status: **Canonical current - ASP.NET score and certification source**
 
@@ -41,10 +41,12 @@ a separately named Laravel-drift baseline, never as a silent denominator
 change.
 
 The 2026-07-15 system-wide re-audit keeps this score unchanged. Eleven backend
-implementation/test commits were published after the restart scorecard, but no
-fixed-rubric scoring transaction, complete exact-SHA suite, or CI aggregate has
-banked them. They are recorded below instead of being converted into an
-estimated percentage.
+implementation/test commits were published to `origin/main` after the restart
+scorecard. A later user-authorized local transaction committed two test
+expectation corrections and merged nine verified schema slices, but it has not
+been pushed and has no fixed-rubric scoring transaction, refreshed complete
+exact-SHA suite, or CI aggregate. All are recorded below instead of being
+converted into an estimated percentage.
 
 | Category | Banked | Maximum | Open |
 | --- | ---: | ---: | ---: |
@@ -103,10 +105,14 @@ These named values form an audit trail. They are not competing current scores.
 
 The latest banked backend implementation inspected for this page is
 `5fa15e0e79993464622b1c3ef053fcdd01679991`, with Laravel frozen at
-`903d03d3db78bbf87129ad35728be3b72819acaf`. At this product boundary,
-repository `HEAD` and `origin/main` are both
-`9ad163c969a935407297eb459a9840798a1a9e78`. The documentation transaction above
-that product SHA adds no product points.
+`903d03d3db78bbf87129ad35728be3b72819acaf`. At this verification boundary,
+the latest local product/schema commit is merge
+`df8c8b96c80804785e9c84f9f7c75337088d6024`, while `origin/main` remains
+`9ad163c969a935407297eb459a9840798a1a9e78`. The audit reconciliation
+containing this page may sit above that backend boundary and includes
+documentation, Web UK public-copy/test corrections, and repository operational
+guardrails. It changes no ASP.NET contract implementation and adds no backend
+points.
 
 ### Published But Not Rescored
 
@@ -151,28 +157,32 @@ but remain unscored:
 
 All eleven contribute **zero banked points** at this snapshot.
 
+### Locally Committed, Unpushed, And Unscored
+
+- `56dc3b3a` commits the two `/api/users/me` envelope-expectation corrections.
+  Shard 17 slice 1 had passed 38/38 with those file contents before commit, but
+  a later two-class focused rerun was inconclusive: Debug was file-locked and
+  Release exceeded its 15-minute wrapper. It adds zero points.
+- `df8c8b96` merges the nine schema commits through `97b8a4a0` into local
+  `main`. The resulting exact-SHA static inventory is 458 Laravel tables, 440
+  ASP.NET tables, 242 exact names, 216 Laravel-only names, and 198 ASP.NET-only
+  names; the chain contains 164 migration source files and 162 runtime IDs.
+  Per-slice builds, focused 3/3 tests, model-drift checks, blank replays,
+  populated upgrades, and constraint/isolation checks are recorded in
+  [`SCHEMA_PARITY.md`](SCHEMA_PARITY.md). The merge is unpushed, the post-merge
+  complete suite/CI aggregate is absent, and no scoring transaction has
+  accepted a category movement, so it adds zero points.
+
 ### Dirty And In Flight
 
-The primary worktree reports
-`src/Nexus.Api/Migrations/20260713015034_EventSafetyWorkflowParity.cs` as
-modified, but its content hash equals `HEAD`; this is a stat-only difference.
-Two backend-session-owned test files contain substantive uncommitted expectation
-corrections: `AuthorizationTests.cs` and
-`ImageUploadCompatibilityTests.cs`. They were preserved during this audit and
-contribute zero points until reviewed, verified, committed, published, and
-scored. The shard harness is now committed at `60715dfd`.
-
-The isolated `codex/schema-parity-20260714` worktree is clean at local-only
-commit `97b8a4a004362aef8356e8d76333f1efc9d44b36`, based on scorecard commit
-`ea352690`. Its nine commits add candidate Verein, marketplace support, donation
-dispute, engagement recognition, pilot inquiry, health-history, cookie-
-inventory, salary-benchmark, and residency-verification storage. The candidate
-comparison is 458 Laravel tables, 440 ASP.NET tables, 242 exact names, 216
-Laravel-only names, and 198 ASP.NET-only names, with 164 migration source files.
-It is not merged or published and has not been reconciled onto current `main`,
-rerun as one exact-SHA package, or accepted by the scoring rubric. It therefore
-contributes zero banked schema points. Web UK was clean when the coordination
-hold began. Dirty, isolated, or projected work never increases the banked score.
+The user-authorized merge transaction cleared the two backend test edits and
+the former stat-only migration entry; at the committed audit boundary there are
+no dirty backend product, migration, schema-test, or Web UK product files. The
+audit reconciliation containing this page may remain in the worktree while it
+is being assembled; its Web UK public-copy/test changes and repository
+operational guardrails are separately disclosed and remain unscored. The shard
+harness remains committed at `60715dfd`. Dirty, local-only, or projected work
+never increases the banked score.
 
 ### 2026-07-15 Windows Update Interruption
 
@@ -209,13 +219,15 @@ Stateful Web UK certification against Laravel must use a separately
 provisioned disposable Laravel environment. The ordinary local Laravel database
 is a confidential production-derived snapshot and is never a test fixture.
 
-The current discovery is 3,333 tests across 2,778 methods and 391 classes.
-Deterministic shards 1-16 and shard 17 slice 1 completed green during a moving-
-SHA investigation. Shard 17 slice 2 had no terminal TRX at the hold boundary;
-shards 18-48 were not run. Earlier time-limited aggregate/shard attempts and
-their corrected failures remain useful diagnostics, but there is no complete
-same-SHA suite or exact-SHA CI aggregate. None of the remaining 55 build/test/CI
-points can move from this partial evidence.
+Before the local schema merge, discovery was 3,333 tests across 2,778 methods
+and 391 classes. The merge adds nine schema test classes, so those counts must
+not be quoted as the current post-merge denominator until discovery is rerun.
+Deterministic shards 1-16 completed green during a moving-SHA investigation.
+Shard 17 finished 68/69: slice 1 passed 38/38 and slice 2 passed 30/31; the
+remaining impersonation workflow expected 200 but received 403 at
+`AdminExplicitParityControllerTests.cs:846`. Shards 18-48 were not run. There
+is no complete same-SHA suite or exact-SHA CI aggregate at `df8c8b96`, so none
+of the remaining 55 build/test/CI points can move from this partial evidence.
 
 ## Finite Ordered Backend Queue
 
