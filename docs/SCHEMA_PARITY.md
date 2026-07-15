@@ -9,7 +9,7 @@ Evidence provenance: the current static table inventory was regenerated on
 `903d03d3db78bbf87129ad35728be3b72819acaf` and committed schema implementation
 tree `97b8a4a004362aef8356e8d76333f1efc9d44b36`, including
 `20260715152156_MemberResidencyVerificationStorageParity`. Those nine schema
-commits are now merged into local `main`; the inventory remains tied to the
+commits are now merged into published `main`; the inventory remains tied to the
 named implementation tree until regenerated on a later exact mainline SHA. Any
 older table/count without its own exact source pair is a historical,
 provenance-incomplete checkpoint and cannot support current score or
@@ -392,12 +392,12 @@ are mutually exclusive, so their counts reconcile to the comparator total.
 ### Merged Implementation Boundary - Not Rescored
 
 The nine commits through `97b8a4a004362aef8356e8d76333f1efc9d44b36`
-are now merged into local `main`. Their branch-local comparator reports 458
+are now merged into published `main`. Their implementation-tree comparator reports 458
 Laravel tables, 440 ASP.NET tables, 242 exact names, 216 missing Laravel exact
 names, 198 ASP.NET-only names, and 164 EF migration source files. Each slice
 has its own focused build, test, model-drift, blank-replay, and populated-upgrade
 evidence above, but the combined merged lineage has not yet received a new
-canonical scoring transaction or remote exact-SHA certification. The current
+canonical scoring transaction or complete published exact-SHA certification. The current
 banked schema category therefore remains **129/150**.
 
 The five Verein names previously classified as genuine missing storage are now

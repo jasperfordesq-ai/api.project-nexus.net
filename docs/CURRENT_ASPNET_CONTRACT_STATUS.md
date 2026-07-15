@@ -1,6 +1,6 @@
 # Current ASP.NET Contract Status
 
-Last verified: 2026-07-15 18:00 +01:00
+Last verified: 2026-07-15 18:24 +01:00
 
 Status: **Canonical current - ASP.NET score and certification source**
 
@@ -42,10 +42,10 @@ change.
 
 The 2026-07-15 system-wide re-audit keeps this score unchanged. Eleven backend
 implementation/test commits were published to `origin/main` after the restart
-scorecard. A later user-authorized local transaction committed two test
-expectation corrections and merged nine verified schema slices, but it has not
-been pushed and has no fixed-rubric scoring transaction, refreshed complete
-exact-SHA suite, or CI aggregate. All are recorded below instead of being
+scorecard. A later user-authorized transaction committed two test expectation
+corrections and merged nine verified schema slices; that transaction is now
+published but still has no fixed-rubric scoring transaction or refreshed
+complete exact-SHA suite/CI aggregate. All are recorded below instead of being
 converted into an estimated percentage.
 
 | Category | Banked | Maximum | Open |
@@ -105,13 +105,13 @@ These named values form an audit trail. They are not competing current scores.
 
 The latest banked backend implementation inspected for this page is
 `5fa15e0e79993464622b1c3ef053fcdd01679991`, with Laravel frozen at
-`903d03d3db78bbf87129ad35728be3b72819acaf`. At this verification boundary,
-the latest local product/schema commit is merge
-`df8c8b96c80804785e9c84f9f7c75337088d6024`, while `origin/main` remains
-`9ad163c969a935407297eb459a9840798a1a9e78`. The audit reconciliation
-containing this page may sit above that backend boundary and includes
+`903d03d3db78bbf87129ad35728be3b72819acaf`. The latest published backend
+product/schema commit is merge
+`df8c8b96c80804785e9c84f9f7c75337088d6024`. `origin/main` also contains audit
+reconciliation `7339918be78148e4e5322aa69a1934e8f1b280c6` and the publication-
+status transaction containing this page. Those later commits include
 documentation, Web UK public-copy/test corrections, and repository operational
-guardrails. It changes no ASP.NET contract implementation and adds no backend
+guardrails; they change no ASP.NET contract implementation and add no backend
 points.
 
 ### Published But Not Rescored
@@ -157,32 +157,30 @@ but remain unscored:
 
 All eleven contribute **zero banked points** at this snapshot.
 
-### Locally Committed, Unpushed, And Unscored
+### Published But Still Unscored
 
 - `56dc3b3a` commits the two `/api/users/me` envelope-expectation corrections.
   Shard 17 slice 1 had passed 38/38 with those file contents before commit, but
   a later two-class focused rerun was inconclusive: Debug was file-locked and
   Release exceeded its 15-minute wrapper. It adds zero points.
-- `df8c8b96` merges the nine schema commits through `97b8a4a0` into local
+- `df8c8b96` merges the nine schema commits through `97b8a4a0` into published
   `main`. The resulting exact-SHA static inventory is 458 Laravel tables, 440
   ASP.NET tables, 242 exact names, 216 Laravel-only names, and 198 ASP.NET-only
   names; the chain contains 164 migration source files and 162 runtime IDs.
   Per-slice builds, focused 3/3 tests, model-drift checks, blank replays,
   populated upgrades, and constraint/isolation checks are recorded in
-  [`SCHEMA_PARITY.md`](SCHEMA_PARITY.md). The merge is unpushed, the post-merge
-  complete suite/CI aggregate is absent, and no scoring transaction has
+  [`SCHEMA_PARITY.md`](SCHEMA_PARITY.md). The post-merge complete suite/CI
+  aggregate is absent, and no scoring transaction has
   accepted a category movement, so it adds zero points.
 
 ### Dirty And In Flight
 
 The user-authorized merge transaction cleared the two backend test edits and
-the former stat-only migration entry; at the committed audit boundary there are
-no dirty backend product, migration, schema-test, or Web UK product files. The
-audit reconciliation containing this page may remain in the worktree while it
-is being assembled; its Web UK public-copy/test changes and repository
-operational guardrails are separately disclosed and remain unscored. The shard
-harness remains committed at `60715dfd`. Dirty, local-only, or projected work
-never increases the banked score.
+the former stat-only migration entry. All active task worktrees are clean at
+this publication boundary. The published Web UK public-copy/test changes and
+repository operational guardrails are separately disclosed and remain
+unscored. The shard harness remains committed at `60715dfd`. Dirty, isolated,
+or projected work never increases the banked score.
 
 ### 2026-07-15 Windows Update Interruption
 

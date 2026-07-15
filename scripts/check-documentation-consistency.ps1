@@ -279,7 +279,7 @@ if ($null -ne $status) {
         'must disclose the published-but-unscored post-scorecard backend delta.'
     Assert-Contains 'docs/CURRENT_ASPNET_CONTRACT_STATUS.md' $status `
         'df8c8b96c80804785e9c84f9f7c75337088d6024' `
-        'must identify the local unpushed schema merge exactly.'
+        'must identify the published but unscored schema merge exactly.'
 }
 
 $webUkStatus = Get-DocumentText 'apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md'

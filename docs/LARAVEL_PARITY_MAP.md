@@ -25,8 +25,8 @@ behavior and others correct the test harness or expectations. The canonical
 status lists them and keeps the bank at 712/1000 pending a complete scoring and
 certification transaction; this detailed map does not estimate their value.
 
-Local `main` is now at unpushed schema merge `df8c8b96`. Its nine schema slices
-are current local implementation evidence in `SCHEMA_PARITY.md`, not a silent
+Published `main` now includes schema merge `df8c8b96`. Its nine schema slices
+are current published implementation evidence in `SCHEMA_PARITY.md`, not a silent
 API/workflow score movement. The broader semantic map below remains anchored to
 the `9ad163c9` behavior boundary until a full regeneration and scoring
 transaction accepts the merged lineage.

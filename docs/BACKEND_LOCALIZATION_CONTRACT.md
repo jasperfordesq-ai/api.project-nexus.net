@@ -34,7 +34,7 @@ No commit between the earlier `1ded18bd` localization inspection and current
 described here. The evidence was therefore revalidated without changing its
 deductions; later non-localization contract work remains separately unscored.
 
-Local unpushed schema merge `df8c8b96` likewise changes no localization
+Published schema merge `df8c8b96` likewise changes no localization
 catalog or localization service. It does not alter this ledger's conclusions or
 bank any localization points.
 

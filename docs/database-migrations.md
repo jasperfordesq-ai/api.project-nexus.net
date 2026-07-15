@@ -15,7 +15,7 @@ For the current migration/schema deductions and named evidence baseline, read
 chain below is a retained 2026-07-12 checkpoint; its count and latest migration
 must not be presented as the current repository chain.
 
-At remote `origin/main` commit `9ad163c969a935407297eb459a9840798a1a9e78`, the published
+At the pre-publication audit's remote `origin/main` commit `9ad163c969a935407297eb459a9840798a1a9e78`, the then-published
 backend migration tail runs from marketplace payment settlement
 `20260714105831_MarketplacePaymentSettlementParity` through Connect onboarding,
 paid-notification, escrow-settlement, refund-ledger, SSO/OIDC, and finally
@@ -28,15 +28,16 @@ and model-drift evidence for individual migrations is recorded in
 `SCHEMA_PARITY.md`. Always obtain the runtime migration list from the current
 checkout before an upgrade claim.
 
-At the 2026-07-15 17:41 +01:00 audit boundary, the nine clean schema commits
+At the 2026-07-15 17:41 +01:00 pre-publication audit boundary, the nine clean schema commits
 through `97b8a4a0` had been user-authorized for merge into local `main` at
 `df8c8b96`; that local boundary contains 164 migration source files and 162
 runtime IDs, while then-current `origin/main` at `9ad163c9` contains 155 source
 files. The refreshed table inventory and per-slice evidence are recorded in
 `SCHEMA_PARITY.md`. Publication can change this local/remote relationship, so
 verify both SHAs before repeating it. At the named boundary these migrations
-were not published, production-authorized, fully certified at the merge SHA, or
-banked.
+were not yet published, production-authorized, fully certified at the merge
+SHA, or banked. The later publication transaction puts that same migration chain
+on `origin/main`; it remains unbanked and not production-authorized.
 
 ## Historical Runtime Chain And Replay Evidence (2026-07-12)
 

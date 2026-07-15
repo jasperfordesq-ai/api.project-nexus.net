@@ -1,6 +1,6 @@
 # Documentation Health Report
 
-Last verified: 2026-07-15 18:00 +01:00
+Last verified: 2026-07-15 18:24 +01:00
 
 Status: **Generated snapshot - system-wide documentation quality only, not product readiness**
 
@@ -28,11 +28,12 @@ D2 below is the fixed system-wide health rubric going forward.
 ## Baseline D2 - 100/100
 
 Documentation Health Baseline D2 scores the remediated repository **100/100**
-against Laravel source `903d03d3db78bbf87129ad35728be3b72819acaf`, remote ASP.NET
-product `9ad163c969a935407297eb459a9840798a1a9e78`, local unpushed schema
-merge `df8c8b96c80804785e9c84f9f7c75337088d6024`, Web UK banked product
-`2e92f89e`/scoring record `b5b2c0a7`, latest remote Web UK product
-`6864f7be`, and the unpushed audit reconciliation containing this report.
+against Laravel source `903d03d3db78bbf87129ad35728be3b72819acaf`, ASP.NET behavior
+boundary `9ad163c969a935407297eb459a9840798a1a9e78`, published schema merge
+`df8c8b96c80804785e9c84f9f7c75337088d6024`, Web UK banked product
+`2e92f89e`/scoring record `b5b2c0a7`, pre-audit Web UK product `6864f7be`,
+published audit reconciliation `7339918b`, and the publication-status
+transaction containing this report.
 
 This score means the maintained documentation accurately describes both
 completed and unfinished work. It does not mean the product, ASP.NET backend,
@@ -45,8 +46,8 @@ are complete or certified.
 | Administrator, support, and vulnerability guidance | 10/10 | Tenant-admin duties are separated from platform operations; support and private vulnerability reporting are discoverable and prohibit secrets/personal data. |
 | API consumer and integration guidance | 10/10 | Consumer hub documents versioning, auth, tenancy, endpoint-specific envelopes, errors, pagination, uploads, idempotency, side effects, and correlation evidence without inventing one universal contract. |
 | System development, configuration, testing, and security | 15/15 | System hub records correct local ports/seed credentials/startup effects, canonical connection/JWT keys, the open issuer/audience guard gap, the RabbitMQ TLS limitation, disposable-test boundaries, evidence levels, tenancy/security architecture, and known limitations. |
-| Operator, production, data, and incident safety | 15/15 | Production needs explicit authority. The local deploy workflow is manual-only, validates an exact SHA without shell interpolation, and hard-disables the unapproved legacy deploy job; the still-automatic remote workflow and unprotected GitHub environment are explicitly recorded. Obsolete Compose files expose no services, health alert permissions/coverage are corrected locally, and restart/auto-migration, backup/restore, and read-only incident boundaries are explicit. |
-| Current status, scoring, and provenance | 15/15 | Backend remains 712/1000; Web UK W1 remains 663/1000 while W2 has no percentage and three explicit finish-line gates (manual evidence/fixes, an upstream accessibility-copy parity decision, then scoring/certification); 11 remote backend commits, 38 later Web UK commits, local test commit `56dc3b3a`, and locally merged schema commit `df8c8b96` remain unscored. |
+| Operator, production, data, and incident safety | 15/15 | Production needs explicit authority. The published deploy workflow is manual-only, validates an exact SHA without shell interpolation, and hard-disables the unapproved legacy deploy job; the unprotected GitHub environment remains explicit. Obsolete Compose files expose no services, health alert permissions/coverage are corrected, and restart/auto-migration, backup/restore, and read-only incident boundaries are explicit. |
+| Current status, scoring, and provenance | 15/15 | Backend remains 712/1000; Web UK W1 remains 663/1000 while W2 has no percentage and three explicit finish-line gates (manual evidence/fixes, an upstream accessibility-copy parity decision, then scoring/certification); 11 earlier backend commits, 38 later Web UK commits, test commit `56dc3b3a`, and schema merge `df8c8b96` are published but remain unscored. |
 | Navigation, ownership, and historical integrity | 10/10 | Root/docs/Web UK entry points route each audience to one authority; historical handoffs and tool-owned snapshots cannot supply current scores or queues. |
 | Automated consistency, links, and executable-example hygiene | 10/10 | The consistency guard checks audience hubs, credentials/ports, deployment safety, configuration keys, score markers, and stale Web UK prose in addition to link and diff gates. |
 | **Total** | **100/100** | **Documentation health only.** |
@@ -58,20 +59,18 @@ rubric change requires a new named baseline and a before/after mapping.
 ## Current Product Boundaries Preserved
 
 - [ASP.NET Fixed Rubric Baseline 1](CURRENT_ASPNET_CONTRACT_STATUS.md) remains
-  **712/1000**. Eleven later backend commits are remote/published. The test
-  correction `56dc3b3a` and schema merge `df8c8b96` are locally committed but
-  unpushed and unscored.
+  **712/1000**. Eleven later backend commits, test correction `56dc3b3a`, and
+  schema merge `df8c8b96` are published but unscored.
 - [Web UK Baseline W1](../apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md)
   remains **663/1000**. Goal W2 has **no percentage** and three remaining
   finish-line gates: one safe-fixture manual-accessibility evidence/fix package,
   one upstream accessibility-copy parity decision, then one fixed-rubric
   scoring/certification transaction. Thirty-eight later commits remain
   published but unscored.
-- Local `main` schema inventory is now 458 Laravel / 440 ASP.NET / 242 exact /
+- Published `main` schema inventory is now 458 Laravel / 440 ASP.NET / 242 exact /
   216 missing / 198 ASP.NET-only after user-authorized merge `df8c8b96`.
-  `origin/main` remains at the older 425/227/231/198 snapshot. The local merge
-  contributes zero until pushed, rerun as a complete exact-SHA package, and
-  accepted in a scoring transaction.
+  `origin/main` includes that merge. It contributes zero until rerun as a
+  complete exact-SHA package and accepted in a scoring transaction.
 - The ordinary Laravel database remains a confidential production-derived
   snapshot and is never a test fixture.
 
@@ -101,7 +100,7 @@ category sum are also enforced by the consistency guard.
 
 ## Verification Results At D2
 
-- documentation consistency: passed after the local schema-merge boundary was
+- documentation consistency: passed after the published schema-merge boundary was
   reconciled;
 - relative Markdown links: 212 links across 91 Markdown files, zero missing;
 - workflow syntax: all 8 GitHub workflow YAML files parsed;
@@ -131,11 +130,12 @@ category sum are also enforced by the consistency guard.
 No production system, Laravel database, production-derived data, or remote
 deployment was used by these documentation checks.
 
-Read-only GitHub metadata at the audit boundary confirmed that `origin/main`
-still carries the old automatic trigger, the named `production` environment has
-no protection rules and permits administrator bypass, and repository workflow
-permissions default to read-only. These are recorded operational hazards, not
-evidence that the local safety transaction has been published.
+Pre-publication GitHub metadata confirmed that `origin/main` carried the old
+automatic trigger. The publication transaction replaces it with the manual-only
+workflow whose deploy job is hard-disabled. The named `production` environment
+still has no protection rules and permits administrator bypass, while repository
+workflow permissions default to read-only; those unresolved operational hazards
+remain recorded.
 
 Do not retain 100/100 if any required gate fails or an independent audit finds
 an unresolved contradiction. Correct the defect or lower the affected D2 row

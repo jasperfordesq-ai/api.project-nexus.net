@@ -1,6 +1,6 @@
 # Current Laravel-First Accessible Frontend Status
 
-Last audited: 2026-07-15 18:00 +01:00
+Last audited: 2026-07-15 18:24 +01:00
 
 Status: **Canonical current — sole Web UK coordination and scoring source**
 
@@ -221,24 +221,23 @@ workstream.
   at `a3f18f06` records its dirty-state caveat. No later commit is converted
   into points until a complete audit names its rubric, evidence, deductions,
   and new total.
-- **Locally committed but unpushed:** documentation transaction `2d933f7c`
+- **Published audit and public-copy delta:** documentation transaction `2d933f7c`
   removes part of the unsupported public keyboard/screen-reader assurance,
   updates focused tests, and replaces stale Web UK user/developer
   documentation. Follow-up `9a3337eb` corrects the local container contract.
   The audit reconciliation containing this page also withholds the remaining
   `accessibility.commitment_body` and `home.supporting_text` claims, which say
   the unmanually-certified service works well with keyboards and screen
-  readers. These changes add zero points until published and included in the
-  next complete W2 audit.
-- **Current repository boundary:** `origin/main` remains
-  `9ad163c969a935407297eb459a9840798a1a9e78`; local schema merge
-  `df8c8b96c80804785e9c84f9f7c75337088d6024` sits below the audit
-  reconciliation containing this page. The latest remote Web UK product commit
-  before backend-only advances is `6864f7be`; the later local Web UK delta is
-  the two committed audit corrections above plus the final public-copy/test
-  reconciliation. At the committed audit boundary no Web UK product files are
-  dirty. All local deltas remain unpushed and unscored; unrelated
-  backend/schema work contributes no Web UK points.
+  readers. Audit reconciliation `7339918b` and the publication-status
+  transaction containing this page publish that delta, but it adds zero points
+  until included in the next complete W2 audit.
+- **Current repository boundary:** `origin/main` contains schema merge
+  `df8c8b96c80804785e9c84f9f7c75337088d6024`, audit reconciliation
+  `7339918be78148e4e5322aa69a1934e8f1b280c6`, and the publication-status
+  transaction containing this page. The latest pre-audit Web UK product commit
+  is `6864f7be`; the later published Web UK delta is the audit/public-copy/test
+  correction above. All active task worktrees are clean. The delta remains
+  unscored; unrelated backend/schema work contributes no Web UK points.
 
 ### Current Verification Gates
 
@@ -250,7 +249,7 @@ workstream.
 | Missing Laravel routes | 1 | Event offline check-in code generation |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 55/55 suites, 1,755/1,755 tests at `6864f7be`; post-`2d933f7c` focused legal/accessibility proof 2/2 and generator/document proof 3 suites, 10/10 tests | The complete uninterrupted `--runInBand` run took 204.59 seconds at the named remote Web UK product boundary. It was not rerun after the local audit changed the legal route, accessibility template, and focused test; do not present it as a current-local aggregate. |
+| Jest | 55/55 suites, 1,755/1,755 tests at `6864f7be`; post-`2d933f7c` focused legal/accessibility proof 2/2 and generator/document proof 3 suites, 10/10 tests | The complete uninterrupted `--runInBand` run took 204.59 seconds at the named pre-audit Web UK product boundary. It was not rerun after the now-published audit changed the legal route, accessibility template, and focused test; do not present it as a current aggregate. |
 | Brand, lint, and CSS | Passed | Current source gates |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Zero missing/extra structural keys |
 | Static locale usage | 7,629 references, 5,814 unique keys, 0 unresolved | Complete post-suppression current-reference audit |
