@@ -3818,6 +3818,51 @@ describe('API Request Functions', () => {
         })
       );
     });
+
+    it('should preserve global notification and safeguarding review mutation paths', async () => {
+      const cases = [
+        ['/notifications/settings', { context_type: 'global', context_id: 0, frequency: 'daily' }],
+        ['/safeguarding/vetting-review-request', undefined],
+        ['/safeguarding/confirm-policy-review', undefined]
+      ];
+
+      for (const [pathValue, body] of cases) {
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { accepted: true } })
+        });
+
+        await expect(api.callProfileApi('test-token', 'POST', pathValue, body))
+          .resolves.toEqual({ data: { accepted: true } });
+        expect(mockFetch).toHaveBeenLastCalledWith(
+          `http://localhost:5000/api/v2${pathValue}`,
+          expect.objectContaining({
+            method: 'POST',
+            headers: expect.objectContaining({ Authorization: 'Bearer test-token' }),
+            ...(body === undefined ? {} : { body: JSON.stringify(body) })
+          })
+        );
+        if (body === undefined) {
+          expect(mockFetch.mock.calls.at(-1)[1]).not.toHaveProperty('body');
+        }
+      }
+
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 409,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ message: 'A vetting review is already open.', code: 'VETTING_REVIEW_ALREADY_OPEN' })
+      });
+
+      await expect(api.callProfileApi('test-token', 'POST', '/safeguarding/vetting-review-request'))
+        .rejects.toMatchObject({
+          name: 'ApiError',
+          status: 409,
+          message: 'A vetting review is already open.',
+          data: { message: 'A vetting review is already open.', code: 'VETTING_REVIEW_ALREADY_OPEN' }
+        });
+    });
   });
 
   describe('callWebAuthnApi', () => {

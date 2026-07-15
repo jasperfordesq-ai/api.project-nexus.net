@@ -1674,6 +1674,22 @@ database, migration, runtime request, container, or production operation was
 performed. This slice is unscored; the canonical bank remains `663/1,000`
 until another complete fixed-rubric audit.
 
+### 2026-07-15 Profile policy path-assertion follow-up
+
+The shared profile dispatcher now has direct API-client proof for global digest
+settings, vetting-review requests, and policy-review confirmation in addition
+to safeguarding revocation. The cases pin Laravel's exact v2 paths, POST verbs,
+bearer authority, the global context/frequency payload, body omission for the
+controlled no-evidence review actions, unmodified success envelopes, and
+structured already-open `409` propagation. Existing direct proof continues to
+cover member block/unblock and connection decline. Live policy state, session
+effects and role variants require the isolated disposable runtime.
+
+The focused API-client suite passes `236/236`. No Laravel or ASP.NET source,
+database, migration, runtime request, container, or production operation was
+performed. This slice is unscored; the canonical bank remains `663/1,000`
+until another complete fixed-rubric audit.
+
 - GOV.UK crown, logotype, official header identity, OGL block, or Crown
   copyright wording.
 - Laravel/PHP implementation details.
