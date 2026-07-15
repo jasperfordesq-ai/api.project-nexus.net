@@ -1555,6 +1555,21 @@ database, migration, runtime request, container, or production operation was
 performed. This slice is unscored; the canonical bank remains `663/1,000`
 until another complete fixed-rubric audit.
 
+### 2026-07-15 Jobs response path-assertion follow-up
+
+The shared Jobs dispatcher now has direct API-client proof for all four
+OpenAPI-omitted interview and offer response paths. Accept/decline/reject cases
+pin Laravel's exact nested paths, `PUT` verbs, bearer authority, notes payloads,
+unmodified response states, and structured no-longer-pending `409` propagation.
+This closes the currently generated Jobs response-decision path set at the
+API-client boundary; routed role/significant-state tests remain in place, while
+live two-user effects and cleanup remain assigned to the disposable environment.
+
+The focused API-client suite passes `228/228`. No Laravel or ASP.NET source,
+database, migration, runtime request, container, or production operation was
+performed. This slice is unscored; the canonical bank remains `663/1,000`
+until another complete fixed-rubric audit.
+
 - GOV.UK crown, logotype, official header identity, OGL block, or Crown
   copyright wording.
 - Laravel/PHP implementation details.

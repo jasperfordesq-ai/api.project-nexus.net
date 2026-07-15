@@ -2009,6 +2009,49 @@ describe('API Request Functions', () => {
       );
     });
 
+    it('should preserve interview and offer decision paths, notes, and conflict errors', async () => {
+      const cases = [
+        ['/interviews/31/accept', { notes: 'I can attend.' }, 'accepted'],
+        ['/interviews/32/decline', { notes: 'I am unavailable.' }, 'declined'],
+        ['/offers/41/accept', { notes: 'Thank you.' }, 'accepted'],
+        ['/offers/42/reject', { notes: 'I have accepted another role.' }, 'rejected']
+      ];
+
+      for (const [pathValue, body, status] of cases) {
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { status } })
+        });
+
+        await expect(api.callJobApi('test-token', 'PUT', pathValue, body))
+          .resolves.toEqual({ data: { status } });
+        expect(mockFetch).toHaveBeenLastCalledWith(
+          `http://localhost:5000/api/v2/jobs${pathValue}`,
+          expect.objectContaining({
+            method: 'PUT',
+            headers: expect.objectContaining({ Authorization: 'Bearer test-token' }),
+            body: JSON.stringify(body)
+          })
+        );
+      }
+
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 409,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ message: 'This response is no longer pending.', code: 'RESPONSE_NOT_PENDING' })
+      });
+
+      await expect(api.callJobApi('test-token', 'PUT', '/offers/41/accept', { notes: '' }))
+        .rejects.toMatchObject({
+          name: 'ApiError',
+          status: 409,
+          message: 'This response is no longer pending.',
+          data: { message: 'This response is no longer pending.', code: 'RESPONSE_NOT_PENDING' }
+        });
+    });
+
     it('should upload job application CVs to Laravel with multipart data', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
