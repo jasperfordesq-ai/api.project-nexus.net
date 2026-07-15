@@ -287,6 +287,27 @@ if ($null -ne $status) {
     Assert-Contains 'docs/CURRENT_ASPNET_CONTRACT_STATUS.md' $status `
         'df8c8b96c80804785e9c84f9f7c75337088d6024' `
         'must identify the published but unscored schema merge exactly.'
+    Assert-Contains 'docs/CURRENT_ASPNET_CONTRACT_STATUS.md' $status `
+        'dbafc5c329c55a15b4329ff90804d725dbf8b089' `
+        'must identify the green exact-SHA test/evidence boundary.'
+    Assert-Contains 'docs/CURRENT_ASPNET_CONTRACT_STATUS.md' $status `
+        '29451087913' `
+        'must identify the terminal-green required CI run.'
+}
+
+$schemaStatus = Get-DocumentText 'docs/CURRENT_SCHEMA_READINESS.md'
+if ($null -ne $schemaStatus) {
+    Assert-Contains 'docs/CURRENT_SCHEMA_READINESS.md' $schemaStatus `
+        '<!--\s*doc-consistency:\s*SCHEMA_CURRENT_PRODUCT_SHA=c767050a3eabd064bdf647695b9699b98186342b\s*-->' `
+        'must preserve the current schema implementation boundary.'
+    Assert-Contains 'docs/CURRENT_SCHEMA_READINESS.md' $schemaStatus `
+        '<!--\s*doc-consistency:\s*SCHEMA_CURRENT_RUNTIME_MIGRATIONS=163\s*-->' `
+        'must preserve the current runtime migration count.'
+    foreach ($greenBoundary in @('dbafc5c329c55a15b4329ff90804d725dbf8b089', '29451087913')) {
+        Assert-Contains 'docs/CURRENT_SCHEMA_READINESS.md' $schemaStatus `
+            ([regex]::Escape($greenBoundary)) `
+            "must preserve the green CI boundary '$greenBoundary'."
+    }
 }
 
 $pauseHandoff = Get-DocumentText 'docs/PROJECT_PAUSE_HANDOFF_2026-07-15.md'
@@ -313,6 +334,9 @@ if ($null -ne $pauseHandoff) {
         '903d03d3db78bbf87129ad35728be3b72819acaf',
         '712/1000',
         '129/150',
+        'dbafc5c329c55a15b4329ff90804d725dbf8b089',
+        '29451087913',
+        'pause/2026-07-15-final',
         'PROJECT_PAUSE_STATE=PAUSED'
     )) {
         Assert-Contains 'docs/PROJECT_PAUSE_HANDOFF_2026-07-15.md' $pauseHandoff `
@@ -323,8 +347,18 @@ if ($null -ne $pauseHandoff) {
         '(?i)externally contract-identical' `
         'must state the corrected backend objective.'
     Assert-Contains 'docs/PROJECT_PAUSE_HANDOFF_2026-07-15.md' $pauseHandoff `
-        '(?i)opening (?:or cloning )?the repository does not resume' `
+        '(?i)opening\s+(?:or\s+cloning\s+)?the\s+repository\s+does\s+not\s+resume' `
         'must make the pause fence explicit.'
+}
+
+foreach ($relativePath in @('CLAUDE.md', 'docs/API_PARITY.md', 'docs/MODULES.md', 'docs/LARAVEL_PARITY_MAP.md')) {
+    $greenCiText = Get-DocumentText $relativePath
+    if ($null -eq $greenCiText) { continue }
+    Assert-Contains $relativePath $greenCiText 'dbafc5c3' `
+        'must acknowledge the green general exact-SHA aggregate.'
+    Assert-NotContains $relativePath $greenCiText `
+        '(?i)(?:the\s+)?complete(?:-suite|\s+suite).{0,50}exact-SHA\s+CI.{0,50}remain(?:s)?\s+(?:open|a\s+certification\s+gap)' `
+        'must not describe the now-green general complete-suite exact-SHA CI gate as still open.'
 }
 
 $webUkStatus = Get-DocumentText 'apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md'
@@ -458,6 +492,9 @@ if ($null -ne $documentationHealth) {
     Assert-Contains 'docs/DOCUMENTATION_HEALTH_REPORT.md' $documentationHealth `
         '<!--\s*doc-consistency:\s*DOCUMENTATION_HEALTH_BASELINE=D3\s*-->' `
         'must expose the pause-readiness Baseline D3 marker.'
+    Assert-Contains 'docs/DOCUMENTATION_HEALTH_REPORT.md' $documentationHealth `
+        '<!--\s*doc-consistency:\s*DOCUMENTATION_HEALTH_REVALIDATION=D3-R1\s*-->' `
+        'must expose the current D3-R1 revalidation marker.'
     $healthScoreMarker = [regex]::Match(
         $documentationHealth,
         '<!--\s*doc-consistency:\s*DOCUMENTATION_HEALTH_SCORE=(?<score>\d{1,4})/1000\s*-->'
@@ -883,4 +920,4 @@ if ($failures.Count -gt 0) {
 }
 
 Write-Host 'Documentation consistency check passed.' -ForegroundColor Green
-Write-Host 'Validated D3 pause readiness, audience hubs, canonical scores/state boundaries, 2x2 architecture, generated provenance, current credentials/ports/config keys, Web UK resume authority, Laravel database safety, and production/deployment quarantines.'
+Write-Host 'Validated D3/D3-R1 pause readiness, audience hubs, canonical scores/state boundaries, green CI evidence, 2x2 architecture, generated provenance, current credentials/ports/config keys, Web UK resume authority, Laravel database safety, and production/deployment quarantines.'

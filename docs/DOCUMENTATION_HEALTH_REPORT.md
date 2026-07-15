@@ -1,11 +1,12 @@
 # Documentation Health And Pause-Readiness Report
 
-Last verified: 2026-07-15 22:39 +01:00
+Last verified: 2026-07-15 22:51 +01:00
 
 Status: **Generated snapshot — documentation and handoff quality only, not product readiness**
 
 <!-- doc-consistency: DOCUMENTATION_HEALTH_BASELINE=D3 -->
 <!-- doc-consistency: DOCUMENTATION_HEALTH_SCORE=1000/1000 -->
+<!-- doc-consistency: DOCUMENTATION_HEALTH_REVALIDATION=D3-R1 -->
 
 ## Audit Correction And Scope
 
@@ -44,18 +45,28 @@ client switching, CI, providers, or production are complete or certified.
 | --- | ---: | --- |
 | Mission and contract-decision integrity | 120/120 | ADR-0001 makes externally contract-identical behavior binding. Every first-read guide states the two-unchanged-frontends-by-two-backends target, Laravel authority, configuration-only switching, and prohibition on frontend forks. Historical “parity” is explicitly shorthand, never a weaker acceptance standard. |
 | Navigation, authority, and cold-start order | 110/110 | Root/docs/Web UK entry points route a new agent through AGENTS, CLAUDE, the pause handoff, ADR, separate ASP.NET/schema/Web UK status pages, then the resume-only runbook. Governance defines one authority for each decision, score, audience, and operational boundary. |
-| Exact pause state, provenance, and certification honesty | 140/140 | At the tagged D3 snapshot, the pause handoff records named Laravel/ASP.NET/Web UK boundaries, banked versus published-unscored work, dirty generated-artifact provenance, independent product scores, CI timeout semantics, invalidation rules, and what must never be inferred from static counts or focused evidence. The appended post-pause record preserves rather than rewrites that history. |
-| Schema readiness and recommission blueprint | 140/140 | At the tagged D3 snapshot, the schema record captured 165 classes/163 runtime IDs/two quarantines, the migration-163 repair, earlier blank and populated evidence, 129/150 bank, exact diagnostic counts, the then-timed-out exact-SHA CI result, seven missing proof gates, safe disposable-database commands, and first tasks for the next phase. The maintained current page now records the later green required-CI subgate separately. |
+| Exact pause state, provenance, and certification honesty | 140/140 | The handoff preserves the original tagged D3 snapshot and separately records the authorized CI resumption, exact green test/evidence SHA, unchanged scores, hosted-risk snapshot, final re-freeze, invalidation rules, and what must never be inferred from static or focused evidence. |
+| Schema readiness and recommission blueprint | 140/140 | The schema record captures 165 classes/163 runtime IDs/two quarantines, the migration-163 repair, earlier blank and populated evidence, 129/150 bank, exact diagnostic counts, green general exact-SHA CI, still-missing migration-specific and release proof, safe disposable-database commands, and first tasks for the next phase. |
 | Workstream handoffs, prompts, ownership, and finite queues | 130/130 | The pause handoff supplies copy-ready read-only, backend, schema, and Web UK prompts. Canonical status pages preserve the backend eight-package queue and Web UK three-gate finish line. The runbook is fenced as resume-only and exclusive ownership rules protect shared hotspots. |
 | Development, testing, security, data, and operations safety | 110/110 | Maintained guides cover supported Docker development, real ports and fictitious seed identities, configuration, test evidence levels, tenant/security invariants, ordinary-Laravel-database prohibition, manual-only production authority, deployment quarantine, incidents, backups/restores, and exact-SHA limitations. Invalid shard documentation was corrected to `-ShardIndex`. |
 | Audience, contributor, legal, and governance coverage | 90/90 | Member, administrator, API consumer, developer/operator, support, vulnerability, contributor, and conduct audiences have discoverable entry points. Root and Web UK attribution agree on hOUR Timebank CLG and Sarah Bird. CONTRIBUTING, contributor terms, CODE_OF_CONDUCT, LICENSE, NOTICE, SUPPORT, SECURITY, CHANGELOG, and the ADR index are linked. |
-| Git/worktree/stash/branch freeze and history preservation | 80/80 | Five initial worktrees became one; nine initial local branches became `main` only; eight old stashes became zero; unique and superseded histories were retained under 18 pushed `archive/pre-pause/*` tags; seven stale remote branches were removed; three branches backing open Dependabot PRs were retained; ignored accidental debris was removed. |
-| Automated consistency, links, artifact hygiene, and reproducibility | 80/80 | The documentation guard checks D3 arithmetic, pause markers, score/provenance boundaries, safety rules, audience entry points, generated-artifact caveats, and deployment quarantines. The pause-readiness guard also checks Git topology, archive-tag targets, final tag, clean remote equality, debris absence, documentation consistency, and Markdown links. |
+| Git/worktree/stash/branch freeze and history preservation | 80/80 | Five initial worktrees became one; nine initial local branches became `main` only; eight old stashes became zero; unique and superseded histories were retained under 18 pushed `archive/pre-pause/*` tags; seven stale remote branches were removed; three branches backing open Dependabot PRs were retained; ignored accidental debris was removed; the original and final pause tags have distinct immutable roles. |
+| Automated consistency, links, artifact hygiene, and reproducibility | 80/80 | The documentation guard checks D3 arithmetic, revalidation marker, pause/final-tag markers, score/provenance boundaries, safety rules, audience entry points, generated-artifact caveats, and deployment quarantines. The pause-readiness guard also checks Git topology, archive-tag targets, both pause tags, clean remote equality, debris absence, documentation consistency, and Markdown links. |
 | **Total** | **1000/1000** | **Documentation health only. Product and certification gaps remain open.** |
 
 The D3 denominator is fixed. A future contradiction or failed required gate
 reduces the affected row until corrected. A new rubric requires a named
 baseline and an explicit mapping; it must not silently preserve 1000.
+
+### D3-R1 Current Revalidation - 1000/1000
+
+After the separately authorized CI remediation, the unchanged D3 rubric was
+re-run against the clean commit identified by `pause/2026-07-15-final`.
+D3-R1 is **1000/1000 with zero deductions**. It adds the terminal-green
+`dbafc5c3` evidence, the still-open schema/release gates, the hosted GitHub risk
+snapshot, and the current clean Git proof. Historical `pause/2026-07-15`
+remains fixed at `84d7eefc`; revalidation does not move it, rescore product work,
+or convert green CI into release or production certification.
 
 ## Iterative Audit Record
 
@@ -69,6 +80,7 @@ same D3 denominator and closed explicit deductions:
 | Schema-evidence pass | 725/1000 | Canonical schema verdict and recommission package closed the schema-documentation deduction; cold-start and Git freeze remained. |
 | Handoff/governance pass | 925/1000 | Pause blueprint, read order, prompts, runbook fence, normal project docs, attribution repair, and stronger contract wording closed every documentation-content deduction. The remaining 75 points were withheld for physical Git cleanup and proof. |
 | Repository-freeze pass | **1000/1000** | Archive tags were pushed, stale worktrees/branches/stashes/remotes and debris were removed, unfinished CI work was preserved and reverted out of the final tree, and the final clean tagged boundary passed the automated guard. |
+| Post-CI D3-R1 revalidation | **1000/1000** | Green exact-SHA CI was recorded without rescoring product work, hosted risks were snapshotted, first-read timeout wording was corrected, and the clean repository was re-frozen under a distinct final tag while the historical tag remained immutable. |
 
 ## Product Boundaries Preserved
 
@@ -112,15 +124,12 @@ patches were preserved at `archive/pre-pause/unfinished-ci-sharding` and
 `pause/2026-07-15` tree.
 
 After that tag was created, the user explicitly authorized a bounded
-commit/push/fix-until-green CI phase. The refined candidate is therefore active
-again on post-pause `main`. Baseline D3 remains 1000/1000 for the named paused
-snapshot; the repository-freeze row is historical evidence and does not claim
-that the moving CI-resumption head currently passes the pause-readiness guard.
-
-That bounded phase later completed terminal green at test/evidence SHA
-`dbafc5c3` in GitHub Actions run 29451087913. Recording that later evidence does
-not rescore Baseline D3, alter its `pause/2026-07-15` tag, or imply product,
-schema-release, provider, unchanged-client, or production certification.
+commit/push/fix-until-green CI phase. It completed terminal green at
+test/evidence SHA `dbafc5c3` in GitHub Actions run 29451087913. The repository
+was then re-frozen and revalidated under the unchanged D3 rubric at
+`pause/2026-07-15-final`. This does not rescore product work, alter historical
+`pause/2026-07-15`, or imply schema-release, provider, unchanged-client, or
+production certification.
 
 ### Removed And Retained Remote Heads
 
@@ -145,24 +154,32 @@ workstream branches:
 The GitHub connector was used to distinguish live PR heads from stale remote
 branches rather than deleting all non-`main` refs indiscriminately.
 
+At the final hosted-state refresh, Dependabot reported 35 open alerts: 2
+critical, 9 high, 16 medium, and 8 low. This dated risk inventory is documented
+for the next agent; it is not acceptance, remediation, or a reason to delete the
+three live dependency PR heads. Refresh it before dependency, release, or
+production work.
+
 ## Required Verification
 
 Run from the repository root after fetching the published tags and refs:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-pause-readiness.ps1
+npm --prefix apps/web-uk ci
 npm --prefix apps/web-uk test -- --runInBand tests/contributors.test.js
 git status --short --branch
 git rev-parse HEAD
 git rev-parse origin/main
 git show pause/2026-07-15 --no-patch
+git show pause/2026-07-15-final --no-patch
 ```
 
 The pause-readiness script includes the documentation consistency and Markdown
 link checks. It must report one clean `main` worktree, no local topic branch or
 stash, `HEAD=origin/main`, only the three intentional open-PR remote heads,
-exact archive-tag targets, the final pause tag at `HEAD`, and no known ignored
-debris.
+exact archive-tag targets, the historical pause tag at `84d7eefc`, the final
+pause tag at `HEAD`, and no known ignored debris.
 
 The contributor test passed 15/15 after root/Web UK attribution reconciliation.
 No production system, production container, Laravel database, production-

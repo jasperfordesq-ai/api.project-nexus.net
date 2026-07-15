@@ -1,11 +1,12 @@
 # Project Pause And Cold-Start Handoff — 2026-07-15
 
-Last verified: 2026-07-15 22:39 +01:00
+Last verified: 2026-07-15 22:51 +01:00
 
 Status: **Canonical current — development-pause and cold-start source**
 
 <!-- doc-consistency: PROJECT_PAUSE_DATE=2026-07-15 -->
 <!-- doc-consistency: PROJECT_PAUSE_STATE=PAUSED -->
+<!-- doc-consistency: PROJECT_PAUSE_FINAL_TAG=pause/2026-07-15-final -->
 
 This is the first project-status document to read after the repository has been
 left alone. It records what was true when development paused on 15 July 2026,
@@ -14,9 +15,10 @@ current boundary. It does not authorize implementation or production work.
 
 ## One-Minute Handoff
 
-- General product development remains **paused**. Opening or cloning the repository does not resume
-  any autonomous loop. The bounded CI remediation recorded near the end of
-  this document was separately and explicitly authorized by the user.
+- General product development remains **paused**. Opening or cloning the
+  repository does not resume any autonomous loop. The separately authorized
+  bounded CI remediation recorded near the end of this document is complete;
+  the clean pause was re-established at `pause/2026-07-15-final`.
 - Do not implement, migrate, deploy, start production containers, or mutate the
   Laravel repository or its ordinary local database without a new, explicit
   user instruction.
@@ -108,7 +110,8 @@ The product state frozen by this handoff is:
 | Boundary | Value | Interpretation |
 | --- | --- | --- |
 | Laravel source | `903d03d3db78bbf87129ad35728be3b72819acaf` | Read-only contract/schema comparison source used by current evidence |
-| ASP.NET product/schema/CI | `c767050a3eabd064bdf647695b9699b98186342b` | Latest product boundary before pause documentation; published but not rescored |
+| ASP.NET product/schema implementation | `c767050a3eabd064bdf647695b9699b98186342b` | Latest product boundary before pause documentation; published but not rescored |
+| Green CI/test evidence | `dbafc5c329c55a15b4329ff90804d725dbf8b089` | Required exact-SHA CI run 29451087913 succeeded; test/workflow evidence only, not a product or score boundary |
 | Last banked ASP.NET implementation | `5fa15e0e79993464622b1c3ef053fcdd01679991` | Supports the 712/1000 bank |
 | Schema merge | `df8c8b96c80804785e9c84f9f7c75337088d6024` | Nine schema slices merged; later migration 163 repairs a fresh-chain hole |
 | Web UK banked product | `2e92f89ee03177af02f0f16b669591604d3e6403` | Product boundary for W1; scoring record `b5b2c0a7` |
@@ -151,10 +154,13 @@ What remains before schema certification:
 4. populated 162-to-163 upgrade with row, default, index, FK, and rejection
    assertions;
 5. classification of all 216 Laravel-only names by workflow significance;
-6. complete same-SHA tests and terminal-green CI; and
-7. a separate fixed-rubric scoring transaction if the evidence closes points.
+6. a separate fixed-rubric scoring transaction if the evidence closes points.
 
-GitHub Actions run 29441392036 passed Build and frozen-React checks, but the
+The former general same-SHA suite/CI item was satisfied after the first pause:
+GitHub Actions run 29451087913 is terminal green at `dbafc5c3`. It must be rerun
+after any future schema or product change and does not satisfy items 1-5.
+
+Historical GitHub Actions run 29441392036 passed Build and frozen-React checks, but the
 migrated Test job was cancelled at its 75-minute limit without a terminal
 summary; coverage then failed and Docker was skipped. Record it as timed out,
 not green or red. No production schema was inspected or modified.
@@ -262,8 +268,11 @@ stateful browser tests.
 
 ## Repository Freeze Record
 
-The final clean boundary is the commit identified by annotated tag
-`pause/2026-07-15`. At that boundary the automated pause-readiness guard proves:
+The first clean boundary is preserved by annotated tag `pause/2026-07-15` at
+`84d7eefc7a79202aae55d4a47b899023d1747d2c`. After the explicitly authorized
+CI loop, the current clean boundary is the commit identified by annotated tag
+`pause/2026-07-15-final`. At the current boundary the automated pause-readiness
+guard proves:
 
 | State | Before freeze | Final pause state |
 | --- | ---: | ---: |
@@ -306,8 +315,9 @@ Run the closing proof from a fetched checkout:
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-pause-readiness.ps1
 ```
 
-It must pass at `pause/2026-07-15`; otherwise the repository is not in the
-documented clean-pause state.
+It must pass at `pause/2026-07-15-final`; otherwise the repository is not in the
+current documented clean-pause state. The script also proves that historical
+tag `pause/2026-07-15` has not moved from `84d7eefc`.
 
 ## Authorized CI Resumption Record — 2026-07-15
 
@@ -333,10 +343,11 @@ historical pause transaction had reverted it. Its evidence boundary is:
   remained required before the resumed loop could be called green; the
   completion record follows.
 
-The annotated `pause/2026-07-15` tag remains the historical clean-pause
-boundary. `scripts/check-pause-readiness.ps1` certifies that tag, not a moving
-post-resumption `main`. Baseline D3 remains a score for the named paused
-snapshot; the current CI result must be reported separately.
+The annotated `pause/2026-07-15` tag remains the immutable historical first
+clean-pause boundary. The current final pause closure is separately tagged
+`pause/2026-07-15-final`; the readiness script verifies both facts. Baseline D3
+remains the original score and D3-R1 is its same-rubric revalidation after the
+bounded CI work, without changing any product score.
 
 ### CI Remediation Completion Record - 2026-07-15
 
@@ -371,9 +382,27 @@ blank/populated-upgrade proof, storage classification, providers, both
 unchanged-client runtime switches, release certification, and production proof
 remain open.
 
+### Hosted GitHub Snapshot - 2026-07-15
+
+The hosted state was refreshed during final pause closure:
+
+- open dependency PRs are [#11](https://github.com/jasperfordesq-ai/api.project-nexus.net/pull/11),
+  [#71](https://github.com/jasperfordesq-ai/api.project-nexus.net/pull/71), and
+  [#72](https://github.com/jasperfordesq-ai/api.project-nexus.net/pull/72); their
+  three remote heads are intentional and are not stale workstream branches;
+- GitHub Dependabot reported **35 open alerts**: 2 critical, 9 high, 16 medium,
+  and 8 low; and
+- those counts are a dated hosted snapshot, not a source audit or risk
+  acceptance. A future agent must refresh Security/Dependabot before dependency,
+  release, or production work and must not infer that the green CI run resolved
+  the alerts.
+
+No alert was dismissed and no live PR branch was deleted by the freeze audit.
+
 ## Pause Integrity Rule
 
-This handoff becomes stale if `origin/main`, the Laravel source SHA, worktree or
+This handoff becomes stale if `origin/main` moves beyond
+`pause/2026-07-15-final`, the Laravel source SHA, worktree or
 branch state, schema migration count, generated evidence, canonical scores, or
 open certification gates change. A future agent must append a new dated pause
 or resumption record rather than silently rewriting the 15 July boundary.

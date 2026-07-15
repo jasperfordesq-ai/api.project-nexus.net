@@ -27,7 +27,7 @@ file. It is the single source of truth for:
 - Architectural invariants (JWT, tenant isolation, CORS, FIDO2)
 - Current phase status and module-by-module implementation
 - Database, commands, local-dev setup, API endpoints
-- Frontend parity target and admin panel guidance
+- Frontend contract-identity target and admin panel guidance
 
 ## Emergency Frontend Guardrail
 
@@ -82,5 +82,5 @@ must not supply a current score or resume queue.
 
 For schema state, read
 [`docs/CURRENT_SCHEMA_READINESS.md`](./docs/CURRENT_SCHEMA_READINESS.md). It
-separates the working migration evidence from the current exact-SHA timeout and
-the remaining release/upgrade certification gates.
+separates the working migration evidence and green general exact-SHA CI from
+the still-open migration-specific and release/upgrade certification gates.

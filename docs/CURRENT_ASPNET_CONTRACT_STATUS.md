@@ -132,11 +132,12 @@ migration chain, so PostgreSQL functions, triggers, preflights, and other raw
 migration SQL are present in test databases. It also corrects stale ordinary-
 admin expectations for the database-backed platform-super-admin bulk policy and
 updates the obsolete volunteer-hours alias case to assert the current Laravel-
-shaped validation order. At the frozen Laravel SHA and ASP.NET implementation
-SHA, the Release test assembly built with 0 warnings and 0 errors, the focused
-fresh-migrated PostgreSQL set passed 14/14, and the five affected classes passed
-57/57 in 303.8 seconds. This adds **zero banked points** because the complete
-3,331-test suite and exact-SHA CI remain open.
+shaped validation order. At that earlier checkpoint, the Release test assembly
+built with 0 warnings and 0 errors, the focused fresh-migrated PostgreSQL set
+passed 14/14, and the five affected classes passed 57/57 in 303.8 seconds. It
+added **zero banked points** because the then-3,331-test complete suite and
+exact-SHA CI were still open. The later `dbafc5c3` aggregate closes that general
+CI subgate without retroactively scoring this implementation slice.
 
 Published commit `923db629dea331ee093018887c4533d2c4e7133e` added the
 exact-SHA canonical React call-site generator. Published correction
@@ -180,8 +181,9 @@ All eleven contribute **zero banked points** at this snapshot.
   Per-slice builds, focused 3/3 tests, model-drift checks, blank replays,
   populated upgrades, and constraint/isolation checks are recorded in
   [`SCHEMA_PARITY.md`](SCHEMA_PARITY.md). The post-merge complete suite/CI
-  aggregate is absent, and no scoring transaction has
-  accepted a category movement, so it adds zero points.
+  aggregate was absent at that checkpoint. Later exact-SHA run 29451087913 is
+  green at `dbafc5c3`, but no scoring transaction has accepted a category
+  movement, so the merge still adds zero banked points.
 - `c767050a` advances the current tree to 165 migration classes and 163 runtime
   IDs by adding `20260715184200_AddCompatibilityAuditEntriesTable`. The model
   and snapshot already represented that table; the migration repairs the fresh

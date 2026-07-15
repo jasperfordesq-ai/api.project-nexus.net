@@ -25,6 +25,8 @@ for Git history, a release-certification record, or a current score source.
   logical tests; TRX execution expanded shard-4 parameterized rows to 3,385
   total rows, all passed with 0 failed or skipped. This evidence remains
   unscored and did not deploy production or touch the Laravel database.
+- Re-established the clean pause under `pause/2026-07-15-final`; the original
+  `pause/2026-07-15` tag remains immutable at `84d7eefc`.
 
 ### Direction
 
@@ -70,6 +72,9 @@ for Git history, a release-certification record, or a current score source.
   stashes.
 - Retained only dependency branches that still back open pull requests; a
   superseded NuGet branch and the legacy `master` branch were removed.
+- Recorded the dated hosted risk snapshot: 35 open Dependabot alerts (2
+  critical, 9 high, 16 medium, 8 low). These remain untriaged by this pause
+  transaction and must be refreshed before dependency or release work.
 - Removed accidental ignored scratch paths and added an executable pause-
   readiness check.
 

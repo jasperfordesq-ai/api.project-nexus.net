@@ -121,14 +121,34 @@ try {
         }
     }
 
-    $matchingPauseTag = @(Invoke-GitLines @('tag', '--list', 'pause/2026-07-15'))
-    if ($matchingPauseTag.Count -eq 0) {
-        Add-Failure "Missing final annotated tag 'pause/2026-07-15'."
+    $historicalPauseTarget = '84d7eefc7a79202aae55d4a47b899023d1747d2c'
+    $matchingHistoricalPauseTag = @(Invoke-GitLines @('tag', '--list', 'pause/2026-07-15'))
+    if ($matchingHistoricalPauseTag.Count -eq 0) {
+        Add-Failure "Missing historical annotated tag 'pause/2026-07-15'."
     }
     else {
-        $pauseTag = @(Invoke-GitLines @('rev-parse', 'pause/2026-07-15^{}'))
-        if ($pauseTag[0] -ne $head) {
-        Add-Failure "Tag pause/2026-07-15 must point to HEAD $head (found $($pauseTag[0]))."
+        $historicalPauseTagType = @(Invoke-GitLines @('cat-file', '-t', 'pause/2026-07-15'))
+        if ($historicalPauseTagType[0] -ne 'tag') {
+            Add-Failure "Historical pause/2026-07-15 must be an annotated tag."
+        }
+        $historicalPauseTag = @(Invoke-GitLines @('rev-parse', 'pause/2026-07-15^{}'))
+        if ($historicalPauseTag[0] -ne $historicalPauseTarget) {
+            Add-Failure "Historical tag pause/2026-07-15 moved from $historicalPauseTarget (found $($historicalPauseTag[0]))."
+        }
+    }
+
+    $matchingFinalPauseTag = @(Invoke-GitLines @('tag', '--list', 'pause/2026-07-15-final'))
+    if ($matchingFinalPauseTag.Count -eq 0) {
+        Add-Failure "Missing final annotated tag 'pause/2026-07-15-final'."
+    }
+    else {
+        $finalPauseTagType = @(Invoke-GitLines @('cat-file', '-t', 'pause/2026-07-15-final'))
+        if ($finalPauseTagType[0] -ne 'tag') {
+            Add-Failure "Final pause/2026-07-15-final must be an annotated tag."
+        }
+        $finalPauseTag = @(Invoke-GitLines @('rev-parse', 'pause/2026-07-15-final^{}'))
+        if ($finalPauseTag[0] -ne $head) {
+            Add-Failure "Tag pause/2026-07-15-final must point to HEAD $head (found $($finalPauseTag[0]))."
         }
     }
 
@@ -162,4 +182,4 @@ if ($failures.Count -gt 0) {
 }
 
 Write-Host 'Pause readiness check passed.'
-Write-Host 'Validated one clean main worktree, no local topic branches or stashes, HEAD=origin/main, intentional remote heads only, exact archive tags, final pause tag, debris removal, documentation consistency, and Markdown links.'
+Write-Host 'Validated one clean main worktree, no local topic branches or stashes, HEAD=origin/main, intentional remote heads only, exact archive tags, immutable historical pause tag, final pause tag at HEAD, debris removal, documentation consistency, and Markdown links.'

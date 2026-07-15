@@ -25,9 +25,9 @@ Project NEXUS. It is a clean .NET implementation of the canonical Laravel
 Project NEXUS platform, not a PHP migration dump.
 
 The Laravel Edition at `C:\platforms\htdocs\staging` is the current source of
-truth for parity. Treat it as read-only reference material. Do not edit it, run
-destructive commands in it, deploy it, or touch its production containers from
-this workspace.
+truth for externally observable contracts. Treat it as read-only reference
+material. Do not edit it, run destructive commands in it, deploy it, or touch
+its production containers from this workspace.
 
 The objective is an externally contract-identical ASP.NET implementation of the
 Laravel contracts: API contracts, workflows, frontend-consumed behavior, admin
@@ -173,7 +173,9 @@ equivalent:
   state, browser and server PKCE, nonce/JWKS validation, public-HTTPS endpoint
   checks, tenant-qualified identity linking, domain/provisioning policy gates,
   one-time callback grants, and refresh-token issuance. Live IdP/browser proof,
-  the complete suite, and exact-SHA CI remain certification gaps.
+  fixed-rubric module acceptance, and unchanged-client runtime proof remain
+  certification gaps. The general complete exact-SHA aggregate is green at
+  `dbafc5c3`; it does not substitute for live-provider or browser evidence.
 - Mailchimp-like audience/template/sync behavior where Laravel still exposes it.
 - Partner API and partner portal surfaces.
 - Super-admin and platform-level federation/tenant controls.
