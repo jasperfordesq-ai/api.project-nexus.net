@@ -10,7 +10,13 @@ Evidence provenance: the current static table inventory was regenerated on
 tree `97b8a4a004362aef8356e8d76333f1efc9d44b36`, including
 `20260715152156_MemberResidencyVerificationStorageParity`. Those nine schema
 commits are now merged into published `main`; the inventory remains tied to the
-named implementation tree until regenerated on a later exact mainline SHA. Any
+named implementation tree until regenerated on a later exact mainline SHA.
+Published product/schema commit `c767050a3eabd064bdf647695b9699b98186342b`
+adds `20260715184200_AddCompatibilityAuditEntriesTable`, taking the source to
+165 migration classes and 163 runtime IDs. The table was already represented
+by the model and therefore does not change the static table totals below. Its
+exact-SHA CI Test job timed out, so the chain is repaired but not certified.
+Any
 older table/count without its own exact source pair is a historical,
 provenance-incomplete checkpoint and cannot support current score or
 upgrade-safety claims.
@@ -22,6 +28,10 @@ Use [`CURRENT_ASPNET_CONTRACT_STATUS.md`](CURRENT_ASPNET_CONTRACT_STATUS.md) for
 the current banked score and active schema/upgrade deductions. Dated sections
 here are retained evidence. Static table-name counts are never an overall score
 and remain historical until explicitly regenerated against named SHAs.
+
+Use [`CURRENT_SCHEMA_READINESS.md`](CURRENT_SCHEMA_READINESS.md) for the concise
+pause verdict, current runtime boundary, exact-SHA CI result, and ordered
+recommission package.
 
 ## 2026-07-15 Member Residency Verification Storage Evidence
 
@@ -369,7 +379,7 @@ comparison, not runtime migration proof, API/workflow parity, or a score.
 | Source | Count | Notes |
 | --- | ---: | --- |
 | Laravel migration files | 384 | PHP files under `database/migrations`. |
-| ASP.NET EF migration source files | 164 | Excludes designer files and the model snapshot. |
+| ASP.NET EF migration source files | 165 | Excludes designer files and the model snapshot; current product boundary `c767050a`. |
 | Laravel created tables | 301 | Unique `Schema::create(...)` names. |
 | Laravel touched tables | 131 | Unique `Schema::table(...)` names. |
 | Laravel explicit model tables | 268 | Unique explicit model `$table` declarations. |
@@ -394,7 +404,10 @@ are mutually exclusive, so their counts reconcile to the comparator total.
 The nine commits through `97b8a4a004362aef8356e8d76333f1efc9d44b36`
 are now merged into published `main`. Their implementation-tree comparator reports 458
 Laravel tables, 440 ASP.NET tables, 242 exact names, 216 missing Laravel exact
-names, 198 ASP.NET-only names, and 164 EF migration source files. Each slice
+names, 198 ASP.NET-only names, and 164 EF migration source files. Current
+product commit `c767050a` adds migration source/runtime ID 163 without changing
+those static table-name totals, so the current tree has 165 migration classes.
+Each slice
 has its own focused build, test, model-drift, blank-replay, and populated-upgrade
 evidence above, but the combined merged lineage has not yet received a new
 canonical scoring transaction or complete published exact-SHA certification. The current

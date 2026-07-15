@@ -21,6 +21,7 @@ configuration only, with Laravel defining the contract ASP.NET must satisfy.
 | [../SECURITY.md](../SECURITY.md) | Private vulnerability reporting and safe-testing policy. |
 | [FULL_PARITY_REMEDIATION_RUNBOOK.md](FULL_PARITY_REMEDIATION_RUNBOOK.md) | Fixed cross-workstream rubric, two-frontends-by-two-backends completion gate, shared evidence rules, and autonomous execution loop. Each canonical status document owns its live queue. |
 | [CURRENT_ASPNET_CONTRACT_STATUS.md](CURRENT_ASPNET_CONTRACT_STATUS.md) | Current ASP.NET fixed-rubric score, evidence boundary, published-but-unscored work, blockers, and next queue. Start here for backend status or resumption. |
+| [CURRENT_SCHEMA_READINESS.md](CURRENT_SCHEMA_READINESS.md) | One-page schema verdict at the pause: 163-ID runtime boundary, proved versus unproved migration evidence, static gap classification, CI timeout, and safe recommission sequence. |
 | [BACKEND_LOCALIZATION_CONTRACT.md](BACKEND_LOCALIZATION_CONTRACT.md) | Maintained ASP.NET backend localization contract: fixed Laravel/ASP.NET SHAs, request and recipient locale behavior, committed evidence, dirty-worktree boundary, and certification gaps. |
 | [DOCUMENTATION_GOVERNANCE.md](DOCUMENTATION_GOVERNANCE.md) | Canonical document hierarchy, fixed scoring/reporting rules, history labels, safety requirements, and documentation-health gate. |
 | [decisions/README.md](decisions/README.md) | Accepted architecture decisions. ADR-0001 makes externally contract-identical Laravel/ASP.NET behavior the binding backend objective. |

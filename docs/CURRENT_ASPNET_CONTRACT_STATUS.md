@@ -1,6 +1,6 @@
 # Current ASP.NET Contract Status
 
-Last verified: 2026-07-15 18:24 +01:00
+Last verified: 2026-07-15 20:58 +01:00
 
 Status: **Canonical current - ASP.NET score and certification source**
 
@@ -11,6 +11,10 @@ Use this document for the current ASP.NET completion score. Use
 the fixed rubric, shared evidence gates, and execution loop. The finite ordered
 backend queue lives in this document. Historical
 scores elsewhere are checkpoints only and do not override this page.
+
+For the current schema-chain verdict and cold-start sequence, read
+[`CURRENT_SCHEMA_READINESS.md`](CURRENT_SCHEMA_READINESS.md). It does not create
+a separate backend score.
 
 The matching accessible-frontend source is
 [`CURRENT_LARAVEL_FIRST_PARITY_STATUS.md`](../apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md).
@@ -110,13 +114,12 @@ These named values form an audit trail. They are not competing current scores.
 The latest banked backend implementation inspected for this page is
 `5fa15e0e79993464622b1c3ef053fcdd01679991`, with Laravel frozen at
 `903d03d3db78bbf87129ad35728be3b72819acaf`. The latest published backend
-product/schema commit is merge
-`df8c8b96c80804785e9c84f9f7c75337088d6024`. `origin/main` also contains audit
-reconciliation `7339918be78148e4e5322aa69a1934e8f1b280c6` and the publication-
-status transaction containing this page. Those later commits include
-documentation, Web UK public-copy/test corrections, and repository operational
-guardrails; they change no ASP.NET contract implementation and add no backend
-points.
+product/schema/CI commit is
+`c767050a3eabd064bdf647695b9699b98186342b`. It follows schema merge
+`df8c8b96c80804785e9c84f9f7c75337088d6024` and adds the missing runtime
+creation migration for `compatibility_audit_entries` plus contract, test, and
+CI corrections. It remains published but unscored. Later pause-documentation
+commits change no backend implementation and add no backend points.
 
 ### Published But Not Rescored
 
@@ -170,12 +173,21 @@ All eleven contribute **zero banked points** at this snapshot.
 - `df8c8b96` merges the nine schema commits through `97b8a4a0` into published
   `main`. The resulting exact-SHA static inventory is 458 Laravel tables, 440
   ASP.NET tables, 242 exact names, 216 Laravel-only names, and 198 ASP.NET-only
-  names; the chain contains 164 migration source files and 162 runtime IDs.
+  names; that branch contained 164 migration source files and 162 runtime IDs.
   Per-slice builds, focused 3/3 tests, model-drift checks, blank replays,
   populated upgrades, and constraint/isolation checks are recorded in
   [`SCHEMA_PARITY.md`](SCHEMA_PARITY.md). The post-merge complete suite/CI
   aggregate is absent, and no scoring transaction has
   accepted a category movement, so it adds zero points.
+- `c767050a` advances the current tree to 165 migration classes and 163 runtime
+  IDs by adding `20260715184200_AddCompatibilityAuditEntriesTable`. The model
+  and snapshot already represented that table; the migration repairs the fresh
+  runtime chain. Exact-SHA CI run
+  [29441392036](https://github.com/jasperfordesq-ai/api.project-nexus.net/actions/runs/29441392036)
+  passed Build, but its migrated Test job was cancelled at the 75-minute limit
+  without a terminal summary; coverage merge failed and Docker publish was
+  skipped. It adds zero points. The precise schema verdict and recommission
+  package are in [`CURRENT_SCHEMA_READINESS.md`](CURRENT_SCHEMA_READINESS.md).
 
 ### Dirty And In Flight
 

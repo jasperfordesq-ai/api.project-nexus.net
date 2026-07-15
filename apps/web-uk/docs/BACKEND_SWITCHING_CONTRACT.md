@@ -944,7 +944,13 @@ On the same date, a focused group/course smoke against temporary Web UK
 Parameterised matched GET route shapes without default runtime smoke coverage
 fell from 28 to 0.
 
-## Current Page Candidates
+## Historical Page-Candidate Evidence (Superseded As A Queue)
+
+The narrative below is retained as dated implementation evidence. It is not a
+current page queue or switching checklist. Use
+`CURRENT_LARAVEL_FIRST_PARITY_STATUS.md` for Web UK and the root
+`CURRENT_ASPNET_CONTRACT_STATUS.md` plus `CURRENT_SCHEMA_READINESS.md` for the
+future ASP.NET switch.
 
 `/account` GET is a local Blade-style protected account hub candidate. Unsigned
 requests redirect to `/login`, and signed-in requests render local account cards

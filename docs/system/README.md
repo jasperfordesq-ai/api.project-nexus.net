@@ -37,6 +37,7 @@ focused test is not semantic or production certification.
 - [Canonical architecture](../ARCHITECTURE.md)
 - [Module map](../MODULES.md)
 - [Migration workflow](../database-migrations.md)
+- [Current schema readiness](../CURRENT_SCHEMA_READINESS.md)
 - [Schema parity](../SCHEMA_PARITY.md)
 - [Registration policy engine](../REGISTRATION_POLICY_ENGINE.md)
 - [Backend localization contract](../BACKEND_LOCALIZATION_CONTRACT.md)

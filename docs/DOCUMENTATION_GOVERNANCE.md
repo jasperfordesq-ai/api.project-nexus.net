@@ -16,6 +16,7 @@ agent instructions.
 | Agent scope and non-negotiable guardrails | [`AGENTS.md`](../AGENTS.md), then [`CLAUDE.md`](../CLAUDE.md) | Link or summarize without weakening a rule |
 | Backend product objective and meaning of contract identity | [`ADR-0001`](decisions/ADR-0001-contract-identical-backends.md) | Historical "parity" or "compatibility" wording is shorthand only; never permit observable divergence or frontend forks |
 | ASP.NET banked score, score provenance, and certification gaps | [`CURRENT_ASPNET_CONTRACT_STATUS.md`](CURRENT_ASPNET_CONTRACT_STATUS.md) | Link to it; do not publish a competing current overall score |
+| ASP.NET schema pause/restart verdict and current migration-chain boundary | [`CURRENT_SCHEMA_READINESS.md`](CURRENT_SCHEMA_READINESS.md) | Link to it; keep the schema category score in the ASP.NET status and detailed dated evidence in `SCHEMA_PARITY.md` |
 | Accessible Web UK banked score, ownership, blockers, and queue | [`CURRENT_LARAVEL_FIRST_PARITY_STATUS.md`](../apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md) | Link to it; do not treat the old handoff log as current |
 | Fixed 1000-point rubric, 2x2 end state, shared evidence gates, and execution loop | [`FULL_PARITY_REMEDIATION_RUNBOOK.md`](FULL_PARITY_REMEDIATION_RUNBOOK.md) | Reuse its denominator and category definitions exactly; follow each canonical status document for its live queue |
 | Runtime boundaries and two-frontends-by-two-backends shape | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Link to it; do not draw a competing current architecture |

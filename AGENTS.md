@@ -70,3 +70,8 @@ for the backend banked score/evidence boundary and
 [`apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md`](./apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md)
 for Web UK. The older `CURRENT_*_HANDOFF.md` files are historical archives and
 must not supply a current score or resume queue.
+
+For schema state, read
+[`docs/CURRENT_SCHEMA_READINESS.md`](./docs/CURRENT_SCHEMA_READINESS.md). It
+separates the working migration evidence from the current exact-SHA timeout and
+the remaining release/upgrade certification gates.

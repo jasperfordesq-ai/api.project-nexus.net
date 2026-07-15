@@ -96,6 +96,9 @@ workstream-specific status source instead:
 
 - `docs/CURRENT_ASPNET_CONTRACT_STATUS.md` is the current ASP.NET fixed-rubric
   score, evidence boundary, published-but-unscored work, and next queue.
+- `docs/CURRENT_SCHEMA_READINESS.md` is the current one-page schema verdict,
+  migration-chain boundary, exact-SHA CI result, and recommission sequence. It
+  does not publish a separate product score.
 - `apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md` is the current Web UK
   fixed-rubric score, route/API ledgers, certification boundary, and next queue.
 - `docs/FULL_PARITY_REMEDIATION_RUNBOOK.md` defines the shared 1000-point rubric
@@ -135,6 +138,7 @@ The canonical tracking documents are:
 - `docs/PARITY_BACKLOG.md` - generated backlog rollup and implementation queue rules.
 - `docs/API_PARITY.md` - API contract comparison method and known gaps.
 - `docs/SCHEMA_PARITY.md` - database/entity/table comparison method and known gaps.
+- `docs/CURRENT_SCHEMA_READINESS.md` - current schema pause/restart verdict and evidence boundary.
 - `docs/FRONTEND_PARITY.md` - React and accessible frontend route comparison method and known gaps.
 - `docs/LOCALIZATION_PARITY.md` - locale, namespace, and translation-key comparison method and known gaps.
 - `docs/MODULES.md` - module-by-module source and target map.

@@ -92,6 +92,7 @@ attribution requirements.
 - [SECURITY.md](SECURITY.md) - private vulnerability-reporting and safe-testing policy.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - .NET architecture and runtime map.
 - [docs/CURRENT_ASPNET_CONTRACT_STATUS.md](docs/CURRENT_ASPNET_CONTRACT_STATUS.md) - current ASP.NET contract-identity status.
+- [docs/CURRENT_SCHEMA_READINESS.md](docs/CURRENT_SCHEMA_READINESS.md) - current schema-chain verdict, evidence boundary, and safe restart sequence.
 - [docs/FULL_PARITY_REMEDIATION_RUNBOOK.md](docs/FULL_PARITY_REMEDIATION_RUNBOOK.md) - fixed rubric and cross-workstream completion gate.
 - [docs/DOCUMENTATION_GOVERNANCE.md](docs/DOCUMENTATION_GOVERNANCE.md) - canonical status hierarchy and documentation consistency rules.
 - [docs/decisions/README.md](docs/decisions/README.md) - accepted architecture decisions, including the contract-identity correction.

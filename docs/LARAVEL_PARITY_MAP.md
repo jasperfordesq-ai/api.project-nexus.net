@@ -31,6 +31,13 @@ API/workflow score movement. The broader semantic map below remains anchored to
 the `9ad163c9` behavior boundary until a full regeneration and scoring
 transaction accepts the merged lineage.
 
+Later published commit `c767050a` changes compatibility-controller,
+authorization, Event offline check-in, marketplace-report, migration, fixture,
+test, and CI behavior. It is current source but remains one unscored delta: this
+map has not received a complete exact-SHA semantic regeneration or scoring
+transaction for it. See `CURRENT_ASPNET_CONTRACT_STATUS.md` and
+`CURRENT_SCHEMA_READINESS.md` before using the detailed rows below.
+
 ## Latest Verified Backend Slice
 
 Marketplace card settlement, Connect onboarding, paid-transition delivery,
@@ -282,7 +289,12 @@ The artifact is ignored by git; `docs/PARITY_BACKLOG.md` is the curated rollup.
 | Partner API / portal | `app/Http/Controllers/Api/PartnerApi`, `app/Services/PartnerApi`, `react-frontend/src/partners` | API partner admin entity/service/controller | External partner API/auth/webhook parity incomplete |
 | Accessible frontend | `accessible-frontend/`, `routes/govuk-alpha.php`, `routes/govuk-alpha-parity/*`, and Laravel backend contracts used by those workflows | `apps/web-uk/` is the shared accessible frontend implementation target; Laravel Blade defines the product/UI behaviour and the Laravel backend defines the API contract; ASP.NET is not authoritative and belongs to a separate compatibility workstream | Advanced implementation with route/workflow/manual-certification gaps; static coverage does not certify production readiness or unchanged ASP.NET switching |
 
-## Backlog Order
+## Historical Backlog Order (Superseded)
+
+The numbered list below is retained as 2026-07-13 planning history. It is not a
+current resume queue. Resume only from the finite queue in
+`CURRENT_ASPNET_CONTRACT_STATUS.md`, after the pause handoff's explicit
+authorization gate and an exact-SHA refresh.
 
 1. **Contract inventory and tooling**
    - Generate a .NET OpenAPI snapshot from the running API.

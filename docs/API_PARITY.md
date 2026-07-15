@@ -33,6 +33,14 @@ transactions. It adds no API controller/route implementation beyond the
 `9ad163c9` behavior boundary, so this API ledger remains anchored there and the
 published schema delta remains unscored.
 
+Published commit `c767050a` is a later unscored product/CI delta. It removes a
+large compatibility-controller scaffold, changes authorization, offline Event
+check-in, marketplace-report, fixture, test, and CI behavior, and adds runtime
+migration 163. This detailed API ledger has not been completely regenerated or
+semantically rescored for that delta. Treat `c767050a` as current published
+source, the rows below as evidence anchored at their named SHAs, and the full
+delta as open until an exact-SHA contract audit accepts it.
+
 Frontend contract consumers are the canonical React client at
 `C:\platforms\htdocs\staging\react-frontend` and the unchanged Web UK client at
 `apps/web-uk`. Web UK is Laravel-first but not yet runtime-certified; Laravel
