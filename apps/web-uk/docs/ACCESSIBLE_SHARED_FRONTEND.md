@@ -71,12 +71,12 @@ production, or ASP.NET-switching certification.
 - Treat the Laravel repository and its ordinary local database as read-only.
   Never edit Laravel source, run Laravel migrations, alter its schema, query its
   database directly, or perform database cleanup.
-- Mutation, upload, download, and destructive certification must use a dedicated
-  separately provisioned and verified disposable Laravel application,
-  database, and storage environment. The ordinary/shared Laravel environment
-  must never receive those operations; authorization, unique fixture names,
-  cleanup, restoration code, or a successful prior run do not make it
-  disposable.
+- Live login, mutation, upload, download, destructive, cleanup, migration, and
+  database operations are outside the active frontend-cloning goal and must not
+  be run against any Laravel environment. Implement those browser workflows
+  from read-only Laravel source and verify them with mocked contracts and safe
+  Web UK-owned fixtures. A future live-runtime workstream requires a separate
+  explicit owner request and does not block source implementation.
 - Do not touch production containers or production data.
 
 ## Historical Evidence Boundary (2026-07-10)
@@ -154,9 +154,9 @@ rating/attention drift; review mutation/listing-review gaps; and missing matches
 event coverage plus event/volunteering dismiss support.
 
 The commands below authenticate and may write server-side limiter, audit,
-session, preference, or workflow state. Run them only after
-`LARAVEL_BASE_URL` is explicitly set to a separately provisioned and verified
-disposable Laravel environment. Never run them against the ordinary
+session, preference, or workflow state. They are retained future tooling and
+are forbidden in the active frontend-cloning goal. Do not provision or request
+an environment for them; they must never target the ordinary
 `127.0.0.1:8088` production-derived snapshot.
 
 ```bash
@@ -164,10 +164,10 @@ npm run smoke:laravel
 npm run smoke:laravel:local
 ```
 
-Use `smoke:laravel` when a known-good Web UK process is already running at
-`WEB_UK_BASE_URL`. Prefer `smoke:laravel:local` for agent certification loops:
-it starts the Web UK app on an ephemeral local port with smoke-safe secrets,
-defaults to `ACCESSIBLE_BACKEND_TARGET=laravel` and `TENANT_ID=2`, runs the
+In a separately authorized future workstream, `smoke:laravel` uses an existing
+Web UK process at `WEB_UK_BASE_URL`; `smoke:laravel:local` starts the Web UK app
+on an ephemeral local port with smoke-safe secrets, defaults to
+`ACCESSIBLE_BACKEND_TARGET=laravel` and `TENANT_ID=2`, runs the
 same Laravel runtime harness, then closes the server. This avoids false
 `fetch failed` results from ad hoc background process launch wrappers.
 

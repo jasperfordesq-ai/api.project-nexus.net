@@ -1864,6 +1864,33 @@ failed twice before tab creation with `Cannot redefine property: process`.
 No Laravel request, login, database, migration, mutation, container, or ASP.NET
 operation was performed.
 
+### 2026-07-15 source-owned production hardening closure
+
+The production container now installs the committed dependency graph with
+non-interactive `npm ci --no-audit --no-fund` in every stage and accepts one
+shared `NODE_IMAGE` build argument so a release operator can supply an approved
+digest. The production stage now includes the canonical `contributors.json`;
+an image smoke exposed and closed that omitted-runtime-asset regression.
+Source-contract tests pin the non-root user, readiness health check, locked
+installs, digest support, required contributor data, and production command.
+The fail-closed release runbook now uses the real locale scripts, makes the
+24-case isolated accessibility gate source-owned, and separates any future
+authorized live integration from this frontend goal.
+
+Focused production configuration, Redis session, API timeout, route, and
+container proof passes 4/4 suites and 79/79 tests. Docker's build-definition
+check reports no warnings, all three locale audits are green, and the production
+dependency audit reports zero vulnerabilities. The uninterrupted repository
+gate passes 55/55 suites and 1,755/1,755 tests, branding, lint, CSS, documentation
+consistency, Markdown links, and diff checks. The complete production image
+target builds successfully; image inspection confirms `appuser`, the health
+command, and the Node entry point, while a local no-backend startup check fails
+closed on missing production secrets and Redis before listening. Deployment,
+Redis failover, and release authorization remain operations evidence; the
+source-owned hardening package is complete without changing the frozen
+historical score. No Laravel request, login, database, migration, mutation, or
+ASP.NET operation was performed.
+
 - GOV.UK crown, logotype, official header identity, OGL block, or Crown
   copyright wording.
 - Laravel/PHP implementation details.

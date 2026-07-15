@@ -338,13 +338,13 @@ nexus-uk-frontend/
 
 ## NPM Scripts
 
-The ordinary Laravel environment at `127.0.0.1:8088` uses a confidential
-production-derived database and is read-only. Any command that logs in, writes
-limiter/audit state, changes settings, uploads/downloads, or exercises a
-mutation may run only after `LARAVEL_BASE_URL` has been explicitly set to a
-separately provisioned and verified disposable Laravel environment. Owner
-authorization, unique fixture names, restoration code, or cleanup do not make
-the ordinary environment disposable.
+The Laravel repository and every Laravel environment are read-only sources for
+the active Web UK frontend-cloning goal. Do not run live login, mutation,
+upload, download, destructive, cleanup, migration, or database commands. The
+ordinary environment at `127.0.0.1:8088` contains confidential production-
+derived data and is specifically forbidden. Stateful Laravel scripts retained
+below are future tooling only and must not be run unless the owner explicitly
+starts a separate live-runtime workstream.
 
 | Script | Description |
 |--------|-------------|
@@ -360,10 +360,12 @@ the ordinary environment disposable.
 | `npm run lint` | Lint the Web UK server source |
 | `npm run route:matrix` | Refresh and verify Laravel accessible route coverage |
 | `npm run api:ledger` | Generate the Web UK frontend-consumer contract ledger and match concrete method/path calls to Laravel OpenAPI |
-| `npm run visual:blade` | Compare scoped Web UK and Laravel Blade text markers |
-| `npm run smoke:laravel:local` | Stateful login smoke; disposable Laravel environment required. The ephemeral process is Web UK only and does not make the backend/database disposable. |
-| `npm run smoke:federation:local` | Stateful federation lifecycle; separately provisioned, verified disposable Laravel environment required. |
-| `npm run test:accessibility` | Run the public/authenticated Playwright/axe gate against a separately verified disposable Laravel environment; never use the ordinary production-derived local database |
+| `npm run visual:blade` | Optional public-GET marker comparison against separately identified listeners; not required for the active source-owned goal |
+| `npm run test:accessibility:isolated` | Required safe automated browser gate using random-loopback Web UK and a GET/HEAD-only mock; its selection cannot be widened to authenticated/stateful cases |
+| `npm run manual:accessibility:isolated` | Safe manual inspection server for required keyboard, focus, zoom/reflow, forced-colour, and screen-reader review |
+| `npm run smoke:laravel:local` | Future stateful live-runtime tooling; forbidden in the active frontend-cloning goal |
+| `npm run smoke:federation:local` | Future stateful live-runtime tooling; forbidden in the active frontend-cloning goal |
+| `npm run test:accessibility` | Historical public/authenticated live aggregate; forbidden in the active frontend-cloning goal |
 
 ## Docker
 
@@ -372,8 +374,9 @@ the ordinary environment disposable.
 See the root [agent instructions](../../CLAUDE.md) for the Docker-only project invariant and production-container warnings.
 
 The fail-closed [production release runbook](docs/PRODUCTION_RELEASE_RUNBOOK.md)
-defines the evidence, configuration, disposable-runtime, approval, and rollback
-requirements. It does not lift the current Web UK production deployment hold.
+defines source-owned candidate evidence and separates any future explicitly
+authorized live-runtime certification, approval, and rollback requirements. It
+does not lift the current Web UK production deployment hold.
 
 ### Quick Commands
 

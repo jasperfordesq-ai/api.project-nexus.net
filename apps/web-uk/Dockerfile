@@ -3,10 +3,14 @@
 # Supports both development (hot reload) and production builds
 # =============================================================================
 
+# Supply an operator-approved digest for release builds, for example
+# node:20-alpine@sha256:<digest>. The tag default is for local development only.
+ARG NODE_IMAGE=node:20-alpine
+
 # -----------------------------------------------------------------------------
 # Base stage - shared between dev and prod
 # -----------------------------------------------------------------------------
-FROM node:20-alpine AS base
+FROM ${NODE_IMAGE} AS base
 WORKDIR /app
 
 # Install dependencies
@@ -18,7 +22,7 @@ COPY package*.json ./
 FROM base AS development
 
 # Install all dependencies (including devDependencies)
-RUN npm install
+RUN npm ci --no-audit --no-fund
 
 # Copy source files
 COPY . .
@@ -41,7 +45,7 @@ CMD ["npm", "run", "dev"]
 FROM base AS builder
 
 # Install all dependencies for building
-RUN npm install
+RUN npm ci --no-audit --no-fund
 
 # Copy source files
 COPY . .
@@ -52,7 +56,7 @@ RUN npm run build:css
 # -----------------------------------------------------------------------------
 # Production stage - minimal image
 # -----------------------------------------------------------------------------
-FROM node:20-alpine AS production
+FROM ${NODE_IMAGE} AS production
 
 WORKDIR /app
 
@@ -64,12 +68,13 @@ RUN addgroup -g 1001 -S nodejs && \
 COPY package*.json ./
 
 # Install production dependencies only
-RUN npm install --omit=dev && npm cache clean --force
+RUN npm ci --omit=dev --no-audit --no-fund && npm cache clean --force
 
 # Copy built assets and source from builder
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/src ./src
 COPY --from=builder /app/scripts ./scripts
+COPY --from=builder /app/contributors.json ./contributors.json
 
 # Set ownership
 RUN chown -R appuser:nodejs /app

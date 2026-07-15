@@ -225,7 +225,7 @@ score remain outside this workstream.
 | Missing Laravel routes | 1 | Event offline check-in code generation |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 52/52 suites, 1,709/1,709 tests | One uninterrupted `--runInBand` run at published product `2e92f89e`; 100.52 seconds |
+| Jest | 55/55 suites, 1,755/1,755 tests | One uninterrupted current-source `--runInBand` run; 204.59 seconds |
 | Brand, lint, and CSS | Passed | Current source gates |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Zero missing/extra structural keys |
 | Static locale usage | 7,635 references, 5,820 unique keys, 0 unresolved | Complete current-reference audit |
@@ -233,6 +233,7 @@ score remain outside this workstream.
 | Blade marker check | Current rerun unavailable because Laravel port 8088 is not listening; preceding product `e2918257` passed 19/19 | Public GET marker comparison only; not screenshot or visual certification |
 | Automated accessibility | The corrected isolated command now enforces the finite safe selection and passes 24/24: 14 public structure/axe cases, 4 keyboard/focus/client-validation/reflow/forced-colour cases, and 6 default-English narrow-reflow/no-JavaScript cases. Its GET/HEAD-only mock rejected the earlier accidental authenticated login POST; caller-supplied grep arguments can no longer widen the command to stateful cases. Product `b6166484` provides the manual-inspection mode over the same random-loopback fixture. | Current safe-fixture automated evidence is green. Directed keyboard/zoom/visual and screen-reader review remains open because the in-app browser connector fails before tab creation with `Cannot redefine property: process`; no manual outcome is claimed. Live Laravel and the stateful aggregate are outside the active goal. |
 | Frontend API consumer ledger | 668 contracts: 451 OpenAPI matches, 217 unmatched, 0 dynamic; all 217 unmatched contracts resolve to direct Laravel route declarations omitted from OpenAPI; 370 are state-changing and 0 lack detected tests. The finite direct-assertion manifest is complete: 0 rows and 0 helpers remain without direct assertions. | Static/mock ownership evidence. Every consumer helper now has direct mocked contract proof without using live Laravel. |
+| Source-owned production hardening | Fail-closed production secrets, Redis-only persistent sessions, readiness-aware health, backend request deadlines, non-root image execution, lockfile-exact non-interactive installs, digest-pinnable Node base image, complete runtime assets, and fail-closed release/rollback documentation are implemented. Focused proof passes 4/4 suites and 79/79 tests; the production target builds; the resulting image runs as `appuser` and refuses unsafe configuration before listening; production dependency audit reports 0 vulnerabilities. | The frontend-owned hardening package is complete. Actual deployment, shared-session/failover observation, and release authorization remain a separate operations gate and do not block this goal. |
 
 The table above preserves the named audit result. Under the corrected goal, the
 absence of a disposable Laravel listener does not block Web UK implementation
@@ -265,7 +266,7 @@ against ASP.NET by configuration change only after that backend is ready.
 
 ### Finite P0/P1 Completion Queue
 
-The corrected frontend-owned queue has two bounded packages. Optional live
+The corrected frontend-owned queue has one bounded package. Optional live
 Laravel runtime work and future ASP.NET switching are not in this queue:
 
 1. **P0 - Safe-fixture manual accessibility:** complete representative Web UK
@@ -274,11 +275,6 @@ Laravel runtime work and future ASP.NET switching are not in this queue:
    mocked states. The enforced automated subset is green at 24/24; directed
    manual and screen-reader review remains open because the browser connector
    currently fails before tab creation.
-2. **P1 - Source-owned production hardening:** finish any Web UK code,
-   configuration validation, readiness, release, and rollback evidence that can
-   be proved without deploying or contacting Laravel. Actual deployment and
-   release authorization remain a separate operations gate.
-
 The source-contract assertion package is complete. The generated manifest now
 contains zero rows: direct mocked tests exercise every previously outstanding
 admin Job, Event/calendar/export, Exchange, Feed hashtag, Help/Knowledge Base,
@@ -293,11 +289,10 @@ fabricate either contract.
 
 Checkpoint footer: frozen historical bank `663/1,000`; corrected-goal in-flight
 delta `0`; frontend blocker owner `none`; finite frontend-owned package count
-`2`. Next five tasks: audit source-owned hardening evidence while the browser
-connector is unavailable; retry the isolated manual browser after a connection
+`1`. Next five tasks: retry the isolated manual browser after a connection
 refresh; review representative default-English pages at desktop and 320 CSS
-pixels; record and fix concrete keyboard/focus/no-JS/zoom/forced-colour issues;
-capture screen-reader findings.
+pixels; complete keyboard/focus/no-JS/zoom/forced-colour checks; capture
+screen-reader findings; fix and re-verify any concrete accessibility regression.
 
 The exact Windows Update interruption and the pre-restart product boundary are
 recorded in
@@ -1531,15 +1526,12 @@ npm --prefix apps/web-uk run visual:blade
 git diff --check -- apps/web-uk
 ```
 
-The command block above is the ordinary static/read-only gate. Do not run the
-complete `test:accessibility` aggregate, `smoke:laravel:local`, any
-`*:mutation:*` command, authenticated settings journey, upload/download check,
-or `smoke:federation:local` against the ordinary Laravel environment. Those
-commands can authenticate or mutate state and may run only when
-`LARAVEL_BASE_URL` points to a separately provisioned, verified disposable
-Laravel environment. A browser subset is ordinary-environment safe only after
-its request paths and methods have been inspected and proved not to change
-server-side state.
+The command block above is the ordinary static/read-only gate. The complete
+`test:accessibility` aggregate, `smoke:laravel:local`, every `*:mutation:*`
+command, authenticated settings journey, upload/download check, and
+`smoke:federation:local` are forbidden in the active frontend-cloning goal
+against every Laravel environment. Browser testing for this goal uses only the
+enforced isolated selection and Web UK-owned/mock states.
 
 Record the exact Laravel and Web UK SHAs, fixture identity, commands, pass/fail
 counts, retained failures, and cleanup result. Route equality, a focused test,

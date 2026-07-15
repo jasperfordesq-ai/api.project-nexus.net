@@ -201,14 +201,13 @@ alert, interview, offer, and owner CSV failure outcomes. Marketplace page routes
 now follow it for signed-out GET auth handoffs and Laravel-401 page handoffs;
 future ASP.NET mode must preserve equivalent local redirect semantics.
 
-## Laravel Runtime Smoke
+## Retained Future Laravel Runtime Tooling
 
-Every command in this section authenticates or may change server-side state.
-Run it only when `LARAVEL_BASE_URL` explicitly identifies a separately
-provisioned, verified disposable Laravel application/database/storage
-environment. Never point it at the ordinary `127.0.0.1:8088`
-production-derived snapshot; authorization, unique fixture names, cleanup, and
-restoration logic do not make that environment disposable.
+Every command in this section authenticates or may change server-side state and
+is forbidden in the active frontend-cloning goal. The commands are retained for
+a possible future live-runtime workstream only; do not provision or request an
+environment for them unless the owner explicitly changes scope. They must never
+target the ordinary `127.0.0.1:8088` production-derived snapshot.
 
 The Laravel-backed runtime commands are:
 
@@ -228,9 +227,9 @@ when no already-running tenant-correct Web UK process is available or when
 PowerShell background process management produces false `fetch failed` smoke
 results.
 
-`smoke:federation:local` is the repeatable side-effect proof for the federation
-wizard. It starts the current checkout on an ephemeral port, signs in with the
-configured disposable smoke account, traverses privacy and communication with
+`smoke:federation:local` is retained future side-effect tooling for the
+federation wizard. It starts the current checkout on an ephemeral port, signs
+in with a configured smoke account, traverses privacy and communication with
 non-default choices, finalizes with only `step=confirm`, reads every value back
 from Laravel `/api/v2/federation/settings`, and restores plus verifies the
 account's original opt-in state and settings before exiting. It refuses to

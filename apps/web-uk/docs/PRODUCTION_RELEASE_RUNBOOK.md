@@ -1,6 +1,6 @@
 # Web UK Production Release Runbook
 
-Last reviewed: 2026-07-14
+Last reviewed: 2026-07-15
 
 This is the release-control contract for `apps/web-uk`. It is deliberately
 fail-closed: Web UK is experimental and is not currently approved to replace
@@ -31,6 +31,7 @@ UTC timestamp:
 Backend target and base URL:
 Production image tag:
 Production image digest:
+Node base image digest:
 Redis image/service identifier:
 Operator:
 Rollback image digest:
@@ -50,7 +51,7 @@ Reading the Laravel SHA is allowed. Do not run Laravel migrations, seeders,
 mutation tests, cleanup, uploads, downloads, or direct SQL against the ordinary
 production-derived environment.
 
-## 2. Required release gates
+## 2. Source-owned candidate gates
 
 Do not build a release candidate unless all applicable gates are green at the
 frozen Web UK SHA:
@@ -64,33 +65,31 @@ npm --prefix apps/web-uk run brand:check
 npm --prefix apps/web-uk run build:css
 npm --prefix apps/web-uk run route:matrix
 npm --prefix apps/web-uk run api:ledger
-npm --prefix apps/web-uk run locales:check
-npm --prefix apps/web-uk run locales:static
-npm --prefix apps/web-uk run templates:check
-npm --prefix apps/web-uk run visual:blade
+npm --prefix apps/web-uk run locales:audit
+npm --prefix apps/web-uk run locales:audit-keys
+npm --prefix apps/web-uk run locales:audit-templates -- --summary
+npm --prefix apps/web-uk run test:accessibility:isolated
+./scripts/check-documentation-consistency.ps1
+./scripts/check-markdown-links.ps1
 ```
 
-The browser, mutation, upload, download, destructive, and accessibility gates
-must use a separately verified disposable Laravel environment. Record its
-database/storage identifiers, source/schema SHA, pre-run reset proof, post-run
-cleanup proof, and final absence checks. Evidence against the ordinary
-production-derived database is invalid.
+These gates prove only the source-owned release candidate. The accessibility
+command is deliberately limited to random-loopback Web UK plus a GET/HEAD-only
+fixture backend; caller arguments cannot widen it to login or state-changing
+coverage. None of these commands authorizes Laravel login, mutation, upload,
+download, cleanup, migration, container, or database access.
 
-Release approval additionally requires the representative Blade/Web UK
-screenshot set and manual keyboard, no-JS, zoom/reflow, forced-colour,
-focus/error, and screen-reader sign-off. Automated route, marker, Jest, or axe
-counts do not replace those gates.
+The active frontend-cloning goal additionally requires manual keyboard, no-JS,
+zoom/reflow, forced-colour, focus/error, and screen-reader sign-off against safe
+Web UK-owned or mocked states. Automated route, Jest, or axe counts do not
+replace that review.
 
-Capture the default-English public screenshot pairs from separately identified
-Laravel Blade and Web UK listeners. Never use `/hour-timebank/alpha`:
-
-```powershell
-$env:LARAVEL_BLADE_BASE_URL = 'http://127.0.0.1:<laravel-port>'
-$env:WEB_UK_BASE_URL = 'http://127.0.0.1:<web-uk-port>'
-$env:VISUAL_SNAPSHOT_ID = '<laravel-sha>__<web-uk-sha>'
-$env:DISPOSABLE_LARAVEL_CONFIRMED = '1'
-npm --prefix apps/web-uk run visual:screenshots
-```
+Paired live Laravel Blade/Web UK screenshots and any stateful integration
+evidence are a separate, optional future workstream. They are not source-owned
+frontend gates and must not be attempted unless the owner explicitly requests
+and supplies that workstream. The retained capture tool must never use
+`/hour-timebank/alpha`; its canonical comparison mount is
+`/hour-timebank/accessible`.
 
 Complete the generated `review.md` or print/save `review.html`, then archive or
 reference the ignored artifact directory outside Git. Record the reviewer,
@@ -103,16 +102,20 @@ Use the checked-in multi-stage Dockerfile and the frozen repository SHA:
 
 ```powershell
 $sha = git rev-parse HEAD
+$nodeImage = 'node:20-alpine@sha256:<operator-approved-digest>'
 docker build --pull --target production `
+  --build-arg "NODE_IMAGE=$nodeImage" `
   --label "org.opencontainers.image.revision=$sha" `
   --tag "nexus-web-uk:$sha" `
   apps/web-uk
 docker image inspect "nexus-web-uk:$sha" --format '{{json .RepoDigests}}'
 ```
 
-The published release record must identify the immutable digest, not only the
-mutable tag. Pin every external base/service image by the operator-approved
-digest before production certification.
+The published release record must identify the immutable application and Node
+base-image digests, not only mutable tags. Pin every external base/service image
+by the operator-approved digest before production certification. The
+Dockerfile's unpinned default exists for local development and is not a release
+input.
 
 ## 4. Production configuration contract
 
@@ -133,11 +136,14 @@ The process must fail before listening when production configuration is unsafe
 or Redis cannot connect. `/health` must return `200 OK` only while the session
 client is ready, and `503 NOT READY` when it is unavailable.
 
-## 5. Disposable runtime certification
+## 5. Future separately authorized runtime certification
 
-Before production approval, run the immutable image in an isolated network
-against disposable Redis and the separately verified disposable Laravel
-environment. Prove and retain evidence for:
+This section is not part of the active frontend-cloning goal and is not standing
+authorization to start or provision Laravel. If the owner later authorizes a
+live production-integration workstream, run the immutable image in an isolated
+network against dedicated test Redis and only the backend environment expressly
+identified for that work. The ordinary production-derived Laravel environment
+remains forbidden. Prove and retain evidence for:
 
 1. startup refuses missing, placeholder, short, or identical secrets;
 2. startup refuses a missing or non-Redis session URL;
@@ -148,10 +154,12 @@ environment. Prove and retain evidence for:
    `200` without losing valid sessions;
 7. request timeouts abort stalled backend work and render the expected
    service-unavailable path;
-8. the Laravel-first runtime, side-effect, cleanup, and manual accessibility
-   gates pass at the frozen SHAs.
+8. the separately authorized runtime, side-effect, cleanup, and integration
+   gates pass at the frozen SHAs without changing a backend contract.
 
-Do not substitute mocks or the ordinary Laravel database for this gate.
+Mocked source-contract proof is sufficient for the active frontend goal but
+does not claim this future live-runtime certification. Never substitute the
+ordinary Laravel database for a future integration environment.
 
 ## 6. Change approval, rollout, and rollback
 
