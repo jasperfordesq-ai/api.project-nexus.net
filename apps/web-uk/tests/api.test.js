@@ -3913,6 +3913,50 @@ describe('API Request Functions', () => {
         expect.objectContaining({ method: 'PUT' })
       );
     });
+
+    it('should preserve passkey security confirmation and removal contracts', async () => {
+      const cases = [
+        ['/security-confirm', { password: 'correct horse battery staple' }, { confirmed: true }],
+        ['/remove', { credential_id: 'cred-1', security_confirmation: 'proof-7' }, { removed: true }]
+      ];
+
+      for (const [pathValue, body, responseData] of cases) {
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: responseData })
+        });
+
+        await expect(api.callWebAuthnApi('test-token', 'POST', pathValue, body))
+          .resolves.toEqual({ data: responseData });
+        expect(mockFetch).toHaveBeenLastCalledWith(
+          `http://localhost:5000/api/webauthn${pathValue}`,
+          expect.objectContaining({
+            method: 'POST',
+            headers: expect.objectContaining({ Authorization: 'Bearer test-token' }),
+            body: JSON.stringify(body)
+          })
+        );
+      }
+
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ message: 'Security confirmation is required.', code: 'SECURITY_CONFIRMATION_REQUIRED' })
+      });
+
+      await expect(api.callWebAuthnApi('test-token', 'POST', '/remove', { credential_id: 'cred-1' }))
+        .rejects.toMatchObject({
+          name: 'ApiError',
+          status: 401,
+          message: 'Security confirmation is required.',
+          data: {
+            message: 'Security confirmation is required.',
+            code: 'SECURITY_CONFIRMATION_REQUIRED'
+          }
+        });
+    });
   });
 
   describe('callPodcastApi', () => {

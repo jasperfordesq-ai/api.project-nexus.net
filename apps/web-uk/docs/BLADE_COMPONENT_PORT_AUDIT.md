@@ -1586,6 +1586,22 @@ database, migration, runtime request, container, or production operation was
 performed. This slice is unscored; the canonical bank remains `663/1,000`
 until another complete fixed-rubric audit.
 
+### 2026-07-15 WebAuthn security path-assertion follow-up
+
+The legacy WebAuthn dispatcher now has direct API-client proof for security
+confirmation and credential removal in addition to passkey rename. The cases
+pin Laravel's exact `/api/webauthn/*` paths, POST verbs, bearer authority,
+password/credential/proof payloads, unmodified success envelopes, and
+structured security-confirmation-required `401` propagation. This closes the
+currently generated OpenAPI-omitted WebAuthn path set at the API-client
+boundary; browser ceremonies, session revocation and live credential effects
+remain assigned to the disposable runtime and manual certification packages.
+
+The focused API-client suite passes `230/230`. No Laravel or ASP.NET source,
+database, migration, runtime request, container, or production operation was
+performed. This slice is unscored; the canonical bank remains `663/1,000`
+until another complete fixed-rubric audit.
+
 - GOV.UK crown, logotype, official header identity, OGL block, or Crown
   copyright wording.
 - Laravel/PHP implementation details.
