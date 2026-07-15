@@ -1757,6 +1757,22 @@ overflow with JavaScript disabled. The focused isolated subset passes `5/5`.
 This does not simulate actual 200%/400% browser zoom and does not change the
 remaining manual or runtime certification boundary.
 
+Published product SHA `9249ad60` extends that subset to `6/6` with an invalid
+no-JavaScript registration round trip. The response preserves submitted input,
+links the summary and inline error to the missing field, keeps the error summary
+programmatically focusable, and has no horizontal overflow at 320 CSS pixels.
+The loopback fixture rejects unsafe backend methods, so the case performs no
+Laravel registration mutation. The concrete regression exposed by this case
+was systemic: all 24 active `govukErrorSummary` macro invocations now provide
+`tabindex="-1"`, and the source guard covers both macro-rendered and handwritten
+summaries. Focused Jest proof passes `25/25`; the complete non-mutating gate
+passes `52/52` suites and `1,734/1,734` tests, with green lint and the 322-template
+zero-match audit. No Laravel or ASP.NET source, database, migration, runtime
+request, container, or production operation was performed. Actual browser
+zoom, screenshots, screen-reader output, the disposable-Laravel aggregate, and
+human assistive-technology review remain open. This slice is unscored; the
+canonical bank remains `663/1,000` until another complete fixed-rubric audit.
+
 - GOV.UK crown, logotype, official header identity, OGL block, or Crown
   copyright wording.
 - Laravel/PHP implementation details.
