@@ -26876,6 +26876,25 @@ describe('shared accessible frontend shell', () => {
     expect(response.text).not.toContain('href="/listings/42/edit"');
   });
 
+  it('renders only Blade bounded status feedback on the listings index', async () => {
+    const api = require('../src/lib/api');
+    api.getListings.mockResolvedValue({ data: [], meta: { has_more: false } });
+
+    const deleted = await request(app).get('/listings?status=listing-deleted');
+    const unrelated = await request(app).get('/listings?status=listing-created');
+
+    expect(deleted.status).toBe(200);
+    expect(deleted.text).toContain('aria-labelledby="listing-deleted-title"');
+    expect(deleted.text).toContain('id="listing-deleted-title"');
+    expect(deleted.text).toContain('Your listing has been deleted.');
+    expect((deleted.text.match(/Your listing has been deleted\./g) || [])).toHaveLength(1);
+
+    expect(unrelated.status).toBe(200);
+    expect(unrelated.text).not.toContain('Listing created successfully');
+    expect(unrelated.text).not.toContain('govuk-notification-banner--success');
+    expect(unrelated.text).not.toContain('listing-deleted-title');
+  });
+
   it('matches the Blade listing empty state and only clears active filters', async () => {
     const api = require('../src/lib/api');
     api.getListings.mockResolvedValueOnce({ data: [], meta: { has_more: false } });

@@ -415,24 +415,6 @@ function isOnboardingRequired(error) {
   return error instanceof ApiError && error.status === 403 && apiErrorCode(error) === 'ONBOARDING_REQUIRED';
 }
 
-function listingStatusMessage(status) {
-  const messages = {
-    'listing-created': 'Listing created successfully',
-    'listing-updated': 'Listing updated successfully',
-    'listing-deleted': 'Listing deleted successfully'
-  };
-  return messages[trimmed(status)] || null;
-}
-
-function listingStatusErrorMessage(status) {
-  const messages = {
-    'exchange-disabled': 'Exchange workflows are not enabled for this community.',
-    'own-listing': 'You cannot request an exchange for your own listing.',
-    'listing-delete-failed': 'The listing could not be deleted.'
-  };
-  return messages[trimmed(status)] || null;
-}
-
 function listingDetailStatus(status, t) {
   const successKeys = {
     'listing-created': 'listings.create.created',
@@ -1300,8 +1282,7 @@ router.get('/', asyncRoute(async (req, res) => {
     currentUser,
     isAuthenticated: Boolean(token),
     loadError: listingResult.error,
-    successMessage: (req.flash ? req.flash('success')[0] : null) || listingStatusMessage(req.query.status),
-    errorMessage: (req.flash ? req.flash('error')[0] : null) || listingStatusErrorMessage(req.query.status),
+    status: trimmed(req.query.status),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }));
