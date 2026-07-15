@@ -867,6 +867,51 @@ public sealed class V15SocialCompatibilityControllerUnitTests
     }
 
     [Fact]
+    public async Task SocialComments_SanitizesHtmlBeforeMentionResolutionAndPersistence()
+    {
+        var tenant = CreateTenantContext();
+        await using var db = CreateDbContext(tenant);
+        var controller = CreateController(db, tenant, userId: 2);
+
+        db.Users.AddRange(
+            new User { Id = 1, TenantId = 1, Email = "owner@example.test", Username = "owner", PasswordHash = "hash", FirstName = "Owner", LastName = "User", Role = "member", IsActive = true },
+            new User { Id = 2, TenantId = 1, Email = "author@example.test", Username = "author", PasswordHash = "hash", FirstName = "Comment", LastName = "Author", Role = "member", IsActive = true },
+            new User { Id = 3, TenantId = 1, Email = "script@example.test", Username = "scriptmention", PasswordHash = "hash", FirstName = "Script", LastName = "Mention", Role = "member", IsActive = true });
+        db.Listings.Add(new Listing
+        {
+            Id = 20,
+            TenantId = 1,
+            UserId = 1,
+            Title = "Sanitized listing",
+            Description = "Sanitizer contract target",
+            Type = ListingType.Offer,
+            Status = ListingStatus.Active
+        });
+        await db.SaveChangesAsync();
+
+        var result = await controller.Comments(JsonDocument.Parse("""
+        {
+          "action": "submit",
+          "target_type": "listing",
+          "target_id": 20,
+          "content": "<script>@scriptmention alert('xss')</script><style>body{display:none}</style><p class='intro' style='color:red' onclick='bad()'>Safe <strong>formatting</strong> <a href='javascript:alert(1)' target='_blank'>link</a></p>"
+        }
+        """).RootElement);
+
+        result.Should().BeOfType<OkObjectResult>();
+        var saved = db.ThreadedComments.Should().ContainSingle().Subject;
+        saved.Content.Should().Contain("<p class=\"intro\">");
+        saved.Content.Should().Contain("<strong>formatting</strong>");
+        saved.Content.Should().Contain("rel=\"noopener noreferrer\"");
+        saved.Content.Contains("script", StringComparison.OrdinalIgnoreCase).Should().BeFalse();
+        saved.Content.Contains("display:none", StringComparison.OrdinalIgnoreCase).Should().BeFalse();
+        saved.Content.Contains("style=", StringComparison.OrdinalIgnoreCase).Should().BeFalse();
+        saved.Content.Contains("onclick", StringComparison.OrdinalIgnoreCase).Should().BeFalse();
+        saved.Content.Contains("javascript:", StringComparison.OrdinalIgnoreCase).Should().BeFalse();
+        db.ContentMentions.Should().BeEmpty("mentions inside removed script blocks are not recipients");
+    }
+
+    [Fact]
     public async Task SocialComments_PersistsMentionsAndRecipientNotificationsBehindSafeguardingBoundary()
     {
         var tenant = CreateTenantContext();

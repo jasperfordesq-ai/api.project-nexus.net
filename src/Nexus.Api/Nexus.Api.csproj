@@ -25,6 +25,9 @@
     <!-- Password Hashing (BCrypt - same as PHP) -->
     <PackageReference Include="BCrypt.Net-Next" Version="4.1.0" />
 
+    <!-- HTML sanitization (Laravel HtmlSanitizer contract for user content) -->
+    <PackageReference Include="HtmlSanitizer" Version="9.0.892" />
+
     <!-- Swagger / OpenAPI -->
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
 

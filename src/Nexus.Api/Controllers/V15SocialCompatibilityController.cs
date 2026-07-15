@@ -482,7 +482,8 @@ public class V15SocialCompatibilityController : ControllerBase
     [HttpPost("/api/social/reply")]
     public async Task<IActionResult> Reply([FromBody] JsonElement body)
     {
-        var content = ReadString(body, "content", "body", "comment", "message")?.Trim();
+        var content = LaravelHtmlSanitizer.Sanitize(
+            ReadString(body, "content", "body", "comment", "message")?.Trim() ?? string.Empty);
         if (string.IsNullOrWhiteSpace(content)) return BadRequest(new { error = "content is required" });
         var comment = new PostComment
         {
@@ -2451,7 +2452,8 @@ public class V15SocialCompatibilityController : ControllerBase
         var tenantId = TenantId();
         var userId = RequireUserId();
         var cancellationToken = HttpContext.RequestAborted;
-        var content = ReadString(body, "content", "body", "comment", "message")?.Trim();
+        var content = LaravelHtmlSanitizer.Sanitize(
+            ReadString(body, "content", "body", "comment", "message")?.Trim() ?? string.Empty);
         if (string.IsNullOrWhiteSpace(content))
         {
             return BadRequest(new
