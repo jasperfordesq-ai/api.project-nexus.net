@@ -10,6 +10,7 @@ const { spawn } = require('node:child_process');
 const projectRoot = path.resolve(__dirname, '..');
 const artifactRoot = path.join(projectRoot, 'artifacts', 'accessibility');
 const laravelBaseUrl = process.env.LARAVEL_BASE_URL || 'http://127.0.0.1:8088';
+const manualMode = process.argv.slice(2).includes('--manual');
 
 // Requiring src/server.js only returns the Express app when NODE_ENV=test.
 // This runner then owns a fresh ephemeral listener for the current checkout.
@@ -52,11 +53,17 @@ server.on('error', (error) => {
 server.on('listening', () => {
   const address = server.address();
   const baseURL = `http://127.0.0.1:${address.port}`;
-  const playwrightCli = require.resolve('@playwright/test/cli');
-  const playwrightConfig = process.env.WEB_UK_PLAYWRIGHT_CONFIG || 'playwright.accessibility.config.js';
 
   console.log(`Accessibility gate server: ${baseURL}`);
   console.log(`Laravel API base URL: ${laravelBaseUrl}`);
+
+  if (manualMode) {
+    console.log('Manual inspection mode is active. Press Ctrl+C to stop.');
+    return;
+  }
+
+  const playwrightCli = require.resolve('@playwright/test/cli');
+  const playwrightConfig = process.env.WEB_UK_PLAYWRIGHT_CONFIG || 'playwright.accessibility.config.js';
 
   playwrightProcess = spawn(
     process.execPath,

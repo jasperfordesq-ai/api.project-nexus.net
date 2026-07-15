@@ -52,6 +52,20 @@ exercise current-checkout rendering, browser structure, keyboard/focus,
 client-side validation, reflow, forced colours, and axe without any route to
 the ordinary Laravel database.
 
+For directed manual inspection of the same current checkout and read-only
+fixtures, keep the isolated listener open and use the printed accessibility
+server URL. Stop it with Ctrl+C when the observation is complete:
+
+```powershell
+npm run manual:accessibility:isolated
+```
+
+This mode retains the same random loopback bindings, clears inherited backend
+overrides, rejects backend methods other than `GET` and `HEAD`, and reports an
+unsafe attempt when it stops. It is suitable for public and signed-out pages
+covered by the bounded fixture only; it is not a substitute for a disposable
+Laravel environment or a screen-reader/manual WCAG sign-off.
+
 The latest fully successful historical verification on 2026-07-12 exercised the complete 87-case Chromium scope
 against a fresh current-checkout listener and Laravel at
 `http://127.0.0.1:8088`. After a missing bearer token on member-only Knowledge

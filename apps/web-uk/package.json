@@ -22,6 +22,7 @@
     "smoke:federation:local": "node scripts/federation-onboarding-runtime-smoke.js",
     "test:accessibility": "npm run build:css && node scripts/accessibility-local-server.js",
     "test:accessibility:isolated": "npm run build:css && node scripts/accessibility-isolated-local-server.js",
+    "manual:accessibility:isolated": "npm run build:css && node scripts/accessibility-isolated-local-server.js --manual",
     "smoke:laravel:saved-collections": "npm run build:css && node scripts/saved-collections-mutation-local-server.js",
     "smoke:laravel:resources-mutation": "npm run build:css && node scripts/resources-mutation-local-server.js",
     "smoke:laravel:marketplace-mutation": "npm run build:css && node scripts/marketplace-mutation-local-server.js",
