@@ -1845,6 +1845,25 @@ suites and 250/250 tests. This closes the source-contract assertion package
 without changing the frozen historical score or claiming live runtime
 certification.
 
+### 2026-07-15 enforced isolated accessibility selection
+
+The isolated accessibility command previously selected the complete 93-case
+Playwright aggregate by default. Its read-only mock correctly rejected an
+authenticated `POST /api/auth/login`, stopping the run at 33 passed, 2 failed,
+and 58 unrun; no Laravel environment was addressed. The runner now strips
+caller-supplied grep and grep-invert arguments and enforces exactly the three
+documented safe groups: representative public pages, keyboard/focus/error/
+forced-colour behavior, and default-English resilience.
+
+Selection-unit proof passes 3/3. The repaired isolated command passes 24/24 in
+82.2 seconds against random-loopback Web UK and GET/HEAD-only mock listeners,
+including public axe/structure, no-JS validation recovery, focus ordering,
+linked error summaries, 320 CSS-pixel reflow, and forced-colour checks. Directed
+manual and screen-reader review remains unclaimed: the in-app browser connector
+failed twice before tab creation with `Cannot redefine property: process`.
+No Laravel request, login, database, migration, mutation, container, or ASP.NET
+operation was performed.
+
 - GOV.UK crown, logotype, official header identity, OGL block, or Crown
   copyright wording.
 - Laravel/PHP implementation details.

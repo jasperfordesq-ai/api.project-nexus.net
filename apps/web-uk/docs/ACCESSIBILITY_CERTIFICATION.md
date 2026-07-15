@@ -6,46 +6,39 @@ This repository has an automated browser accessibility gate for representative
 public and authenticated Laravel-first Web UK pages. It is a release signal,
 not a certificate of complete WCAG conformance.
 
-> **Data-safety boundary:** the complete gate performs a real login. Failed
-> logins write Laravel limiter/audit state, and successful authenticated cases
-> may exercise additional stateful endpoints. Run the complete gate only
-> against a separately provisioned, verified disposable Laravel environment.
-> Never point it at the ordinary local Laravel database, which is a confidential
-> production-derived read-only snapshot.
+> **Data-safety boundary:** the complete historical gate performs a real login.
+> Failed logins write Laravel limiter/audit state, and successful authenticated
+> cases may exercise additional stateful endpoints. It is outside the active Web
+> UK goal and must not be run against any Laravel environment. Never point it at
+> the ordinary local Laravel database, which is a confidential production-
+> derived read-only snapshot.
 
 ## Run the gate
 
-From `apps/web-uk`, after verifying `LARAVEL_BASE_URL` identifies the disposable
-environment:
+From `apps/web-uk`, run the enforced read-only isolated gate:
 
 ```powershell
 npm install
 npx playwright install chromium
-npm run test:accessibility
+npm run test:accessibility:isolated
 ```
 
 The runner builds the current Sass, loads `src/server.js` from the current checkout, and binds it to an operating-system-assigned loopback port. It does not trust or reuse a process on port 5180.
 
-Set the disposable Laravel API explicitly; do not rely on the default:
-
-```powershell
-$env:LARAVEL_BASE_URL = 'http://127.0.0.1:<disposable-port>'
-$env:ACCESSIBILITY_TENANT_SLUG = 'alpha'
-npm run test:accessibility
-```
-
-For public-page and client-side interaction checks that do not require real
-Laravel state, use the isolated read-only runner with a focused Playwright
-grep. It starts a loopback-only mock backend with bounded tenant,
+The isolated runner starts a loopback-only mock backend with bounded tenant,
 registration-policy, and platform-stat fixtures. The mock rejects all backend
 methods except `GET` and `HEAD`, and the runner exits unsuccessfully if a test
 attempts a backend mutation:
 
 ```powershell
-npm run test:accessibility:isolated -- --grep=representative.public-page
-npm run test:accessibility:isolated -- --grep=forced-colour
-npm run test:accessibility:isolated -- --grep=default-English
+npm run test:accessibility:isolated
 ```
+
+The command enforces the finite safe selection: representative public pages,
+keyboard/focus/error/forced-colour behavior, and default-English resilience.
+Caller-supplied grep arguments cannot widen it to authenticated or stateful
+cases. The ordinary `test:accessibility` aggregate is not part of the active
+goal.
 
 Do not treat the isolated runner as Laravel runtime certification. It exists to
 exercise current-checkout rendering, browser structure, keyboard/focus,
@@ -63,11 +56,13 @@ npm run manual:accessibility:isolated
 This mode retains the same random loopback bindings, clears inherited backend
 overrides, rejects backend methods other than `GET` and `HEAD`, and reports an
 unsafe attempt when it stops. It is suitable for public and signed-out pages
-covered by the bounded fixture only; it is not a substitute for a disposable
-Laravel environment or a screen-reader/manual WCAG sign-off.
+covered by the bounded fixture only. Use it for the required directed keyboard,
+focus, zoom/reflow, forced-colour, and screen-reader review; starting or writing
+to Laravel is neither required nor permitted.
 
-When separate Laravel Blade and Web UK listeners are available, capture the
-paired representative public-page set with explicit source identifiers:
+The historical paired live-Laravel capture command below is optional runtime
+tooling outside the active Web UK goal. Do not provision or start Laravel to run
+it. It may be used only in a separately authorized future runtime workstream:
 
 ```powershell
 $env:LARAVEL_BLADE_BASE_URL = 'http://127.0.0.1:<laravel-port>'

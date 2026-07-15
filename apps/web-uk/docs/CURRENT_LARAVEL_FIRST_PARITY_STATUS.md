@@ -231,7 +231,7 @@ score remain outside this workstream.
 | Static locale usage | 7,635 references, 5,820 unique keys, 0 unresolved | Complete current-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
 | Blade marker check | Current rerun unavailable because Laravel port 8088 is not listening; preceding product `e2918257` passed 19/19 | Public GET marker comparison only; not screenshot or visual certification |
-| Automated accessibility | Not currently certified: the last stateful aggregate recorded 28 passed, login failed, and 58 did not run. At published products `10f01c7c`, `7e158d29`, and `9249ad60`, an isolated read-only browser runner passes 14/14 public structure/axe cases, 4/4 keyboard/focus/client-validation/reflow/forced-colour cases, and 6/6 default-English narrow-reflow/no-JavaScript cases without access to Laravel. The sixth case proves invalid registration recovery with preserved input, linked inline errors, a focusable summary, and no backend mutation. Product `b6166484` adds a reproducible manual-inspection mode over the same random-loopback, GET/HEAD-only fixture. Products `cbed0c9e` and `0197b0a3` add fail-closed paired Blade/Web UK screenshot capture plus side-by-side HTML and editable Markdown review worksheets for six representative pages and two viewports. | The isolated subsets and capture/inspection support are partial browser evidence only; no paired screenshots were captured because a verified disposable Laravel listener is absent. Actual browser zoom, the disposable-Laravel aggregate, screenshot review, and manual assistive-technology review remain open. |
+| Automated accessibility | The corrected isolated command now enforces the finite safe selection and passes 24/24: 14 public structure/axe cases, 4 keyboard/focus/client-validation/reflow/forced-colour cases, and 6 default-English narrow-reflow/no-JavaScript cases. Its GET/HEAD-only mock rejected the earlier accidental authenticated login POST; caller-supplied grep arguments can no longer widen the command to stateful cases. Product `b6166484` provides the manual-inspection mode over the same random-loopback fixture. | Current safe-fixture automated evidence is green. Directed keyboard/zoom/visual and screen-reader review remains open because the in-app browser connector fails before tab creation with `Cannot redefine property: process`; no manual outcome is claimed. Live Laravel and the stateful aggregate are outside the active goal. |
 | Frontend API consumer ledger | 668 contracts: 451 OpenAPI matches, 217 unmatched, 0 dynamic; all 217 unmatched contracts resolve to direct Laravel route declarations omitted from OpenAPI; 370 are state-changing and 0 lack detected tests. The finite direct-assertion manifest is complete: 0 rows and 0 helpers remain without direct assertions. | Static/mock ownership evidence. Every consumer helper now has direct mocked contract proof without using live Laravel. |
 
 The table above preserves the named audit result. Under the corrected goal, the
@@ -271,7 +271,9 @@ Laravel runtime work and future ASP.NET switching are not in this queue:
 1. **P0 - Safe-fixture manual accessibility:** complete representative Web UK
    visual review plus keyboard, no-JS, zoom/reflow, forced-colour, focus/error,
    and screen-reader sign-off using only the isolated Web UK fixture server and
-   mocked states.
+   mocked states. The enforced automated subset is green at 24/24; directed
+   manual and screen-reader review remains open because the browser connector
+   currently fails before tab creation.
 2. **P1 - Source-owned production hardening:** finish any Web UK code,
    configuration validation, readiness, release, and rollback evidence that can
    be proved without deploying or contacting Laravel. Actual deployment and
@@ -291,10 +293,11 @@ fabricate either contract.
 
 Checkpoint footer: frozen historical bank `663/1,000`; corrected-goal in-flight
 delta `0`; frontend blocker owner `none`; finite frontend-owned package count
-`2`. Next five tasks: run the safe isolated manual accessibility server; review
-representative default-English pages at desktop and 320 CSS pixels; record and
-fix concrete keyboard/focus/no-JS/zoom/forced-colour issues; capture screen-reader
-findings; audit source-owned hardening evidence.
+`2`. Next five tasks: audit source-owned hardening evidence while the browser
+connector is unavailable; retry the isolated manual browser after a connection
+refresh; review representative default-English pages at desktop and 320 CSS
+pixels; record and fix concrete keyboard/focus/no-JS/zoom/forced-colour issues;
+capture screen-reader findings.
 
 The exact Windows Update interruption and the pre-restart product boundary are
 recorded in

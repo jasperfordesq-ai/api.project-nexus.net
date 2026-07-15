@@ -6,6 +6,7 @@
 const http = require('node:http');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
+const { isolatedRunnerArgs } = require('./accessibility-isolated-selection');
 
 const projectRoot = path.resolve(__dirname, '..');
 let accessibilityProcess;
@@ -103,7 +104,7 @@ mockLaravel.on('listening', () => {
 
   accessibilityProcess = spawn(
     process.execPath,
-    [path.join(__dirname, 'accessibility-local-server.js'), ...process.argv.slice(2)],
+    [path.join(__dirname, 'accessibility-local-server.js'), ...isolatedRunnerArgs(process.argv.slice(2))],
     {
       cwd: projectRoot,
       env: {
