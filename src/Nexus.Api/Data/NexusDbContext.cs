@@ -227,6 +227,8 @@ public class NexusDbContext : DbContext
     public DbSet<Challenge> Challenges => Set<Challenge>();
     public DbSet<ChallengeParticipant> ChallengeParticipants => Set<ChallengeParticipant>();
     public DbSet<Streak> Streaks => Set<Streak>();
+    public DbSet<MonthlyEngagement> MonthlyEngagements => Set<MonthlyEngagement>();
+    public DbSet<SeasonalRecognition> SeasonalRecognitions => Set<SeasonalRecognition>();
     public DbSet<LeaderboardSeason> LeaderboardSeasons => Set<LeaderboardSeason>();
     public DbSet<LeaderboardEntry> LeaderboardEntries => Set<LeaderboardEntry>();
     public DbSet<DailyReward> DailyRewards => Set<DailyReward>();
@@ -639,6 +641,7 @@ public class NexusDbContext : DbContext
             new GroupConfiguration(_tenantContext),
             new EventConfiguration(_tenantContext),
             new GamificationConfiguration(_tenantContext),
+            new EngagementRecognitionConfiguration(_tenantContext),
             new NotificationConfiguration(_tenantContext),
             new FederationConfiguration(_tenantContext),
             new GdprConfiguration(_tenantContext),
