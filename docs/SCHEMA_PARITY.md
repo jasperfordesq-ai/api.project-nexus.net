@@ -6,12 +6,11 @@ Status: **Maintained reference — current comparison method with dated evidence
 
 Evidence provenance: the current static table inventory was regenerated on
 2026-07-15 against Laravel
-`903d03d3db78bbf87129ad35728be3b72819acaf` and committed ASP.NET tree
-`1ded18bd5e49e09c06d697ac0699a9cc31181d25`. Uncommitted schema-worktree
-entities, configurations, migrations, tests, and documentation are excluded.
-Any older table/count without its own exact source pair is a historical,
-provenance-incomplete checkpoint and cannot support current score or
-upgrade-safety claims.
+`903d03d3db78bbf87129ad35728be3b72819acaf` and the schema candidate based on
+committed ASP.NET tree `ea352690c95bbb6dea26a7b00c8454a37b51a859`, including
+`20260715054926_VereinDuesAndFederationSchemaParity`. Any older table/count
+without its own exact source pair is a historical, provenance-incomplete
+checkpoint and cannot support current score or upgrade-safety claims.
 
 Laravel source of truth: `C:\platforms\htdocs\staging\database\migrations` and
 `C:\platforms\htdocs\staging\app\Models`.
@@ -21,6 +20,46 @@ the current banked score and active schema/upgrade deductions. Dated sections
 here are retained evidence. Static table-name counts are never an overall score
 and remain historical until explicitly regenerated against named SHAs.
 
+## 2026-07-15 Verein Dues And Federation Schema Evidence
+
+Migration `20260715054926_VereinDuesAndFederationSchemaParity` closes the five
+genuine Verein/Clubs table gaps: `verein_membership_fees`,
+`verein_member_dues`, `verein_dues_payments`, `verein_event_shares`, and
+`verein_cross_invitations`. It adds the required `events(TenantId, Id)`
+alternate key and uses tenant-composite relationships for users,
+organisations, events, and member dues. Laravel-compatible names, column
+types, lengths, defaults, status/value checks, uniqueness, and indexes are
+covered by focused model/migration tests.
+
+Verification on the `ea352690c95bbb6dea26a7b00c8454a37b51a859` lineage:
+
+- a forced clean Release API build passed in 7m12.34s with zero errors and
+  three pre-existing warnings;
+- the focused `VereinSchemaParityTests` class passed 3/3 in 44.6 seconds after
+  discovering 3,334 tests in the Debug test assembly; the newly copied Release
+  test DLL was separately blocked by local Windows Application Control and was
+  not counted as a test pass;
+- `dotnet ef migrations has-pending-model-changes` reported no model drift;
+- a blank disposable PostgreSQL 16.4 database applied all 154 runtime
+  migrations through the Verein migration and exposed all five tables plus the
+  event tenant/id key;
+- a second disposable database was populated at
+  `20260714234546_SocialCommentMentionParity` with one tenant, two users, two
+  organisations, and one event, then upgraded by exactly the Verein migration
+  without losing those rows;
+- valid rows were inserted into every new table; defaults resolved to
+  `CHF`, `annual`, `30`, `true`, `pending`, `0`, `active`, and `sent` as
+  applicable; and a cross-tenant event share failed on
+  `FK_verein_event_shares_events_tenant_id_event_id` with no invalid row left
+  behind;
+- the schema-comparator fixture passed, and the disposable PostgreSQL container
+  was removed after verification.
+
+This evidence closes five exact-name gaps and makes the slice eligible for the
+canonical scoring transaction. It does not silently rescore the fixed rubric:
+the banked schema category remains **129/150** until the canonical ASP.NET
+status document records an accepted movement.
+
 ## 2026-07-15 Current Static Inventory And Classification Boundary
 
 This is the current repeatable, read-only source inventory. It is a table-name
@@ -29,34 +68,30 @@ comparison, not runtime migration proof, API/workflow parity, or a score.
 | Source | Count | Notes |
 | --- | ---: | --- |
 | Laravel migration files | 384 | PHP files under `database/migrations`. |
-| ASP.NET EF migration source files | 155 | Excludes designer files and the model snapshot. |
+| ASP.NET EF migration source files | 156 | Excludes designer files and the model snapshot. |
 | Laravel created tables | 301 | Unique `Schema::create(...)` names. |
 | Laravel touched tables | 131 | Unique `Schema::table(...)` names. |
 | Laravel explicit model tables | 268 | Unique explicit model `$table` declarations. |
 | Laravel source tables | 458 | Union of created, touched, and explicit model table names. |
-| ASP.NET tables | 425 | Union of EF `ToTable`, `[Table]`, and migration `CreateTable` names. |
-| Exact matched tables | 227 | Identical normalized names in both sources. |
-| Missing Laravel exact names | 231 | Laravel names with no identical ASP.NET name. |
+| ASP.NET tables | 430 | Union of EF `ToTable`, `[Table]`, and migration `CreateTable` names. |
+| Exact matched tables | 232 | Identical normalized names in both sources. |
+| Missing Laravel exact names | 226 | Laravel names with no identical ASP.NET name. |
 | ASP.NET-only exact names | 198 | ASP.NET names with no identical Laravel name. |
 
-The 231 missing exact names currently partition as follows. These categories
+The 226 missing exact names currently partition as follows. These categories
 are mutually exclusive, so their counts reconcile to the comparator total.
 
 | Classification | Count | Evidence boundary |
 | --- | ---: | --- |
 | Classified aliases | 20 | A differently named ASP.NET aggregate has been identified. Each alias remains a gap until its migration shape and external workflow are proved equivalent. |
 | Podcast compatibility-storage gaps | 8 | `podcast_episode_chapters`, `podcast_episode_listens`, `podcast_episode_reactions`, `podcast_episode_reports`, `podcast_episodes`, `podcast_media_cleanup_tasks`, `podcast_show_subscriptions`, and `podcast_shows`. Existing API compatibility does not replace these Laravel storage/evidence contracts. |
-| Genuine Verein/Clubs gaps | 5 | `verein_cross_invitations`, `verein_dues_payments`, `verein_event_shares`, `verein_member_dues`, and `verein_membership_fees`. |
 | Unclassified missing names | 198 | No accepted alias or replacement classification has yet been recorded. |
-| **Total missing exact names** | **231** | **20 + 8 + 5 + 198.** |
+| **Total missing exact names** | **226** | **20 + 8 + 198.** |
 
-The separate schema worktree, currently based at
-`1ded18bd5e49e09c06d697ac0699a9cc31181d25`, contains an uncommitted attempt to
-add the five Verein tables. It is not banked evidence and adds **zero** score
-points. If its EF migration is regenerated from that current lineage and the
-slice passes disposable-PostgreSQL upgrade/model-drift and focused workflow
-tests, the static exact-match projection would move from 227 to 232. The current
-banked schema category therefore remains **129/150**.
+The five Verein names previously classified as genuine missing storage are now
+represented exactly and are therefore absent from this missing-name partition.
+The static exact-name inventory moved from 227 to 232 matches; this remains a
+diagnostic inventory rather than an overall parity percentage.
 
 The comparator's Markdown renderer was also corrected in this audit. Missing
 and ASP.NET-only rows now render concrete table names and source paths rather
@@ -579,7 +614,7 @@ of semantic absence. It highlights the domains that need table-by-table review:
 | `job_*` | 13 | Job schema is partially present but not exact-name complete. |
 | `marketplace_*` | 2 | Marketplace provider/account and settlement slices reduced the exact-name table gap, but the remaining source names and their workflows still require reconciliation. |
 | `podcast*` | 8 | Podcast API route compatibility now exists, but the eight dedicated Laravel storage/media/evidence tables listed in the current classification remain open gaps. |
-| `verein_*` | 5 | `verein_federation_consents` is represented for municipality events-calendar sharing; the five named Verein/Clubs storage gaps remain unbanked. |
+| `verein_*` | 0 | `verein_federation_consents` and the five dues, payment, event-share, and cross-invitation tables are now represented exactly; wider Verein workflow/consumer proof remains separate from the static table-name result. |
 | `regional_*` | 0 | Regional Analytics subscription, report, access-log, and cache schema tables are now represented; API/service/report workflow parity remains open. |
 
 ## Acceptance Criteria For Schema Parity
