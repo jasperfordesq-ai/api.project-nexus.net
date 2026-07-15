@@ -7341,6 +7341,157 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('finite read-only API assertion manifest', () => {
+    const jsonResponse = (body = { data: [] }) => ({
+      ok: true,
+      headers: { get: () => 'application/json' },
+      json: async () => body
+    });
+
+    it('asserts admin jobs, matching, and wallet read wrappers', async () => {
+      mockFetch.mockResolvedValue(jsonResponse());
+
+      await api.callAdminJobApi('test-token', 'GET', '/?limit=200');
+      await api.callAdminJobApi('test-token', 'GET', '/42');
+      await api.callMatchesApi('test-token', 'GET', '/all?limit=20&cursor=next');
+      await api.callWalletApi('test-token', 'GET', '/balance');
+      await api.callWalletApi('test-token', 'GET', '/community-fund');
+      await api.callWalletApi('test-token', 'GET', '/user-search?q=ann&limit=10');
+
+      const expectedUrls = [
+        'http://localhost:5000/api/v2/admin/jobs/?limit=200',
+        'http://localhost:5000/api/v2/admin/jobs/42',
+        'http://localhost:5000/api/v2/matches/all?limit=20&cursor=next',
+        'http://localhost:5000/api/v2/wallet/balance',
+        'http://localhost:5000/api/v2/wallet/community-fund',
+        'http://localhost:5000/api/v2/wallet/user-search?q=ann&limit=10'
+      ];
+      expectedUrls.forEach((url, index) => {
+        expect(mockFetch).toHaveBeenNthCalledWith(
+          index + 1,
+          url,
+          expect.objectContaining({
+            method: 'GET',
+            headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
+          })
+        );
+      });
+    });
+
+    it('asserts Event and Poll binary read contracts', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: { get: () => 'text/csv' },
+        arrayBuffer: async () => Buffer.from('export bytes')
+      });
+
+      await api.downloadEventApi('test-token', '/42/analytics/export.csv');
+      await api.downloadEventApi('test-token', '/42/calendar.ics');
+      await api.downloadEventApi('test-token', '/calendar/feed.ics');
+      await api.getPollExport('test-token', 'poll/42');
+
+      const expectedUrls = [
+        'http://localhost:5000/api/v2/events/42/analytics/export.csv',
+        'http://localhost:5000/api/v2/events/42/calendar.ics',
+        'http://localhost:5000/api/v2/events/calendar/feed.ics',
+        'http://localhost:5000/api/v2/polls/poll%2F42/export'
+      ];
+      expectedUrls.forEach((url, index) => {
+        expect(mockFetch).toHaveBeenNthCalledWith(
+          index + 1,
+          url,
+          expect.objectContaining({
+            method: 'GET',
+            headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
+          })
+        );
+      });
+    });
+
+    it('asserts public discovery, knowledge, legal, and feed read contracts', async () => {
+      mockFetch.mockResolvedValue(jsonResponse());
+
+      await api.getFeedHashtags('test-token', { q: 'repair', limit: 5 });
+      await api.getFeedHashtags('', { limit: 10, days: 30 });
+      await api.getFeedHashtagPosts('test-token', 'community garden', { limit: 20, cursor: 'next' });
+      await api.getHelpFaqs({ q: 'password', category_id: 7 });
+      await api.getKnowledgeBaseArticles('', { per_page: 12, cursor: 'abc', category_id: 7 });
+      await api.getKnowledgeBaseArticles('test-token', { q: 'safeguarding', limit: 8 });
+      await api.getKnowledgeBaseArticle('test-token', 'article/42');
+      await api.getLegalDocument('acceptable_use');
+      await api.getPopularListingTags('test-token', 12);
+
+      const expected = [
+        ['http://localhost:5000/api/v2/feed/hashtags/search?q=repair&limit=5', 'Bearer test-token'],
+        ['http://localhost:5000/api/v2/feed/hashtags/trending?limit=10&days=30', null],
+        ['http://localhost:5000/api/v2/feed/hashtags/community%20garden?limit=20&cursor=next', 'Bearer test-token'],
+        ['http://localhost:5000/api/v2/help/faqs?q=password&category_id=7', null],
+        ['http://localhost:5000/api/v2/kb?per_page=12&cursor=abc&category_id=7', null],
+        ['http://localhost:5000/api/v2/kb/search?q=safeguarding&limit=8', 'Bearer test-token'],
+        ['http://localhost:5000/api/v2/kb/article%2F42', 'Bearer test-token'],
+        ['http://localhost:5000/api/v2/legal/acceptable_use', null],
+        ['http://localhost:5000/api/v2/listings/tags/popular?limit=12', 'Bearer test-token']
+      ];
+      expected.forEach(([url, authorization], index) => {
+        expect(mockFetch.mock.calls[index][0]).toBe(url);
+        const headers = mockFetch.mock.calls[index][1]?.headers || {};
+        if (authorization) expect(headers.Authorization).toBe(authorization);
+        else expect(headers).not.toHaveProperty('Authorization');
+      });
+    });
+
+    it('asserts member, onboarding, taxonomy, poll, and exchange read contracts', async () => {
+      mockFetch.mockResolvedValue(jsonResponse());
+
+      await api.getExchange('test-token', 'exchange/42');
+      await api.getExchangeRatings('test-token', 42);
+      await api.getMembersNearby('test-token', {
+        lat: 51.8,
+        lon: -8.3,
+        radius_km: 25,
+        q: 'repair',
+        limit: 20,
+        offset: 0
+      });
+      await api.getOnboardingCategories('test-token');
+      await api.getOnboardingStatus('test-token');
+      await api.getPollCategories('test-token');
+      await api.getPollRankedResults('test-token', 'poll/42');
+      await api.getSkillCategories('');
+      await api.getSkillCategory('test-token', 'skill/7');
+      await api.getMembersV2('test-token', {
+        q: 'ann',
+        sort: 'name',
+        order: 'asc',
+        limit: 25,
+        offset: 0
+      });
+      await api.getMemberVerificationBadges('test-token', 'member/77');
+
+      const expectedUrls = [
+        'http://localhost:5000/api/v2/exchanges/exchange%2F42',
+        'http://localhost:5000/api/v2/exchanges/42/ratings',
+        'http://localhost:5000/api/v2/members/nearby?lat=51.8&lon=-8.3&radius_km=25&q=repair&limit=20&offset=0',
+        'http://localhost:5000/api/v2/onboarding/categories',
+        'http://localhost:5000/api/v2/onboarding/status',
+        'http://localhost:5000/api/v2/polls/categories',
+        'http://localhost:5000/api/v2/polls/poll%2F42/ranked-results',
+        'http://localhost:5000/api/v2/skills/categories',
+        'http://localhost:5000/api/v2/skills/categories/skill%2F7',
+        'http://localhost:5000/api/v2/users?q=ann&sort=name&order=asc&limit=25&offset=0',
+        'http://localhost:5000/api/v2/users/member%2F77/verification-badges'
+      ];
+      expectedUrls.forEach((url, index) => {
+        expect(mockFetch.mock.calls[index][0]).toBe(url);
+      });
+      expect(mockFetch.mock.calls[7][1].headers).not.toHaveProperty('Authorization');
+      for (const index of [0, 1, 2, 3, 4, 5, 6, 8, 9, 10]) {
+        expect(mockFetch.mock.calls[index][1].headers.Authorization).toBe('Bearer test-token');
+      }
+    });
+  });
+
   describe('getExplore', () => {
     it('should request the Laravel v2 Explore aggregate with auth', async () => {
       mockFetch.mockResolvedValueOnce({

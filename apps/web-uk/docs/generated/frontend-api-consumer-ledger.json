@@ -1,14 +1,14 @@
 {
   "schemaVersion": 3,
-  "generatedAt": "2026-07-15T14:19:46.714Z",
+  "generatedAt": "2026-07-15T14:24:09.790Z",
   "provenance": {
-    "generatedAt": "2026-07-15T14:19:46.714Z",
+    "generatedAt": "2026-07-15T14:24:09.790Z",
     "laravelRepositoryRoot": "C:\\platforms\\htdocs\\staging",
     "laravelCommitSha": "903d03d3db78bbf87129ad35728be3b72819acaf",
     "laravelWorkingTreeDirty": true,
     "webUkRepositoryRoot": "C:\\platforms\\htdocs\\asp.net-backend",
     "webUkPath": "apps/web-uk",
-    "webUkRepositoryCommitSha": "c4bc294ebf7687728bcbc729d9ac4a804f5a994f",
+    "webUkRepositoryCommitSha": "a01cea831b0d823697d857b89581ac98facef1ca",
     "webUkRepositoryWorkingTreeDirty": true,
     "caveat": "Laravel and Web UK repository working trees were dirty when generated. Commit SHAs identify HEAD only; generated content may include uncommitted changes from the dirty working trees."
   },
@@ -29,8 +29,8 @@
     "dynamicUnresolved": 0,
     "stateChanging": 370,
     "withoutTests": 0,
-    "withoutDirectApiHelperAssertions": 30,
-    "uniqueHelpersWithoutDirectApiAssertions": 23,
+    "withoutDirectApiHelperAssertions": 0,
+    "uniqueHelpersWithoutDirectApiAssertions": 0,
     "stateChangingWithoutDirectApiHelperAssertions": 0,
     "routeDeclaredOpenApiOmissionHelpersWithoutDirectApiAssertions": 0
   },
@@ -792,11 +792,12 @@
         "src/routes/jobs.js"
       ],
       "tests": [
+        "tests/api.test.js",
         "tests/jobs-status-localization.test.js",
         "tests/jobs-title-localization.test.js",
         "tests/shared-accessible-shell.test.js"
       ],
-      "directApiHelperAssertion": false,
+      "directApiHelperAssertion": true,
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
@@ -829,11 +830,12 @@
         "src/routes/jobs.js"
       ],
       "tests": [
+        "tests/api.test.js",
         "tests/jobs-status-localization.test.js",
         "tests/jobs-title-localization.test.js",
         "tests/shared-accessible-shell.test.js"
       ],
-      "directApiHelperAssertion": false,
+      "directApiHelperAssertion": true,
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
@@ -3956,9 +3958,10 @@
         "src/routes/events.js"
       ],
       "tests": [
+        "tests/api.test.js",
         "tests/shared-accessible-shell.test.js"
       ],
-      "directApiHelperAssertion": false,
+      "directApiHelperAssertion": true,
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
@@ -4209,9 +4212,10 @@
         "src/routes/events.js"
       ],
       "tests": [
+        "tests/api.test.js",
         "tests/shared-accessible-shell.test.js"
       ],
-      "directApiHelperAssertion": false,
+      "directApiHelperAssertion": true,
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
@@ -6896,9 +6900,10 @@
         "src/routes/events.js"
       ],
       "tests": [
+        "tests/api.test.js",
         "tests/shared-accessible-shell.test.js"
       ],
-      "directApiHelperAssertion": false,
+      "directApiHelperAssertion": true,
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
@@ -7088,7 +7093,7 @@
         "tests/api.test.js",
         "tests/shared-accessible-shell.test.js"
       ],
-      "directApiHelperAssertion": false,
+      "directApiHelperAssertion": true,
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
@@ -7157,9 +7162,10 @@
         "src/routes/exchanges.js"
       ],
       "tests": [
+        "tests/api.test.js",
         "tests/shared-accessible-shell.test.js"
       ],
-      "directApiHelperAssertion": false,
+      "directApiHelperAssertion": true,
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
@@ -8205,10 +8211,11 @@
         "src/routes/feed.js"
       ],
       "tests": [
+        "tests/api.test.js",
         "tests/laravel-runtime-smoke.test.js",
         "tests/shared-accessible-shell.test.js"
       ],
-      "directApiHelperAssertion": false,
+      "directApiHelperAssertion": true,
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
@@ -8241,9 +8248,10 @@
         "src/routes/feed.js"
       ],
       "tests": [
+        "tests/api.test.js",
         "tests/shared-accessible-shell.test.js"
       ],
-      "directApiHelperAssertion": false,
+      "directApiHelperAssertion": true,
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
@@ -8276,9 +8284,10 @@
         "src/routes/feed.js"
       ],
       "tests": [
+        "tests/api.test.js",
         "tests/shared-accessible-shell.test.js"
       ],
-      "directApiHelperAssertion": false,
+      "directApiHelperAssertion": true,
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
@@ -11588,9 +11597,10 @@
         "src/routes/support.js"
       ],
       "tests": [
+        "tests/api.test.js",
         "tests/shared-accessible-shell.test.js"
       ],
-      "directApiHelperAssertion": false,
+      "directApiHelperAssertion": true,
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
@@ -14240,9 +14250,10 @@
         "src/routes/kb.js"
       ],
       "tests": [
+        "tests/api.test.js",
         "tests/shared-accessible-shell.test.js"
       ],
-      "directApiHelperAssertion": false,
+      "directApiHelperAssertion": true,
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
@@ -14275,9 +14286,10 @@
         "src/routes/kb.js"
       ],
       "tests": [
+        "tests/api.test.js",
         "tests/shared-accessible-shell.test.js"
       ],
-      "directApiHelperAssertion": false,
+      "directApiHelperAssertion": true,
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
@@ -14310,9 +14322,10 @@
         "src/routes/kb.js"
       ],
       "tests": [
+        "tests/api.test.js",
         "tests/shared-accessible-shell.test.js"
       ],
-      "directApiHelperAssertion": false,
+      "directApiHelperAssertion": true,
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
@@ -14345,9 +14358,10 @@
         "src/routes/legal.js"
       ],
       "tests": [
+        "tests/api.test.js",
         "tests/shared-accessible-shell.test.js"
       ],
-      "directApiHelperAssertion": false,
+      "directApiHelperAssertion": true,
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
@@ -14885,9 +14899,10 @@
         "src/routes/search.js"
       ],
       "tests": [
+        "tests/api.test.js",
         "tests/shared-accessible-shell.test.js"
       ],
-      "directApiHelperAssertion": false,
+      "directApiHelperAssertion": true,
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
@@ -16338,9 +16353,10 @@
         "src/routes/matches.js"
       ],
       "tests": [
+        "tests/api.test.js",
         "tests/shared-accessible-shell.test.js"
       ],
-      "directApiHelperAssertion": false,
+      "directApiHelperAssertion": true,
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
@@ -16977,10 +16993,11 @@
       ],
       "tests": [
         "tests/accessibility/public-pages.spec.js",
+        "tests/api.test.js",
         "tests/laravel-runtime-smoke.test.js",
         "tests/shared-accessible-shell.test.js"
       ],
-      "directApiHelperAssertion": false,
+      "directApiHelperAssertion": true,
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
@@ -18005,9 +18022,10 @@
         "src/routes/onboarding-posts.js"
       ],
       "tests": [
+        "tests/api.test.js",
         "tests/shared-accessible-shell.test.js"
       ],
-      "directApiHelperAssertion": false,
+      "directApiHelperAssertion": true,
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
@@ -18174,9 +18192,10 @@
         "src/routes/onboarding-posts.js"
       ],
       "tests": [
+        "tests/api.test.js",
         "tests/shared-accessible-shell.test.js"
       ],
-      "directApiHelperAssertion": false,
+      "directApiHelperAssertion": true,
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
@@ -18956,9 +18975,10 @@
         "src/routes/poll-actions.js"
       ],
       "tests": [
+        "tests/api.test.js",
         "tests/shared-accessible-shell.test.js"
       ],
-      "directApiHelperAssertion": false,
+      "directApiHelperAssertion": true,
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
@@ -19027,9 +19047,10 @@
         "src/routes/poll-actions.js"
       ],
       "tests": [
+        "tests/api.test.js",
         "tests/shared-accessible-shell.test.js"
       ],
-      "directApiHelperAssertion": false,
+      "directApiHelperAssertion": true,
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
@@ -19100,9 +19121,10 @@
         "src/routes/poll-actions.js"
       ],
       "tests": [
+        "tests/api.test.js",
         "tests/shared-accessible-shell.test.js"
       ],
-      "directApiHelperAssertion": false,
+      "directApiHelperAssertion": true,
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
@@ -20158,9 +20180,10 @@
         "src/routes/skills.js"
       ],
       "tests": [
+        "tests/api.test.js",
         "tests/shared-accessible-shell.test.js"
       ],
-      "directApiHelperAssertion": false,
+      "directApiHelperAssertion": true,
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
@@ -20193,9 +20216,10 @@
         "src/routes/skills.js"
       ],
       "tests": [
+        "tests/api.test.js",
         "tests/shared-accessible-shell.test.js"
       ],
-      "directApiHelperAssertion": false,
+      "directApiHelperAssertion": true,
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
@@ -20411,7 +20435,7 @@
         "tests/api.test.js",
         "tests/shared-accessible-shell.test.js"
       ],
-      "directApiHelperAssertion": false,
+      "directApiHelperAssertion": true,
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
@@ -20825,9 +20849,10 @@
         "src/routes/members.js"
       ],
       "tests": [
+        "tests/api.test.js",
         "tests/shared-accessible-shell.test.js"
       ],
-      "directApiHelperAssertion": false,
+      "directApiHelperAssertion": true,
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
@@ -24768,7 +24793,7 @@
         "tests/api.test.js",
         "tests/shared-accessible-shell.test.js"
       ],
-      "directApiHelperAssertion": false,
+      "directApiHelperAssertion": true,
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
@@ -24841,9 +24866,10 @@
         "src/routes/wallet.js"
       ],
       "tests": [
+        "tests/api.test.js",
         "tests/shared-accessible-shell.test.js"
       ],
-      "directApiHelperAssertion": false,
+      "directApiHelperAssertion": true,
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {
@@ -25023,9 +25049,10 @@
         "src/routes/wallet.js"
       ],
       "tests": [
+        "tests/api.test.js",
         "tests/shared-accessible-shell.test.js"
       ],
-      "directApiHelperAssertion": false,
+      "directApiHelperAssertion": true,
       "evidence": "static/mock test reference detected; inspect assertions before claiming contract certification"
     },
     {

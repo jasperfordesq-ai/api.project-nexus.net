@@ -232,7 +232,7 @@ score remain outside this workstream.
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
 | Blade marker check | Current rerun unavailable because Laravel port 8088 is not listening; preceding product `e2918257` passed 19/19 | Public GET marker comparison only; not screenshot or visual certification |
 | Automated accessibility | Not currently certified: the last stateful aggregate recorded 28 passed, login failed, and 58 did not run. At published products `10f01c7c`, `7e158d29`, and `9249ad60`, an isolated read-only browser runner passes 14/14 public structure/axe cases, 4/4 keyboard/focus/client-validation/reflow/forced-colour cases, and 6/6 default-English narrow-reflow/no-JavaScript cases without access to Laravel. The sixth case proves invalid registration recovery with preserved input, linked inline errors, a focusable summary, and no backend mutation. Product `b6166484` adds a reproducible manual-inspection mode over the same random-loopback, GET/HEAD-only fixture. Products `cbed0c9e` and `0197b0a3` add fail-closed paired Blade/Web UK screenshot capture plus side-by-side HTML and editable Markdown review worksheets for six representative pages and two viewports. | The isolated subsets and capture/inspection support are partial browser evidence only; no paired screenshots were captured because a verified disposable Laravel listener is absent. Actual browser zoom, the disposable-Laravel aggregate, screenshot review, and manual assistive-technology review remain open. |
-| Frontend API consumer ledger | 668 contracts: 451 OpenAPI matches, 217 unmatched, 0 dynamic; all 217 unmatched contracts resolve to direct Laravel route declarations omitted from OpenAPI; 370 are state-changing and 0 lack detected tests. The corrected finite direct-assertion manifest has 30 read-only rows across 23 helpers and 0 state-changing rows without direct helper assertions. | Static/mock ownership evidence. The remaining direct-assertion queue is finite and does not require live Laravel. |
+| Frontend API consumer ledger | 668 contracts: 451 OpenAPI matches, 217 unmatched, 0 dynamic; all 217 unmatched contracts resolve to direct Laravel route declarations omitted from OpenAPI; 370 are state-changing and 0 lack detected tests. The finite direct-assertion manifest is complete: 0 rows and 0 helpers remain without direct assertions. | Static/mock ownership evidence. Every consumer helper now has direct mocked contract proof without using live Laravel. |
 
 The table above preserves the named audit result. Under the corrected goal, the
 absence of a disposable Laravel listener does not block Web UK implementation
@@ -265,25 +265,24 @@ against ASP.NET by configuration change only after that backend is ready.
 
 ### Finite P0/P1 Completion Queue
 
-The corrected frontend-owned queue has three bounded packages. Optional live
+The corrected frontend-owned queue has two bounded packages. Optional live
 Laravel runtime work and future ASP.NET switching are not in this queue:
 
-1. **P0 - Source-contract assertion closure:** the generated finite manifest
-   contains 30 read-only rows across 23 helpers. All 370 state-changing rows now
-   have direct helper assertions, including Event Template mutations and the
-   Resource multipart upload contract closed in the current slice. Close the
-   remaining request/response fields, auth/role, status/error, and binary-read
-   assertions using Laravel source plus mocked Web UK tests. OpenAPI publication
-   is owned by Laravel and does not block Web UK where a direct Laravel
-   declaration exists.
-2. **P0 - Safe-fixture manual accessibility:** complete representative Web UK
+1. **P0 - Safe-fixture manual accessibility:** complete representative Web UK
    visual review plus keyboard, no-JS, zoom/reflow, forced-colour, focus/error,
    and screen-reader sign-off using only the isolated Web UK fixture server and
    mocked states.
-3. **P1 - Source-owned production hardening:** finish any Web UK code,
+2. **P1 - Source-owned production hardening:** finish any Web UK code,
    configuration validation, readiness, release, and rollback evidence that can
    be proved without deploying or contacting Laravel. Actual deployment and
    release authorization remain a separate operations gate.
+
+The source-contract assertion package is complete. The generated manifest now
+contains zero rows: direct mocked tests exercise every previously outstanding
+admin Job, Event/calendar/export, Exchange, Feed hashtag, Help/Knowledge Base,
+Legal, Listing-tag, Match, Member, onboarding, Poll, Skill-taxonomy, Resource,
+Event Template, and Wallet helper/path family. OpenAPI publication remains a
+Laravel API-owner decision and does not block Web UK.
 
 Two Laravel source-contract gaps remain recorded but do not block unrelated or
 otherwise complete Web UK work: Event moderation queue membership/order plus
@@ -292,10 +291,10 @@ fabricate either contract.
 
 Checkpoint footer: frozen historical bank `663/1,000`; corrected-goal in-flight
 delta `0`; frontend blocker owner `none`; finite frontend-owned package count
-`3`. Next five tasks: close the remaining 30 read-only direct-assertion rows;
-verify the resulting zero-row manifest; run the safe isolated manual
-accessibility server; record representative manual findings and fixes; audit
-source-owned hardening evidence.
+`2`. Next five tasks: run the safe isolated manual accessibility server; review
+representative default-English pages at desktop and 320 CSS pixels; record and
+fix concrete keyboard/focus/no-JS/zoom/forced-colour issues; capture screen-reader
+findings; audit source-owned hardening evidence.
 
 The exact Windows Update interruption and the pre-restart product boundary are
 recorded in

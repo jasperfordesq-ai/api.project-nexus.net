@@ -1835,6 +1835,16 @@ passes 2/2 suites and 246/246 tests. No Laravel request, login, database,
 migration, mutation, upload, download, container, or ASP.NET operation was
 performed.
 
+The immediate follow-up closes the full 30-row manifest. Four grouped mocked
+API tests exercise every remaining read-only helper/path family, including
+query ordering, identifier encoding, optional versus required bearer authority,
+JSON responses, and Event/Poll binary downloads. Regeneration now reports zero
+rows, zero unique helpers, and zero state-changing rows without direct helper
+assertions across all 668 contracts. Focused generator/API proof passes 2/2
+suites and 250/250 tests. This closes the source-contract assertion package
+without changing the frozen historical score or claiming live runtime
+certification.
+
 - GOV.UK crown, logotype, official header identity, OGL block, or Crown
   copyright wording.
 - Laravel/PHP implementation details.
