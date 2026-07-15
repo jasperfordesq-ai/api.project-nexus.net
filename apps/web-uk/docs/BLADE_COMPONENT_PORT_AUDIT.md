@@ -1570,6 +1570,22 @@ database, migration, runtime request, container, or production operation was
 performed. This slice is unscored; the canonical bank remains `663/1,000`
 until another complete fixed-rubric audit.
 
+### 2026-07-15 Conversation mutation path-assertion follow-up
+
+The shared conversation dispatcher now has direct API-client proof for group
+creation and participant add/remove paths in addition to the existing message-
+creation assertion. The cases pin Laravel's exact nested paths, POST/DELETE
+verbs, bearer authority, participant arrays, body omission on DELETE,
+unmodified success envelopes, and structured management-denial `403`
+propagation. This closes the currently generated OpenAPI-omitted conversation
+mutation path set at the API-client boundary; routed membership/role tests
+remain in place, while live effects and cleanup require the disposable runtime.
+
+The focused API-client suite passes `229/229`. No Laravel or ASP.NET source,
+database, migration, runtime request, container, or production operation was
+performed. This slice is unscored; the canonical bank remains `663/1,000`
+until another complete fixed-rubric audit.
+
 - GOV.UK crown, logotype, official header identity, OGL block, or Crown
   copyright wording.
 - Laravel/PHP implementation details.

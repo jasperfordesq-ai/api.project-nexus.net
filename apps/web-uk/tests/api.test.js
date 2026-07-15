@@ -3757,6 +3757,51 @@ describe('API Request Functions', () => {
       );
     });
 
+    it('should preserve group-conversation and participant mutation paths and payloads', async () => {
+      const cases = [
+        ['POST', '/groups', { name: 'Repair coordinators', participant_ids: [77, 91] }],
+        ['POST', '/33/participants', { user_ids: [105, 106] }],
+        ['DELETE', '/33/participants/105', undefined]
+      ];
+
+      for (const [method, pathValue, body] of cases) {
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { accepted: true } })
+        });
+
+        await expect(api.callConversationApi('test-token', method, pathValue, body))
+          .resolves.toEqual({ data: { accepted: true } });
+        expect(mockFetch).toHaveBeenLastCalledWith(
+          `http://localhost:5000/api/v2/conversations${pathValue}`,
+          expect.objectContaining({
+            method,
+            headers: expect.objectContaining({ Authorization: 'Bearer test-token' }),
+            ...(body === undefined ? {} : { body: JSON.stringify(body) })
+          })
+        );
+        if (body === undefined) {
+          expect(mockFetch.mock.calls.at(-1)[1]).not.toHaveProperty('body');
+        }
+      }
+
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ message: 'You cannot manage this conversation.', code: 'FORBIDDEN' })
+      });
+
+      await expect(api.callConversationApi('test-token', 'POST', '/33/participants', { user_ids: [105] }))
+        .rejects.toMatchObject({
+          name: 'ApiError',
+          status: 403,
+          message: 'You cannot manage this conversation.',
+          data: { message: 'You cannot manage this conversation.', code: 'FORBIDDEN' }
+        });
+    });
+
     it('should upload voice messages to Laravel with multipart audio data', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
