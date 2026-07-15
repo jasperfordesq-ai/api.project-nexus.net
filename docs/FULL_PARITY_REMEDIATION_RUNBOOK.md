@@ -462,6 +462,30 @@ security/localization, 45/100 build/test/CI, 10/125 unchanged-frontends, and
 24/75 providers/ops/docs. Exact remaining deductions are 0, 44, 21, 4, 55,
 115, and 51 points.
 
+### 2026-07-15 V2 Generic Comment Sanitizer Parity (Published)
+
+Evidence snapshot: Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf`, ASP.NET implementation
+`5fa15e0e79993464622b1c3ef053fcdd01679991`, captured 2026-07-15
+01:26:01 +01:00. Generic threaded-comment create and edit now sanitize in the
+shared service, covering `/api/v2/comments` and other service consumers. The V2
+contract now preserves Laravel-allowed formatting instead of stripping every
+tag, while removing executable blocks, event handlers, inline styles, and
+dangerous URL schemes before persistence.
+
+The Release API build passes with zero errors. On separately named disposable
+PostgreSQL databases, the unchanged-canonical-React CRUD/reply/list/reaction/
+delete contract with sanitizer assertions passes 1/1 and the containing
+Comments V2 controller integration class passes 5/5. Full-suite/CI,
+mention/notification side effects on the generic V2 path, and unchanged-browser
+proof remain open.
+
+This banks 1 semantic and 1 security/localization point for **712/1000**:
+100/100 route, 307/350 semantic, 129/150 schema, 97/100
+security/localization, 45/100 build/test/CI, 10/125 unchanged-frontends, and
+24/75 providers/ops/docs. Exact remaining deductions are 0, 43, 21, 3, 55,
+115, and 51 points.
+
 ## Historical Checkpoints
 
 Everything in this section is dated implementation evidence. Its older

@@ -4,7 +4,7 @@ Last verified: 2026-07-14
 
 Status: **canonical current ASP.NET score and certification source**
 
-<!-- doc-consistency: ASPNET_CURRENT_BANKED_SCORE=710/1000 -->
+<!-- doc-consistency: ASPNET_CURRENT_BANKED_SCORE=712/1000 -->
 
 Use this document for the current ASP.NET completion score. Use
 [`FULL_PARITY_REMEDIATION_RUNBOOK.md`](FULL_PARITY_REMEDIATION_RUNBOOK.md) for
@@ -35,7 +35,7 @@ ASP.NET-specific page branches do not satisfy the goal.
 
 ## Current Scored Position
 
-The **current banked score is 710/1000 (71.0%)** under Fixed Rubric Baseline 1.
+The **current banked score is 712/1000 (71.2%)** under Fixed Rubric Baseline 1.
 The denominator is fixed; newly discovered work is recorded as a deduction or
 a separately named Laravel-drift baseline, never as a silent denominator
 change.
@@ -43,13 +43,13 @@ change.
 | Category | Banked | Maximum | Open |
 | --- | ---: | ---: | ---: |
 | Active Laravel API route representation | 100 | 100 | 0 |
-| Semantic workflow and canonical-consumer contract parity | 306 | 350 | 44 |
+| Semantic workflow and canonical-consumer contract parity | 307 | 350 | 43 |
 | Schema, migrations, data integrity, and upgrade safety | 129 | 150 | 21 |
-| Auth, tenant isolation, security, and localization | 96 | 100 | 4 |
+| Auth, tenant isolation, security, and localization | 97 | 100 | 3 |
 | Full build/test/CI evidence | 45 | 100 | 55 |
 | Unchanged canonical React plus unchanged Web UK dual-backend runtime proof | 10 | 125 | 115 |
 | Providers, jobs, integrations, operational proof, and reproducible docs | 24 | 75 | 51 |
-| **Total** | **710** | **1000** | **290** |
+| **Total** | **712** | **1000** | **288** |
 
 Active route representation is **2,601/2,601 matched with 0 missing**. Seven
 retired OpenAPI-only operations are reported separately and return to the
@@ -88,15 +88,16 @@ published:
 | Tenant-bootstrap precedence and fail-closed runtime proof | Implementation `5fbcf36dedf320c0ca81ac77f8b4771d891f7331`; stable disposable-PostgreSQL verification at ASP.NET `ccd109fc4dc67b0b117780b2130d519e6bb38eea` | +2 semantic, +1 security = **701/1000** |
 | Social comment mentions, usernames, and recipient side effects | Implementation `1ff6447012c89744e94d6693463a8032361c5946` | +4 semantic, +2 schema, +1 security/localization = **708/1000** |
 | Laravel-compatible social-comment HTML sanitization | Implementation `293796e0f17b91e446f49a28babd960de7681e27` | +1 semantic, +1 security/localization = **710/1000** |
+| V2 generic-comment safe-format and sanitizer parity | Implementation `5fa15e0e79993464622b1c3ef053fcdd01679991` | +1 semantic, +1 security/localization = **712/1000** |
 
 These named values form an audit trail. They are not competing current scores.
 
 ## Repository State At This Verification
 
 The latest banked backend implementation inspected for this page was
-`293796e0f17b91e446f49a28babd960de7681e27`, with
+`5fa15e0e79993464622b1c3ef053fcdd01679991`, with
 Laravel frozen at `903d03d3db78bbf87129ad35728be3b72819acaf` on
-2026-07-15 01:15:28 +01:00. Web UK-only commits do not add ASP.NET points and
+2026-07-15 01:26:01 +01:00. Web UK-only commits do not add ASP.NET points and
 belong in the Web UK status report.
 
 ### Published But Not Rescored
@@ -117,8 +118,8 @@ or runtime correctness.
 ### Dirty And In Flight
 
 The refund-notification marketplace, secure SSO/OIDC, tenant-bootstrap,
-social-comment mention, and social-comment sanitizer slices are committed and
-banked. The corrected tenant-bootstrap set passes 4/4
+social-comment mention, legacy social-comment sanitizer, and V2 generic-comment
+sanitizer slices are committed and banked. The corrected tenant-bootstrap set passes 4/4
 and its containing public-compatibility class passes 11/11 against a separately
 named disposable PostgreSQL database through `NEXUS_TEST_POSTGRES`; the related
 SSO public-controller integration check also passes 1/1 on that database. The
@@ -133,7 +134,7 @@ count, elapsed effort, or an agent's estimate.
 
 ## Open Certification Gates
 
-The remaining 290 points are not a single implementation queue. They include
+The remaining 288 points are not a single implementation queue. They include
 independent proof gates that must remain visible in status reports:
 
 - semantic completion for remaining marketplace, federation, jobs, providers,
