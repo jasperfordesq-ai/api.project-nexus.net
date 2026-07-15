@@ -1803,6 +1803,19 @@ database, migration, browser, container, or production operation was used.
 This support slice is unscored; the canonical bank remains `663/1,000` until
 another complete fixed-rubric audit.
 
+Published product SHA `0197b0a3` turns each screenshot manifest into a strict
+12-pair review packet: responsive side-by-side `review.html` plus editable
+`review.md`. Pair construction rejects missing, duplicate, or unknown surfaces;
+the HTML escapes source metadata; and both worksheets require one outcome,
+reviewer, date, and resolved notes per route/viewport pair. Focused proof passes
+`9/9`; the complete non-mutating gate passes `53/53` suites and
+`1,743/1,743` tests, with green direct lint, syntax, documentation-consistency,
+and diff checks. No screenshots or review outcomes were produced because the
+verified disposable Laravel listener remains absent. No Laravel source,
+database, migration, browser, container, or production operation was used.
+This support slice is unscored; the canonical bank remains `663/1,000` until
+another complete fixed-rubric audit.
+
 - GOV.UK crown, logotype, official header identity, OGL block, or Crown
   copyright wording.
 - Laravel/PHP implementation details.
