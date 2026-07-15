@@ -1638,6 +1638,24 @@ database, migration, runtime request, container, or production operation was
 performed. This slice is unscored; the canonical bank remains `663/1,000`
 until another complete fixed-rubric audit.
 
+### 2026-07-15 Group invitation path-assertion follow-up
+
+The shared Group dispatcher now has direct API-client proof for invitation-link
+creation, invitation-email delivery, and invitation revocation in addition to
+the existing file deletion and notification-preference assertions. The cases
+pin Laravel's exact nested paths and verbs, bearer authority, bounded expiry,
+email/message arrays, body omission on DELETE, unmodified success envelopes,
+and structured management-denial `403` propagation. Together with the existing
+multipart upload proof, this closes the currently generated OpenAPI-omitted
+Group file/invitation/preference mutation paths at the API-client boundary.
+Live delivery, membership policy, storage effects and cleanup require the
+isolated disposable runtime.
+
+The focused API-client suite passes `234/234`. No Laravel or ASP.NET source,
+database, migration, runtime request, container, or production operation was
+performed. This slice is unscored; the canonical bank remains `663/1,000`
+until another complete fixed-rubric audit.
+
 - GOV.UK crown, logotype, official header identity, OGL block, or Crown
   copyright wording.
 - Laravel/PHP implementation details.

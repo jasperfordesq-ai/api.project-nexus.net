@@ -3391,6 +3391,54 @@ describe('API Request Functions', () => {
       );
     });
 
+    it('should preserve group invitation paths, payloads, revocation, and authorization errors', async () => {
+      const cases = [
+        ['POST', '/42/invites/link', { expiry_days: 14 }],
+        ['POST', '/42/invites/email', {
+          emails: ['alex@example.test', 'sam@example.test'],
+          message: 'Join our repair circle'
+        }],
+        ['DELETE', '/42/invites/19', undefined]
+      ];
+
+      for (const [method, pathValue, body] of cases) {
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { accepted: true } })
+        });
+
+        await expect(api.callGroupApi('test-token', method, pathValue, body))
+          .resolves.toEqual({ data: { accepted: true } });
+        expect(mockFetch).toHaveBeenLastCalledWith(
+          `http://localhost:5000/api/v2/groups${pathValue}`,
+          expect.objectContaining({
+            method,
+            headers: expect.objectContaining({ Authorization: 'Bearer test-token' }),
+            ...(body === undefined ? {} : { body: JSON.stringify(body) })
+          })
+        );
+        if (body === undefined) {
+          expect(mockFetch.mock.calls.at(-1)[1]).not.toHaveProperty('body');
+        }
+      }
+
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ message: 'You cannot manage invitations for this group.', code: 'FORBIDDEN' })
+      });
+
+      await expect(api.callGroupApi('test-token', 'POST', '/42/invites/link', { expiry_days: 14 }))
+        .rejects.toMatchObject({
+          name: 'ApiError',
+          status: 403,
+          message: 'You cannot manage invitations for this group.',
+          data: { message: 'You cannot manage invitations for this group.', code: 'FORBIDDEN' }
+        });
+    });
+
     it('should upload group images to Laravel with multipart image data', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
