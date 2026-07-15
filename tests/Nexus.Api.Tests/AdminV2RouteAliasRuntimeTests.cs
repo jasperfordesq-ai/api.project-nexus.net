@@ -689,6 +689,11 @@ public class AdminV2RouteAliasRuntimeTests : IntegrationTestBase
     [InlineData("/api/v2/onboarding/safeguarding")]
     public async Task LaravelReactMemberWorkflowV2PostAliases_AsMember_AreRouted(string path)
     {
+        if (path == "/api/v2/member-premium/cancel")
+        {
+            await SeedActiveMemberPremiumSubscriptionAsync();
+        }
+
         await AuthenticateAsMemberAsync();
 
         var response = await Client.PostAsJsonAsync(path, new { });
@@ -775,5 +780,40 @@ public class AdminV2RouteAliasRuntimeTests : IntegrationTestBase
 
         response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
         response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
+    }
+
+    private async Task SeedActiveMemberPremiumSubscriptionAsync()
+    {
+        var now = DateTime.UtcNow;
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+        var plan = new SubscriptionPlan
+        {
+            TenantId = TestData.Tenant1.Id,
+            Name = $"Route probe premium {Guid.NewGuid():N}",
+            Description = "Active subscription for the member-premium cancel route probe",
+            Price = 1m,
+            Currency = "EUR",
+            Features = "[]",
+            IsActive = true,
+            IsPublic = true,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        db.SubscriptionPlans.Add(plan);
+        await db.SaveChangesAsync();
+
+        db.UserSubscriptions.Add(new UserSubscription
+        {
+            TenantId = TestData.Tenant1.Id,
+            UserId = TestData.MemberUser.Id,
+            PlanId = plan.Id,
+            Status = SubscriptionStatus.Active,
+            StartedAt = now,
+            NextBillingDate = now.AddMonths(1),
+            CreatedAt = now,
+            UpdatedAt = now
+        });
+        await db.SaveChangesAsync();
     }
 }
