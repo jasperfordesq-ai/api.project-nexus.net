@@ -55,7 +55,18 @@ public sealed class MarketplaceReportCaseService(NexusDbContext db)
         Notify(tenant, actorId, "marketplace_report_received", "Marketplace report received", report.Id);
         await db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
-        return new(new { id = report.Id, status = report.Status, message = "Report submitted" }, Status: 201);
+        return new(new
+        {
+            id = report.Id,
+            listing_id = report.MarketplaceListingId,
+            marketplace_listing_id = report.MarketplaceListingId,
+            reporter_id = report.ReporterUserId,
+            reporter_user_id = report.ReporterUserId,
+            reason = report.Reason,
+            details = report.Details,
+            status = report.Status,
+            message = "Report submitted"
+        }, Status: 201);
     }
 
     public async Task<MarketplaceReportCaseResult> MineAsync(int tenant, int actorId, CancellationToken ct)

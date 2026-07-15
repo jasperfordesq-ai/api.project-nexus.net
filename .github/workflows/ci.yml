@@ -36,6 +36,7 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     needs: build
+    timeout-minutes: 75
 
     services:
       postgres:
@@ -64,9 +65,9 @@ jobs:
         run: dotnet restore Nexus.sln
 
       - name: Run tests
-        run: dotnet test Nexus.sln --no-restore --configuration Release --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"
+        run: dotnet test Nexus.sln --no-restore --configuration Release --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage" --blame-hang --blame-hang-timeout 10m --blame-hang-dump-type mini
         env:
-          ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=nexus_test;Username=postgres;Password=postgres"
+          NEXUS_TEST_POSTGRES: "Host=localhost;Port=5432;Database=nexus_test;Username=postgres;Password=postgres"
           JWT_SECRET: "ci-test-secret-key-that-is-long-enough-for-hs256"
 
       - name: Upload test results
@@ -74,7 +75,10 @@ jobs:
         if: always()
         with:
           name: test-results
-          path: "**/*.trx"
+          path: |
+            **/*.trx
+            **/*Sequence*.xml
+            **/*.dmp
           retention-days: 30
 
       - name: Merge coverage reports
@@ -92,35 +96,6 @@ jobs:
         with:
           name: coverage
           path: coverage-merged/Cobertura.xml
-          retention-days: 30
-
-  integration-test:
-    # Full integration suite via Testcontainers. Ryuk (the Testcontainers
-    # reaper) is disabled because the same workflow needs to run on
-    # Docker-on-Windows where Ryuk fails to attach; it is harmless on
-    # Linux runners since the GitHub-hosted VM is torn down per job.
-    name: Integration Tests (Testcontainers)
-    runs-on: ubuntu-latest
-    env:
-      TESTCONTAINERS_RYUK_DISABLED: 'true'
-
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '8.0.x'
-
-      - name: Run tests
-        run: dotnet test --nologo --verbosity minimal --logger trx
-
-      - name: Upload TRX artifact
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: integration-test-results
-          path: "**/TestResults/*.trx"
           retention-days: 30
 
   frontend:

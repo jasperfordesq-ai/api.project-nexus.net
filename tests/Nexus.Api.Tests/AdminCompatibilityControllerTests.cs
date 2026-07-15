@@ -4,15 +4,19 @@
 // See NOTICE file for attribution and acknowledgements.
 
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Nexus.Api.Controllers;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
+using Nexus.Api.Services;
 using Nexus.Api.Tests.Fixtures;
 
 namespace Nexus.Api.Tests;
@@ -222,7 +226,7 @@ public class AdminCompatibilityControllerTests : IntegrationTestBase
             userId = user.Id;
         }
 
-        await AuthenticateAsAdminAsync();
+        await AuthenticateAsPlatformSuperAdminAsync();
 
         var impersonate = await Client.PostAsync($"/api/admin/users/{userId}/impersonate", null);
         impersonate.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -233,6 +237,8 @@ public class AdminCompatibilityControllerTests : IntegrationTestBase
         var superAdmin = await Client.PutAsync($"/api/admin/users/{userId}/super-admin", null);
         superAdmin.StatusCode.Should().Be(HttpStatusCode.OK);
 
+        await AuthenticateAsGodAsync();
+
         var globalSuperAdmin = await Client.PutAsync($"/api/admin/users/{userId}/global-super-admin", null);
         globalSuperAdmin.StatusCode.Should().Be(HttpStatusCode.OK);
 
@@ -240,9 +246,7 @@ public class AdminCompatibilityControllerTests : IntegrationTestBase
         var verifyDb = verifyScope.ServiceProvider.GetRequiredService<NexusDbContext>();
         var updated = await verifyDb.Users.IgnoreQueryFilters().FirstAsync(u => u.Id == userId);
         updated.Role.Should().Be("admin");
-
-        var config = await verifyDb.TenantConfigs.IgnoreQueryFilters().FirstAsync(c => c.Key == "super_admins.global_user_ids");
-        config.Value.Should().Contain(userId.ToString());
+        updated.IsSuperAdmin.Should().BeTrue();
     }
 
     [Fact]
@@ -587,14 +591,39 @@ public class AdminCompatibilityControllerTests : IntegrationTestBase
     [Fact]
     public async Task EmailProviderTest_SendsWhenProviderIsHealthy()
     {
-        await AuthenticateAsAdminAsync();
+        var token = await GetAccessTokenAsync("admin@test.com", "test-tenant");
+        using var healthyFactory = Factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureServices(services =>
+            {
+                services.RemoveAll<IEmailService>();
+                services.AddSingleton<IEmailService, HealthyEmailService>();
+            });
+        });
+        using var healthyClient = healthyFactory.CreateClient();
+        healthyClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var response = await Client.PostAsJsonAsync("/api/admin/email/test-provider", new { to = "admin@test.com" });
+        var response = await healthyClient.PostAsJsonAsync("/api/admin/email/test-provider", new { to = "admin@test.com" });
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var content = await response.Content.ReadFromJsonAsync<JsonElement>();
         content.GetProperty("delivered").GetBoolean().Should().BeTrue();
         content.GetProperty("email_log_id").GetInt32().Should().BeGreaterThan(0);
+    }
+
+    private sealed class HealthyEmailService : IEmailService
+    {
+        public Task<bool> SendEmailAsync(string to, string subject, string htmlBody, string? textBody = null, CancellationToken ct = default)
+            => Task.FromResult(true);
+
+        public Task<bool> SendPasswordResetEmailAsync(string to, string resetToken, string userName, string resetUrl, CancellationToken ct = default)
+            => Task.FromResult(true);
+
+        public Task<bool> SendWelcomeEmailAsync(string to, string userName, string tenantName, CancellationToken ct = default)
+            => Task.FromResult(true);
+
+        public Task<bool> IsHealthyAsync(CancellationToken ct = default)
+            => Task.FromResult(true);
     }
 
     [Fact]

@@ -5,6 +5,8 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
+using Microsoft.AspNetCore.Http.Metadata;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Nexus.Api.Data;
 using Nexus.Api.Entities;
@@ -463,12 +465,8 @@ public class AdminV2RouteAliasRuntimeTests : IntegrationTestBase
     }
 
     [Theory]
-    [InlineData("/api/v2/comments?target_type=post&target_id=42")]
     [InlineData("/api/v2/comments/1/reactions")]
     [InlineData("/api/v2/resources")]
-    [InlineData("/api/v2/resources/1/download")]
-    [InlineData("/api/v2/group-chatrooms/1/messages")]
-    [InlineData("/api/v2/team-tasks/1")]
     public async Task LaravelReactCommunityResourceTaskV2ReadAliases_AsMember_AreRouted(string path)
     {
         await AuthenticateAsMemberAsync();
@@ -703,15 +701,27 @@ public class AdminV2RouteAliasRuntimeTests : IntegrationTestBase
     }
 
     [Theory]
-    [InlineData("/api/v2/group-chatroom-messages/1")]
-    public async Task LaravelReactIdeationDeleteV2Aliases_AsMember_AreRouted(string path)
+    [InlineData("GET", "api/v2/comments")]
+    [InlineData("GET", "api/v2/resources/{id:int}/download")]
+    [InlineData("GET", "api/v2/group-chatrooms/{chatroomId:int}/messages")]
+    [InlineData("GET", "api/v2/team-tasks/{id:int}")]
+    [InlineData("DELETE", "api/v2/group-chatroom-messages/{messageId:int}")]
+    [InlineData("POST", "api/v2/onboarding/complete")]
+    public void LaravelReactV2Aliases_HaveSingleControllerOwner(string method, string route)
     {
-        await AuthenticateAsMemberAsync();
+        var matches = Factory.Services.GetServices<EndpointDataSource>()
+            .SelectMany(source => source.Endpoints)
+            .OfType<RouteEndpoint>()
+            .Where(endpoint =>
+                string.Equals(
+                    endpoint.RoutePattern.RawText?.Trim().TrimStart('/'),
+                    route,
+                    StringComparison.OrdinalIgnoreCase)
+                && (endpoint.Metadata.GetMetadata<IHttpMethodMetadata>()?.HttpMethods
+                    .Contains(method, StringComparer.OrdinalIgnoreCase) ?? false))
+            .ToArray();
 
-        var response = await Client.DeleteAsync(path);
-
-        response.StatusCode.Should().NotBe(HttpStatusCode.NotFound);
-        response.StatusCode.Should().NotBe(HttpStatusCode.MethodNotAllowed);
+        matches.Should().ContainSingle();
     }
 
     [Theory]

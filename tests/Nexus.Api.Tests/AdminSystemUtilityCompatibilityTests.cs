@@ -62,7 +62,7 @@ public sealed class AdminSystemUtilityCompatibilityTests : IntegrationTestBase
     [Fact]
     public async Task BrandingUploadsHeaderColorsAndVerificationEmail_MatchLaravelReactShape()
     {
-        await AuthenticateAsAdminAsync();
+        await AuthenticateAsGodAsync();
 
         var colors = await ReadDataAsync(await Client.PutAsJsonAsync("/api/v2/admin/settings/header-colors", new
         {
@@ -87,7 +87,7 @@ public sealed class AdminSystemUtilityCompatibilityTests : IntegrationTestBase
     [Fact]
     public async Task SuperTenantPurgePreviewAndPurgeExposeSafeCompatibilityContract()
     {
-        await AuthenticateAsAdminAsync();
+        await AuthenticateAsGodAsync();
 
         var preview = await ReadDataAsync(await Client.GetAsync($"/api/v2/admin/super/tenants/{TestData.Tenant2.Id}/purge-preview"));
         preview.GetProperty("success").GetBoolean().Should().BeTrue();

@@ -12,6 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
 using Nexus.Api.Authorization;
+using Nexus.Api.Entities;
 
 namespace Nexus.Api.Extensions;
 
@@ -142,7 +143,21 @@ public static class AuthExtensions
                             userId,
                             context.HttpContext.RequestAborted);
 
-                        if (current is null || !current.IsActive)
+                        if (current is null)
+                        {
+                            context.Fail("user_not_found_or_inactive");
+                            return;
+                        }
+
+                        // Pending-verification identities are intentionally
+                        // inactive until the provider flow succeeds. Their
+                        // access token is valid only for the two verification
+                        // endpoints; every other authenticated route retains
+                        // the normal active-user requirement.
+                        var pendingVerificationEndpoint =
+                            current.RegistrationStatus == RegistrationStatus.PendingVerification
+                            && IsRegistrationVerificationEndpoint(context.HttpContext.Request.Path);
+                        if (!current.IsActive && !pendingVerificationEndpoint)
                         {
                             context.Fail("user_not_found_or_inactive");
                             return;
@@ -182,6 +197,19 @@ public static class AuthExtensions
             NexusAuthorizationResultHandler>());
 
         return services;
+    }
+
+    private static bool IsRegistrationVerificationEndpoint(PathString path)
+    {
+        var normalized = (path.Value ?? string.Empty).TrimEnd('/').ToLowerInvariant();
+        if (normalized is "/api/registration/verify/start" or "/api/registration/verify/status")
+        {
+            return true;
+        }
+
+        return normalized.StartsWith("/api/v", StringComparison.Ordinal)
+            && (normalized.EndsWith("/registration/verify/start", StringComparison.Ordinal)
+                || normalized.EndsWith("/registration/verify/status", StringComparison.Ordinal));
     }
 
     private static void AddAccessPolicy(

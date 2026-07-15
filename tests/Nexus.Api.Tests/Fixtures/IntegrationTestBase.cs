@@ -135,4 +135,38 @@ public abstract class IntegrationTestBase : IAsyncLifetime
         var token = await GetAccessTokenAsync(email, "test-tenant");
         SetAuthToken(token);
     }
+
+    /// <summary>
+    /// Authenticate as a dedicated database-backed god-level administrator.
+    /// God-only routes require the explicit persisted flag; role aliases and
+    /// ordinary platform-super-admin state must not satisfy that boundary.
+    /// </summary>
+    protected async Task AuthenticateAsGodAsync()
+    {
+        var email = $"god-{Guid.NewGuid():N}@test.com";
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            db.Users.Add(new User
+            {
+                TenantId = TestData.Tenant1.Id,
+                Email = email,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(TestDataSeeder.TestPassword),
+                FirstName = "God",
+                LastName = "Administrator",
+                Role = "member",
+                IsAdmin = false,
+                IsSuperAdmin = false,
+                IsTenantSuperAdmin = false,
+                IsGod = true,
+                IsActive = true,
+                RegistrationStatus = RegistrationStatus.Active,
+                CreatedAt = DateTime.UtcNow
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var token = await GetAccessTokenAsync(email, "test-tenant");
+        SetAuthToken(token);
+    }
 }

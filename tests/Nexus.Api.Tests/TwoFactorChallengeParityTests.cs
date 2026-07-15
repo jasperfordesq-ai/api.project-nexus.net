@@ -157,11 +157,12 @@ public sealed class TwoFactorChallengeParityTests : IntegrationTestBase
         using (var scope = Factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
-            var user = await db.Users
+            var changed = await db.Users
                 .IgnoreQueryFilters()
-                .SingleAsync(candidate => candidate.Id == _createdUserId!.Value);
-            user.TenantId = TestData.Tenant2.Id;
-            await db.SaveChangesAsync();
+                .Where(candidate => candidate.Id == _createdUserId!.Value)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(candidate => candidate.TenantId, TestData.Tenant2.Id));
+            changed.Should().Be(1);
         }
 
         var verify = await Client.PostAsJsonAsync("/api/totp/verify", new

@@ -2176,7 +2176,7 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
     [Fact]
     public async Task AdminPrerenderTenantSafety_ReturnsLaravelReactShape()
     {
-        await AuthenticateAsAdminAsync();
+        await AuthenticateAsPlatformSuperAdminAsync();
 
         var response = await Client.GetAsync($"/api/v2/admin/prerender/tenant-safety?tenant={TestData.Tenant1.Slug}");
 

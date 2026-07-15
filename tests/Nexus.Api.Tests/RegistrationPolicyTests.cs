@@ -336,6 +336,11 @@ public class RegistrationPolicyTests : IntegrationTestBase
         var (_, token) = await CreatePendingVerificationUserAsync("start-verify@test.com", "Start", "Verify");
         SetAuthToken(token);
 
+        // The inactive pending identity is authenticated only for the
+        // verification flow; it must not become a general member token.
+        var memberResponse = await Client.GetAsync("/api/users/me");
+        memberResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+
         // Act
         var verifyResponse = await Client.PostAsJsonAsync("/api/registration/verify/start", new { });
 

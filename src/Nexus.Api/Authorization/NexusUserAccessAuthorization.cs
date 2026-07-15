@@ -45,6 +45,7 @@ public sealed class NexusUserAccessSnapshot
     public int TenantId { get; init; }
     public string Role { get; init; } = "member";
     public bool IsActive { get; init; }
+    public RegistrationStatus RegistrationStatus { get; init; }
     public bool IsAdmin { get; init; }
     public bool IsSuperAdmin { get; init; }
     public bool IsTenantSuperAdmin { get; init; }
@@ -83,6 +84,7 @@ public sealed class NexusUserAccessReader : INexusUserAccessReader
                 TenantId = user.TenantId,
                 Role = user.Role,
                 IsActive = user.IsActive,
+                RegistrationStatus = user.RegistrationStatus,
                 IsAdmin = user.IsAdmin,
                 IsSuperAdmin = user.IsSuperAdmin,
                 IsTenantSuperAdmin = user.IsTenantSuperAdmin,

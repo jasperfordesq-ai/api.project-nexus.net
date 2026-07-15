@@ -703,6 +703,17 @@ public sealed class RecurringShiftCrudTests : IntegrationTestBase
                 TestData.MemberUser.Id,
                 "Unrelated pattern",
                 createdAt: DateTime.UtcNow.AddDays(-4));
+            var crossTenantOpportunity = await AddOpportunityAsync(
+                db,
+                TestData.Tenant2.Id,
+                TestData.OtherTenantUser.Id,
+                "Cross-tenant delete cleanup opportunity");
+            var crossTenantPattern = await AddPatternAsync(
+                db,
+                crossTenantOpportunity,
+                TestData.OtherTenantUser.Id,
+                "Cross-tenant pattern",
+                createdAt: DateTime.UtcNow.AddDays(-3));
 
             var past = await AddShiftAsync(
                 db, TestData.Tenant1.Id, opportunity.Id, pattern.Id, DateTime.UtcNow.AddDays(-2));
@@ -711,7 +722,11 @@ public sealed class RecurringShiftCrudTests : IntegrationTestBase
             var unrelated = await AddShiftAsync(
                 db, TestData.Tenant1.Id, opportunity.Id, unrelatedPattern.Id, DateTime.UtcNow.AddDays(3));
             var crossTenant = await AddShiftAsync(
-                db, TestData.Tenant2.Id, opportunity.Id, pattern.Id, DateTime.UtcNow.AddDays(4));
+                db,
+                TestData.Tenant2.Id,
+                crossTenantOpportunity.Id,
+                crossTenantPattern.Id,
+                DateTime.UtcNow.AddDays(4));
             var tenantAlert = await AddAlertAsync(
                 db,
                 TestData.Tenant1.Id,
@@ -723,8 +738,8 @@ public sealed class RecurringShiftCrudTests : IntegrationTestBase
                 db,
                 TestData.Tenant2.Id,
                 TestData.OtherTenantUser.Id,
-                opportunity.Id,
-                future.Id,
+                crossTenantOpportunity.Id,
+                crossTenant.Id,
                 "Cross-tenant alert");
 
             patternId = pattern.Id;

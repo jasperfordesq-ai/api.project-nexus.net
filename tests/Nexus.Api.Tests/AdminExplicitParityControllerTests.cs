@@ -415,7 +415,7 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
             first_name = "Updated",
             last_name = "Member",
             email = $"updated-{marker}@example.test",
-            role = "moderator"
+            role = "broker"
         });
         updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         var updateJson = await updateResponse.Content.ReadFromJsonAsync<JsonElement>();
@@ -424,7 +424,7 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
         updated.GetProperty("id").GetInt32().Should().Be(userOneId);
         updated.GetProperty("name").GetString().Should().Be("Updated Member");
         updated.GetProperty("email").GetString().Should().Be($"updated-{marker}@example.test");
-        updated.GetProperty("role").GetString().Should().Be("moderator");
+        updated.GetProperty("role").GetString().Should().Be("broker");
 
         var otherTenantResponse = await Client.GetAsync($"/api/v2/admin/users/{otherTenantId}");
         otherTenantResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
@@ -839,7 +839,7 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
             otherTenantId = otherTenant.Id;
         }
 
-        await AuthenticateAsAdminAsync();
+        await AuthenticateAsPlatformSuperAdminAsync();
 
         var response = await Client.PostAsync($"/api/v2/admin/users/{userId}/impersonate", null);
 
@@ -875,7 +875,7 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
             otherTenantId = otherTenant.Id;
         }
 
-        await AuthenticateAsAdminAsync();
+        await AuthenticateAsGodAsync();
 
         var grantTenant = await Client.PutAsJsonAsync($"/api/v2/admin/users/{userId}/super-admin", new { grant = true });
         grantTenant.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -889,7 +889,8 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
         {
             var verifyDb = verifyScope.ServiceProvider.GetRequiredService<NexusDbContext>();
             var user = await verifyDb.Users.IgnoreQueryFilters().SingleAsync(u => u.Id == userId);
-            user.Role.Should().Be("tenant_admin");
+            user.Role.Should().Be("admin");
+            user.IsTenantSuperAdmin.Should().BeTrue();
         }
 
         var revokeTenant = await Client.PutAsJsonAsync($"/api/v2/admin/users/{userId}/super-admin", new { grant = false });
@@ -908,8 +909,8 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
         using (var verifyScope = Factory.Services.CreateScope())
         {
             var verifyDb = verifyScope.ServiceProvider.GetRequiredService<NexusDbContext>();
-            var config = await verifyDb.TenantConfigs.IgnoreQueryFilters().SingleAsync(c => c.Key == "super_admins.global_user_ids");
-            config.Value.Should().Contain(userId.ToString());
+            var user = await verifyDb.Users.IgnoreQueryFilters().SingleAsync(u => u.Id == userId);
+            user.IsSuperAdmin.Should().BeTrue();
         }
 
         var revokeGlobal = await Client.PutAsJsonAsync($"/api/v2/admin/users/{userId}/global-super-admin", new { grant = false });
@@ -920,8 +921,8 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
         using (var verifyScope = Factory.Services.CreateScope())
         {
             var verifyDb = verifyScope.ServiceProvider.GetRequiredService<NexusDbContext>();
-            var config = await verifyDb.TenantConfigs.IgnoreQueryFilters().SingleAsync(c => c.Key == "super_admins.global_user_ids");
-            config.Value.Should().NotContain(userId.ToString());
+            var user = await verifyDb.Users.IgnoreQueryFilters().SingleAsync(u => u.Id == userId);
+            user.IsSuperAdmin.Should().BeFalse();
         }
 
         var otherTenantResponse = await Client.PutAsJsonAsync($"/api/v2/admin/users/{otherTenantId}/super-admin", new { grant = true });
@@ -1372,7 +1373,7 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
             await db.SaveChangesAsync();
         }
 
-        await AuthenticateAsAdminAsync();
+        await AuthenticateAsGodAsync();
 
         var response = await Client.GetAsync("/api/v2/admin/super/billing/snapshot");
 
@@ -2618,11 +2619,12 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task CatchAllPost_PersistsCompatibilityRecord()
+    public async Task CompatibilityOnlyPost_PersistsCompatibilityRecord()
     {
         await AuthenticateAsAdminAsync();
 
-        var response = await Client.PostAsJsonAsync("/api/v2/admin/ad-campaigns/42/approve", new
+        const string endpoint = "/api/v2/admin/agents/42/run-now";
+        var response = await Client.PostAsJsonAsync(endpoint, new
         {
             reason = "explicit parity test"
         });
@@ -2639,7 +2641,7 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
         // TenantConfig JSON dual-write was removed).
         var audit = await db.CompatibilityAuditEntries.IgnoreQueryFilters()
             .Where(e => e.TenantId == TestData.Tenant1.Id
-                && e.Endpoint == "/api/v2/admin/ad-campaigns/42/approve")
+                && e.Endpoint == endpoint)
             .OrderByDescending(e => e.Id)
             .FirstAsync();
         audit.RequestBody.Should().Contain("explicit parity test");
