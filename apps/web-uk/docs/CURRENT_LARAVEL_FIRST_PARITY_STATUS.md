@@ -381,6 +381,12 @@ mutation, upload, download, cleanup, or production operation was performed.
 This component-audit improvement remains published and unscored, so the frozen
 bank remains `622/1,000` pending a complete fixed-rubric re-audit.
 
+Package-10 progress: the Listing index/detail/form component row is now
+implementation-closed and certification-only. Its remaining side-effect,
+manual-accessibility, and backend-switching proof belongs to packages 4 and 11
+and the separate ASP.NET readiness score; this classification adds no banked
+points.
+
 ### Finite P0/P1 Completion Queue
 
 The remaining Laravel-first queue is 12 bounded work packages. Do not expand it

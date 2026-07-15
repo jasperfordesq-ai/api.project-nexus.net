@@ -917,6 +917,12 @@ unresolved; 322 templates have zero conservative matches. No Laravel request,
 authentication, mutation, database access, upload, download, or cleanup was
 performed.
 
+Component-audit classification: the Listing index/detail/form row is
+implementation-closed and certification-only. Its remaining named work is the
+generic-listing side-effect matrix in disposable-runtime package 4, manual
+assistive-technology evidence in package 11, and later unchanged-Web-UK
+ASP.NET switching proof; none is an unresolved Blade implementation row.
+
 | Blade pattern | Laravel source | Web UK implementation | Status |
 | --- | --- | --- | --- |
 | Event moderation queue and decisions | `views/event-moderation-queue.blade.php`, `views/event-moderation-decision.blade.php`, `EventModerationParity`, `Api\AdminEventsController` | `src/routes/events.js`, `src/views/events/moderation-queue.njk`, `src/views/events/moderation-decision.njk`, `src/lib/api.js` | Partial. Signed tenant administrators can open the default-English queue and separate approve/reject confirmation pages through Laravel's current admin Event list/detail contracts. Queue status, count, cards, pagination, decision summaries, warnings, field-linked validation, mounted redirects, and private/no-store headers follow Blade. Approval requires explicit confirmation; rejection requires confirmation plus a bounded reason and submits only that reason to Laravel's canonical reject action. Non-admin or missing-event API responses fail closed. Focused mocked queue/validation/action and direct API-client proof pass; the full non-mutating gate is 48/48 suites and 1,635/1,635 tests, and the generated route matrix is 688/689. This is not contract-identical certification: Laravel's admin list does not join the moderation queue, orders by Event creation rather than queue submission, and omits Blade's `is_online`. Live moderation side effects, manual assistive-technology review, and unchanged ASP.NET runtime proof remain uncertified. |
