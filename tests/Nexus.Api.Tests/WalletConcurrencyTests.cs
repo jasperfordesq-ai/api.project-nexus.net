@@ -44,12 +44,14 @@ public class WalletConcurrencyTests : IntegrationTestBase
         }).ToList();
 
         // Act - Try to transfer 3.0 hours x 5 concurrently
-        var transferTasks = clients.Select(client =>
+        var testRunId = Guid.NewGuid();
+        var transferTasks = clients.Select((client, index) =>
             client.PostAsJsonAsync("/api/wallet/transfer", new
             {
                 receiver_id = TestData.AdminUser.Id,
                 amount = 3.0,
-                description = "Concurrent transfer test"
+                description = "Concurrent transfer test",
+                idempotency_key = $"wallet-concurrency-{testRunId:N}-{index}"
             }));
 
         var responses = await Task.WhenAll(transferTasks);
