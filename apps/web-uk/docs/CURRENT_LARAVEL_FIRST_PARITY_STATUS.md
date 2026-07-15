@@ -13,6 +13,34 @@ narrative handoff, while `BLADE_COMPONENT_PORT_AUDIT.md` remains the detailed
 evidence ledger. `CURRENT_WEB_UK_HANDOFF.md` is a historical archive and must
 never be used as a current resume, queue, count, or scoring source.
 
+## Current Goal Scope Correction
+
+The active Web UK goal was corrected on 2026-07-15. Frontend completion no
+longer depends on provisioning or using a disposable Laravel environment. The
+four evidence tracks are now deliberately separate:
+
+1. **Source-derived Web UK implementation parity:** required. Inspect Laravel
+   Blade and backend source read-only, implement only in `apps/web-uk/**`, and
+   prove behavior with static analysis, mocked contract tests, and Web UK-owned
+   fixtures.
+2. **Manual Web UK accessibility:** required. Exercise keyboard, focus,
+   error-summary, no-JS, zoom/reflow, forced-colour, and screen-reader behavior
+   against isolated Web UK fixtures without logging in to or mutating Laravel.
+3. **Live Laravel runtime certification:** optional and outside this goal. Do
+   not provision, request, or use a disposable Laravel environment unless the
+   user separately authorizes that future workstream.
+4. **ASP.NET switchability:** separate future backend-owned proof. It neither
+   defines nor blocks Laravel-first Web UK implementation.
+
+The frozen `663/1000` bank below remains an accurate record of the previous
+fixed-rubric certification audit; it has not been rescored. It must not be used
+as the completion percentage for the corrected frontend goal because 200 of
+its points measure the now-optional live Laravel runtime track. At that same
+snapshot, the already-audited source-derived implementation/hardening rows total
+`628/650` (`99 + 292 + 190 + 47`), and manual accessibility remains separately
+recorded as `35/150`. These are disaggregated historical results, not a new
+audit or a claim of completion.
+
 ## Goal And Source Of Truth
 
 `apps/web-uk` must become a complete observable-behaviour clone of the Laravel
@@ -37,18 +65,19 @@ It does not own backend business logic, database schema, or persistence.
 - Legacy `/{tenantSlug}/alpha`: redirect compatibility only
 - Never use `/hour-timebank/alpha` as a comparison, browser-test, or evidence
   URL; it exists only to verify the legacy redirect.
-- Current and certification backend: Laravel
+- Current contract source: Laravel source, read-only
 - Future second backend: ASP.NET, incomplete, not authoritative, and not
   certified
 
-Laravel source and its ordinary local database are read-only from this
+Laravel source and every Laravel database/environment are read-only from this
 workstream. Do not solve a missing Laravel API by inventing frontend-only
 behaviour, editing Laravel, running Laravel migrations, altering its schema,
-querying its database directly, or performing database cleanup. Real mutation,
-upload, download, and destructive certification requires a separately
-provisioned disposable Laravel test environment. The ordinary database is a
-confidential production-derived snapshot; unique fixtures and cleanup do not
-authorize writes to it.
+querying its database directly, or performing database cleanup. Do not run live
+login, mutation, upload, download, destructive, or cleanup tests against
+Laravel. Verify state-changing frontend behavior from the read-only source
+contract with mocked tests, static analysis, and Web UK-owned fixtures. Live
+Laravel runtime certification is optional separate work, not a frontend
+completion dependency.
 
 ASP.NET is not a source of truth for this frontend and is not part of the
 frontend implementation loop. Do not inspect it to decide frontend behaviour
@@ -149,8 +178,9 @@ Consequences for this workstream:
 - treat the ordinary local Laravel database as a confidential, production-data
   snapshot for read-only comparison, never as a disposable certification
   fixture;
-- run future mutation certification only against an isolated disposable Laravel
-  environment provisioned separately from the ordinary local database.
+- do not provision or run live Laravel mutation certification as part of the
+  active Web UK goal. If the user explicitly authorizes that separate future
+  workstream, it must never target the ordinary local database.
 
 Do not append another general progress narrative to
 `CURRENT_WEB_UK_HANDOFF.md`. Update this file only when the source SHAs,
@@ -204,6 +234,12 @@ score remain outside this workstream.
 | Automated accessibility | Not currently certified: the last stateful aggregate recorded 28 passed, login failed, and 58 did not run. At published products `10f01c7c`, `7e158d29`, and `9249ad60`, an isolated read-only browser runner passes 14/14 public structure/axe cases, 4/4 keyboard/focus/client-validation/reflow/forced-colour cases, and 6/6 default-English narrow-reflow/no-JavaScript cases without access to Laravel. The sixth case proves invalid registration recovery with preserved input, linked inline errors, a focusable summary, and no backend mutation. Product `b6166484` adds a reproducible manual-inspection mode over the same random-loopback, GET/HEAD-only fixture. Products `cbed0c9e` and `0197b0a3` add fail-closed paired Blade/Web UK screenshot capture plus side-by-side HTML and editable Markdown review worksheets for six representative pages and two viewports. | The isolated subsets and capture/inspection support are partial browser evidence only; no paired screenshots were captured because a verified disposable Laravel listener is absent. Actual browser zoom, the disposable-Laravel aggregate, screenshot review, and manual assistive-technology review remain open. |
 | Frontend API consumer ledger | 668 contracts: 451 OpenAPI matches, 217 unmatched, 0 dynamic; all 217 unmatched contracts resolve to direct Laravel route declarations omitted from OpenAPI; 370 are state-changing and 0 lack detected tests | Static/mock ownership evidence, not disposable-runtime certification |
 
+The table above preserves the named audit result. Under the corrected goal, the
+absence of a disposable Laravel listener does not block Web UK implementation
+or safe-fixture accessibility. Paired live-Laravel screenshots and the stateful
+aggregate belong to the optional runtime track; representative Web UK visual
+and manual review remains required through isolated frontend fixtures.
+
 ### Current Banked Score
 
 | Fixed rubric | Earned | Exact deduction |
@@ -229,47 +265,34 @@ against ASP.NET by configuration change only after that backend is ready.
 
 ### Finite P0/P1 Completion Queue
 
-The remaining Laravel-first queue is 11 bounded packages. Package 10 is closed
-for implementation and removed from this remaining list:
+The corrected frontend-owned queue has three bounded packages. Optional live
+Laravel runtime work and future ASP.NET switching are not in this queue:
 
-1. **P0 - Disposable environment:** provision and prove an isolated Laravel
-   application, database, and storage environment that cannot address the
-   ordinary production-derived database.
-2. **P0 - Runtime foundation:** certify auth, tenant, role, feature/module,
-   empty/populated, validation, and authorization behavior there.
-3. **P0 - Identity/value side effects:** certify accounts, profiles, settings,
-   sessions/passkeys, wallet/transfers/donations, messages/connections, and
-   cleanup.
-4. **P0 - Community side effects:** certify feed, comments/reactions, groups,
-   listings, Events, polls, goals, and cleanup.
-5. **P0 - Commerce/work side effects:** certify marketplace, jobs,
-   volunteering, organisations, podcasts, resources, uploads/downloads, and
-   cleanup.
-6. **P0 - Privileged/export side effects:** certify administrator/owner
-   actions, moderation, binary exports, destructive confirmations, and final
-   absence.
-7. **P0 - Event moderation boundary:** obtain a Laravel projection for
-   Blade-equivalent queue membership/order and `is_online`, then consume it
-   unchanged.
-8. **P0 - Event check-in boundary:** obtain a safe Laravel offline signed-code
-   contract or an explicit source-contract decision for the missing POST.
-9. **P1 - API publication/assertion closure:** resolve the 217 direct Laravel
-   route declarations omitted from OpenAPI and finish field/auth/status/error/
-   side-effect assertions.
-11. **P1 - Visual and manual WCAG:** complete representative screenshots,
-    keyboard/no-JS/zoom/reflow/forced-colour/focus/error checks, the full
-    accessibility aggregate, and screen-reader sign-off.
-12. **P1 - Deployed hardening proof:** verify persistent sessions, secrets,
-    timeout/failure handling, readiness, release/rollback controls, and lift the
-    deployment hold only with explicit approval.
+1. **P0 - Source-contract assertion closure:** turn the remaining broad API
+   deduction into a finite manifest, then close significant request/response
+   fields, auth/role, status/error, and side-effect assertions using Laravel
+   source plus mocked Web UK tests. OpenAPI publication is owned by Laravel and
+   does not block Web UK where a direct Laravel declaration exists.
+2. **P0 - Safe-fixture manual accessibility:** complete representative Web UK
+   visual review plus keyboard, no-JS, zoom/reflow, forced-colour, focus/error,
+   and screen-reader sign-off using only the isolated Web UK fixture server and
+   mocked states.
+3. **P1 - Source-owned production hardening:** finish any Web UK code,
+   configuration validation, readiness, release, and rollback evidence that can
+   be proved without deploying or contacting Laravel. Actual deployment and
+   release authorization remain a separate operations gate.
 
-Checkpoint footer: banked score `663/1,000`; in-flight delta `0`; blocker owners
-are the disposable-environment operator, Laravel API owner, browser/runtime
-operator, deployment operator, and user/manual assistive-technology reviewer;
-finite remaining item count `11`. Next five tasks: provision the isolated
-Laravel environment; certify its runtime foundation; run identity/value
-side-effect lifecycles; run community side-effect lifecycles; run commerce/work
-side-effect lifecycles.
+Two Laravel source-contract gaps remain recorded but do not block unrelated or
+otherwise complete Web UK work: Event moderation queue membership/order plus
+`is_online`, and the missing safe Event check-in-code POST. Web UK must not
+fabricate either contract.
+
+Checkpoint footer: frozen historical bank `663/1,000`; corrected-goal in-flight
+delta `0`; frontend blocker owner `none`; finite frontend-owned package count
+`3`. Next five tasks: generate the finite source-contract assertion manifest;
+close its highest-risk English-first assertions; run the safe isolated manual
+accessibility server; record representative manual findings and fixes; audit
+source-owned hardening evidence.
 
 The exact Windows Update interruption and the pre-restart product boundary are
 recorded in
@@ -495,9 +518,11 @@ group-reaction projections, and backend-switching proof belongs to the
 disposable-runtime packages, package 11, Laravel API ownership, and the separate
 ASP.NET readiness score; this classification adds no banked points.
 
-### Finite P0/P1 Completion Queue
+### Superseded Pre-Correction P0/P1 Completion Queue
 
-The remaining Laravel-first queue is 12 bounded work packages. Do not expand it
+The following 12-package queue is historical and is not a current resume list.
+Its disposable-runtime packages were removed from the active frontend goal by
+the scope correction at the top of this document. Do not expand it
 with route-by-route Arabic tests or cosmetic exploration; split a package only
 when a concrete regression requires an independently publishable fix.
 
@@ -1442,7 +1467,12 @@ safe Laravel online-scan contract or an intentional source-contract change.
 Record these as upstream API-boundary gaps. Do not hide them with synthetic
 success, unsafe orchestration, or a generic preparation page.
 
-## Remaining Certification Work
+## Superseded Pre-Correction Certification Work
+
+This section records the older combined-certification framing. It is retained
+only as dated evidence and must not override the current three-package queue.
+Disposable Laravel provisioning and live Laravel mutation certification are no
+longer part of the active Web UK goal.
 
 After the localization P0, the remaining priority order is:
 

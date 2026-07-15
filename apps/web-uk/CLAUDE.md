@@ -40,11 +40,16 @@ it must conform to those contracts and must not cause frontend forks. See
 - Treat `C:\platforms\htdocs\staging` and its ordinary local database as
   read-only. Do not edit Laravel source, run Laravel migrations, alter Laravel
   schema, query the database directly, or perform database cleanup.
-- Runtime mutation, upload, download, and destructive certification must use a
-  separately provisioned disposable Laravel test environment. The
-  ordinary/shared local Laravel database is a confidential production-derived
-  snapshot and must never be used for these tests; unique fixture names,
-  `finally` cleanup, or owner authorization do not make it disposable.
+- Do not provision, request, or use a disposable Laravel environment as part of
+  this frontend goal. Do not run live login, mutation, upload, download,
+  destructive, or cleanup tests against any Laravel environment. Implement
+  state-changing browser workflows from the read-only Laravel source contract
+  and verify them with mocked contract tests, static analysis, and Web UK-owned
+  fixtures.
+- Live Laravel runtime certification is a separate optional workstream and is
+  not a blocker or completion requirement unless the user explicitly requests
+  it later. The ordinary/shared local Laravel database remains a confidential
+  production-derived snapshot and must never be used as a test fixture.
 - Never touch production containers or production data.
 
 Route and backend preparation docs live beside this app:
@@ -103,26 +108,26 @@ npm --prefix apps/web-uk run route:matrix
 npm --prefix apps/web-uk run api:ledger
 npm --prefix apps/web-uk run locales:audit
 npm --prefix apps/web-uk run locales:audit-templates -- --summary
-npm --prefix apps/web-uk run visual:blade
 
 git diff --check -- apps/web-uk
 ```
 
 The complete `test:accessibility` aggregate includes an authenticated login
-journey. A failed login writes Laravel rate-limit/audit state, so the aggregate
-is not an ordinary read-only gate even when its credentials are invalid. Treat
-it like `smoke:laravel:local`, every `*:mutation:*` command, authenticated
-settings journeys, upload/download checks, and `smoke:federation:local`: run it
-only when `LARAVEL_BASE_URL` points to a separately provisioned, verified
-disposable Laravel environment, never the ordinary production-derived local
-database. A browser subset may run against the ordinary environment only after
-its requests have been inspected and proved to be unauthenticated GET/HEAD
-operations with no server-side state changes.
-`visual:blade` compares Laravel with `WEB_UK_BASE_URL` (default port `5180`), so
-restart that development container/process from current source before treating
-its marker result as evidence. Record exact outcomes; a focused test, stale
-listener, generated route count, or historical green run is not a substitute
-for this gate.
+journey. A failed login writes Laravel rate-limit/audit state, so that aggregate
+is outside this goal and must not be run against Laravel. The same prohibition
+applies to `smoke:laravel:local`, every `*:mutation:*` command, authenticated
+settings journeys, upload/download checks, and `smoke:federation:local`.
+Exercise manual accessibility against the isolated Web UK fixture server and
+its mocked states instead. A browser comparison may use Laravel only when its
+requests have first been inspected and proved to be unauthenticated GET/HEAD
+operations with no server-side state changes; source inspection remains the
+authoritative baseline and does not require a running Laravel environment.
+`visual:blade` is an optional read-only marker comparison, not a required gate.
+It may run only after its Laravel requests are confirmed to be unauthenticated
+GET/HEAD operations. Do not start, provision, or modify Laravel merely to run
+it. Record exact outcomes; a focused test, stale listener, generated route
+count, or historical green run is not a substitute for the required source and
+Web UK fixture gates.
 
 ## Project Purpose
 

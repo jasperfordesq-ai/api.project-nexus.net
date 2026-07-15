@@ -23,9 +23,13 @@ Urgent first-read rules:
   from this workstream. Never edit Laravel source, run Laravel migrations,
   alter its schema, query its database directly, or perform database cleanup.
   The database is a confidential production-derived snapshot, not a fixture.
-  Never run live mutation, upload, download, or destructive tests against it,
-  even when the test creates unique rows and attempts cleanup. Such proof
-  requires a separately provisioned disposable Laravel environment.
+  Never run live login, mutation, upload, download, destructive, or cleanup
+  tests against any Laravel environment as part of the Web UK completion goal.
+  Implement those browser workflows from the read-only Laravel source contract
+  and verify them with mocks, static analysis, and Web UK-owned fixtures. Live
+  Laravel runtime certification is a separate optional workstream that requires
+  fresh explicit user authorization; it is not a Web UK blocker or completion
+  requirement.
 - Work only under `apps/web-uk/**` and approved documentation pointers. Do not
   modify `src/Nexus.Api/**`, `tests/Nexus.Api.Tests/**`, ASP.NET migrations, or
   the frozen `apps/react-frontend` copy.
@@ -50,4 +54,7 @@ Maintained docs that future agents must keep current:
 
 Generated route-matrix artifacts live under `docs/generated/` and are refreshed
 with `npm run route:matrix`. Treat generated counts as backlog evidence only,
-not as workflow/API/tenant/auth certification.
+not as workflow/API/tenant/auth certification. Keep source-derived Web UK
+implementation, safe-fixture manual accessibility, optional live Laravel
+runtime certification, and future ASP.NET switchability as four separate
+evidence tracks.
