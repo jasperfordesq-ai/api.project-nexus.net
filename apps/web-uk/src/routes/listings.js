@@ -415,29 +415,6 @@ function isOnboardingRequired(error) {
   return error instanceof ApiError && error.status === 403 && apiErrorCode(error) === 'ONBOARDING_REQUIRED';
 }
 
-function listingDetailStatus(status, t) {
-  const successKeys = {
-    'listing-created': 'listings.create.created',
-    'listing-updated': 'listings.edit.updated',
-    'listing-saved': 'polish_listings.status_listing_saved',
-    'listing-unsaved': 'polish_listings.status_listing_unsaved',
-    'listing-renewed': 'polish_listings.status_listing_renewed',
-    'listing-reported': 'polish_listings.status_listing_reported'
-  };
-  const errorKeys = {
-    'listing-delete-failed': 'listings.edit.delete_failed',
-    'save-failed': 'polish_listings.status_listing_save_failed',
-    'unsave-failed': 'polish_listings.status_listing_save_failed',
-    'renew-failed': 'polish_listings.status_listing_renew_failed',
-    'report-failed': 'polish_listings.status_listing_report_failed',
-    'already-reported': 'polish_listings.status_listing_already_reported'
-  };
-  const normalized = trimmed(status);
-  if (successKeys[normalized]) return { type: 'success', message: t(successKeys[normalized]) };
-  if (errorKeys[normalized]) return { type: 'error', message: t(errorKeys[normalized]) };
-  return null;
-}
-
 function listingGalleryFrom(listing) {
   const images = Array.isArray(listing.images) ? listing.images : [];
   return images.map((image) => {
@@ -1341,11 +1318,8 @@ router.post('/new', requireAuth, audit.listingCreate(), asyncRoute(async (req, r
       }
     }
 
-    if (req.flash) {
-      req.flash('success', 'Listing created successfully');
-      if (secondaryFailures.length > 0) {
-        req.flash('error', `The listing was created, but ${secondaryFailures.join('; ')}.`);
-      }
+    if (req.flash && secondaryFailures.length > 0) {
+      req.flash('error', `The listing was created, but ${secondaryFailures.join('; ')}.`);
     }
     return redirectTo(res, `/listings/${listingId}?status=listing-created`);
   } catch (error) {
@@ -1378,7 +1352,9 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
   const ownerId = listingOwnerId(listing);
   const currentUserId = positiveInteger(currentUser.id);
   const can_edit = ownerId !== null && currentUserId !== null && ownerId === currentUserId;
-  const detailStatus = listingDetailStatus(req.query.status, res.locals.t);
+  const status = trimmed(req.query.status);
+  if (req.flash) req.flash('success');
+  const flashedError = req.flash ? req.flash('error')[0] : null;
   const tenant = req.accessibleRouting?.tenant || {};
   const verificationBadges = ownerId === null
     ? []
@@ -1424,8 +1400,8 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
     connectionsEnabled: flagEnabled(tenant, 'connections', 'features', true),
     listingShareUrl: urlFor(res, `/listings/${listing.id}`),
     ...exchangeContext,
-    successMessage: (req.flash ? req.flash('success')[0] : null) || (detailStatus?.type === 'success' ? detailStatus.message : null),
-    errorMessage: (req.flash ? req.flash('error')[0] : null) || (detailStatus?.type === 'error' ? detailStatus.message : null),
+    status,
+    supplementalErrorMessage: ['listing-created', 'listing-updated'].includes(status) ? flashedError : null,
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
 }, { notFoundTitle: 'Listing not found' }));
@@ -1491,11 +1467,8 @@ router.post('/:id(\\d+)/edit', requireAuth, audit.listingUpdate(), asyncRoute(as
       }
     }
 
-    if (req.flash) {
-      req.flash('success', 'Listing updated successfully');
-      if (secondaryFailures.length > 0) {
-        req.flash('error', `The listing was updated, but ${secondaryFailures.join('; ')}.`);
-      }
+    if (req.flash && secondaryFailures.length > 0) {
+      req.flash('error', `The listing was updated, but ${secondaryFailures.join('; ')}.`);
     }
     return redirectTo(res, `/listings/${id}?status=listing-updated`);
   } catch (error) {
@@ -1521,13 +1494,11 @@ router.post('/:id(\\d+)/delete', requireAuth, audit.listingDelete(), asyncRoute(
   const { id } = req.params;
   try {
     await deleteListing(req.token, id);
-    if (req.flash) req.flash('success', 'Listing deleted successfully');
     return redirectTo(res, '/listings?status=listing-deleted');
   } catch (error) {
     if (isOnboardingRequired(error)) return redirectTo(res, '/onboarding');
     if (error instanceof ApiError && error.status === 403) return renderForbidden(res, error);
     if (error instanceof ApiError && [400, 409, 422].includes(error.status)) {
-      if (req.flash) req.flash('error', error.message || 'Unable to delete listing');
       return redirectTo(res, `/listings/${id}?status=listing-delete-failed`);
     }
     throw error;

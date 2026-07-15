@@ -26895,6 +26895,58 @@ describe('shared accessible frontend shell', () => {
     expect(unrelated.text).not.toContain('listing-deleted-title');
   });
 
+  it('renders only Blade bounded status families on listing detail', async () => {
+    const api = require('../src/lib/api');
+    api.getListing.mockResolvedValue({
+      data: {
+        id: 42,
+        title: 'Public ladder offer',
+        description: 'A safe ladder available to neighbours.',
+        status: 'active',
+        type: 'offer',
+        user_id: 77
+      }
+    });
+
+    const created = await request(app).get('/listings/42?status=listing-created');
+    const saved = await request(app).get('/listings/42?status=listing-saved');
+    const deleteFailed = await request(app).get('/listings/42?status=listing-delete-failed');
+    const saveFailed = await request(app).get('/listings/42?status=save-failed');
+    const unavailable = await request(app).get('/listings/42?status=exchange-disabled');
+    const unrelated = await request(app).get('/listings/42?status=listing-reported');
+
+    expect(created.status).toBe(200);
+    expect(created.text).toContain('aria-labelledby="listing-created-title"');
+    expect(created.text).toContain('id="listing-created-title"');
+    expect(created.text).toContain('Your listing has been published.');
+
+    expect(saved.status).toBe(200);
+    expect(saved.text).toContain('aria-labelledby="listing-action-status-title"');
+    expect(saved.text).toContain('id="listing-action-status-title"');
+    expect(saved.text).toContain('This listing has been saved.');
+
+    expect(deleteFailed.status).toBe(200);
+    expect(deleteFailed.text).toContain('class="govuk-error-summary"');
+    expect(deleteFailed.text).toContain('We could not delete your listing. Please try again.');
+    expect(deleteFailed.text).not.toContain('>Important<');
+
+    expect(saveFailed.status).toBe(200);
+    expect(saveFailed.text).toContain('class="govuk-error-summary"');
+    expect(saveFailed.text).toContain('We could not update your saved listings. Please try again.');
+    expect(saveFailed.text).not.toContain('>Important<');
+
+    expect(unavailable.status).toBe(200);
+    expect(unavailable.text).toContain('role="region" aria-labelledby="listing-status-title"');
+    expect(unavailable.text).toContain('id="listing-status-title"');
+    expect(unavailable.text).toContain('Exchange workflow is not currently enabled for this community.');
+
+    expect(unrelated.status).toBe(200);
+    expect(unrelated.text).not.toContain('listing-created-title');
+    expect(unrelated.text).not.toContain('listing-action-status-title');
+    expect(unrelated.text).not.toContain('listing-status-title');
+    expect(unrelated.text).not.toContain('govuk-error-summary');
+  });
+
   it('matches the Blade listing empty state and only clears active filters', async () => {
     const api = require('../src/lib/api');
     api.getListings.mockResolvedValueOnce({ data: [], meta: { has_more: false } });
@@ -27300,7 +27352,7 @@ describe('shared accessible frontend shell', () => {
         .set('Cookie', signedCookieHeader());
 
       expect(detail.status).toBe(200);
-      expect(detail.text).toContain('Listing created successfully');
+      expect(detail.text).toContain('Your listing has been published.');
       expect(detail.text).toContain('The listing was created, but Skill tags unavailable; Image upload unavailable.');
     });
 

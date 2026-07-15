@@ -901,6 +901,22 @@ static localization audit resolves 7,606 references and 5,799 unique keys with
 zero unresolved keys; 322 templates have zero conservative matches. No Laravel
 mutation, database access, upload, download, or cleanup was performed.
 
+2026-07-15 Listing detail status follow-up: created/updated/delete-failed,
+saved/unsaved/renewed, save/unsave/renew failures, and exchange-disabled/own-
+listing now use Blade's exact separate banner, error-summary, title-ID, role,
+and catalog-copy boundaries. Hard-coded success flashes no longer override the
+source wording or survive into a later request. Report outcome query tokens are
+intentionally silent because current `listing-detail.blade.php` does not render
+them, while secondary tag/image persistence failures remain honestly exposed
+after a successful core save. Focused status and partial-failure proof passes;
+the complete non-mutating inventory is green across a 1,699-assertion host-
+memory aggregate plus the separately verified canonical-path tenant-source
+assertion. Brand, lint, CSS, and all localization audits pass. Static
+localization resolves 7,617 references and 5,804 unique keys with zero
+unresolved; 322 templates have zero conservative matches. No Laravel request,
+authentication, mutation, database access, upload, download, or cleanup was
+performed.
+
 | Blade pattern | Laravel source | Web UK implementation | Status |
 | --- | --- | --- | --- |
 | Event moderation queue and decisions | `views/event-moderation-queue.blade.php`, `views/event-moderation-decision.blade.php`, `EventModerationParity`, `Api\AdminEventsController` | `src/routes/events.js`, `src/views/events/moderation-queue.njk`, `src/views/events/moderation-decision.njk`, `src/lib/api.js` | Partial. Signed tenant administrators can open the default-English queue and separate approve/reject confirmation pages through Laravel's current admin Event list/detail contracts. Queue status, count, cards, pagination, decision summaries, warnings, field-linked validation, mounted redirects, and private/no-store headers follow Blade. Approval requires explicit confirmation; rejection requires confirmation plus a bounded reason and submits only that reason to Laravel's canonical reject action. Non-admin or missing-event API responses fail closed. Focused mocked queue/validation/action and direct API-client proof pass; the full non-mutating gate is 48/48 suites and 1,635/1,635 tests, and the generated route matrix is 688/689. This is not contract-identical certification: Laravel's admin list does not join the moderation queue, orders by Event creation rather than queue submission, and omits Blade's `is_online`. Live moderation side effects, manual assistive-technology review, and unchanged ASP.NET runtime proof remain uncertified. |

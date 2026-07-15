@@ -2,7 +2,6 @@
 
 {% from "govuk/components/summary-list/macro.njk" import govukSummaryList %}
 {% from "govuk/components/button/macro.njk" import govukButton %}
-{% from "govuk/components/notification-banner/macro.njk" import govukNotificationBanner %}
 {% from "govuk/components/textarea/macro.njk" import govukTextarea %}
 
 {% block beforeContent %}
@@ -25,16 +24,70 @@
   <div class="govuk-grid-row">
     <div class="govuk-grid-column-two-thirds">
 
-      {% if successMessage %}
-        {% set notificationMessage = successMessage %}
-        {% set notificationType = "success" %}
-        {% include "partials/notification-banner.njk" %}
+      {% if status == "listing-created" or status == "listing-updated" %}
+        <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="listing-created-title">
+          <div class="govuk-notification-banner__header">
+            <h2 class="govuk-notification-banner__title" id="listing-created-title">{{ t("states.success_title") }}</h2>
+          </div>
+          <div class="govuk-notification-banner__content">
+            <p class="govuk-notification-banner__heading">{{ t("listings.edit.updated") if status == "listing-updated" else t("listings.create.created") }}</p>
+          </div>
+        </div>
+      {% elif status == "listing-delete-failed" %}
+        <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+          <div role="alert">
+            <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
+            <div class="govuk-error-summary__body"><ul class="govuk-list govuk-error-summary__list"><li>{{ t("listings.edit.delete_failed") }}</li></ul></div>
+          </div>
+        </div>
       {% endif %}
 
-      {% if errorMessage %}
-        {% set notificationMessage = errorMessage %}
-        {% set notificationType = "" %}
-        {% include "partials/notification-banner.njk" %}
+      {% set listingActionSuccessKeys = {
+        "listing-saved": "polish_listings.status_listing_saved",
+        "listing-unsaved": "polish_listings.status_listing_unsaved",
+        "listing-renewed": "polish_listings.status_listing_renewed"
+      } %}
+      {% set listingActionErrorKeys = {
+        "save-failed": "polish_listings.status_listing_save_failed",
+        "unsave-failed": "polish_listings.status_listing_save_failed",
+        "renew-failed": "polish_listings.status_listing_renew_failed"
+      } %}
+      {% if listingActionSuccessKeys[status] %}
+        <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="listing-action-status-title">
+          <div class="govuk-notification-banner__header">
+            <h2 class="govuk-notification-banner__title" id="listing-action-status-title">{{ t("states.success_title") }}</h2>
+          </div>
+          <div class="govuk-notification-banner__content">
+            <p class="govuk-notification-banner__heading">{{ t(listingActionSuccessKeys[status]) }}</p>
+          </div>
+        </div>
+      {% elif listingActionErrorKeys[status] %}
+        <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+          <div role="alert">
+            <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
+            <div class="govuk-error-summary__body"><ul class="govuk-list govuk-error-summary__list"><li>{{ t(listingActionErrorKeys[status]) }}</li></ul></div>
+          </div>
+        </div>
+      {% endif %}
+
+      {% if status == "exchange-disabled" or status == "own-listing" %}
+        <div class="govuk-notification-banner" data-module="govuk-notification-banner" role="region" aria-labelledby="listing-status-title">
+          <div class="govuk-notification-banner__header">
+            <h2 class="govuk-notification-banner__title" id="listing-status-title">{{ t("states.not_available") }}</h2>
+          </div>
+          <div class="govuk-notification-banner__content">
+            <p class="govuk-body">{{ t("listings.own_listing") if status == "own-listing" else t("listings.exchange_disabled") }}</p>
+          </div>
+        </div>
+      {% endif %}
+
+      {% if supplementalErrorMessage %}
+        <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1">
+          <div role="alert">
+            <h2 class="govuk-error-summary__title">{{ t("states.error_title") }}</h2>
+            <div class="govuk-error-summary__body"><p class="govuk-body">{{ supplementalErrorMessage }}</p></div>
+          </div>
+        </div>
       {% endif %}
 
       <span class="govuk-caption-l">{{ t("listings.detail_title") }}</span>
