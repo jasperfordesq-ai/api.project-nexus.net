@@ -73,6 +73,122 @@ function joinUrl(baseUrl, routePath) {
   return `${stripTrailingSlash(baseUrl)}${routePath}`;
 }
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function buildReviewPairs(results) {
+  const pairsByKey = new Map();
+  for (const result of results || []) {
+    const key = `${result.route}::${result.viewport}`;
+    const pair = pairsByKey.get(key) || {
+      route: result.route,
+      path: result.path,
+      viewport: result.viewport,
+      width: result.width,
+      height: result.height
+    };
+    if (!['laravel-blade', 'web-uk'].includes(result.surface)) {
+      throw new Error(`Unknown screenshot surface: ${result.surface}`);
+    }
+    if (pair[result.surface]) {
+      throw new Error(`Duplicate screenshot surface for ${key}: ${result.surface}`);
+    }
+    pair[result.surface] = result;
+    pairsByKey.set(key, pair);
+  }
+
+  const pairs = [...pairsByKey.values()];
+  for (const pair of pairs) {
+    if (!pair['laravel-blade'] || !pair['web-uk']) {
+      throw new Error(`Incomplete screenshot pair: ${pair.route} / ${pair.viewport}`);
+    }
+  }
+  return pairs;
+}
+
+function renderReviewHtml(manifest) {
+  const pairs = buildReviewPairs(manifest.results);
+  const sections = pairs.map((pair) => `
+    <section class="pair">
+      <h2>${escapeHtml(pair.route)} <span>${escapeHtml(pair.viewport)} (${pair.width} × ${pair.height})</span></h2>
+      <p><code>${escapeHtml(pair.path)}</code></p>
+      <div class="images">
+        <figure><figcaption>Laravel Blade</figcaption><img src="${escapeHtml(pair['laravel-blade'].screenshot)}" alt="Laravel Blade ${escapeHtml(pair.route)} at ${escapeHtml(pair.viewport)}"></figure>
+        <figure><figcaption>Web UK</figcaption><img src="${escapeHtml(pair['web-uk'].screenshot)}" alt="Web UK ${escapeHtml(pair.route)} at ${escapeHtml(pair.viewport)}"></figure>
+      </div>
+      <p class="review-line">Outcome: ☐ Match ☐ Minor difference ☐ Material difference &nbsp; Reviewer: __________ &nbsp; Date: __________</p>
+      <p class="review-line">Notes:</p>
+    </section>`).join('\n');
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Blade and Web UK visual review — ${escapeHtml(manifest.snapshotId)}</title>
+  <style>
+    body { color: #0b0c0c; font: 16px/1.5 Arial, sans-serif; margin: 2rem; }
+    h1, h2 { margin-bottom: .5rem; } h2 span { color: #505a5f; font-size: 1rem; }
+    .pair { border-top: 4px solid #1d70b8; margin-top: 2rem; padding-top: 1rem; page-break-before: always; }
+    .images { display: grid; gap: 1rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    figure { margin: 0; min-width: 0; } figcaption { font-weight: bold; margin-bottom: .5rem; }
+    img { border: 1px solid #b1b4b6; display: block; height: auto; max-width: 100%; }
+    .review-line { border-bottom: 1px solid #b1b4b6; min-height: 2rem; padding-bottom: .5rem; }
+    @media (max-width: 800px) { .images { grid-template-columns: 1fr; } body { margin: 1rem; } }
+  </style>
+</head>
+<body>
+  <h1>Laravel Blade and Web UK visual review</h1>
+  <dl>
+    <dt>Snapshot</dt><dd>${escapeHtml(manifest.snapshotId)}</dd>
+    <dt>Laravel Blade</dt><dd>${escapeHtml(manifest.laravelBaseUrl)}</dd>
+    <dt>Web UK</dt><dd>${escapeHtml(manifest.webBaseUrl)}</dd>
+    <dt>Generated</dt><dd>${escapeHtml(manifest.generatedAt)}</dd>
+  </dl>
+  <p>This worksheet does not certify parity until every pair has a named reviewer, date, outcome, and resolved notes.</p>
+  ${sections}
+</body>
+</html>
+`;
+}
+
+function renderReviewMarkdown(manifest) {
+  const pairs = buildReviewPairs(manifest.results);
+  const sections = pairs.map((pair) => `## ${pair.route} — ${pair.viewport} (${pair.width} x ${pair.height})
+
+Path: \`${pair.path}\`
+
+| Laravel Blade | Web UK |
+|---|---|
+| ![Laravel Blade ${pair.route}](${pair['laravel-blade'].screenshot}) | ![Web UK ${pair.route}](${pair['web-uk'].screenshot}) |
+
+- [ ] Match
+- [ ] Minor difference
+- [ ] Material difference
+- Reviewer:
+- Date:
+- Notes:
+`).join('\n');
+
+  return `# Laravel Blade and Web UK visual review
+
+- Snapshot: \`${manifest.snapshotId}\`
+- Laravel Blade: \`${manifest.laravelBaseUrl}\`
+- Web UK: \`${manifest.webBaseUrl}\`
+- Generated: \`${manifest.generatedAt}\`
+
+This worksheet is incomplete until every pair has exactly one outcome, a named
+reviewer, a date, and resolved notes.
+
+${sections}`;
+}
+
 function resolveCaptureOptions(options = {}, env = process.env) {
   const laravelBaseUrl = options.laravelBaseUrl || env.LARAVEL_BLADE_BASE_URL;
   const webBaseUrl = options.webBaseUrl || env.WEB_UK_BASE_URL;
@@ -252,12 +368,17 @@ async function runScreenshotCapture(rawOptions = {}, dependencies = {}) {
     `${JSON.stringify(manifest, null, 2)}\n`,
     'utf8'
   );
+  await Promise.all([
+    fs.writeFile(path.join(options.outputDirectory, 'review.html'), renderReviewHtml(manifest), 'utf8'),
+    fs.writeFile(path.join(options.outputDirectory, 'review.md'), renderReviewMarkdown(manifest), 'utf8')
+  ]);
   return { ...manifest, outputDirectory: options.outputDirectory };
 }
 
 async function main() {
   const result = await runScreenshotCapture();
   console.log(`Screenshot manifest: ${path.join(result.outputDirectory, 'manifest.json')}`);
+  console.log(`Review worksheets: ${path.join(result.outputDirectory, 'review.html')} and review.md`);
   console.log(`Captured ${result.results.length} images; structural result: ${result.ok ? 'PASS' : 'FAIL'}.`);
   if (!result.ok) process.exitCode = 1;
 }
@@ -274,8 +395,12 @@ module.exports = {
   DEFAULT_SCREENSHOT_VIEWPORTS,
   assertCanonicalRoute,
   assertSafeBaseUrl,
+  buildReviewPairs,
   captureSurface,
+  escapeHtml,
   joinUrl,
+  renderReviewHtml,
+  renderReviewMarkdown,
   resolveCaptureOptions,
   runScreenshotCapture,
   sanitizeSegment

@@ -9,7 +9,11 @@ const {
   DEFAULT_SCREENSHOT_VIEWPORTS,
   assertCanonicalRoute,
   assertSafeBaseUrl,
+  buildReviewPairs,
+  escapeHtml,
   joinUrl,
+  renderReviewHtml,
+  renderReviewMarkdown,
   resolveCaptureOptions,
   sanitizeSegment
 } = require('../scripts/capture-blade-web-screenshots');
@@ -95,5 +99,51 @@ describe('paired Laravel Blade and Web UK screenshot capture', () => {
     }, {})).toThrow('Screenshot route names must be unique');
     expect(() => resolveCaptureOptions({ ...baseOptions, timeoutMs: -1 }, {}))
       .toThrow('VISUAL_SCREENSHOT_TIMEOUT_MS must be a positive integer');
+  });
+
+  it('pairs the two surfaces and rejects incomplete capture evidence', () => {
+    const results = [
+      {
+        surface: 'laravel-blade', route: 'home', path: '/hour-timebank/accessible',
+        viewport: 'desktop', width: 1280, height: 800, screenshot: 'laravel-blade/desktop/home.png'
+      },
+      {
+        surface: 'web-uk', route: 'home', path: '/hour-timebank/accessible',
+        viewport: 'desktop', width: 1280, height: 800, screenshot: 'web-uk/desktop/home.png'
+      }
+    ];
+    expect(buildReviewPairs(results)).toEqual([expect.objectContaining({
+      route: 'home',
+      'laravel-blade': results[0],
+      'web-uk': results[1]
+    })]);
+    expect(() => buildReviewPairs(results.slice(0, 1))).toThrow('Incomplete screenshot pair');
+  });
+
+  it('renders escaped side-by-side HTML and an editable Markdown sign-off', () => {
+    const manifest = {
+      snapshotId: 'laravel<sha>__web',
+      laravelBaseUrl: 'http://laravel.test',
+      webBaseUrl: 'http://web.test',
+      generatedAt: '2026-07-15T00:00:00.000Z',
+      results: [
+        {
+          surface: 'laravel-blade', route: 'home', path: '/hour-timebank/accessible',
+          viewport: 'desktop', width: 1280, height: 800, screenshot: 'laravel-blade/desktop/home.png'
+        },
+        {
+          surface: 'web-uk', route: 'home', path: '/hour-timebank/accessible',
+          viewport: 'desktop', width: 1280, height: 800, screenshot: 'web-uk/desktop/home.png'
+        }
+      ]
+    };
+    const html = renderReviewHtml(manifest);
+    const markdown = renderReviewMarkdown(manifest);
+    expect(escapeHtml('<script>"x"</script>')).toBe('&lt;script&gt;&quot;x&quot;&lt;/script&gt;');
+    expect(html).toContain('laravel&lt;sha&gt;__web');
+    expect(html).toContain('Laravel Blade home at desktop');
+    expect(html).toContain('Outcome: ☐ Match');
+    expect(markdown).toContain('| ![Laravel Blade home](laravel-blade/desktop/home.png)');
+    expect(markdown).toContain('- [ ] Material difference');
   });
 });

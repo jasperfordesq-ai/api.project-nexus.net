@@ -92,8 +92,9 @@ $env:DISPOSABLE_LARAVEL_CONFIRMED = '1'
 npm --prefix apps/web-uk run visual:screenshots
 ```
 
-Archive or reference the ignored artifact directory outside Git, and record
-the reviewer, date, browser version, source SHAs, and outcome for every image
+Complete the generated `review.md` or print/save `review.html`, then archive or
+reference the ignored artifact directory outside Git. Record the reviewer,
+date, browser version, source SHAs, outcome, and resolved notes for every image
 pair. The generated structural manifest does not itself approve visual parity.
 
 ## 3. Build an immutable candidate

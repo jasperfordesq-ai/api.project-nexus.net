@@ -80,11 +80,13 @@ npm run visual:screenshots
 The command captures Home, sign-in, registration, Contact, Accessibility, and
 Legal at `1280 x 800` and `320 x 800`. It refuses the legacy `/alpha` mount,
 requires explicit confirmation that Laravel is disposable, blocks non-GET/HEAD
-browser requests, checks one H1 and one main landmark, and
-checks horizontal overflow at 320 CSS pixels. Images and `manifest.json` are
-written below the ignored `artifacts/visual-comparison/<snapshot-id>/`
-directory. A structurally green manifest is capture evidence only: a reviewer
-must still compare each Blade/Web UK pair and record visual findings.
+browser requests, checks one H1 and one main landmark, and checks horizontal
+overflow at 320 CSS pixels. Images, `manifest.json`, a side-by-side
+`review.html`, and an editable `review.md` sign-off worksheet are written below
+the ignored `artifacts/visual-comparison/<snapshot-id>/` directory. A
+structurally green manifest is capture evidence only: a reviewer must still
+compare each Blade/Web UK pair and record a named, dated outcome and resolved
+notes.
 
 The latest fully successful historical verification on 2026-07-12 exercised the complete 87-case Chromium scope
 against a fresh current-checkout listener and Laravel at
