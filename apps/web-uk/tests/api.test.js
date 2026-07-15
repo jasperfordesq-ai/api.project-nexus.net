@@ -5906,6 +5906,61 @@ describe('API Request Functions', () => {
   });
 
   describe('Laravel onboarding helpers', () => {
+    it('should read onboarding configuration and safeguarding options with bearer authority', async () => {
+      const configResponse = {
+        data: {
+          config: { require_safeguarding: true, allow_skip: false },
+          steps: ['profile', 'safeguarding', 'confirm']
+        }
+      };
+      const safeguardingResponse = {
+        data: [{ id: 9, key: 'adult_safeguarding', label: 'Adult safeguarding', required: true }]
+      };
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => configResponse
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => safeguardingResponse
+        });
+
+      await expect(api.getOnboardingConfig('test-token')).resolves.toEqual(configResponse);
+      await expect(api.getOnboardingSafeguardingOptions('test-token')).resolves.toEqual(safeguardingResponse);
+
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        1,
+        'http://localhost:5000/api/v2/onboarding/config',
+        expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer test-token' }) })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        2,
+        'http://localhost:5000/api/v2/onboarding/safeguarding-options',
+        expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer test-token' }) })
+      );
+      for (const [, options] of mockFetch.mock.calls) {
+        expect(options.method).toBeUndefined();
+        expect(options.headers).not.toHaveProperty('X-Tenant-ID');
+      }
+
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ message: 'Unauthenticated.', code: 'UNAUTHENTICATED' })
+      });
+
+      await expect(api.getOnboardingConfig('expired-token')).rejects.toMatchObject({
+        name: 'ApiError',
+        status: 401,
+        message: 'Unauthenticated.',
+        data: { message: 'Unauthenticated.', code: 'UNAUTHENTICATED' }
+      });
+    });
+
     it('should update the onboarding profile through Laravel\'s v2 user endpoint', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,

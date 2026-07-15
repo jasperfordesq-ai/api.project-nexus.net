@@ -1450,6 +1450,22 @@ database, migration, runtime request, download, container, or production
 operation was performed. This slice is unscored; the canonical bank remains
 `663/1,000` until another complete fixed-rubric audit.
 
+### 2026-07-15 Onboarding-read API assertion follow-up
+
+The onboarding configuration and safeguarding-option reads now have direct
+API-client contract proof alongside their routed workflow tests. The assertions
+pin both exact Laravel v2 paths, bearer authority, GET-only behavior, complete
+configuration/step and option response-envelope preservation, absence of an
+invented tenant-ID header, and structured `401` `ApiError` propagation. This
+narrows finite package 9 for two further Laravel route declarations omitted
+from OpenAPI; onboarding persistence and role/tenant runtime variants remain in
+the isolated-disposable-runtime packages.
+
+The focused API-client suite passes `218/218`. No Laravel or ASP.NET source,
+database, migration, runtime request, container, or production operation was
+performed. This slice is unscored; the canonical bank remains `663/1,000`
+until another complete fixed-rubric audit.
+
 - GOV.UK crown, logotype, official header identity, OGL block, or Crown
   copyright wording.
 - Laravel/PHP implementation details.
