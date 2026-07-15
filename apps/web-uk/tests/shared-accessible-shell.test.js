@@ -2554,7 +2554,7 @@ describe('shared accessible frontend shell', () => {
 
     expect(signed.status).toBe(200);
     expect(api.callProfileApi).toHaveBeenCalledWith('test-token', 'GET', '/users/blocked');
-    expect(signed.text).toContain('Back to settings');
+    expect(signed.text).toContain(createTranslator('en')('blocked_users.back'));
     expect(signed.text).toContain('Success');
     expect(signed.text).toContain('The member has been unblocked.');
     expect(signed.text).toContain('Blocked members');
@@ -2579,11 +2579,12 @@ describe('shared accessible frontend shell', () => {
 
     api.callProfileApi.mockResolvedValueOnce({ data: [] });
     const empty = await request(app)
-      .get('/profile/blocked')
+      .get('/profile/blocked?locale=ga')
       .set('Cookie', `token=${encodeURIComponent(signedToken)}`);
 
     expect(empty.status).toBe(200);
-    expect(empty.text).toContain('You have not blocked anyone.');
+    expect(empty.text).toContain(createTranslator('ga')('blocked_users.back'));
+    expect(empty.text).toContain(createTranslator('ga')('blocked_users.empty'));
   });
 
   it('renders the Laravel-style activity dashboard', async () => {
