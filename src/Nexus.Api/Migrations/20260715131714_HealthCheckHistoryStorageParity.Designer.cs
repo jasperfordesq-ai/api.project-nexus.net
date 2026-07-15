@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Nexus.Api.Data;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Nexus.Api.Migrations
 {
     [DbContext(typeof(NexusDbContext))]
-    partial class NexusDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260715131714_HealthCheckHistoryStorageParity")]
+    partial class HealthCheckHistoryStorageParity
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -4454,86 +4457,6 @@ namespace Nexus.Api.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("cookie_consents", (string)null);
-                });
-
-            modelBuilder.Entity("Nexus.Api.Entities.CookieInventoryItem", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Category")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("category");
-
-                    b.Property<string>("CookieName")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("cookie_name");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-                    b.Property<string>("Duration")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("duration");
-
-                    b.Property<bool>("IsActive")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true)
-                        .HasColumnName("is_active");
-
-                    b.Property<string>("Purpose")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("purpose");
-
-                    b.Property<int?>("TenantId")
-                        .HasColumnType("integer")
-                        .HasColumnName("tenant_id");
-
-                    b.Property<string>("ThirdParty")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("third_party");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Category")
-                        .HasDatabaseName("idx_category");
-
-                    b.HasIndex("IsActive")
-                        .HasDatabaseName("idx_is_active");
-
-                    b.HasIndex("TenantId")
-                        .HasDatabaseName("idx_tenant_id");
-
-                    b.HasIndex("CookieName", "TenantId")
-                        .IsUnique()
-                        .HasDatabaseName("unique_cookie_tenant");
-
-                    b.ToTable("cookie_inventory", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_cookie_inventory_category", "category IN ('essential', 'functional', 'analytics', 'marketing')");
-                        });
                 });
 
             modelBuilder.Entity("Nexus.Api.Entities.CookiePolicy", b =>
@@ -18420,93 +18343,6 @@ namespace Nexus.Api.Migrations
                     b.ToTable("member_availabilities", (string)null);
                 });
 
-            modelBuilder.Entity("Nexus.Api.Entities.MemberResidencyVerification", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<DateTime?>("AttestedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("attested_at");
-
-                    b.Property<int?>("AttestedBy")
-                        .HasColumnType("integer")
-                        .HasColumnName("attested_by");
-
-                    b.Property<DateTime?>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("DeclaredAddress")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("declared_address");
-
-                    b.Property<string>("DeclaredMunicipality")
-                        .IsRequired()
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)")
-                        .HasColumnName("declared_municipality");
-
-                    b.Property<string>("DeclaredPostcode")
-                        .IsRequired()
-                        .HasMaxLength(24)
-                        .HasColumnType("character varying(24)")
-                        .HasColumnName("declared_postcode");
-
-                    b.Property<string>("EvidenceNote")
-                        .HasColumnType("text")
-                        .HasColumnName("evidence_note");
-
-                    b.Property<string>("RejectionReason")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("rejection_reason");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)")
-                        .HasDefaultValue("pending")
-                        .HasColumnName("status");
-
-                    b.Property<int>("TenantId")
-                        .HasColumnType("integer")
-                        .HasColumnName("tenant_id");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("integer")
-                        .HasColumnName("user_id");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AttestedBy");
-
-                    b.HasIndex("Status");
-
-                    b.HasIndex("TenantId");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("TenantId", "AttestedBy");
-
-                    b.HasIndex("TenantId", "UserId", "Status");
-
-                    b.ToTable("member_residency_verifications", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_member_residency_verifications_status", "status IN ('pending', 'approved', 'rejected')");
-                        });
-                });
-
             modelBuilder.Entity("Nexus.Api.Entities.MemberVettingAttestation", b =>
                 {
                     b.Property<long>("Id")
@@ -22528,97 +22364,6 @@ namespace Nexus.Api.Migrations
                         .HasDatabaseName("uq_vetting_review_member_scope");
 
                     b.ToTable("safeguarding_vetting_review_requests", (string)null);
-                });
-
-            modelBuilder.Entity("Nexus.Api.Entities.SalaryBenchmark", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-                    b.Property<string>("Currency")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)")
-                        .HasDefaultValue("EUR")
-                        .HasColumnName("currency");
-
-                    b.Property<string>("Industry")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("industry");
-
-                    b.Property<string>("Location")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("location");
-
-                    b.Property<string>("RoleKeyword")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("role_keyword");
-
-                    b.Property<decimal>("SalaryMax")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("numeric(10,2)")
-                        .HasColumnName("salary_max");
-
-                    b.Property<decimal>("SalaryMedian")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("numeric(10,2)")
-                        .HasColumnName("salary_median");
-
-                    b.Property<decimal>("SalaryMin")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("numeric(10,2)")
-                        .HasColumnName("salary_min");
-
-                    b.Property<string>("SalaryType")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)")
-                        .HasDefaultValue("annual")
-                        .HasColumnName("salary_type");
-
-                    b.Property<string>("Source")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("source");
-
-                    b.Property<int?>("TenantId")
-                        .HasColumnType("integer")
-                        .HasColumnName("tenant_id");
-
-                    b.Property<short>("Year")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("smallint")
-                        .HasDefaultValue((short)2026)
-                        .HasColumnName("year");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("RoleKeyword")
-                        .HasDatabaseName("idx_benchmark_role");
-
-                    b.HasIndex("TenantId")
-                        .HasDatabaseName("salary_benchmarks_tenant_id_index");
-
-                    b.ToTable("salary_benchmarks", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_salary_benchmarks_salary_type", "salary_type IN ('hourly', 'monthly', 'annual')");
-                        });
                 });
 
             modelBuilder.Entity("Nexus.Api.Entities.SavedJob", b =>
@@ -29273,14 +29018,6 @@ namespace Nexus.Api.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Nexus.Api.Entities.CookieInventoryItem", b =>
-                {
-                    b.HasOne("Nexus.Api.Entities.Tenant", null)
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Restrict);
-                });
-
             modelBuilder.Entity("Nexus.Api.Entities.CookiePolicy", b =>
                 {
                     b.HasOne("Nexus.Api.Entities.Tenant", "Tenant")
@@ -31466,28 +31203,6 @@ namespace Nexus.Api.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Nexus.Api.Entities.MemberResidencyVerification", b =>
-                {
-                    b.HasOne("Nexus.Api.Entities.Tenant", null)
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Nexus.Api.Entities.User", null)
-                        .WithMany()
-                        .HasForeignKey("TenantId", "AttestedBy")
-                        .HasPrincipalKey("TenantId", "Id")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Nexus.Api.Entities.User", null)
-                        .WithMany()
-                        .HasForeignKey("TenantId", "UserId")
-                        .HasPrincipalKey("TenantId", "Id")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("Nexus.Api.Entities.MemberVettingAttestation", b =>
                 {
                     b.HasOne("Nexus.Api.Entities.User", "Confirmer")
@@ -32809,14 +32524,6 @@ namespace Nexus.Api.Migrations
                     b.Navigation("Requester");
 
                     b.Navigation("Tenant");
-                });
-
-            modelBuilder.Entity("Nexus.Api.Entities.SalaryBenchmark", b =>
-                {
-                    b.HasOne("Nexus.Api.Entities.Tenant", null)
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("Nexus.Api.Entities.SavedJob", b =>

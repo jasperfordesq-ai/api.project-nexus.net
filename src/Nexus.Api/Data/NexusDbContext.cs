@@ -227,6 +227,8 @@ public class NexusDbContext : DbContext
     public DbSet<Challenge> Challenges => Set<Challenge>();
     public DbSet<ChallengeParticipant> ChallengeParticipants => Set<ChallengeParticipant>();
     public DbSet<Streak> Streaks => Set<Streak>();
+    public DbSet<MonthlyEngagement> MonthlyEngagements => Set<MonthlyEngagement>();
+    public DbSet<SeasonalRecognition> SeasonalRecognitions => Set<SeasonalRecognition>();
     public DbSet<LeaderboardSeason> LeaderboardSeasons => Set<LeaderboardSeason>();
     public DbSet<LeaderboardEntry> LeaderboardEntries => Set<LeaderboardEntry>();
     public DbSet<DailyReward> DailyRewards => Set<DailyReward>();
@@ -350,6 +352,11 @@ public class NexusDbContext : DbContext
     public DbSet<CaringResearchConsent> CaringResearchConsents => Set<CaringResearchConsent>();
     public DbSet<CaringResearchDatasetExport> CaringResearchDatasetExports => Set<CaringResearchDatasetExport>();
     public DbSet<VereinFederationConsent> VereinFederationConsents => Set<VereinFederationConsent>();
+    public DbSet<VereinMembershipFee> VereinMembershipFees => Set<VereinMembershipFee>();
+    public DbSet<VereinMemberDue> VereinMemberDues => Set<VereinMemberDue>();
+    public DbSet<VereinDuesPayment> VereinDuesPayments => Set<VereinDuesPayment>();
+    public DbSet<VereinEventShare> VereinEventShares => Set<VereinEventShare>();
+    public DbSet<VereinCrossInvitation> VereinCrossInvitations => Set<VereinCrossInvitation>();
     public DbSet<RegionalAnalyticsSubscription> RegionalAnalyticsSubscriptions => Set<RegionalAnalyticsSubscription>();
     public DbSet<RegionalAnalyticsReport> RegionalAnalyticsReports => Set<RegionalAnalyticsReport>();
     public DbSet<RegionalAnalyticsAccessLog> RegionalAnalyticsAccessLogs => Set<RegionalAnalyticsAccessLog>();
@@ -579,6 +586,14 @@ public class NexusDbContext : DbContext
     public DbSet<MarketplaceOrderNotificationDelivery> MarketplaceOrderNotificationDeliveries => Set<MarketplaceOrderNotificationDelivery>();
     public DbSet<MarketplaceDispute> MarketplaceDisputes => Set<MarketplaceDispute>();
     public DbSet<MarketplaceReport> MarketplaceReports => Set<MarketplaceReport>();
+    public DbSet<MarketplaceCategoryTemplate> MarketplaceCategoryTemplates => Set<MarketplaceCategoryTemplate>();
+    public DbSet<MarketplaceReportNotification> MarketplaceReportNotifications => Set<MarketplaceReportNotification>();
+    public DbSet<DonationDispute> DonationDisputes => Set<DonationDispute>();
+    public DbSet<PilotInquiry> PilotInquiries => Set<PilotInquiry>();
+    public DbSet<HealthCheckHistory> HealthCheckHistories => Set<HealthCheckHistory>();
+    public DbSet<CookieInventoryItem> CookieInventoryItems => Set<CookieInventoryItem>();
+    public DbSet<SalaryBenchmark> SalaryBenchmarks => Set<SalaryBenchmark>();
+    public DbSet<MemberResidencyVerification> MemberResidencyVerifications => Set<MemberResidencyVerification>();
     public DbSet<MarketplaceSavedSearch> MarketplaceSavedSearches => Set<MarketplaceSavedSearch>();
     public DbSet<MarketplaceCollection> MarketplaceCollections => Set<MarketplaceCollection>();
     public DbSet<MarketplaceCollectionItem> MarketplaceCollectionItems => Set<MarketplaceCollectionItem>();
@@ -631,6 +646,7 @@ public class NexusDbContext : DbContext
             new GroupConfiguration(_tenantContext),
             new EventConfiguration(_tenantContext),
             new GamificationConfiguration(_tenantContext),
+            new EngagementRecognitionConfiguration(_tenantContext),
             new NotificationConfiguration(_tenantContext),
             new FederationConfiguration(_tenantContext),
             new GdprConfiguration(_tenantContext),
@@ -666,6 +682,14 @@ public class NexusDbContext : DbContext
             new DiscoveryConfiguration(_tenantContext),
             new ContactEmergencyConfiguration(_tenantContext),
             new CaringCommunityConfiguration(_tenantContext),
+            new VereinConfiguration(_tenantContext),
+            new MarketplaceSupportConfiguration(_tenantContext),
+            new DonationDisputeConfiguration(_tenantContext),
+            new PilotInquiryConfiguration(_tenantContext),
+            new HealthCheckHistoryConfiguration(_tenantContext),
+            new CookieInventoryConfiguration(),
+            new SalaryBenchmarkConfiguration(),
+            new MemberResidencyVerificationConfiguration(_tenantContext),
             new RegionalAnalyticsConfiguration(_tenantContext),
             new ProvisioningRequestConfiguration(_tenantContext),
             new ApiPartnerConfiguration(_tenantContext),
@@ -1009,6 +1033,7 @@ public class NexusDbContext : DbContext
             entity.Property(e => e.ActionTaken).HasMaxLength(32);
             entity.Property(e => e.EvidenceUrlsJson).HasColumnType("jsonb");
             entity.Property(e => e.EnforcementSnapshotJson).HasColumnType("jsonb");
+            entity.HasAlternateKey(e => new { e.TenantId, e.Id });
             entity.HasIndex(e => new { e.TenantId, e.Status, e.CreatedAt });
             entity.HasIndex(e => new { e.TenantId, e.ReporterUserId, e.CreatedAt });
             entity.HasIndex(e => new { e.TenantId, e.AppealedByUserId });

@@ -6,11 +6,12 @@ Status: **Maintained reference — current comparison method with dated evidence
 
 Evidence provenance: the current static table inventory was regenerated on
 2026-07-15 against Laravel
-`903d03d3db78bbf87129ad35728be3b72819acaf` and committed ASP.NET tree
-`9ad163c969a935407297eb459a9840798a1a9e78`. Isolated schema-worktree entities,
-configurations, migrations, tests, and documentation are excluded from the
-mainline counts.
-Any older table/count without its own exact source pair is a historical,
+`903d03d3db78bbf87129ad35728be3b72819acaf` and committed schema implementation
+tree `97b8a4a004362aef8356e8d76333f1efc9d44b36`, including
+`20260715152156_MemberResidencyVerificationStorageParity`. Those nine schema
+commits are now merged into local `main`; the inventory remains tied to the
+named implementation tree until regenerated on a later exact mainline SHA. Any
+older table/count without its own exact source pair is a historical,
 provenance-incomplete checkpoint and cannot support current score or
 upgrade-safety claims.
 
@@ -22,6 +23,344 @@ the current banked score and active schema/upgrade deductions. Dated sections
 here are retained evidence. Static table-name counts are never an overall score
 and remain historical until explicitly regenerated against named SHAs.
 
+## 2026-07-15 Member Residency Verification Storage Evidence
+
+Migration `20260715152156_MemberResidencyVerificationStorageParity` closes the
+genuine `member_residency_verifications` gap. The tenant-scoped declaration and
+attestation history preserves Laravel's member, municipality, postcode,
+optional address/evidence, pending/approved/rejected state, optional attester
+and rejection evidence, timestamps, defaults, lengths, and lookup indexes.
+ASP.NET additionally enforces the status domain plus tenant-composite member
+and attester relationships; this replaces non-persisting member stubs and
+generic admin compatibility handling at the schema boundary.
+
+Verification on committed predecessor
+`7d5552cf04df290abb66719038601e26ffe5e446`:
+
+- a forced clean Release solution build passed in 5m33.50s with zero errors and
+  the seven known API/test warnings;
+- the focused `MemberResidencyVerificationSchemaParityTests` class executed
+  and passed 3/3 with 18 seconds of test execution;
+- `dotnet ef migrations has-pending-model-changes` reported no model drift;
+- a blank disposable PostgreSQL 16.4 database applied all 162 runtime
+  migrations and exposed 13 columns, seven total indexes, three FKs, and one
+  status check;
+- a valid tenant/member declaration resolved the `pending` default, while an
+  invalid status and missing member were rejected;
+- a second disposable database was held exactly at
+  `20260715144509_SalaryBenchmarkStorageParity` with 161 migrations and no
+  residency table, then populated with two tenants, two users, and one salary
+  benchmark;
+- exactly the residency migration upgraded that database to 162 without losing
+  any seeded row; same-tenant approval/attestation succeeded, while
+  cross-tenant member and attester links were rejected;
+- the regenerated schema comparator and its fixture passed, and both
+  disposable PostgreSQL containers were removed.
+
+This slice moves the static exact-name inventory from 241 to 242 matches. The
+banked schema category remains **129/150** until the canonical ASP.NET status
+document records an accepted scoring movement.
+
+## 2026-07-15 Salary Benchmark Storage Evidence
+
+Migration `20260715144509_SalaryBenchmarkStorageParity` closes the genuine
+`salary_benchmarks` gap. The current 13-column Laravel contract comes from the
+schema dump plus the active model/service: optional tenant, role keyword,
+industry/location, min/max/median salary, salary type, currency, year, source,
+and created timestamp. Laravel's guarded fallback migration describes a stale
+alternative shape and does not run when the existing table is present. ASP.NET
+therefore follows the converged live contract, preserves global null-tenant
+rows without a query filter, and adds an optional restrictive tenant FK plus
+the documented salary-type domain.
+
+Verification on committed predecessor
+`7981389be628d16baf93ca210b48900dc4788dab`:
+
+- a forced clean Release solution build passed in 7m21.57s with zero errors and
+  the seven known API/test warnings;
+- the focused `SalaryBenchmarkSchemaParityTests` class executed and passed 3/3
+  with 20 seconds of test execution;
+- `dotnet ef migrations has-pending-model-changes` reported no model drift;
+- a blank disposable PostgreSQL 16.4 database applied all 161 runtime
+  migrations and exposed 13 columns, three total indexes, one optional tenant
+  FK, and one salary-type check;
+- blank-database inserts resolved `annual`, `EUR`, `2026`, and timestamp
+  defaults, while an invalid salary type and a missing tenant reference were
+  rejected;
+- a second disposable database was held exactly at
+  `20260715135048_CookieInventoryStorageParity` with 160 migrations and no
+  salary table, then populated with one tenant and one cookie-inventory row;
+- exactly the salary migration upgraded that database to 161 without losing
+  either seeded row; global and tenant-specific salary rows then coexisted, and
+  invalid salary-type/tenant writes were rejected;
+- the regenerated schema comparator and its fixture passed, and both
+  disposable PostgreSQL containers were removed.
+
+This slice moves the static exact-name inventory from 240 to 241 matches. The
+banked schema category remains **129/150** until the canonical ASP.NET status
+document records an accepted scoring movement.
+
+## 2026-07-15 Cookie Inventory Storage Evidence
+
+Migration `20260715135048_CookieInventoryStorageParity` closes the genuine
+`cookie_inventory` gap. The ten-column aggregate preserves Laravel's cookie
+name, category, purpose, duration, optional third-party provider, nullable
+tenant, active flag, timestamps, category/tenant/active indexes, and composite
+cookie-name/tenant uniqueness. A null tenant continues to mean a platform-wide
+cookie, so the EF aggregate deliberately has no tenant query filter; a
+tenant-specific row instead carries an optional restrictive tenant FK. ASP.NET
+also enforces the four documented category values.
+
+Verification on committed predecessor
+`cb54e2d94ec0170c9aee6cdc06494f1daa5fbea5`:
+
+- a forced clean Release solution build passed in 5m58.98s with zero errors and
+  the seven known API/test warnings;
+- the focused `CookieInventorySchemaParityTests` class executed and passed 3/3
+  with 16 seconds of test execution;
+- `dotnet ef migrations has-pending-model-changes` reported no model drift;
+- a blank disposable PostgreSQL 16.4 database applied all 160 runtime
+  migrations and exposed ten columns, five total indexes, one optional tenant
+  FK, and one category check;
+- blank-database inserts resolved active/created/updated defaults, while an
+  invalid category and a missing tenant reference were rejected;
+- a second disposable database was held exactly at
+  `20260715131714_HealthCheckHistoryStorageParity` with 159 migrations and no
+  cookie-inventory table, then populated with one tenant and one health-history
+  row before exactly the cookie-inventory migration was applied;
+- both populated rows survived, global and tenant-specific entries sharing a
+  cookie name coexisted, and a duplicate tenant-specific entry plus an invalid
+  category were rejected;
+- transient Docker Desktop mapped-port failures on earlier disposable attempts
+  occurred before the one-step migration began; the fixed-loopback-port run
+  supplied the accepted 159-to-160 evidence, and all disposable containers were
+  removed;
+- the regenerated schema comparator and its fixture passed.
+
+This slice moves the static exact-name inventory from 239 to 240 matches. The
+banked schema category remains **129/150** until the canonical ASP.NET status
+document records an accepted scoring movement.
+
+## 2026-07-15 Health Check History Storage Evidence
+
+Migration `20260715131714_HealthCheckHistoryStorageParity` closes the genuine
+`health_check_history` gap. The tenant-scoped ledger preserves Laravel's health
+status, required JSON check outcomes, optional latency, current-timestamp
+default, and tenant index. ASP.NET additionally enforces the documented health
+status domain, non-negative unsigned latency, and tenant relationship.
+
+Verification on committed predecessor
+`387a566f579cabadfa4c9d6acbd7cebe101c1848`:
+
+- a forced clean Release API build passed in 4m48.57s with zero errors and the
+  same three pre-existing warnings;
+- the focused `HealthCheckHistorySchemaParityTests` class executed and passed
+  3/3 in 22 seconds;
+- `dotnet ef migrations has-pending-model-changes` reported no model drift;
+- a blank disposable PostgreSQL 16.4 database applied all 159 runtime
+  migrations through the health-history migration and exposed all six
+  columns, two total indexes, one tenant FK, and two checks;
+- after a transient host-port read timeout left the first populated database
+  pristine, a fresh disposable database was populated at
+  `20260715124331_PilotInquiryStorageParity` with one tenant, one user, and one
+  pilot inquiry, then upgraded by exactly the health-history migration without
+  losing any seeded row;
+- a Laravel-shaped degraded-health row accepted nested JSON, latency `123`,
+  and the current-timestamp default; missing-tenant, invalid-status, and
+  negative-latency inserts were rejected with no invalid row left behind;
+- the regenerated schema comparator and its fixture passed, and both
+  disposable PostgreSQL containers were removed after verification.
+
+This slice moves the static exact-name inventory from 238 to 239 matches. The
+banked schema category remains **129/150** until the canonical ASP.NET status
+document records an accepted scoring movement.
+
+## 2026-07-15 Pilot Inquiry Storage Evidence
+
+Migration `20260715124331_PilotInquiryStorageParity` closes the genuine
+`pilot_inquiries` gap. The 29-column tenant-scoped record preserves Laravel's
+municipality, contact, qualification, JSON interest/fit evidence, score,
+pipeline, optional assignee, lifecycle timestamps, notes, source, defaults,
+lengths, precision, and lookup indexes. ASP.NET additionally enforces the
+documented stage/score/flag/range domains and tenant-composite assignee
+isolation.
+
+Verification on committed predecessor
+`20a8056b602f5d35f965caa269acaea17b053fa4`:
+
+- a forced clean Release API build passed in 5m44.80s with zero errors and the
+  same three pre-existing warnings;
+- the focused `PilotInquirySchemaParityTests` class executed and passed 3/3 in
+  14 seconds;
+- `dotnet ef migrations has-pending-model-changes` reported no model drift;
+- a blank disposable PostgreSQL 16.4 database applied all 158 runtime
+  migrations through the pilot-inquiry migration and exposed all 29 columns,
+  five total indexes, two foreign keys, and six checks;
+- a second disposable database was populated at
+  `20260715074605_EngagementRecognitionStorageParity` with two tenants, one
+  user per tenant, and one monthly-engagement row, then upgraded by exactly the
+  pilot-inquiry migration without losing any seeded row;
+- a Laravel-shaped inquiry accepted JSON interest/fit evidence and resolved
+  defaults to `CH`, `0`, `0`, and `new`; cross-tenant assignee, invalid stage,
+  and out-of-range fit-score inserts were rejected with no invalid row left
+  behind;
+- the regenerated schema comparator and its fixture passed, and the disposable
+  PostgreSQL container was removed after verification.
+
+This slice moves the static exact-name inventory from 237 to 238 matches. The
+banked schema category remains **129/150** until the canonical ASP.NET status
+document records an accepted scoring movement.
+
+## 2026-07-15 Engagement Recognition Storage Evidence
+
+Migration `20260715074605_EngagementRecognitionStorageParity` closes the two
+genuine engagement-recognition gaps created together by Laravel:
+`monthly_engagement` and `seasonal_recognition`. They carry the exact tenant,
+user, month/season, activity, recognition, and timestamp shapes, including
+Laravel's defaults, lengths, unique natural keys, and lookup indexes. ASP.NET
+also enforces tenant-composite user relationships and non-negative unsigned-
+value contracts.
+
+Verification on committed predecessor
+`91e3d99ba01aede1053d2a1f77d8861deee50806`:
+
+- a forced clean Release API build passed in 4m33.42s with zero errors and the
+  same three pre-existing warnings;
+- the focused `EngagementRecognitionSchemaParityTests` class executed and
+  passed 3/3 in 15 seconds;
+- `dotnet ef migrations has-pending-model-changes` reported no model drift;
+- a blank disposable PostgreSQL 16.4 database applied all 157 runtime
+  migrations through the engagement-recognition migration and exposed both
+  tables, their 4/3 total indexes, two tenant-composite user FKs, and two
+  non-negative checks;
+- a second disposable database was populated at
+  `20260715070811_DonationDisputeStorageParity` with two tenants, one user per
+  tenant, and one donation dispute, then upgraded by exactly the engagement-
+  recognition migration without losing any seeded row;
+- valid monthly and seasonal rows resolved defaults to `false`/`0` and `0`;
+  cross-tenant user linkage, a duplicate monthly natural key, and a negative
+  months-active value were rejected with no invalid rows left behind;
+- the regenerated schema comparator and its fixture passed, and the disposable
+  PostgreSQL container was removed after verification.
+
+This slice moves the static exact-name inventory from 235 to 237 matches. The
+banked schema category remains **129/150** until the canonical ASP.NET status
+document records an accepted scoring movement.
+
+## 2026-07-15 Donation Dispute Storage Evidence
+
+Migration `20260715070811_DonationDisputeStorageParity` closes the genuine
+`donation_disputes` exact-name gap. The tenant-scoped table carries Laravel's
+Stripe dispute, payment-intent, charge, amount, currency, status, reason,
+evidence deadline, payment-route, connected-account, JSON payload, and
+timestamp fields. It also preserves the unique dispute identifier, Laravel's
+four lookup indexes, and adds the ASP.NET tenant relationship plus a
+non-negative amount check for Laravel's unsigned amount contract.
+
+Verification on committed predecessor
+`0864f72acb607dbe79f1b9bc198d81f31c62c1cd`:
+
+- a forced clean Release API build passed in 6m18.09s with zero errors; the
+  compact incremental summary reported zero warnings and zero errors, while
+  the Debug test build surfaced the same three pre-existing API warnings;
+- the focused `DonationDisputeSchemaParityTests` class executed and passed 3/3
+  in 20 seconds;
+- `dotnet ef migrations has-pending-model-changes` reported no model drift;
+- a blank disposable PostgreSQL 16.4 database applied all 156 runtime
+  migrations through the donation-dispute migration and exposed the table,
+  four explicit indexes plus its primary-key index, tenant FK, and amount
+  check;
+- a second disposable database was populated at
+  `20260715062938_MarketplaceSupportStorageParity` with one tenant and one
+  marketplace category template, then upgraded by exactly the donation-
+  dispute migration without losing either row;
+- a Laravel-shaped dispute row accepted JSON evidence and resolved defaults to
+  `0`, `gbp`, `needs_response`, and `platform_default`; missing-tenant and
+  negative-amount inserts were both rejected with no invalid row left behind;
+- the regenerated schema comparator and its fixture passed, and the disposable
+  PostgreSQL container was removed after verification.
+
+This slice moves the static exact-name inventory from 234 to 235 matches. The
+banked schema category remains **129/150** until the canonical ASP.NET status
+document records an accepted scoring movement.
+
+## 2026-07-15 Marketplace Support Storage Evidence
+
+Migration `20260715062938_MarketplaceSupportStorageParity` closes the two
+remaining `marketplace_*` exact-name gaps: `marketplace_category_templates` and
+`marketplace_report_notifications`. The first carries tenant-scoped dynamic
+listing-field JSON with Laravel's nullable tenant/category shape. The second is
+the durable report bell/email outbox with dedupe, retry, status, attempt, error,
+payload, and delivery timing evidence. It is distinct from the existing paid-
+order notification ledger. A tenant/report alternate key and tenant-composite
+report/recipient relationships reject cross-tenant outbox rows.
+
+Verification on committed predecessor `92125875456ecf87d5fb1b8bb4062da8d3146085`:
+
+- a forced clean Release API build passed in 3m14.93s with zero errors and
+  three pre-existing warnings;
+- the focused `MarketplaceSupportSchemaParityTests` class passed 3/3 in 1.0921
+  minutes after discovering 3,337 tests in the Debug test assembly;
+- `dotnet ef migrations has-pending-model-changes` reported no model drift;
+- a blank disposable PostgreSQL 16.4 database applied all 155 runtime
+  migrations through the marketplace-support migration and exposed both tables
+  plus the marketplace-report tenant/id key;
+- a second disposable database was populated at
+  `20260715054926_VereinDuesAndFederationSchemaParity` with one tenant, two
+  users, one category, one listing, and one report, then upgraded by exactly the
+  marketplace-support migration without losing those rows;
+- both new tables accepted Laravel-shaped JSON/outbox rows, notification
+  defaults resolved to `pending` and `0`, and a cross-tenant recipient insert
+  failed on the tenant-composite user foreign key with no invalid row left
+  behind;
+- the schema-comparator fixture passed, and the disposable PostgreSQL container
+  was removed after verification.
+
+These two names were previously part of the 198 unclassified set. Closing them
+reduces that set to 196 and clears the `marketplace_*` exact-name family. The
+banked schema category remains **129/150** until the canonical ASP.NET status
+document records an accepted scoring movement.
+
+## 2026-07-15 Verein Dues And Federation Schema Evidence
+
+Migration `20260715054926_VereinDuesAndFederationSchemaParity` closes the five
+genuine Verein/Clubs table gaps: `verein_membership_fees`,
+`verein_member_dues`, `verein_dues_payments`, `verein_event_shares`, and
+`verein_cross_invitations`. It adds the required `events(TenantId, Id)`
+alternate key and uses tenant-composite relationships for users,
+organisations, events, and member dues. Laravel-compatible names, column
+types, lengths, defaults, status/value checks, uniqueness, and indexes are
+covered by focused model/migration tests.
+
+Verification on the `ea352690c95bbb6dea26a7b00c8454a37b51a859` lineage:
+
+- a forced clean Release API build passed in 7m12.34s with zero errors and
+  three pre-existing warnings;
+- the focused `VereinSchemaParityTests` class passed 3/3 in 44.6 seconds after
+  discovering 3,334 tests in the Debug test assembly; the newly copied Release
+  test DLL was separately blocked by local Windows Application Control and was
+  not counted as a test pass;
+- `dotnet ef migrations has-pending-model-changes` reported no model drift;
+- a blank disposable PostgreSQL 16.4 database applied all 154 runtime
+  migrations through the Verein migration and exposed all five tables plus the
+  event tenant/id key;
+- a second disposable database was populated at
+  `20260714234546_SocialCommentMentionParity` with one tenant, two users, two
+  organisations, and one event, then upgraded by exactly the Verein migration
+  without losing those rows;
+- valid rows were inserted into every new table; defaults resolved to
+  `CHF`, `annual`, `30`, `true`, `pending`, `0`, `active`, and `sent` as
+  applicable; and a cross-tenant event share failed on
+  `FK_verein_event_shares_events_tenant_id_event_id` with no invalid row left
+  behind;
+- the schema-comparator fixture passed, and the disposable PostgreSQL container
+  was removed after verification.
+
+This evidence closes five exact-name gaps and makes the slice eligible for the
+canonical scoring transaction. It does not silently rescore the fixed rubric:
+the banked schema category remains **129/150** until the canonical ASP.NET
+status document records an accepted movement.
+
 ## 2026-07-15 Current Static Inventory And Classification Boundary
 
 This is the current repeatable, read-only source inventory. It is a table-name
@@ -30,44 +369,58 @@ comparison, not runtime migration proof, API/workflow parity, or a score.
 | Source | Count | Notes |
 | --- | ---: | --- |
 | Laravel migration files | 384 | PHP files under `database/migrations`. |
-| ASP.NET EF migration source files | 155 | Excludes designer files and the model snapshot. |
+| ASP.NET EF migration source files | 164 | Excludes designer files and the model snapshot. |
 | Laravel created tables | 301 | Unique `Schema::create(...)` names. |
 | Laravel touched tables | 131 | Unique `Schema::table(...)` names. |
 | Laravel explicit model tables | 268 | Unique explicit model `$table` declarations. |
 | Laravel source tables | 458 | Union of created, touched, and explicit model table names. |
-| ASP.NET tables | 425 | Union of EF `ToTable`, `[Table]`, and migration `CreateTable` names. |
-| Exact matched tables | 227 | Identical normalized names in both sources. |
-| Missing Laravel exact names | 231 | Laravel names with no identical ASP.NET name. |
+| ASP.NET tables | 440 | Union of EF `ToTable`, `[Table]`, and migration `CreateTable` names. |
+| Exact matched tables | 242 | Identical normalized names in both sources. |
+| Missing Laravel exact names | 216 | Laravel names with no identical ASP.NET name. |
 | ASP.NET-only exact names | 198 | ASP.NET names with no identical Laravel name. |
 
-The 231 missing exact names currently partition as follows. These categories
+The 216 missing exact names currently partition as follows. These categories
 are mutually exclusive, so their counts reconcile to the comparator total.
 
 | Classification | Count | Evidence boundary |
 | --- | ---: | --- |
-| Classified aliases | 20 | A differently named ASP.NET aggregate has been identified. Each alias remains a gap until its migration shape and external workflow are proved equivalent. |
-| Podcast compatibility-storage gaps | 8 | `podcast_episode_chapters`, `podcast_episode_listens`, `podcast_episode_reactions`, `podcast_episode_reports`, `podcast_episodes`, `podcast_media_cleanup_tasks`, `podcast_show_subscriptions`, and `podcast_shows`. Existing API compatibility does not replace these Laravel storage/evidence contracts. |
-| Genuine Verein/Clubs gaps | 5 | `verein_cross_invitations`, `verein_dues_payments`, `verein_event_shares`, `verein_member_dues`, and `verein_membership_fees`. |
-| Unclassified missing names | 198 | No accepted alias or replacement classification has yet been recorded. |
-| **Total missing exact names** | **231** | **20 + 8 + 5 + 198.** |
+| Classified aliases | 24 | A differently named ASP.NET aggregate has been identified. `email_log` maps to the existing `email_logs` entity/table and deliverability consumers; `activity_log` maps to the tenant/user-scoped `member_activity_logs` ledger; `push_log` maps to the dedicated but differently shaped `push_notification_logs` delivery ledger; and `fadp_consent_records` maps to current-state `consent_records`, which supplies the member/admin FADP consent routes but is not yet proved equivalent to Laravel's append-only action/version/metadata ledger. Each alias remains a gap until its migration shape and external workflow are proved equivalent. |
+| Compatibility-storage gaps | 20 | Podcast: `podcast_episode_chapters`, `podcast_episode_listens`, `podcast_episode_reactions`, `podcast_episode_reports`, `podcast_episodes`, `podcast_media_cleanup_tasks`, `podcast_show_subscriptions`, and `podcast_shows`. Advertising: `ad_campaigns`, `ad_creatives`, `ad_impressions`, and `ad_clicks`, currently persisted as campaign/creative/aggregate JSON under tenant-config key `local_advertising.campaigns`. Appreciations: `appreciations` and `appreciation_reactions`, currently persisted under tenant-config key `social.appreciations`. Email suppression: `email_suppression`, currently persisted under tenant-config prefix `email_deliverability.suppression.`. Support triage: `support_reports`, currently persisted under tenant-config key `admin_explicit.support_reports`. FADP: `fadp_data_retention_config` and `fadp_processing_activities`, whose route writes are recorded in `compatibility_audit_entries` while the processing-register read also composes `legal_documents` and `gdpr_consent_types`. Tenant retention: `tenant_retention_policies` and `tenant_retention_runs`, persisted under tenant-config prefix `admin.retention.policy.` and key `admin.retention.runs`. Existing API compatibility does not replace these Laravel storage/evidence contracts, so these are not accepted aliases or exact matches. |
+| Unclassified missing names | 172 | No accepted alias or replacement classification has yet been recorded. |
+| **Total missing exact names** | **216** | **24 + 20 + 172.** |
 
-### Isolated Candidate Branch - Not Banked
+### Merged Implementation Boundary - Not Rescored
 
-The separate `codex/schema-parity-20260714` worktree is clean at local-only
-commit `97b8a4a004362aef8356e8d76333f1efc9d44b36`, with merge base
-`ea352690`. Nine commits add candidate storage for Verein dues, marketplace
-support, donation disputes, engagement recognition, pilot inquiries, health
-history, cookie inventory, salary benchmarks, and member residency
-verification.
+The nine commits through `97b8a4a004362aef8356e8d76333f1efc9d44b36`
+are now merged into local `main`. Their branch-local comparator reports 458
+Laravel tables, 440 ASP.NET tables, 242 exact names, 216 missing Laravel exact
+names, 198 ASP.NET-only names, and 164 EF migration source files. Each slice
+has its own focused build, test, model-drift, blank-replay, and populated-upgrade
+evidence above, but the combined merged lineage has not yet received a new
+canonical scoring transaction or remote exact-SHA certification. The current
+banked schema category therefore remains **129/150**.
 
-The branch-local comparator reports 458 Laravel tables, 440 ASP.NET tables, 242
-exact names, 216 missing Laravel exact names, 198 ASP.NET-only names, and 164 EF
-migration source files. These are **candidate counts**, not the current mainline
-inventory. The branch has no remote publication, has not been reconciled onto
-current `main`, and has not been accepted through one complete exact-SHA blank
-replay, populated upgrade, model-drift, constraint/isolation, full-suite, and
-scoring transaction. It adds **zero** banked points; the current banked schema
-category remains **129/150**.
+The five Verein names previously classified as genuine missing storage are now
+represented exactly and are therefore absent from this missing-name partition.
+The Verein slice moved the static exact-name inventory from 227 to 232 matches,
+the marketplace-support slice moved it from 232 to 234, and the donation-
+dispute slice moved it from 234 to 235. The engagement-recognition slice moves
+it from 235 to 237, and the pilot-inquiry slice moves it from 237 to 238. The four advertising names and two
+appreciation names move from unclassified to compatibility-storage gaps,
+reducing the unclassified set from 196 to 190 before the donation-dispute
+closure reduces it again to 189 and engagement recognition reduces it to 187.
+Classifying `email_log`, `email_suppression`, and `support_reports` reduces it
+to 184 before the pilot-inquiry closure reduces it to 183. Classifying
+`activity_log` and `push_log` reduces it to 181 before the health-history
+closure reduces it to 180 and moves exact matches from 238 to 239. Classifying
+the three FADP names and two tenant-retention names reduces it to 175 before
+the cookie-inventory closure reduces it to 174 and moves exact matches from
+239 to 240. The salary-benchmark closure reduces it to 173 and moves exact
+matches from 240 to 241. The residency-verification closure reduces the
+unclassified set to 172 and
+moves exact matches from 241 to 242. Exact-name coverage is therefore 242/458,
+or 52.8%; this remains a diagnostic inventory rather than an overall parity
+percentage.
 
 The comparator's Markdown renderer was also corrected in this audit. Missing
 and ASP.NET-only rows now render concrete table names and source paths rather
@@ -588,9 +941,9 @@ of semantic absence. It highlights the domains that need table-by-table review:
 | `federation_*` | 16 | Receiver-scoped partnership decisions now persist native status/audit state, but exact federation-level permission columns, rejection actor/time/reason metadata, initial-sync/outbox state, and broader partner/network schema still need reconciliation. |
 | `course_*` | 14 | Course module has no clear .NET implementation surface. |
 | `job_*` | 13 | Job schema is partially present but not exact-name complete. |
-| `marketplace_*` | 2 | Marketplace provider/account and settlement slices reduced the exact-name table gap, but the remaining source names and their workflows still require reconciliation. |
+| `marketplace_*` | 0 | Category-template and report-notification storage now clear the last two exact-name gaps; API/workflow delivery proof remains separate from this static result. |
 | `podcast*` | 8 | Podcast API route compatibility now exists, but the eight dedicated Laravel storage/media/evidence tables listed in the current classification remain open gaps. |
-| `verein_*` | 5 | `verein_federation_consents` is represented for municipality events-calendar sharing; the five named Verein/Clubs storage gaps remain unbanked. |
+| `verein_*` | 0 | `verein_federation_consents` and the five dues, payment, event-share, and cross-invitation tables are now represented exactly; wider Verein workflow/consumer proof remains separate from the static table-name result. |
 | `regional_*` | 0 | Regional Analytics subscription, report, access-log, and cache schema tables are now represented; API/service/report workflow parity remains open. |
 
 ## Acceptance Criteria For Schema Parity

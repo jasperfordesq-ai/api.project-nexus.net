@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Nexus.Api.Data;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Nexus.Api.Migrations
 {
     [DbContext(typeof(NexusDbContext))]
-    partial class NexusDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260715144509_SalaryBenchmarkStorageParity")]
+    partial class SalaryBenchmarkStorageParity
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -18420,93 +18423,6 @@ namespace Nexus.Api.Migrations
                     b.ToTable("member_availabilities", (string)null);
                 });
 
-            modelBuilder.Entity("Nexus.Api.Entities.MemberResidencyVerification", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<DateTime?>("AttestedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("attested_at");
-
-                    b.Property<int?>("AttestedBy")
-                        .HasColumnType("integer")
-                        .HasColumnName("attested_by");
-
-                    b.Property<DateTime?>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("DeclaredAddress")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("declared_address");
-
-                    b.Property<string>("DeclaredMunicipality")
-                        .IsRequired()
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)")
-                        .HasColumnName("declared_municipality");
-
-                    b.Property<string>("DeclaredPostcode")
-                        .IsRequired()
-                        .HasMaxLength(24)
-                        .HasColumnType("character varying(24)")
-                        .HasColumnName("declared_postcode");
-
-                    b.Property<string>("EvidenceNote")
-                        .HasColumnType("text")
-                        .HasColumnName("evidence_note");
-
-                    b.Property<string>("RejectionReason")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("rejection_reason");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)")
-                        .HasDefaultValue("pending")
-                        .HasColumnName("status");
-
-                    b.Property<int>("TenantId")
-                        .HasColumnType("integer")
-                        .HasColumnName("tenant_id");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("integer")
-                        .HasColumnName("user_id");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AttestedBy");
-
-                    b.HasIndex("Status");
-
-                    b.HasIndex("TenantId");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("TenantId", "AttestedBy");
-
-                    b.HasIndex("TenantId", "UserId", "Status");
-
-                    b.ToTable("member_residency_verifications", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_member_residency_verifications_status", "status IN ('pending', 'approved', 'rejected')");
-                        });
-                });
-
             modelBuilder.Entity("Nexus.Api.Entities.MemberVettingAttestation", b =>
                 {
                     b.Property<long>("Id")
@@ -31464,28 +31380,6 @@ namespace Nexus.Api.Migrations
                     b.Navigation("Tenant");
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("Nexus.Api.Entities.MemberResidencyVerification", b =>
-                {
-                    b.HasOne("Nexus.Api.Entities.Tenant", null)
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Nexus.Api.Entities.User", null)
-                        .WithMany()
-                        .HasForeignKey("TenantId", "AttestedBy")
-                        .HasPrincipalKey("TenantId", "Id")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Nexus.Api.Entities.User", null)
-                        .WithMany()
-                        .HasForeignKey("TenantId", "UserId")
-                        .HasPrincipalKey("TenantId", "Id")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("Nexus.Api.Entities.MemberVettingAttestation", b =>
