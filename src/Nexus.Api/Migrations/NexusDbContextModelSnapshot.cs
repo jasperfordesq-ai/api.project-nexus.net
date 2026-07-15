@@ -24767,6 +24767,241 @@ namespace Nexus.Api.Migrations
                     b.ToTable("user_warnings", (string)null);
                 });
 
+            modelBuilder.Entity("Nexus.Api.Entities.VereinCrossInvitation", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<int>("InviteeUserId")
+                        .HasColumnType("integer")
+                        .HasColumnName("invitee_user_id");
+
+                    b.Property<int>("InviterUserId")
+                        .HasColumnType("integer")
+                        .HasColumnName("inviter_user_id");
+
+                    b.Property<string>("Message")
+                        .HasColumnType("text")
+                        .HasColumnName("message");
+
+                    b.Property<DateTime?>("RespondedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("responded_at");
+
+                    b.Property<DateTime>("SentAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("sent_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<int>("SourceOrganizationId")
+                        .HasColumnType("integer")
+                        .HasColumnName("source_organization_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasDefaultValue("sent")
+                        .HasColumnName("status");
+
+                    b.Property<int>("TargetOrganizationId")
+                        .HasColumnType("integer")
+                        .HasColumnName("target_organization_id");
+
+                    b.Property<int>("TenantId")
+                        .HasColumnType("integer")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InviteeUserId", "Status")
+                        .HasDatabaseName("verein_cross_inv_invitee_idx");
+
+                    b.HasIndex("TargetOrganizationId", "Status")
+                        .HasDatabaseName("verein_cross_inv_target_idx");
+
+                    b.HasIndex("TenantId", "InviteeUserId");
+
+                    b.HasIndex("TenantId", "InviterUserId");
+
+                    b.HasIndex("TenantId", "SourceOrganizationId");
+
+                    b.HasIndex("TenantId", "TargetOrganizationId");
+
+                    b.HasIndex("TenantId", "Status", "ExpiresAt")
+                        .HasDatabaseName("verein_cross_inv_expiry_idx");
+
+                    b.ToTable("verein_cross_invitations", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_verein_cross_invitations_status", "status IN ('sent', 'accepted', 'declined', 'expired')");
+                        });
+                });
+
+            modelBuilder.Entity("Nexus.Api.Entities.VereinDuesPayment", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("AmountCents")
+                        .HasColumnType("integer")
+                        .HasColumnName("amount_cents");
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasDefaultValue("CHF")
+                        .HasColumnName("currency");
+
+                    b.Property<long>("DuesId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("dues_id");
+
+                    b.Property<DateTime>("PaidAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("paid_at");
+
+                    b.Property<string>("PaymentMethod")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("payment_method");
+
+                    b.Property<string>("ReceiptUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("receipt_url");
+
+                    b.Property<string>("StripePaymentIntentId")
+                        .IsRequired()
+                        .HasMaxLength(191)
+                        .HasColumnType("character varying(191)")
+                        .HasColumnName("stripe_payment_intent_id");
+
+                    b.Property<int>("TenantId")
+                        .HasColumnType("integer")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DuesId")
+                        .HasDatabaseName("verein_dues_pmts_dues_idx");
+
+                    b.HasIndex("StripePaymentIntentId")
+                        .IsUnique()
+                        .HasDatabaseName("verein_dues_pmts_pi_unique");
+
+                    b.HasIndex("TenantId", "DuesId");
+
+                    b.HasIndex("TenantId", "PaidAt")
+                        .HasDatabaseName("verein_dues_pmts_tenant_paid_idx");
+
+                    b.ToTable("verein_dues_payments", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_verein_dues_payments_amount", "amount_cents >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("Nexus.Api.Entities.VereinEventShare", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("EventId")
+                        .HasColumnType("integer")
+                        .HasColumnName("event_id");
+
+                    b.Property<DateTime>("SharedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("shared_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<int>("SourceOrganizationId")
+                        .HasColumnType("integer")
+                        .HasColumnName("source_organization_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasDefaultValue("active")
+                        .HasColumnName("status");
+
+                    b.Property<int>("TargetOrganizationId")
+                        .HasColumnType("integer")
+                        .HasColumnName("target_organization_id");
+
+                    b.Property<int>("TenantId")
+                        .HasColumnType("integer")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EventId")
+                        .HasDatabaseName("verein_event_shares_event_idx");
+
+                    b.HasIndex("TargetOrganizationId", "Status")
+                        .HasDatabaseName("verein_event_shares_target_idx");
+
+                    b.HasIndex("TenantId", "SourceOrganizationId")
+                        .HasDatabaseName("verein_event_shares_source_idx");
+
+                    b.HasIndex("TenantId", "TargetOrganizationId");
+
+                    b.HasIndex("TenantId", "EventId", "TargetOrganizationId")
+                        .IsUnique()
+                        .HasDatabaseName("verein_event_shares_unique_target");
+
+                    b.ToTable("verein_event_shares", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_verein_event_shares_status", "status IN ('active', 'withdrawn')");
+                        });
+                });
+
             modelBuilder.Entity("Nexus.Api.Entities.VereinFederationConsent", b =>
                 {
                     b.Property<long>("Id")
@@ -24831,6 +25066,239 @@ namespace Nexus.Api.Migrations
                         .HasDatabaseName("verein_fed_consent_lookup_idx");
 
                     b.ToTable("verein_federation_consents", (string)null);
+                });
+
+            modelBuilder.Entity("Nexus.Api.Entities.VereinMemberDue", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("AmountCents")
+                        .HasColumnType("integer")
+                        .HasColumnName("amount_cents");
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasDefaultValue("CHF")
+                        .HasColumnName("currency");
+
+                    b.Property<DateOnly>("DueDate")
+                        .HasColumnType("date")
+                        .HasColumnName("due_date");
+
+                    b.Property<DateTime?>("GeneratedEmailFailedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("generated_email_failed_at");
+
+                    b.Property<DateTime?>("GeneratedEmailSentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("generated_email_sent_at");
+
+                    b.Property<DateTime?>("LastReminderAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_reminder_at");
+
+                    b.Property<int>("MembershipYear")
+                        .HasColumnType("integer")
+                        .HasColumnName("membership_year");
+
+                    b.Property<int>("OrganizationId")
+                        .HasColumnType("integer")
+                        .HasColumnName("organization_id");
+
+                    b.Property<DateTime?>("PaidAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("paid_at");
+
+                    b.Property<DateTime?>("PaidEmailFailedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("paid_email_failed_at");
+
+                    b.Property<DateTime?>("PaidEmailSentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("paid_email_sent_at");
+
+                    b.Property<DateTime?>("RefundedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("refunded_at");
+
+                    b.Property<int>("ReminderCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("reminder_count");
+
+                    b.Property<DateTime?>("ReminderEmailFailedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reminder_email_failed_at");
+
+                    b.Property<string>("ReminderEmailLastError")
+                        .HasColumnType("text")
+                        .HasColumnName("reminder_email_last_error");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasDefaultValue("pending")
+                        .HasColumnName("status");
+
+                    b.Property<string>("StripePaymentIntentId")
+                        .HasMaxLength(191)
+                        .HasColumnType("character varying(191)")
+                        .HasColumnName("stripe_payment_intent_id");
+
+                    b.Property<int>("TenantId")
+                        .HasColumnType("integer")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer")
+                        .HasColumnName("user_id");
+
+                    b.Property<int?>("WaivedByAdminId")
+                        .HasColumnType("integer")
+                        .HasColumnName("waived_by_admin_id");
+
+                    b.Property<string>("WaivedReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("waived_reason");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StripePaymentIntentId")
+                        .HasDatabaseName("verein_dues_pi_idx");
+
+                    b.HasIndex("OrganizationId", "MembershipYear")
+                        .HasDatabaseName("verein_dues_org_year_idx");
+
+                    b.HasIndex("TenantId", "OrganizationId");
+
+                    b.HasIndex("TenantId", "Status")
+                        .HasDatabaseName("verein_dues_tenant_status_idx");
+
+                    b.HasIndex("TenantId", "UserId");
+
+                    b.HasIndex("TenantId", "WaivedByAdminId");
+
+                    b.HasIndex("UserId", "Status")
+                        .HasDatabaseName("verein_dues_user_status_idx");
+
+                    b.HasIndex("OrganizationId", "UserId", "MembershipYear")
+                        .IsUnique()
+                        .HasDatabaseName("verein_dues_org_user_year_unique");
+
+                    b.ToTable("verein_member_dues", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_verein_member_dues_amount", "amount_cents >= 0");
+
+                            t.HasCheckConstraint("CK_verein_member_dues_reminders", "reminder_count >= 0");
+
+                            t.HasCheckConstraint("CK_verein_member_dues_status", "status IN ('pending', 'paid', 'overdue', 'waived', 'refunded')");
+
+                            t.HasCheckConstraint("CK_verein_member_dues_year", "membership_year BETWEEN 0 AND 65535");
+                        });
+                });
+
+            modelBuilder.Entity("Nexus.Api.Entities.VereinMembershipFee", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("BillingCycle")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasDefaultValue("annual")
+                        .HasColumnName("billing_cycle");
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasDefaultValue("CHF")
+                        .HasColumnName("currency");
+
+                    b.Property<int>("FeeAmountCents")
+                        .HasColumnType("integer")
+                        .HasColumnName("fee_amount_cents");
+
+                    b.Property<int>("GracePeriodDays")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(30)
+                        .HasColumnName("grace_period_days");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<int?>("LateFeeCents")
+                        .HasColumnType("integer")
+                        .HasColumnName("late_fee_cents");
+
+                    b.Property<int>("OrganizationId")
+                        .HasColumnType("integer")
+                        .HasColumnName("organization_id");
+
+                    b.Property<int>("TenantId")
+                        .HasColumnType("integer")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId")
+                        .IsUnique()
+                        .HasDatabaseName("verein_fees_org_unique");
+
+                    b.HasIndex("TenantId", "IsActive")
+                        .HasDatabaseName("verein_fees_tenant_active_idx");
+
+                    b.HasIndex("TenantId", "OrganizationId");
+
+                    b.ToTable("verein_membership_fees", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_verein_membership_fees_amount", "fee_amount_cents > 0");
+
+                            t.HasCheckConstraint("CK_verein_membership_fees_billing_cycle", "billing_cycle IN ('annual', 'biennial', 'monthly')");
+
+                            t.HasCheckConstraint("CK_verein_membership_fees_grace_period", "grace_period_days BETWEEN 0 AND 65535");
+
+                            t.HasCheckConstraint("CK_verein_membership_fees_late_fee", "late_fee_cents IS NULL OR late_fee_cents >= 0");
+                        });
                 });
 
             modelBuilder.Entity("Nexus.Api.Entities.VerificationBadgeType", b =>
@@ -32330,6 +32798,111 @@ namespace Nexus.Api.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Nexus.Api.Entities.VereinCrossInvitation", b =>
+                {
+                    b.HasOne("Nexus.Api.Entities.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Nexus.Api.Entities.User", "InviteeUser")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "InviteeUserId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Nexus.Api.Entities.User", "InviterUser")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "InviterUserId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Nexus.Api.Entities.VolunteerOrganisation", "SourceOrganization")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "SourceOrganizationId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Nexus.Api.Entities.VolunteerOrganisation", "TargetOrganization")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "TargetOrganizationId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("InviteeUser");
+
+                    b.Navigation("InviterUser");
+
+                    b.Navigation("SourceOrganization");
+
+                    b.Navigation("TargetOrganization");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Nexus.Api.Entities.VereinDuesPayment", b =>
+                {
+                    b.HasOne("Nexus.Api.Entities.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Nexus.Api.Entities.VereinMemberDue", "Due")
+                        .WithMany("Payments")
+                        .HasForeignKey("TenantId", "DuesId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Due");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Nexus.Api.Entities.VereinEventShare", b =>
+                {
+                    b.HasOne("Nexus.Api.Entities.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Nexus.Api.Entities.Event", "Event")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "EventId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Nexus.Api.Entities.VolunteerOrganisation", "SourceOrganization")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "SourceOrganizationId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Nexus.Api.Entities.VolunteerOrganisation", "TargetOrganization")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "TargetOrganizationId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Event");
+
+                    b.Navigation("SourceOrganization");
+
+                    b.Navigation("TargetOrganization");
+
+                    b.Navigation("Tenant");
+                });
+
             modelBuilder.Entity("Nexus.Api.Entities.VereinFederationConsent", b =>
                 {
                     b.HasOne("Nexus.Api.Entities.User", "OptedInByAdmin")
@@ -32352,6 +32925,63 @@ namespace Nexus.Api.Migrations
                     b.Navigation("OptedInByAdmin");
 
                     b.Navigation("Organisation");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("Nexus.Api.Entities.VereinMemberDue", b =>
+                {
+                    b.HasOne("Nexus.Api.Entities.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Nexus.Api.Entities.VolunteerOrganisation", "Organization")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "OrganizationId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Nexus.Api.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "UserId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Nexus.Api.Entities.User", "WaivedByAdmin")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "WaivedByAdminId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Organization");
+
+                    b.Navigation("Tenant");
+
+                    b.Navigation("User");
+
+                    b.Navigation("WaivedByAdmin");
+                });
+
+            modelBuilder.Entity("Nexus.Api.Entities.VereinMembershipFee", b =>
+                {
+                    b.HasOne("Nexus.Api.Entities.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Nexus.Api.Entities.VolunteerOrganisation", "Organization")
+                        .WithMany()
+                        .HasForeignKey("TenantId", "OrganizationId")
+                        .HasPrincipalKey("TenantId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Organization");
 
                     b.Navigation("Tenant");
                 });
@@ -33194,6 +33824,11 @@ namespace Nexus.Api.Migrations
             modelBuilder.Entity("Nexus.Api.Entities.UserSkill", b =>
                 {
                     b.Navigation("Endorsements");
+                });
+
+            modelBuilder.Entity("Nexus.Api.Entities.VereinMemberDue", b =>
+                {
+                    b.Navigation("Payments");
                 });
 
             modelBuilder.Entity("Nexus.Api.Entities.VolunteerOpportunity", b =>

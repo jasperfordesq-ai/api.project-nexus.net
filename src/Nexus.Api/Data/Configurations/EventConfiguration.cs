@@ -24,6 +24,7 @@ public class EventConfiguration : TenantScopedConfiguration
         {
             entity.ToTable("events");
             entity.HasKey(e => e.Id);
+            entity.HasAlternateKey(e => new { e.TenantId, e.Id });
             entity.Property(e => e.Title).HasMaxLength(255).IsRequired();
             entity.Property(e => e.Description).HasColumnType("text");
             entity.Property(e => e.Location).HasMaxLength(500);
