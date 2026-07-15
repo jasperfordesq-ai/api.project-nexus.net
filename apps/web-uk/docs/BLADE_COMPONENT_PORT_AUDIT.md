@@ -1466,6 +1466,22 @@ database, migration, runtime request, container, or production operation was
 performed. This slice is unscored; the canonical bank remains `663/1,000`
 until another complete fixed-rubric audit.
 
+### 2026-07-15 Member-directory API assertion follow-up
+
+The member search and skill-member reads now have direct API-client contract
+proof alongside their routed directory tests. The assertions pin the exact
+Laravel v2 paths, bearer authority, GET-only behavior, UTF-8 and reserved-query
+encoding, limit parameters, full data/meta envelope preservation, absence of an
+invented tenant-ID header, and structured feature-disabled `403` propagation.
+This narrows finite package 9 for two further Laravel route declarations omitted
+from OpenAPI; role, feature, tenant and populated-fixture runtime certification
+remains assigned to the disposable environment.
+
+The focused API-client suite passes `219/219`. No Laravel or ASP.NET source,
+database, migration, runtime request, container, or production operation was
+performed. This slice is unscored; the canonical bank remains `663/1,000`
+until another complete fixed-rubric audit.
+
 - GOV.UK crown, logotype, official header identity, OGL block, or Crown
   copyright wording.
 - Laravel/PHP implementation details.

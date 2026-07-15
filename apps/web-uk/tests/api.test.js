@@ -4362,6 +4362,59 @@ describe('API Request Functions', () => {
   });
 
   describe('Laravel search helpers', () => {
+    it('should preserve encoded member and skill lookup queries with bearer authority', async () => {
+      const memberResponse = { data: [{ id: 77, name: 'Renée O\'Connor' }], meta: { total: 1 } };
+      const skillResponse = {
+        data: [{ id: 77, name: 'Renée O\'Connor', proficiency: 'can_help' }],
+        meta: { total: 1 }
+      };
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => memberResponse
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => skillResponse
+        });
+
+      await expect(api.searchUsers('test-token', 'Renée & repair', { limit: 25 }))
+        .resolves.toEqual(memberResponse);
+      await expect(api.getSkillMembers('test-token', 'Bike repair & maintenance', { limit: 40 }))
+        .resolves.toEqual(skillResponse);
+
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        1,
+        'http://localhost:5000/api/v2/users/search?q=Ren%C3%A9e+%26+repair&limit=25',
+        expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer test-token' }) })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        2,
+        'http://localhost:5000/api/v2/skills/members?skill=Bike+repair+%26+maintenance&limit=40',
+        expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer test-token' }) })
+      );
+      for (const [, options] of mockFetch.mock.calls) {
+        expect(options.method).toBeUndefined();
+        expect(options.headers).not.toHaveProperty('X-Tenant-ID');
+      }
+
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ message: 'This skill directory is not available.', code: 'FEATURE_DISABLED' })
+      });
+
+      await expect(api.getSkillMembers('test-token', 'gardening')).rejects.toMatchObject({
+        name: 'ApiError',
+        status: 403,
+        message: 'This skill directory is not available.',
+        data: { message: 'This skill directory is not available.', code: 'FEATURE_DISABLED' }
+      });
+    });
+
     it('should search through the Laravel v2 endpoint with advanced filters', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
