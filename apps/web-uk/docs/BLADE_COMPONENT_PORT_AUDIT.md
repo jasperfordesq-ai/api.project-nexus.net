@@ -1723,6 +1723,9 @@ database, migration, runtime request, container, or production operation was
 performed. This slice is unscored; the canonical bank remains `663/1,000`
 until another complete fixed-rubric audit.
 
+At published Web UK product SHA `c961187c`, the complete Jest aggregate passes
+`52/52` suites and `1,734/1,734` tests.
+
 - GOV.UK crown, logotype, official header identity, OGL block, or Crown
   copyright wording.
 - Laravel/PHP implementation details.
