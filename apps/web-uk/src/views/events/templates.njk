@@ -53,9 +53,9 @@
             </div>
           </dl>
           <div class="govuk-button-group">
-            {% if template.capabilities.materialize %}<a class="govuk-button" href="{{ urlFor('/event-templates/' + (template.id | string) + '/materialize') }}">{{ t("event_templates.use_template") }}</a>{% endif %}
-            {% if template.capabilities.revise %}<a class="govuk-button govuk-button--secondary" href="{{ urlFor('/events/' + (template.source_event.id | string) + '/template-preview?template_id=' + (template.id | string)) }}">{{ t("event_templates.refresh") }}</a>{% endif %}
-            {% if template.capabilities.view_audit %}<a class="govuk-button govuk-button--secondary" href="{{ urlFor('/event-templates/' + (template.id | string) + '/history?filter=' + filter + (('&library_cursor=' + (cursor | urlencode)) if cursor else '')) }}">{{ t("event_templates.audit_link") }}</a>{% endif %}
+            {% if template.capabilities.materialize %}<a class="govuk-button" data-module="govuk-button" href="{{ urlFor('/event-templates/' + (template.id | string) + '/materialize') }}">{{ t("event_templates.use_template") }}</a>{% endif %}
+            {% if template.capabilities.revise %}<a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="{{ urlFor('/events/' + (template.source_event.id | string) + '/template-preview?template_id=' + (template.id | string)) }}">{{ t("event_templates.refresh") }}</a>{% endif %}
+            {% if template.capabilities.view_audit %}<a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="{{ urlFor('/event-templates/' + (template.id | string) + '/history?filter=' + filter + (('&library_cursor=' + (cursor | urlencode)) if cursor else '')) }}">{{ t("event_templates.audit_link") }}</a>{% endif %}
           </div>
         </li>
       {% endfor %}
@@ -63,6 +63,6 @@
   {% endif %}
 
   {% if pagination.has_more and pagination.next_cursor %}
-    <a class="govuk-button govuk-button--secondary" href="{{ urlFor('/events/templates?filter=' + filter + '&cursor=' + (pagination.next_cursor | urlencode)) }}">{{ t("event_templates.load_more") }}</a>
+    <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="{{ urlFor('/events/templates?filter=' + filter + '&cursor=' + (pagination.next_cursor | urlencode)) }}">{{ t("event_templates.load_more") }}</a>
   {% endif %}
 {% endblock %}

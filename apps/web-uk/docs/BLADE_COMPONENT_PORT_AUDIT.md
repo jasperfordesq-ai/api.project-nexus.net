@@ -1400,6 +1400,23 @@ technology review, and backend switching remain assigned to their separate
 packages. This published slice is unscored; the canonical bank remains
 `660/1,000` until another complete fixed-rubric audit.
 
+### 2026-07-15 Event Template controls and cursor follow-up
+
+The Event Template library's use, refresh, audit, and load-more anchors now
+carry Blade's `data-module="govuk-button"` initialization contract. The route
+also normalizes Laravel's `meta.next_cursor` before rendering, so numeric and
+opaque cursor values survive into the load-more URL; audit-history cursor
+normalization follows the same boundary.
+
+Focused library/history rendering passes `1/1`. The complete non-mutating gate
+passes `52/52` suites and `1,709/1,709` tests; lint, template-localization, and
+scoped diff checks are green, with 322 templates and zero conservative
+matches. No Laravel or ASP.NET source, database, migration, runtime mutation,
+container, or production operation was performed. This narrows the shared
+pagination/control audit work but does not reclassify the whole row. The slice
+is unscored and the canonical bank remains `660/1,000` pending another complete
+fixed-rubric audit.
+
 - GOV.UK crown, logotype, official header identity, OGL block, or Crown
   copyright wording.
 - Laravel/PHP implementation details.

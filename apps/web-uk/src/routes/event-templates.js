@@ -72,7 +72,8 @@ router.get('/:templateId(\\d+)/history', requireAuth, asyncRoute(async (req, res
   const formatDate = typeof res.locals.formatLocaleDate === 'function'
     ? res.locals.formatLocaleDate
     : (value) => trimmed(value);
-  return res.render('events/template-history', { title: res.locals.t('event_templates.audit_title'), activeNav: 'events', template: dataFrom(templateResult) || {}, audits: collectionFrom(historyResult).map((audit) => normalizedAudit(audit, formatDate)), pagination: historyResult?.meta || {}, filter, libraryCursor });
+  const meta = historyResult?.meta || {};
+  return res.render('events/template-history', { title: res.locals.t('event_templates.audit_title'), activeNav: 'events', template: dataFrom(templateResult) || {}, audits: collectionFrom(historyResult).map((audit) => normalizedAudit(audit, formatDate)), pagination: { ...meta, next_cursor: trimmed(meta.next_cursor, 4096) }, filter, libraryCursor });
 }, { notFoundTitle: 'Template not found' }));
 
 router.get('/:templateId(\\d+)/materialize', requireAuth, asyncRoute(async (req, res) => renderMaterialization(req, res), { notFoundTitle: 'Template not found' }));

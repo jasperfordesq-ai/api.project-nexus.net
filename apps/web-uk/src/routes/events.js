@@ -1614,8 +1614,9 @@ router.post('/:id(\\d+)/publish', requireAuth, asyncRoute(async (req, res) => tr
 router.get('/templates', requireAuth, asyncRoute(async (req, res) => {
   const filter = selectedValue(req.query.filter, ['active', 'archived', 'all'], 'active'); const cursor = trimmed(req.query.cursor, 4096); const query = new URLSearchParams({ status: filter, per_page: '20' }); if (cursor) query.set('cursor', cursor);
   const result = await callEventTemplateApi(tokenFrom(req), 'GET', `?${query}`);
+  const meta = result?.meta || {};
   res.set('Cache-Control', 'private, no-store');
-  return res.render('events/templates', { title: res.locals.t('event_templates.title'), activeNav: 'events', templates: collectionFrom(result), pagination: result?.meta || {}, filter, cursor, status: trimmed(req.query.status), csrfToken: req.csrfToken ? req.csrfToken() : '' });
+  return res.render('events/templates', { title: res.locals.t('event_templates.title'), activeNav: 'events', templates: collectionFrom(result), pagination: { ...meta, next_cursor: trimmed(meta.next_cursor, 4096) }, filter, cursor, status: trimmed(req.query.status), csrfToken: req.csrfToken ? req.csrfToken() : '' });
 }));
 
 router.get('/:id(\\d+)/template-preview', requireAuth, asyncRoute(async (req, res) => {
