@@ -1619,6 +1619,25 @@ database, migration, runtime request, container, or production operation was
 performed. This slice is unscored; the canonical bank remains `663/1,000`
 until another complete fixed-rubric audit.
 
+### 2026-07-15 Marketplace mutation path-assertion follow-up
+
+The shared marketplace dispatcher now has direct API-client proof for the
+remaining OpenAPI-omitted listing offer/renew/report/save paths, offer decisions
+and withdrawal, order cancellation/delivery/rating/shipping, seller coupon
+create/update/delete, and pickup scan/slot create/update/delete. Nineteen cases
+pin Laravel's exact nested paths and verbs, bearer authority, body omission for
+empty actions and deletes, offer/order/coupon/slot payloads, unmodified success
+envelopes, and structured offer `422` validation propagation. Together with the
+existing listing create/update/delete proof, this closes the currently generated
+OpenAPI-omitted marketplace mutation paths at the API-client boundary. Live
+payments, two-party state, uploads, fulfilment and cleanup require the isolated
+disposable runtime.
+
+The focused API-client suite passes `233/233`. No Laravel or ASP.NET source,
+database, migration, runtime request, container, or production operation was
+performed. This slice is unscored; the canonical bank remains `663/1,000`
+until another complete fixed-rubric audit.
+
 - GOV.UK crown, logotype, official header identity, OGL block, or Crown
   copyright wording.
 - Laravel/PHP implementation details.

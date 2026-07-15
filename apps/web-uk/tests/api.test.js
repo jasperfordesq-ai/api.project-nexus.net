@@ -2457,6 +2457,116 @@ describe('API Request Functions', () => {
       );
     });
 
+    it('should preserve listing, offer, and order mutation paths and payload boundaries', async () => {
+      const cases = [
+        ['POST', '/listings/42/offers', { amount: 25, message: 'Can collect Friday' }],
+        ['POST', '/listings/42/renew', { duration_days: 30 }],
+        ['POST', '/listings/42/report', { reason: 'unsafe', description: 'Unsafe electrical wiring' }],
+        ['POST', '/listings/42/save', undefined],
+        ['DELETE', '/listings/42/save', undefined],
+        ['PUT', '/offers/91/accept', undefined],
+        ['PUT', '/offers/92/decline', undefined],
+        ['DELETE', '/offers/93', undefined],
+        ['PUT', '/orders/101/cancel', { reason: 'Item no longer available' }],
+        ['PUT', '/orders/102/confirm-delivery', undefined],
+        ['POST', '/orders/103/rate', { rating: 5, comment: 'Excellent', is_anonymous: false }],
+        ['PUT', '/orders/104/ship', {
+          tracking_number: 'TRACK-104',
+          tracking_url: 'https://carrier.example.test/TRACK-104',
+          shipping_method: 'tracked'
+        }]
+      ];
+
+      for (const [method, pathValue, body] of cases) {
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { accepted: true } })
+        });
+
+        await expect(api.callMarketplaceApi('test-token', method, pathValue, body))
+          .resolves.toEqual({ data: { accepted: true } });
+        expect(mockFetch).toHaveBeenLastCalledWith(
+          `http://localhost:5000/api/v2/marketplace${pathValue}`,
+          expect.objectContaining({
+            method,
+            headers: expect.objectContaining({ Authorization: 'Bearer test-token' }),
+            ...(body === undefined ? {} : { body: JSON.stringify(body) })
+          })
+        );
+        if (body === undefined) {
+          expect(mockFetch.mock.calls.at(-1)[1]).not.toHaveProperty('body');
+        }
+      }
+
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 422,
+        headers: { get: () => 'application/json' },
+        json: async () => ({
+          message: 'The offer amount is invalid.',
+          errors: { amount: ['The amount must be greater than zero.'] },
+          code: 'VALIDATION_FAILED'
+        })
+      });
+      await expect(api.callMarketplaceApi('test-token', 'POST', '/listings/42/offers', { amount: 0 }))
+        .rejects.toMatchObject({
+          name: 'ApiError',
+          status: 422,
+          message: 'The offer amount is invalid.',
+          data: {
+            errors: { amount: ['The amount must be greater than zero.'] },
+            code: 'VALIDATION_FAILED'
+          }
+        });
+    });
+
+    it('should preserve seller coupon, pickup-slot, and pickup-scan mutation paths', async () => {
+      const coupon = {
+        code: 'COMMUNITY10',
+        discount_type: 'percent',
+        discount_value: 10,
+        status: 'active'
+      };
+      const slot = {
+        starts_at: '2026-07-16T10:00:00Z',
+        ends_at: '2026-07-16T12:00:00Z',
+        capacity: 4,
+        is_active: true
+      };
+      const cases = [
+        ['POST', '/seller/coupons', coupon],
+        ['PUT', '/seller/coupons/8', { ...coupon, status: 'paused' }],
+        ['DELETE', '/seller/coupons/8', undefined],
+        ['POST', '/seller/pickup-scan', { qr_code: 'PICKUP-ABC123' }],
+        ['POST', '/seller/pickup-slots', slot],
+        ['PUT', '/seller/pickup-slots/17', { ...slot, is_active: false }],
+        ['DELETE', '/seller/pickup-slots/17', undefined]
+      ];
+
+      for (const [method, pathValue, body] of cases) {
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { accepted: true } })
+        });
+
+        await expect(api.callMarketplaceApi('test-token', method, pathValue, body))
+          .resolves.toEqual({ data: { accepted: true } });
+        expect(mockFetch).toHaveBeenLastCalledWith(
+          `http://localhost:5000/api/v2/marketplace${pathValue}`,
+          expect.objectContaining({
+            method,
+            headers: expect.objectContaining({ Authorization: 'Bearer test-token' }),
+            ...(body === undefined ? {} : { body: JSON.stringify(body) })
+          })
+        );
+        if (body === undefined) {
+          expect(mockFetch.mock.calls.at(-1)[1]).not.toHaveProperty('body');
+        }
+      }
+    });
+
     it('should upload marketplace listing images through Laravel multipart data', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
