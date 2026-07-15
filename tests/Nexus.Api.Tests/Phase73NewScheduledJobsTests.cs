@@ -642,9 +642,16 @@ public class Phase73NewScheduledJobsTests : IntegrationTestBase
     [Fact]
     public async Task NaturalAndManualRuns_CannotOverlap_AndBusyAttemptIsPersistedAsSkipped()
     {
+        var configuration = new ConfigurationBuilder()
+            .AddConfiguration(Factory.Services.GetRequiredService<IConfiguration>())
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["BackgroundServices:SuppressAutomaticExecution"] = "false"
+            })
+            .Build();
         var runner = new BlockingScheduledJob(
             Factory.Services.GetRequiredService<IServiceScopeFactory>(),
-            Factory.Services.GetRequiredService<IConfiguration>(),
+            configuration,
             Factory.Services.GetRequiredService<ILogger<BlockingScheduledJob>>());
 
         await runner.StartAsync(CancellationToken.None);
