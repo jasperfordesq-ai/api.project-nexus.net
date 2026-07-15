@@ -16,9 +16,11 @@ parity evidence.
 Blade defines the browser experience and the Laravel backend defines the HTTP
 and workflow contract. Laravel is the only current implementation and
 certification backend. ASP.NET is incomplete, is not a source of truth, and is
-owned by a separate parity workstream. It may become a second backend only by
-matching Laravel closely enough for the same unchanged Web UK frontend and
-evidence suite.
+owned by a separate backend workstream. It may become a second backend only by
+reproducing the consumed Laravel contract identically for the same unchanged
+Web UK frontend and evidence suite. Approximate compatibility is insufficient;
+the binding definition is
+[`../../../docs/decisions/ADR-0001-contract-identical-backends.md`](../../../docs/decisions/ADR-0001-contract-identical-backends.md).
 
 The repository containing Web UK is not an architectural authority: locating
 `apps/web-uk` inside `asp.net-backend` does not make ASP.NET the frontend's
@@ -40,7 +42,7 @@ src/lib/backend-contract.js
 | Mode | Meaning | Current status |
 | --- | --- | --- |
 | Laravel | The frontend reproduces Laravel Blade workflows and calls Laravel-defined backend contracts. | Current default and certification target. |
-| ASP.NET-compatible | The unchanged frontend talks to ASP.NET endpoints that reproduce the same Laravel contracts. | Future verification target only; incomplete and not certified. |
+| ASP.NET contract-identical target | The unchanged frontend talks to ASP.NET endpoints that reproduce the consumed Laravel contracts without observable divergence. | Future verification target only; incomplete and not certified. |
 
 ## Local Backend Defaults
 

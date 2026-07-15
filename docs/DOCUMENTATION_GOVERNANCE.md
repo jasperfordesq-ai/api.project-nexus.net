@@ -14,6 +14,7 @@ agent instructions.
 | Decision or status | Canonical document | What other documents may do |
 | --- | --- | --- |
 | Agent scope and non-negotiable guardrails | [`AGENTS.md`](../AGENTS.md), then [`CLAUDE.md`](../CLAUDE.md) | Link or summarize without weakening a rule |
+| Backend product objective and meaning of contract identity | [`ADR-0001`](decisions/ADR-0001-contract-identical-backends.md) | Historical "parity" or "compatibility" wording is shorthand only; never permit observable divergence or frontend forks |
 | ASP.NET banked score, score provenance, and certification gaps | [`CURRENT_ASPNET_CONTRACT_STATUS.md`](CURRENT_ASPNET_CONTRACT_STATUS.md) | Link to it; do not publish a competing current overall score |
 | Accessible Web UK banked score, ownership, blockers, and queue | [`CURRENT_LARAVEL_FIRST_PARITY_STATUS.md`](../apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md) | Link to it; do not treat the old handoff log as current |
 | Fixed 1000-point rubric, 2x2 end state, shared evidence gates, and execution loop | [`FULL_PARITY_REMEDIATION_RUNBOOK.md`](FULL_PARITY_REMEDIATION_RUNBOOK.md) | Reuse its denominator and category definitions exactly; follow each canonical status document for its live queue |

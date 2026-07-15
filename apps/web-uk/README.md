@@ -19,7 +19,7 @@ Laravel supplies two read-only sources of truth:
 
 ASP.NET is incomplete and is not a source of truth for Web UK. The unchanged
 frontend may target ASP.NET only after the backend-owned switching contract is
-complete and independently certified.
+complete and externally contract-identical behavior is independently certified.
 
 Start with:
 

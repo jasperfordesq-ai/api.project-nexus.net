@@ -39,8 +39,8 @@ Frontend contract consumers are the canonical React client at
 routes, OpenAPI, controllers, and workflows remain authoritative for both.
 
 The legacy ASP.NET React copy at `apps/react-frontend/` is no longer the target
-for API design. Contract compatibility means both unchanged frontend consumers
-can use ASP.NET with Laravel-compatible methods, paths, shapes, status/error
+for API design. Contract identity means both unchanged frontend consumers can
+use ASP.NET with the same consumed methods, paths, shapes, status/error
 behavior, auth, tenancy, side effects, jobs, and provider outcomes. Static
 method/path representation is one evidence category, not completion.
 
@@ -702,7 +702,7 @@ For every Laravel React API call, ASP.NET must expose the same method/path and
 compatible request/response behavior. If a .NET route already exists under
 `/api/...` but Laravel React calls `/api/v2/...`, add the `/api/v2` alias.
 
-Prove compatibility with:
+Prove contract identity with:
 
 - route/API matrix rows linking Laravel React call sites, Laravel routes/OpenAPI,
   and ASP.NET routes/OpenAPI;

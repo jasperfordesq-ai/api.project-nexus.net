@@ -32,7 +32,7 @@ Canonical React frontend target:
 - `C:\platforms\htdocs\staging\react-frontend`
 
 The forward path is not to continue developing the ASP.NET React copy. The
-forward path is to make the ASP.NET backend contract-compatible with the
+forward path is to make the ASP.NET backend externally contract-identical for the
 production Laravel React frontend. Do not modify frontend files unless the user
 explicitly approves that specific frontend change.
 
@@ -40,7 +40,7 @@ explicitly approves that specific frontend change.
 
 | Frontend | Laravel backend | ASP.NET backend |
 | --- | --- | --- |
-| Canonical React | Production source-of-truth baseline | Same unchanged frontend, contract-correct and runtime-certified |
+| Canonical React | Production source-of-truth baseline | Same unchanged frontend, externally contract-identical and runtime-certified |
 | Shared accessible Web UK | Laravel-first implementation and certification target | Same unchanged Web UK code, switched by configuration only after backend certification |
 
 Route declaration equality alone proves none of these four runtime combinations.
@@ -100,7 +100,8 @@ downloads, persistence, and side effects.
 
 `apps/web-uk` keeps Express/Nunjucks/GOV.UK Frontend and is being completed as
 the future shared accessible frontend. ASP.NET is an incomplete future second
-backend, not a frontend source of truth. It must be made contract-compatible by
+backend, not a frontend source of truth. It must be made externally
+contract-identical by
 the separate backend workstream; Web UK must not acquire backend-specific page
 or workflow branches. Current implementation does not itself prove production
 readiness. The React utility-bar accessible link must continue

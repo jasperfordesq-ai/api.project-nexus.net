@@ -13,6 +13,12 @@ narrative handoff, while `BLADE_COMPONENT_PORT_AUDIT.md` remains the detailed
 evidence ledger. `CURRENT_WEB_UK_HANDOFF.md` is a historical archive and must
 never be used as a current resume, queue, count, or scoring source.
 
+The root
+[`ADR-0001`](../../../docs/decisions/ADR-0001-contract-identical-backends.md)
+is binding for the later backend switch: ASP.NET must be externally
+contract-identical to Laravel for this unchanged frontend. Web UK must not carry
+an ASP.NET-specific workaround.
+
 ## Current Goal Scope Correction
 
 The active Web UK goal was corrected on 2026-07-15. Frontend completion no

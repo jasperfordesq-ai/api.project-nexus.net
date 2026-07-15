@@ -23,7 +23,8 @@ C:\platforms\htdocs\staging\react-frontend
 ```
 
 The Laravel backend and Laravel React frontend are production systems. The
-ASP.NET backend is development-only. ASP.NET must become compatible with the
+ASP.NET backend is development-only. ASP.NET must become externally
+contract-identical for the
 Laravel React frontend contract; the production Laravel React frontend must not
 be weakened to accommodate ASP.NET gaps.
 
@@ -43,23 +44,23 @@ change must explain why backend conformance was not enough.
 
 For every API call made by the canonical Laravel React frontend and every
 backend contract consumed by the unchanged shared Web UK frontend, ASP.NET must
-expose compatible behavior. Web UK itself remains Laravel-first and is not
+expose externally contract-identical behavior. Web UK itself remains Laravel-first and is not
 certified until its canonical status records the missing runtime and
 accessibility evidence.
 
-Compatibility means:
+Contract identity means:
 
 - same HTTP method;
 - same path, including `/api/v2/...` aliases where Laravel React expects them;
-- compatible query parameters and request bodies;
-- compatible multipart/upload field names and URL response fields;
-- compatible response envelopes and pagination metadata;
-- compatible validation error, auth error, tenant error, not-found, and feature
+- identical consumed query parameters and request bodies;
+- identical consumed multipart/upload field names and URL response fields;
+- identical consumed response envelopes and pagination metadata;
+- identical consumed validation error, auth error, tenant error, not-found, and feature
   disabled response shapes;
-- compatible status codes;
-- compatible auth refresh and tenant bootstrap behavior;
-- compatible feature/module flag behavior;
-- compatible realtime configuration behavior, even if the ASP.NET transport is
+- identical consumed status codes;
+- identical consumed auth refresh and tenant bootstrap behavior;
+- identical consumed feature/module flag behavior;
+- externally identical realtime configuration behavior, even if the ASP.NET transport is
   SignalR rather than Laravel/Pusher.
 
 If ASP.NET currently exposes a similar route under a different path, add a

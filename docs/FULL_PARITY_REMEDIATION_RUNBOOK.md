@@ -1,14 +1,19 @@
-# Full Laravel Parity Remediation Runbook
+# Laravel Contract-Identity Remediation Runbook
 
 Last reviewed: 2026-07-15
 
 Status: **Maintained reference — fixed rubric and cross-workstream completion gate**
 
-This is the maintained execution map for completing both parity workstreams:
+This is the maintained execution map for completing both contract-identity
+workstreams. The filename is retained for link stability:
 
 1. finish `apps/web-uk` as the accessible frontend against the Laravel backend;
-2. make the ASP.NET backend a contract-compatible twin of Laravel for both the
+2. make the ASP.NET backend externally contract-identical to Laravel for both the
    canonical Laravel React frontend and the accessible frontend.
+
+[`decisions/ADR-0001-contract-identical-backends.md`](decisions/ADR-0001-contract-identical-backends.md)
+is binding. "Parity" in historical sections or filenames is shorthand for that
+standard and never means route similarity or approximate compatibility.
 
 The counts below are a dated audit snapshot, not permanent truth. Regenerate
 them before editing, scoring, or claiming completion. This runbook supersedes
@@ -29,7 +34,8 @@ or recovered dirty work never changes a banked score.
 
 ## Objective
 
-The required end state is a two-frontends-by-two-backends compatibility model:
+The required end state is a two-frontends-by-two-backends contract-identity
+model:
 
 | Frontend | Laravel backend | ASP.NET backend |
 | --- | --- | --- |

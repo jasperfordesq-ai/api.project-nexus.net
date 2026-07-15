@@ -1,4 +1,4 @@
-# Project NEXUS Contract-Correct Architecture
+# Project NEXUS Contract-Identical Backend Architecture
 
 Last reviewed: 2026-07-14
 
@@ -6,8 +6,9 @@ Status: **Maintained reference — canonical architecture; no current score**
 
 This is the maintained product and runtime boundary map. Laravel at
 `C:\platforms\htdocs\staging` is the production implementation and contract
-source of truth. ASP.NET is an experimental second backend being made
-contract-correct for the same frontend consumers.
+source of truth. ASP.NET is an experimental second backend that must become
+externally contract-identical for the same frontend consumers. See
+[`decisions/ADR-0001-contract-identical-backends.md`](decisions/ADR-0001-contract-identical-backends.md).
 
 ## Two-Frontends-By-Two-Backends Model
 
@@ -27,7 +28,7 @@ flowchart TD
     webuk["Shared accessible Web UK frontend\napps/web-uk"]
     legacy["Frozen historical React copy\napps/react-frontend"]
     laravel["Laravel backend\nproduction contract source"]
-    aspnet["ASP.NET Core 8 backend\nexperimental contract-correct twin"]
+    aspnet["ASP.NET Core 8 backend\nexperimental contract-identical target"]
     laravelBlade["Laravel Blade accessible UI\nvisual and workflow source"]
     services["ASP.NET domain services"]
     database["ASP.NET PostgreSQL via EF Core"]
@@ -58,7 +59,7 @@ persistence, providers, or workflows.
 | Laravel backend | `C:\platforms\htdocs\staging` | Production behavior and API/workflow contract; read-only from this repository. |
 | Canonical React frontend | `C:\platforms\htdocs\staging\react-frontend` | Production API consumer and call-site contract source; unchanged for ASP.NET compatibility. |
 | Laravel accessible UI/routes | `C:\platforms\htdocs\staging\accessible-frontend` and `routes/govuk-alpha*` | Browser experience, content, route, form, redirect, accessibility, and workflow source for Web UK; read-only. |
-| ASP.NET API | `src/Nexus.Api/Controllers`, `src/Nexus.Api/Program.cs` | Contract-compatible JSON API, auth, tenant resolution, admin routes, health, and OpenAPI. |
+| ASP.NET API | `src/Nexus.Api/Controllers`, `src/Nexus.Api/Program.cs` | Laravel-contract-identical JSON API target, auth, tenant resolution, admin routes, health, and OpenAPI. |
 | ASP.NET domain services | `src/Nexus.Api/Services` | Business rules, integrations, and background operations. |
 | ASP.NET data model | `src/Nexus.Api/Entities`, `src/Nexus.Api/Data`, `src/Nexus.Api/Migrations` | Tenant-aware EF persistence and forward-only migrations. |
 | Shared contracts | `src/Nexus.Contracts` | DTOs/contracts used outside API internals. |
@@ -111,7 +112,7 @@ Methods and paths, aliases, request bodies, multipart fields, response
 envelopes, pagination, validation/status behavior, auth and tenant behavior,
 feature flags, persistence and side effects, uploads/downloads, realtime
 configuration, jobs, providers, localization, security, and operational proof
-must be compatible and runtime-certified.
+must be contract-identical at the consumed boundary and runtime-certified.
 
 The fixed scoring rules and exact acceptance evidence are maintained in
 `FULL_PARITY_REMEDIATION_RUNBOOK.md`; current scores are maintained only in the

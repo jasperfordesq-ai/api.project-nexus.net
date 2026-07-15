@@ -15,7 +15,8 @@ Urgent first-read rules:
   payloads, envelopes, status codes, auth, roles, modules, uploads, downloads,
   and side effects.
 - The ASP.NET backend is not a source of truth for this frontend and is not
-  owned by this workstream. Another workstream must make it contract-compatible
+  owned by this workstream. Another workstream must make it externally
+  contract-identical
   with Laravel before it can be used as a second backend.
 - Implement one backend-neutral Express/Nunjucks frontend. Do not add
   ASP.NET-specific page, template, route, validation, or workflow branches.

@@ -28,10 +28,16 @@ that specific frontend change.
 
 The canonical React frontend lives in the Laravel repo at
 `C:\platforms\htdocs\staging\react-frontend`. Laravel is the source of truth.
-Make the ASP.NET backend contract-compatible with the Laravel React frontend:
+Make the ASP.NET backend externally contract-identical to the Laravel contracts
+consumed by the React frontend:
 same methods, paths, `/api/v2` aliases where expected, request/response shapes,
 auth/tenant/upload behavior, status codes, and validation/error envelopes.
-Prove compatibility with a route/API matrix and runtime smoke tests.
+Prove contract identity with a route/API matrix and runtime smoke tests.
+
+The binding definition is
+[`docs/decisions/ADR-0001-contract-identical-backends.md`](./docs/decisions/ADR-0001-contract-identical-backends.md).
+Historical "parity" or "compatible" wording is shorthand only; it does not
+permit observable differences or frontend workarounds.
 
 The separate `apps/web-uk/` surface is the explicitly approved shared
 accessible frontend implementation target. For that workstream, Laravel Blade

@@ -23,17 +23,20 @@ truth for parity. Treat it as read-only reference material. Do not edit it, run
 destructive commands in it, deploy it, or touch its production containers from
 this workspace.
 
-The objective is now full Laravel parity: API contracts, workflows, frontend
-surfaces, admin and super-admin surfaces, accessible frontend behavior,
-background jobs, integrations, tenant settings, localization, tests, and
-documentation. Earlier "out of scope" exclusions are retired and are now tracked
-as parity gaps.
+The objective is an externally contract-identical ASP.NET implementation of the
+Laravel contracts: API contracts, workflows, frontend-consumed behavior, admin
+and super-admin surfaces, accessible frontend behavior, background jobs,
+integrations, tenant settings, localization, tests, and documentation. Earlier
+"out of scope" exclusions are retired and are tracked as contract-identity gaps.
 
-“Parity” here means contract correctness and switchability, not route-count
-similarity. The end state is two unchanged frontends by two backends: canonical
-React and shared accessible Web UK must each run against Laravel and ASP.NET by
-configuration only. Laravel remains the behavior baseline; ASP.NET conforms to
-its contracts and workflows.
+The binding decision is
+[`docs/decisions/ADR-0001-contract-identical-backends.md`](docs/decisions/ADR-0001-contract-identical-backends.md).
+Historical "parity," "compatible," and "contract-correct" wording is shorthand
+for externally observable contract identity, not route-count similarity or
+"close enough" behavior. The end state is two unchanged frontends by two
+backends: canonical React and shared accessible Web UK must each run against
+Laravel and ASP.NET by configuration only. Laravel remains the behavior
+baseline; ASP.NET reproduces its consumed contracts and workflows.
 
 ## React Frontend Retirement And Contract Policy
 
@@ -50,7 +53,8 @@ C:\platforms\htdocs\staging\react-frontend
 
 That frontend is production software. The Laravel backend is production and is
 the source of truth for the frontend API contract. The ASP.NET backend is
-development-only and must become contract-compatible with the Laravel React
+development-only and must become contract-identical at the externally
+observable boundary used by the Laravel React
 frontend.
 
 Default rule for agents: do not modify frontend files in this repo unless the

@@ -4,7 +4,8 @@ Last reviewed: 2026-07-15
 
 Status: **Maintained integration reference - experimental and not contract-certified**
 
-The ASP.NET API is being made a contract-correct alternative to Laravel. Laravel
+The ASP.NET API must become externally contract-identical to the Laravel
+contracts consumed by both unchanged frontends. Laravel
 routes, controllers, OpenAPI, and the unchanged canonical React/Web UK consumers
 remain authoritative when this guide and an endpoint disagree.
 

@@ -19,8 +19,12 @@ different evidence gates.
 
 ## Required End State
 
-The product goal is a **two-frontends-by-two-backends** compatibility model in
+The product goal is a **two-frontends-by-two-backends** contract-identity model in
 which neither frontend changes behavior when its backend changes:
+
+[`ADR-0001`](decisions/ADR-0001-contract-identical-backends.md) is binding:
+"compatibility" in this filename or rubric means externally contract-identical
+behavior for every consumed boundary, not an approximately similar API.
 
 | Unchanged client | Laravel backend | ASP.NET backend |
 | --- | --- | --- |

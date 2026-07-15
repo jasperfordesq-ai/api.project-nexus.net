@@ -1,15 +1,23 @@
 # Project NEXUS - .NET Edition
 
-> **Status: Experimental / Development Alpha** - under active development.
-> APIs, schemas, and behavior may change without notice. Not recommended for
-> production use.
+> **Status: Experimental / Development Alpha.** The repository is not
+> production-ready. The development pause and cold-start handoff are recorded
+> separately; APIs, schemas, and behavior may change in a future authorized
+> phase.
 
 The experimental ASP.NET Core 8 backend for Project NEXUS, a
 timebanking/community platform. Laravel remains the production and contract
-source of truth. This backend is being made a contract-correct, switchable twin:
+source of truth. This backend must become an externally contract-identical,
+switchable implementation:
 the unchanged canonical React frontend and the unchanged shared accessible Web
 UK frontend must ultimately run against either Laravel or ASP.NET by changing
 configuration only.
+
+The binding decision is
+[`ADR-0001`](docs/decisions/ADR-0001-contract-identical-backends.md). Historical
+uses of "parity," "compatible," or "contract-correct" are shorthand for that
+stronger externally observable identity standard, not permission for an
+approximately similar API.
 
 Current local Laravel parity source: `C:\platforms\htdocs\staging`.
 
@@ -23,7 +31,7 @@ compatible before the same unchanged frontend can switch to it. See
 Current status is deliberately split by workstream:
 
 - [`docs/CURRENT_ASPNET_CONTRACT_STATUS.md`](docs/CURRENT_ASPNET_CONTRACT_STATUS.md)
-  is the current ASP.NET contract-correctness score, evidence boundary, and
+  is the current ASP.NET contract-identity score, evidence boundary, and
   remaining queue.
 - [`apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md`](apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md)
   is the current accessible-frontend score, evidence boundary, and remaining
@@ -83,9 +91,10 @@ attribution requirements.
 - [SUPPORT.md](SUPPORT.md) - product-support and defect-reporting boundaries.
 - [SECURITY.md](SECURITY.md) - private vulnerability-reporting and safe-testing policy.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - .NET architecture and runtime map.
-- [docs/CURRENT_ASPNET_CONTRACT_STATUS.md](docs/CURRENT_ASPNET_CONTRACT_STATUS.md) - current ASP.NET contract-correctness status.
+- [docs/CURRENT_ASPNET_CONTRACT_STATUS.md](docs/CURRENT_ASPNET_CONTRACT_STATUS.md) - current ASP.NET contract-identity status.
 - [docs/FULL_PARITY_REMEDIATION_RUNBOOK.md](docs/FULL_PARITY_REMEDIATION_RUNBOOK.md) - fixed rubric and cross-workstream completion gate.
 - [docs/DOCUMENTATION_GOVERNANCE.md](docs/DOCUMENTATION_GOVERNANCE.md) - canonical status hierarchy and documentation consistency rules.
+- [docs/decisions/README.md](docs/decisions/README.md) - accepted architecture decisions, including the contract-identity correction.
 - [docs/MODULES.md](docs/MODULES.md) - Laravel-to-.NET module map.
 - [docs/LARAVEL_PARITY_MAP.md](docs/LARAVEL_PARITY_MAP.md) - canonical full-parity gap register.
 - [docs/PARITY_BACKLOG.md](docs/PARITY_BACKLOG.md) - generated parity backlog rollup and implementation queue rules.
