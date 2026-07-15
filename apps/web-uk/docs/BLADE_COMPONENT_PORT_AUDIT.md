@@ -1748,6 +1748,15 @@ evidence, not screenshot comparison, screen-reader, full WCAG, Laravel runtime,
 or release certification. The canonical bank remains `663/1,000` until another
 complete fixed-rubric audit.
 
+Published product SHA `7e158d29` adds default-English resilience proof without
+expanding Arabic route coverage. Home, registration, Legal, and Listings pass
+at a 320 CSS-pixel viewport with no horizontal overflow and no serious or
+critical axe violations. Login, registration, and Contact also retain one main
+heading, bounded server-rendered POST actions, CSRF fields, and no horizontal
+overflow with JavaScript disabled. The focused isolated subset passes `5/5`.
+This does not simulate actual 200%/400% browser zoom and does not change the
+remaining manual or runtime certification boundary.
+
 - GOV.UK crown, logotype, official header identity, OGL block, or Crown
   copyright wording.
 - Laravel/PHP implementation details.
