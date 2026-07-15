@@ -20,30 +20,60 @@
 {% endblock %}
 
 {% block mainContent %}
-      {% if status == "poll-voted" %}
-        <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="event-poll-success-title"><div class="govuk-notification-banner__header"><h2 class="govuk-notification-banner__title" id="event-poll-success-title">{{ t("govuk_alpha.states.success_title") }}</h2></div><div class="govuk-notification-banner__content"><p class="govuk-notification-banner__heading">{{ t("events.states.poll-voted") }}</p></div></div>
-      {% elif status == "poll-vote-failed" %}
-        <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1"><div role="alert"><h2 class="govuk-error-summary__title">{{ t("govuk_alpha.states.error_title") }}</h2><div class="govuk-error-summary__body"><p>{{ t("events.states.poll-vote-failed") }}</p></div></div></div>
-      {% elif status == "waitlist-offer-accepted" %}
-        <div class="govuk-notification-banner govuk-notification-banner--success" role="alert"><div class="govuk-notification-banner__header"><h2 class="govuk-notification-banner__title">{{ t("govuk_alpha.states.success_title") }}</h2></div><div class="govuk-notification-banner__content"><p class="govuk-notification-banner__heading">{{ t("govuk_alpha.events.waitlist_offer_accepted") }}</p></div></div>
-      {% elif status == "waitlist-offer-accept-failed" %}
-        <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1"><div role="alert"><h2 class="govuk-error-summary__title">{{ t("govuk_alpha.states.error_title") }}</h2><div class="govuk-error-summary__body"><p>{{ t("govuk_alpha.events.waitlist_offer_accept_failed") }}</p></div></div></div>
-      {% elif status == "event-archive-failed" %}
-        <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1"><div role="alert"><h2 class="govuk-error-summary__title">{{ t("govuk_alpha.states.error_title") }}</h2><div class="govuk-error-summary__body"><p>{{ t("govuk_alpha.events.archive_failed") }}</p></div></div></div>
+      {% if status == "event-created" %}
+        {% set eventSuccessId = "event-created-title" %}
+        {% set eventSuccessMessage = t("govuk_alpha.events.created") %}
+      {% elif status == "rsvp-updated" %}
+        {% set eventSuccessId = "rsvp-success-title" %}
+        {% set eventSuccessMessage = t("govuk_alpha.events.rsvp_updated") %}
+      {% elif status in ["event-updated", "event-cancelled", "event-submitted", "event-published"] %}
+        {% set eventSuccessId = "event-organiser-success-title" %}
+        {% if status == "event-updated" %}{% set eventSuccessMessage = t("govuk_alpha.events.updated") %}
+        {% elif status == "event-cancelled" %}{% set eventSuccessMessage = t("govuk_alpha.events.cancelled") %}
+        {% elif status == "event-submitted" %}{% set eventSuccessMessage = t("govuk_alpha.events.publication_submitted_success") %}
+        {% else %}{% set eventSuccessMessage = t("govuk_alpha.events.publication_published_success") %}{% endif %}
+      {% elif status == "checkin-success" %}
+        {% set eventSuccessId = "checkin-success-title" %}
+        {% set eventSuccessMessage = t("govuk_alpha.events.polish_events.checkin_success") %}
+      {% elif status in ["waitlist-joined", "waitlist-left", "waitlist-offer-accepted", "poll-voted"] %}
+        {% set eventSuccessId = "event-depth-success-title" %}
+        {% if status == "waitlist-joined" %}{% set eventSuccessMessage = t("govuk_alpha.events.states.waitlist-joined") %}
+        {% elif status == "waitlist-left" %}{% set eventSuccessMessage = t("govuk_alpha.events.states.waitlist-left") %}
+        {% elif status == "waitlist-offer-accepted" %}{% set eventSuccessMessage = t("govuk_alpha.events.waitlist_offer_accepted") %}
+        {% else %}{% set eventSuccessMessage = t("govuk_alpha.events.states.poll-voted") %}{% endif %}
+      {% endif %}
+
+      {% if eventSuccessMessage %}
+        <div class="govuk-notification-banner govuk-notification-banner--success" data-module="govuk-notification-banner" role="alert" aria-labelledby="{{ eventSuccessId }}">
+          <div class="govuk-notification-banner__header"><h2 class="govuk-notification-banner__title" id="{{ eventSuccessId }}">{{ t("govuk_alpha.states.success_title") }}</h2></div>
+          <div class="govuk-notification-banner__content"><p class="govuk-notification-banner__heading">{{ eventSuccessMessage }}</p></div>
+        </div>
+      {% endif %}
+
+      {% if status == "checkin-failed" %}
+        {% set eventErrorMessage = t("govuk_alpha.events.polish_events.checkin_failed") %}
+      {% elif status == "rsvp-failed" %}
+        {% set eventErrorMessage = t("govuk_alpha.events.rsvp_failed") %}
+      {% elif status in ["rsvp-vetting-required", "waitlist-vetting-required"] %}
+        {% set eventErrorMessage = t("safeguarding.errors.vetting_required_detail") %}
+      {% elif status in ["rsvp-policy-unavailable", "waitlist-policy-unavailable"] %}
+        {% set eventErrorMessage = t("safeguarding.errors.policy_unavailable_detail") %}
+      {% elif status == "event-update-failed" %}
+        {% set eventErrorMessage = t("govuk_alpha.events.update_failed") %}
       {% elif status == "event-cancel-failed" %}
-        <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1"><div role="alert"><h2 class="govuk-error-summary__title">{{ t("govuk_alpha.states.error_title") }}</h2><div class="govuk-error-summary__body"><p>{{ t("events.cancel_failed") }}</p></div></div></div>
+        {% set eventErrorMessage = t("govuk_alpha.events.cancel_failed") %}
+      {% elif status == "event-publication-failed" %}
+        {% set eventErrorMessage = t("govuk_alpha.events.publication_failed") %}
+      {% elif status == "waitlist-offer-accept-failed" %}
+        {% set eventErrorMessage = t("govuk_alpha.events.waitlist_offer_accept_failed") %}
+      {% elif status == "waitlist-failed" %}
+        {% set eventErrorMessage = t("govuk_alpha.events.states.waitlist-failed") %}
+      {% elif status == "poll-vote-failed" %}
+        {% set eventErrorMessage = t("govuk_alpha.events.states.poll-vote-failed") %}
       {% endif %}
 
-      {% if successMessage %}
-        {% set notificationMessage = successMessage %}
-        {% set notificationType = "success" %}
-        {% include "partials/notification-banner.njk" %}
-      {% endif %}
-
-      {% if errorMessage %}
-        {% set notificationMessage = errorMessage %}
-        {% set notificationType = null %}
-        {% include "partials/notification-banner.njk" %}
+      {% if eventErrorMessage %}
+        <div class="govuk-error-summary" data-module="govuk-error-summary" tabindex="-1"><div role="alert"><h2 class="govuk-error-summary__title">{{ t("govuk_alpha.states.error_title") }}</h2><div class="govuk-error-summary__body"><p>{{ eventErrorMessage }}</p></div></div></div>
       {% endif %}
 
       {% if myRsvp and myRsvp.status == "going" %}

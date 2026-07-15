@@ -162,6 +162,15 @@ function loginRedirect() {
 }
 
 const EVENTS_PATH = '/events';
+const EVENT_DETAIL_STATUSES = [
+  'event-created', 'rsvp-updated', 'event-updated', 'event-cancelled',
+  'event-submitted', 'event-published', 'checkin-success', 'checkin-failed',
+  'waitlist-joined', 'waitlist-left', 'waitlist-offer-accepted', 'poll-voted',
+  'rsvp-failed', 'rsvp-vetting-required', 'rsvp-policy-unavailable',
+  'event-update-failed', 'event-cancel-failed', 'event-publication-failed',
+  'waitlist-failed', 'waitlist-offer-accept-failed', 'waitlist-vetting-required',
+  'waitlist-policy-unavailable', 'poll-vote-failed'
+];
 
 function redirectTo(res, pathname) {
   const urlFor = typeof res.locals.urlFor === 'function' ? res.locals.urlFor : (value) => value;
@@ -1412,13 +1421,21 @@ router.post('/:id(\\d+)/check-in/:userId(\\d+)', requireAuth, asyncRoute(async (
 
 router.post('/:id(\\d+)/waitlist', asyncRoute(async (req, res) => {
   const id = Number(req.params.id);
-  return runCanonicalEventAction(
-    req,
-    res,
-    `/${id}/registration/waitlist`,
-    eventRedirect(id, 'waitlist-joined'),
-    eventRedirect(id, 'waitlist-failed')
-  );
+  const token = tokenFrom(req);
+  if (!token) return redirectTo(res, loginRedirect());
+  try {
+    await callEventMutation(token, 'POST', `/${id}/registration/waitlist`, undefined, randomUUID());
+    return redirectTo(res, eventRedirect(id, 'waitlist-joined'));
+  } catch (error) {
+    if (redirectOnAuthError(error, res)) return undefined;
+    const code = apiErrorCode(error);
+    const failureStatus = code === 'SAFEGUARDING_POLICY_UNAVAILABLE'
+      ? 'waitlist-policy-unavailable'
+      : ((code.startsWith('SAFEGUARDING_') || code === 'VETTING_REQUIRED')
+        ? 'waitlist-vetting-required'
+        : 'waitlist-failed');
+    return redirectTo(res, eventRedirect(id, failureStatus));
+  }
 }));
 
 router.post('/:id(\\d+)/waitlist/leave', asyncRoute(async (req, res) => {
@@ -1428,7 +1445,7 @@ router.post('/:id(\\d+)/waitlist/leave', asyncRoute(async (req, res) => {
     res,
     `/${id}/registration/waitlist/leave`,
     eventRedirect(id, 'waitlist-left'),
-    eventRedirect(id, 'waitlist-leave-failed')
+    eventRedirect(id, 'waitlist-left')
   );
 }));
 
@@ -3260,18 +3277,13 @@ router.post('/new', requireAuth, audit.eventCreate(), asyncRoute(async (req, res
       if (uploadError instanceof ApiError && uploadError.status === 401) {
         throw uploadError;
       }
-      if (req.flash) {
-        req.flash('error', uploadError.message || 'Event created, but the image could not be uploaded');
-      }
     } finally {
       await removeUploadedFile(image);
     }
 
-    if (req.flash) {
-      req.flash('success', 'Event created successfully');
-    }
-
-    redirectTo(res, eventPath(eventId));
+    redirectTo(res, checked(is_recurring)
+      ? `${EVENTS_PATH}?status=event-created`
+      : eventPath(eventId, '?status=event-created'));
   } catch (error) {
     await removeUploadedFile(image);
     if (isOnboardingRequired(error)) {
@@ -3367,9 +3379,7 @@ router.get('/:id(\\d+)', asyncRoute(async (req, res) => {
     attendeesLoadFailed: rsvpsResult.attendeesLoadFailed === true,
     attendeesNextPath,
     isAuthenticated: Boolean(token),
-    successMessage: req.flash ? req.flash('success')[0] : null,
-    errorMessage: req.flash ? req.flash('error')[0] : null,
-    status: trimmed(req.query.status),
+    status: selectedValue(req.query.status, EVENT_DETAIL_STATUSES),
     idempotencyKey: randomUUID(),
     csrfToken: req.csrfToken ? req.csrfToken() : ''
   });
@@ -3478,18 +3488,11 @@ router.post('/:id(\\d+)/edit', requireAuth, audit.eventUpdate(), asyncRoute(asyn
       if (uploadError instanceof ApiError && uploadError.status === 401) {
         throw uploadError;
       }
-      if (req.flash) {
-        req.flash('error', uploadError.message || 'Event updated, but the image could not be uploaded');
-      }
     } finally {
       await removeUploadedFile(image);
     }
 
-    if (req.flash) {
-      req.flash('success', 'Event updated successfully');
-    }
-
-    redirectTo(res, eventPath(id));
+    redirectTo(res, eventPath(id, '?status=event-updated'));
   } catch (error) {
     await removeUploadedFile(image);
     if (isOnboardingRequired(error)) {
@@ -3521,9 +3524,7 @@ router.post('/:id(\\d+)/cancel', requireAuth, asyncRoute(async (req, res) => {
       idempotency_key: idempotencyKey
     });
 
-    if (req.flash) {
-      req.flash('success', 'Event cancelled');
-    }
+    return redirectTo(res, eventPath(id, '?status=event-cancelled'));
   } catch (error) {
     if (isOnboardingRequired(error)) {
       return redirectTo(res, '/onboarding');
@@ -3532,15 +3533,11 @@ router.post('/:id(\\d+)/cancel', requireAuth, asyncRoute(async (req, res) => {
       return renderForbidden(res, error);
     }
     if (error instanceof ApiError && [400, 409, 422].includes(error.status)) {
-      if (req.flash) {
-        req.flash('error', error.message || 'Unable to cancel event');
-      }
-      return redirectTo(res, eventPath(id));
+      return redirectTo(res, eventPath(id, '?status=event-cancel-failed'));
     }
     throw error; // asyncRoute handles 401, 404, and 503 consistently.
   }
 
-  redirectTo(res, eventPath(id));
 }, { redirectOn401: loginRedirect(), notFoundTitle: 'Event not found' }));
 
 // Archive event through Laravel's archive-first DELETE lifecycle contract.
@@ -3550,7 +3547,7 @@ router.post('/:id(\\d+)/delete', requireAuth, audit.eventDelete(), asyncRoute(as
   const idempotencyKey = trimmed(req.body.idempotency_key) || randomUUID();
 
   if (!reason || reason.length > 4000) {
-    return redirectTo(res, eventPath(id, '?status=event-archive-failed'));
+    return redirectTo(res, `${EVENTS_PATH}?status=event-archive-failed`);
   }
 
   try {
@@ -3558,10 +3555,6 @@ router.post('/:id(\\d+)/delete', requireAuth, audit.eventDelete(), asyncRoute(as
       reason,
       idempotency_key: idempotencyKey
     });
-
-    if (req.flash) {
-      req.flash('success', res.locals.t('govuk_alpha.events.archived'));
-    }
 
     redirectTo(res, `${EVENTS_PATH}?status=event-archived`);
   } catch (error) {
@@ -3572,10 +3565,7 @@ router.post('/:id(\\d+)/delete', requireAuth, audit.eventDelete(), asyncRoute(as
       return renderForbidden(res, error);
     }
     if (error instanceof ApiError && [400, 409, 422].includes(error.status)) {
-      if (req.flash) {
-        req.flash('error', error.message || res.locals.t('govuk_alpha.events.archive_failed'));
-      }
-      return redirectTo(res, eventPath(id, '?status=event-archive-failed'));
+      return redirectTo(res, `${EVENTS_PATH}?status=event-archive-failed`);
     }
     throw error; // asyncRoute handles 401, 404, and 503 consistently.
   }
@@ -3590,41 +3580,34 @@ router.post('/:id(\\d+)/rsvp', requireAuth, audit.eventRsvp(), asyncRoute(async 
     : 'going';
 
   try {
-    const result = status === 'going'
-      ? await callEventMutation(req.token, 'POST', `/${id}/registration/confirm`, undefined, randomUUID())
+    await (status === 'going'
+      ? callEventMutation(req.token, 'POST', `/${id}/registration/confirm`, undefined, randomUUID())
       : (status === 'not_going'
-        ? await callEventMutation(req.token, 'POST', `/${id}/registration/withdraw`, undefined, randomUUID())
-        : await rsvpToEvent(req.token, id, status));
-    const response = dataFrom(result) || {};
-
-    if (req.flash) {
-      const messages = {
-        going: "You're going to this event",
-        interested: "You've marked yourself as interested",
-        not_going: "You've declined this event"
-      };
-      const message = response.status === 'waitlisted'
-        ? `The event is full. You have joined the waitlist${response.waitlist_position ? ` at position ${response.waitlist_position}` : ''}.`
-        : (messages[status] || 'RSVP recorded');
-      req.flash('success', message);
-    }
+        ? callEventMutation(req.token, 'POST', `/${id}/registration/withdraw`, undefined, randomUUID())
+        : rsvpToEvent(req.token, id, status)));
   } catch (error) {
     if (isOnboardingRequired(error)) {
       return redirectTo(res, '/onboarding');
     }
-    if (error instanceof ApiError && error.status === 403) {
-      return renderForbidden(res, error);
-    }
     if (error instanceof ApiError && error.status !== 401) {
-      if (req.flash) {
-        req.flash('error', error.message || 'Unable to RSVP');
+      const code = apiErrorCode(error);
+      if (error.status === 403
+        && code !== 'SAFEGUARDING_POLICY_UNAVAILABLE'
+        && !code.startsWith('SAFEGUARDING_')
+        && code !== 'VETTING_REQUIRED') {
+        return renderForbidden(res, error);
       }
-      return redirectTo(res, eventPath(id));
+      const failureStatus = code === 'SAFEGUARDING_POLICY_UNAVAILABLE'
+        ? 'rsvp-policy-unavailable'
+        : ((code.startsWith('SAFEGUARDING_') || code === 'VETTING_REQUIRED')
+          ? 'rsvp-vetting-required'
+          : 'rsvp-failed');
+      return redirectTo(res, eventPath(id, `?status=${failureStatus}`));
     }
     throw error;
   }
 
-  redirectTo(res, eventPath(id));
+  redirectTo(res, eventPath(id, '?status=rsvp-updated'));
 }));
 
 module.exports = router;

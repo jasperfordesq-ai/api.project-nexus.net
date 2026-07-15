@@ -1358,6 +1358,22 @@ retains the source `event-archived-title` relationship. Focused proof passes
 `1/1`; the complete non-mutating gate passes `52/52` suites and `1,697/1,697`
 tests. Live destructive and manual accessibility certification remain open.
 
+The Event detail status-family follow-up now accepts only Blade's create, RSVP,
+organiser, check-in, waitlist, poll, safeguarding, and publication tokens. It
+uses the source message keys and exact `event-created-title`,
+`rsvp-success-title`, `event-organiser-success-title`, `checkin-success-title`,
+and `event-depth-success-title` relationships without arbitrary session flash.
+Create, update, cancel, archive, and RSVP producers now redirect through the
+same bounded outcomes as Blade; recurring creation and archive failure return
+to the Event index, and Laravel safeguarding error codes retain their distinct
+RSVP policy/vetting outcomes. Focused status/action proof passes `4/4`; the
+complete non-mutating gate passes `52/52` suites and `1,706/1,706` assertions,
+with green lint, brand, CSS, and zero-unresolved locale/template audits. This
+default-English status-family subrow is implementation-closed. Disposable
+side-effect/runtime variants, the named Event API boundaries, manual
+assistive-technology review, and ASP.NET switching remain assigned to their
+separate owners and certification packages.
+
 - GOV.UK crown, logotype, official header identity, OGL block, or Crown
   copyright wording.
 - Laravel/PHP implementation details.

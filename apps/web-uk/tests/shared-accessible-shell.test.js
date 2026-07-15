@@ -23163,6 +23163,32 @@ describe('shared accessible frontend shell', () => {
     expect(failed.text).toContain('Your vote could not be recorded. Try again.');
   });
 
+  it('renders only Blade-bounded Event detail status families with exact heading relationships', async () => {
+    const cases = [
+      ['event-created', 'event-created-title', 'Your event has been created.'],
+      ['rsvp-updated', 'rsvp-success-title', 'Your RSVP has been updated.'],
+      ['event-updated', 'event-organiser-success-title', 'Your event has been updated.'],
+      ['checkin-success', 'checkin-success-title', 'Attendance marked.'],
+      ['waitlist-left', 'event-depth-success-title', 'You have left the waitlist for this event.'],
+      ['rsvp-vetting-required', '', 'This member can only be contacted for this type of interaction']
+    ];
+
+    for (const [status, headingId, message] of cases) {
+      const response = await request(app)
+        .get(`/events/42?status=${status}`)
+        .set('Cookie', signedCookieHeader());
+      expect(response.status).toBe(200);
+      expect(response.text).toContain(message);
+      if (headingId) expect(response.text).toContain(`id="${headingId}"`);
+    }
+
+    const unrelated = await request(app)
+      .get('/events/42?status=event-archive-failed')
+      .set('Cookie', signedCookieHeader());
+    expect(unrelated.status).toBe(200);
+    expect(unrelated.text).not.toContain('Your event could not be archived.');
+  });
+
   it('redirects non-series events from Laravel recurring edit to the normal edit page', async () => {
     const cookieSignature = require('cookie-signature');
     const api = require('../src/lib/api');
@@ -23837,7 +23863,7 @@ describe('shared accessible frontend shell', () => {
       });
 
     expect(response.status).toBe(302);
-    expect(response.headers.location).toBe('/events/42');
+    expect(response.headers.location).toBe('/events/42?status=event-created');
     expect(api.createEvent).toHaveBeenCalledWith('test-token', expect.objectContaining({
       title: 'Community garden day',
       description: 'Planting and tea',
@@ -23985,7 +24011,7 @@ describe('shared accessible frontend shell', () => {
       });
 
     expect(response.status).toBe(302);
-    expect(response.headers.location).toBe('/events/42');
+    expect(response.headers.location).toBe('/events/42?status=event-cancelled');
     expect(api.cancelEvent).toHaveBeenCalledWith('test-token', '42', {
       reason: 'Severe weather',
       idempotency_key: idempotencyMatch[1]
@@ -24868,7 +24894,7 @@ describe('shared accessible frontend shell', () => {
   });
 
   it.each([
-    [409, 'ALREADY_CANCELLED', 302, '/events/42'],
+    [409, 'ALREADY_CANCELLED', 302, '/events/42?status=event-cancel-failed'],
     [403, 'FORBIDDEN', 403, null],
     [404, 'NOT_FOUND', 404, null]
   ])('preserves Laravel event cancellation status %s/%s', async (status, code, expectedStatus, location) => {
@@ -25085,7 +25111,7 @@ describe('shared accessible frontend shell', () => {
       });
 
     expect(response.status).toBe(302);
-    expect(response.headers.location).toBe('/events/42');
+    expect(response.headers.location).toBe('/events/42?status=event-updated');
     expect(api.updateEvent).toHaveBeenCalledWith('test-token', '42', expect.objectContaining({
       title: 'Community garden day',
       description: 'Planting and tea',
@@ -25137,7 +25163,7 @@ describe('shared accessible frontend shell', () => {
       .field('category_id', '7');
 
     expect(response.status).toBe(302);
-    expect(response.headers.location).toBe('/events/42');
+    expect(response.headers.location).toBe('/events/42?status=event-created');
     expect(api.createEvent).toHaveBeenCalledWith('test-token', expect.objectContaining({
       category_id: 7
     }));
@@ -25188,7 +25214,7 @@ describe('shared accessible frontend shell', () => {
       .field('category_id', '9');
 
     expect(response.status).toBe(302);
-    expect(response.headers.location).toBe('/events/42');
+    expect(response.headers.location).toBe('/events/42?status=event-updated');
     expect(api.updateEvent).toHaveBeenCalledWith('test-token', '42', expect.objectContaining({
       category_id: 9
     }));
@@ -25241,7 +25267,7 @@ describe('shared accessible frontend shell', () => {
       .field('recurrence_ends_after_count', '10');
 
     expect(response.status).toBe(302);
-    expect(response.headers.location).toBe('/events/42');
+    expect(response.headers.location).toBe('/events?status=event-created');
     expect(api.callEventApi).toHaveBeenCalledWith('test-token', 'POST', '/recurring', expect.objectContaining({
       title: 'Weekly seed swap',
       description: 'Bring spare seeds',
@@ -25291,7 +25317,7 @@ describe('shared accessible frontend shell', () => {
       .field('video_url', ' https://video.example/garden ');
 
     expect(response.status).toBe(302);
-    expect(response.headers.location).toBe('/events/42');
+    expect(response.headers.location).toBe('/events/42?status=event-created');
     expect(api.createEvent).toHaveBeenCalledWith('test-token', expect.objectContaining({
       is_online: true,
       online_link: 'https://meet.example/garden',
@@ -25346,7 +25372,7 @@ describe('shared accessible frontend shell', () => {
       .field('video_url', ' https://video.example/updated ');
 
     expect(response.status).toBe(302);
-    expect(response.headers.location).toBe('/events/42');
+    expect(response.headers.location).toBe('/events/42?status=event-updated');
     expect(api.updateEvent).toHaveBeenCalledWith('test-token', '42', expect.objectContaining({
       is_online: true,
       online_link: 'https://meet.example/updated',
@@ -25717,7 +25743,7 @@ describe('shared accessible frontend shell', () => {
       .send({ _csrf: csrfMatch[1], reason: '   ' });
 
     expect(response.status).toBe(302);
-    expect(response.headers.location).toBe('/events/42?status=event-archive-failed');
+    expect(response.headers.location).toBe('/events?status=event-archive-failed');
     expect(api.deleteEvent).not.toHaveBeenCalled();
   });
 
@@ -25815,14 +25841,14 @@ describe('shared accessible frontend shell', () => {
       .send({ _csrf: csrfMatch[1], status: 'interested' });
 
     expect(interested.status).toBe(302);
-    expect(interested.headers.location).toBe('/events/42');
+    expect(interested.headers.location).toBe('/events/42?status=rsvp-updated');
     expect(api.rsvpToEvent).toHaveBeenCalledWith('test-token', '42', 'interested');
 
     const interestedPage = await agent
-      .get('/events/42')
+      .get(interested.headers.location)
       .set('Cookie', signedCookieHeader());
     expect(interestedPage.status).toBe(200);
-    expect(interestedPage.text).toContain('marked yourself as interested');
+    expect(interestedPage.text).toContain('Your RSVP has been updated.');
 
     api.callEventApi.mockResolvedValueOnce({ data: { relationship: { registration: { state: 'confirmed' } } } });
     const confirmed = await agent
@@ -25855,6 +25881,62 @@ describe('shared accessible frontend shell', () => {
       undefined,
       { headers: { 'Idempotency-Key': expect.any(String) } }
     );
+  });
+
+  it('maps Laravel safeguarding RSVP failures to Blade status tokens', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const cookie = signedCookieHeader();
+    const csrf = await csrfTokenFor(agent, '/contact', cookie);
+
+    api.callEventApi.mockRejectedValueOnce(new api.ApiError('Policy unavailable', 403, {
+      errors: [{ code: 'SAFEGUARDING_POLICY_UNAVAILABLE', message: 'Policy unavailable' }]
+    }));
+    const unavailable = await agent
+      .post('/events/42/rsvp')
+      .set('Cookie', cookie)
+      .type('form')
+      .send({ _csrf: csrf, status: 'going' });
+    expect(unavailable.status).toBe(302);
+    expect(unavailable.headers.location).toBe('/events/42?status=rsvp-policy-unavailable');
+
+    api.callEventApi.mockRejectedValueOnce(new api.ApiError('Vetting required', 403, {
+      errors: [{ code: 'VETTING_REQUIRED', message: 'Vetting required' }]
+    }));
+    const restricted = await agent
+      .post('/events/42/rsvp')
+      .set('Cookie', cookie)
+      .type('form')
+      .send({ _csrf: csrf, status: 'going' });
+    expect(restricted.status).toBe(302);
+    expect(restricted.headers.location).toBe('/events/42?status=rsvp-vetting-required');
+  });
+
+  it('maps Laravel safeguarding waitlist failures and keeps leave idempotent like Blade', async () => {
+    const api = require('../src/lib/api');
+    const agent = request.agent(app);
+    const cookie = signedCookieHeader();
+    const csrf = await csrfTokenFor(agent, '/contact', cookie);
+
+    api.callEventApi.mockRejectedValueOnce(new api.ApiError('Policy unavailable', 403, {
+      errors: [{ code: 'SAFEGUARDING_POLICY_UNAVAILABLE', message: 'Policy unavailable' }]
+    }));
+    const unavailable = await agent
+      .post('/events/42/waitlist')
+      .set('Cookie', cookie)
+      .type('form')
+      .send({ _csrf: csrf });
+    expect(unavailable.headers.location).toBe('/events/42?status=waitlist-policy-unavailable');
+
+    api.callEventApi.mockRejectedValueOnce(new api.ApiError('Already absent', 409, {
+      errors: [{ code: 'WAITLIST_ENTRY_INACTIVE', message: 'Already absent' }]
+    }));
+    const left = await agent
+      .post('/events/42/waitlist/leave')
+      .set('Cookie', cookie)
+      .type('form')
+      .send({ _csrf: csrf });
+    expect(left.headers.location).toBe('/events/42?status=waitlist-left');
   });
 
   it('renders Laravel v2 event detail payloads on the event detail page', async () => {
