@@ -1816,6 +1816,25 @@ database, migration, browser, container, or production operation was used.
 This support slice is unscored; the canonical bank remains `663/1,000` until
 another complete fixed-rubric audit.
 
+### 2026-07-15 finite source-contract assertion manifest
+
+The API consumer ledger now emits a deterministic direct-assertion manifest
+instead of leaving the remaining static/mock deduction as open-ended prose.
+Across 668 consumed contracts, 30 read-only rows spanning 23 helpers still lack
+a test that directly names and exercises the helper. All 370 state-changing
+rows now have direct helper assertions: focused API tests close the remaining
+Event Template read/mutation wrapper paths, including the idempotency header and
+JSON payload, and the Resource multipart upload path, fields, bearer authority,
+file body, and browser-owned content boundary.
+
+Generated ledger side-effect and cleanup text now matches the active frontend
+goal: state-changing workflows require source-derived mocked assertions, while
+live Laravel runtime work is optional and separate. The manifest explicitly
+forbids using live Laravel fixtures for its closure. Focused generator/API proof
+passes 2/2 suites and 246/246 tests. No Laravel request, login, database,
+migration, mutation, upload, download, container, or ASP.NET operation was
+performed.
+
 - GOV.UK crown, logotype, official header identity, OGL block, or Crown
   copyright wording.
 - Laravel/PHP implementation details.

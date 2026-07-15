@@ -214,6 +214,9 @@ Route::post('/auth/login', [AuthController::class, 'login']);
     expect(report.summary.missingOpenApi).toBe(1);
     expect(report.summary.routeDeclaredOpenApiOmissions).toBe(1);
     expect(report.summary.routeDeclaredOpenApiOmissionHelpersWithoutDirectApiAssertions).toBe(0);
+    expect(report.summary.withoutDirectApiHelperAssertions).toBe(0);
+    expect(report.summary.uniqueHelpersWithoutDirectApiAssertions).toBe(0);
+    expect(report.summary.stateChangingWithoutDirectApiHelperAssertions).toBe(0);
     expect(report.summary.withoutLaravelRouteDeclaration).toBe(0);
     expect(report.summary.dynamicUnresolved).toBe(0);
     expect(report.generatedAt).toBe('2026-07-14T00:00:00.000Z');
@@ -240,8 +243,8 @@ Route::post('/auth/login', [AuthController::class, 'login']);
 
     expect(publishRow).toEqual(expect.objectContaining({
       apiHelper: 'callEventApi',
-      sideEffects: 'state-changing; disposable-environment runtime proof required',
-      cleanup: 'fixture-specific cleanup and final absence/equality proof required',
+      sideEffects: 'state-changing; mocked source-contract assertion required; live Laravel runtime is optional separate work',
+      cleanup: 'assert intended final state in mocked Web UK tests; do not create or clean up live Laravel fixtures in this goal',
       requestShape: 'application/json schema:EventPublishRequest'
     }));
     expect(publishRow.statusCodes).toEqual(['200', '422']);
@@ -262,5 +265,8 @@ Route::post('/auth/login', [AuthController::class, 'login']);
     expect(markdown).toContain('Web UK repository working tree dirty: no');
     expect(markdown).toContain('Provenance caveat: Deterministic unit-test provenance.');
     expect(markdown).toContain('Unique OpenAPI-omitted helpers without direct API-client assertions: 0');
+    expect(markdown).toContain('Rows without direct API-helper assertions: 0');
+    expect(markdown).toContain('## Finite direct-assertion manifest');
+    expect(markdown).toContain('| - | - | - | - | Complete |');
   });
 });

@@ -2864,6 +2864,47 @@ describe('API Request Functions', () => {
       );
     });
 
+    it('should call Laravel Event Template reads and mutations with exact paths, auth, and payloads', async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { id: 7, name: 'Weekly meetup' } })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { created: 3 } })
+        });
+
+      await api.callEventTemplateApi('test-token', 'GET', '/7/history?cursor=next');
+      await api.callEventTemplateApi('test-token', 'POST', '/7/materializations', {
+        from: '2026-08-01',
+        to: '2026-08-31'
+      }, { headers: { 'Idempotency-Key': 'template-run-7' } });
+
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        1,
+        'http://localhost:5000/api/v2/event-templates/7/history?cursor=next',
+        expect.objectContaining({
+          method: 'GET',
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
+        })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        2,
+        'http://localhost:5000/api/v2/event-templates/7/materializations',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token',
+            'Idempotency-Key': 'template-run-7'
+          }),
+          body: JSON.stringify({ from: '2026-08-01', to: '2026-08-31' })
+        })
+      );
+    });
+
     it('should use the exact Laravel v2 event mutation contracts', async () => {
       mockFetch
         .mockResolvedValueOnce({
@@ -6986,6 +7027,40 @@ describe('API Request Functions', () => {
           body: JSON.stringify({ bio: 'I can help with gardening' })
         })
       );
+    });
+
+    it('should upload a resource through the exact Laravel multipart contract', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { id: 42, title: 'Volunteer guide' } })
+      });
+
+      await api.uploadResource('test-token', {
+        title: 'Volunteer guide',
+        description: 'A practical handbook',
+        category_id: 7,
+        file: {
+          buffer: Buffer.from('resource bytes'),
+          filename: 'guide.pdf',
+          contentType: 'application/pdf'
+        }
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/resources',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' }),
+          body: expect.any(FormData)
+        })
+      );
+      const options = mockFetch.mock.calls[0][1];
+      expect(options.body.get('title')).toBe('Volunteer guide');
+      expect(options.body.get('description')).toBe('A practical handbook');
+      expect(options.body.get('category_id')).toBe('7');
+      expect(options.body.get('file')).toBeInstanceOf(Blob);
+      expect(options.headers).not.toHaveProperty('Content-Type');
     });
 
     it('should read polymorphic likers through Laravel legacy social compatibility', async () => {

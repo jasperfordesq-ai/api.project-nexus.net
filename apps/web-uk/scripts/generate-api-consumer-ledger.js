@@ -608,8 +608,8 @@ function buildRows({ directContracts, wrapperContracts, consumers, openApi, lara
       statusCodes,
       errorEnvelope: 'non-2xx becomes ApiError(status,data); network failure becomes ApiOfflineError(503)',
       redirects: frontendConsumers.length ? `consumer-controlled: ${frontendConsumers.join(', ')}` : 'no routed consumer detected',
-      sideEffects: mutation === true ? 'state-changing; disposable-environment runtime proof required' : (mutation === false ? 'read-only by HTTP method' : 'method dynamic; classify every callsite before runtime'),
-      cleanup: mutation === true ? 'fixture-specific cleanup and final absence/equality proof required' : (mutation === false ? 'not applicable' : 'unresolved until method is concrete'),
+      sideEffects: mutation === true ? 'state-changing; mocked source-contract assertion required; live Laravel runtime is optional separate work' : (mutation === false ? 'read-only by HTTP method' : 'method dynamic; classify every callsite before verification'),
+      cleanup: mutation === true ? 'assert intended final state in mocked Web UK tests; do not create or clean up live Laravel fixtures in this goal' : (mutation === false ? 'not applicable' : 'unresolved until method is concrete'),
       laravel: operation ? {
         status: 'matched-openapi',
         path: match.routePath,
@@ -660,6 +660,9 @@ function renderMarkdown(report) {
     `- Dynamic unresolved contracts: ${report.summary.dynamicUnresolved}`,
     `- State-changing contracts: ${report.summary.stateChanging}`,
     `- Rows without detected tests: ${report.summary.withoutTests}`,
+    `- Rows without direct API-helper assertions: ${report.summary.withoutDirectApiHelperAssertions}`,
+    `- Unique helpers without direct API-helper assertions: ${report.summary.uniqueHelpersWithoutDirectApiAssertions}`,
+    `- State-changing rows without direct API-helper assertions: ${report.summary.stateChangingWithoutDirectApiHelperAssertions}`,
     `- Unique OpenAPI-omitted helpers without direct API-client assertions: ${report.summary.routeDeclaredOpenApiOmissionHelpersWithoutDirectApiAssertions}`,
     `- API source SHA-256: \`${report.sources.apiSha256}\``,
     `- Laravel OpenAPI SHA-256: \`${report.sources.laravelOpenApiSha256}\``,
@@ -667,9 +670,26 @@ function renderMarkdown(report) {
     '',
     'The JSON companion contains the full request/response, status/error, redirect, side-effect, cleanup, Laravel implementation, consumer, and test fields.',
     '',
+    '## Finite direct-assertion manifest',
+    '',
+    'Rows below have test references but no test that directly names and exercises the API helper. Close these with source-derived mocked assertions; do not use live Laravel fixtures.',
+    '',
+    '| Method | Path | Helper | Source | Side effects |',
+    '|---|---|---|---|---|'
+  ];
+  for (const row of report.rows.filter((item) => !item.directApiHelperAssertion)) {
+    lines.push(`| ${escapeCell(row.method)} | \`${escapeCell(row.path)}\` | \`${escapeCell(row.apiHelper)}\` | \`${escapeCell(row.source)}\` | ${escapeCell(row.sideEffects)} |`);
+  }
+  if (report.summary.withoutDirectApiHelperAssertions === 0) {
+    lines.push('| - | - | - | - | Complete |');
+  }
+  lines.push(
+    '',
+    '## Complete consumer inventory',
+    '',
     '| Method | Path | Helper | Laravel | Side effects / cleanup | Consumers | Tests |',
     '|---|---|---|---|---|---|---|'
-  ];
+  );
   for (const row of report.rows) {
     const laravel = row.laravel.status === 'matched-openapi'
       ? `${row.laravel.operationId || 'documented'}${row.laravel.controllerAction ? `<br>${row.laravel.controllerAction}` : ''}`
@@ -712,7 +732,7 @@ function generateApiConsumerLedger(options = {}) {
     testSources
   });
   const report = {
-    schemaVersion: 2,
+    schemaVersion: 3,
     generatedAt: provenance.generatedAt,
     provenance,
     sources: {
@@ -732,6 +752,11 @@ function generateApiConsumerLedger(options = {}) {
       dynamicUnresolved: rows.filter((row) => row.laravel.status === 'dynamic-unresolved').length,
       stateChanging: rows.filter((row) => row.sideEffects.startsWith('state-changing')).length,
       withoutTests: rows.filter((row) => row.tests.length === 0).length,
+      withoutDirectApiHelperAssertions: rows.filter((row) => !row.directApiHelperAssertion).length,
+      uniqueHelpersWithoutDirectApiAssertions: new Set(rows
+        .filter((row) => !row.directApiHelperAssertion)
+        .map((row) => row.apiHelper)).size,
+      stateChangingWithoutDirectApiHelperAssertions: rows.filter((row) => row.sideEffects.startsWith('state-changing') && !row.directApiHelperAssertion).length,
       routeDeclaredOpenApiOmissionHelpersWithoutDirectApiAssertions: new Set(rows
         .filter((row) => row.laravel.status === 'route-declared-openapi-omission' && !row.directApiHelperAssertion)
         .map((row) => row.apiHelper)).size
