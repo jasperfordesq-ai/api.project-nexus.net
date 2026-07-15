@@ -141,8 +141,9 @@ Web UK fixture gates.
 This is the Laravel-defined shared accessible frontend implementation for
 **Project NEXUS Community**. It currently consumes the Laravel backend. Laravel
 Blade defines the browser experience and Laravel APIs define the backend
-contract. ASP.NET remains a future, not-yet-certified compatible backend; it
-must match Laravel rather than define this frontend's behaviour.
+contract. ASP.NET remains a future, not-yet-certified second backend; it must
+be externally contract-identical to Laravel rather than define this frontend's
+behaviour.
 
 ## License and Attribution (MANDATORY)
 
@@ -342,7 +343,7 @@ Follow the Laravel Blade accessible frontend for:
   users to `/login?status=auth-required`, then builds the full Blade-aligned
   link inventory from `src/lib/account-links.js`, applying Laravel tenant
   module/feature gates and the exact direct-messaging configuration. Live
-  per-tenant gate coverage and ASP.NET backend compatibility remain separate
+  per-tenant gate coverage and ASP.NET contract-identity proof remain separate
   certification work.
 - Cookie banner and settings as a Blade-style no-JS candidate. The shell renders
   the GOV.UK cookie banner before the skip link until the Laravel-compatible
@@ -351,7 +352,7 @@ Follow the Laravel Blade accessible frontend for:
   fallback. `/cookies` renders the analytics yes/no settings form, and
   `POST /cookie-consent` stores `all` or `essential` locally under the cleaner
   accessible cookie name. Laravel `cookie_consents` audit persistence, tenant
-  scoping, localization, and ASP.NET backend compatibility are not certified.
+  scoping, localization, and ASP.NET contract identity are not certified.
 - Volunteering as a Blade-style public landing/search candidate. The GET route
   reads `/api/v2/volunteering/opportunities` with search, category, remote, and
   cursor parameters, and renders the Blade public structure: organisation link,
@@ -388,7 +389,7 @@ substitute a generic preparation page as parity evidence.
 
 Build one backend-neutral accessible frontend against Laravel's contract. Do
 not add ASP.NET-specific Nunjucks, route, validation, redirect, or workflow
-branches. When the separate ASP.NET parity workstream is ready, change only the
+branches. When the separate ASP.NET contract-identity workstream is ready, change only the
 backend configuration and rerun the same unchanged Web UK evidence suite. See
 `docs/BACKEND_SWITCHING_CONTRACT.md`.
 
@@ -401,7 +402,7 @@ backend configuration and rerun the same unchanged Web UK evidence suite. See
 - `ACCESSIBLE_BACKEND_TARGET=aspnet` is future work only and is marked
   `future-not-certified`.
 - `API_BASE_URL` remains an explicit override and is labelled as
-  `api-base-url` by the resolver; it does not certify ASP.NET compatibility or
+  `api-base-url` by the resolver; it does not certify ASP.NET contract identity or
   replace Laravel as the source of truth. Laravel-first work should prefer
   `LARAVEL_BASE_URL`.
 - See the root `docs/API_PARITY.md` for API parity status and this file's endpoint table for routes used by this frontend.
@@ -574,7 +575,7 @@ See the root [agent instructions](../../CLAUDE.md) for the Docker-only project i
 | `ACCESSIBLE_BACKEND_TARGET` | No | laravel | Backend contract target. `aspnet` is future/not-certified only. |
 | `LARAVEL_BASE_URL` | No | http://127.0.0.1:8088 | Laravel backend base URL used by default. |
 | `ASPNET_BASE_URL` | No | http://localhost:5080 | Future ASP.NET backend base URL when explicitly selected. |
-| `API_BASE_URL` | No | - | Explicit backend URL override. Labelled as `api-base-url`; does not certify ASP.NET compatibility. Prefer `LARAVEL_BASE_URL` for Laravel-first work. |
+| `API_BASE_URL` | No | - | Explicit backend URL override. Labelled as `api-base-url`; does not certify ASP.NET contract identity. Prefer `LARAVEL_BASE_URL` for Laravel-first work. |
 | `COOKIE_SECRET` | **Yes** | - | Secret for signed cookies |
 | `SESSION_SECRET` | No | COOKIE_SECRET | Secret for sessions |
 | `NODE_ENV` | No | development | Environment |

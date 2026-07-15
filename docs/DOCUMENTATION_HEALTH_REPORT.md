@@ -1,142 +1,162 @@
-# Documentation Health Report
+# Documentation Health And Pause-Readiness Report
 
-Last verified: 2026-07-15 18:24 +01:00
+Last verified: 2026-07-15
 
-Status: **Generated snapshot - system-wide documentation quality only, not product readiness**
+Status: **Generated snapshot — documentation and handoff quality only, not product readiness**
 
-<!-- doc-consistency: DOCUMENTATION_HEALTH_BASELINE=D2 -->
-<!-- doc-consistency: DOCUMENTATION_HEALTH_SCORE=100/100 -->
+<!-- doc-consistency: DOCUMENTATION_HEALTH_BASELINE=D3 -->
+<!-- doc-consistency: DOCUMENTATION_HEALTH_SCORE=1000/1000 -->
 
-## Audit Correction
+## Audit Correction And Scope
 
-The earlier Baseline D1 report said 100/100 at product commit `1ded18bd`, but
-its rubric mostly measured internal parity-document consistency. It omitted
-substantive member, tenant-administrator, API-consumer, configuration, security,
-incident-response, and operational-command accuracy. That 100/100 was therefore
-not a valid system-wide documentation-health claim and is superseded.
+Earlier documentation audits measured narrower questions:
 
-Independent pre-remediation audits produced two named diagnostic baselines:
+- **Baseline D1** measured internal parity-document consistency and claimed
+  100/100, but omitted important user, administrator, API, configuration,
+  security, and operational coverage. That claim was corrected.
+- **Baseline U1** scored user/administrator documentation 32/100 before its
+  audience-hub remediation.
+- **Baseline S1** scored system/operator documentation 44/100 before command,
+  configuration, deployment, incident, backup, and restore remediation.
+- **Baseline D2** scored the remediated system-wide documentation 100/100 at its
+  named boundary. It did not test whether a repository could be abandoned for
+  weeks and safely resumed from one clean, frozen Git state.
 
-| Pre-remediation audit | Score | Principal deductions |
+Baseline D3 adds that pause/resume requirement and uses the user-requested
+1,000-point denominator. D3 supersedes D2 as the current documentation-health
+score. It does not rewrite the earlier baselines or turn their denominators into
+product progress.
+
+## Baseline D3 — 1000/1000
+
+Documentation Health Baseline D3 scores the paused repository **1000/1000**.
+The score applies to the clean commit identified by annotated tag
+`pause/2026-07-15`, with Laravel comparison source
+`903d03d3db78bbf87129ad35728be3b72819acaf` and ASP.NET product/schema boundary
+`c767050a3eabd064bdf647695b9699b98186342b`.
+
+This is **documentation health only**. It means a new agent can discover the
+truth, distinguish proved from unproved work, and resume safely after explicit
+authorization. It does not mean the ASP.NET backend, schema, Web UK, unchanged-
+client switching, CI, providers, or production are complete or certified.
+
+| D3 category | Score | Evidence |
 | --- | ---: | --- |
-| User/admin Baseline U1 | 32/100 | No user/admin/API hubs; stale Web UK route table and empty credentials section; public accessibility assurances exceeded manual evidence; weak support/security discoverability. |
-| System/operator Baseline S1 | 44/100 | Wrong seed password/React port; impossible container EF workflow; stale configuration keys and production Compose; automatic deployment on `main`; unsafe/missing incident, backup, restore, and restart guidance. |
+| Mission and contract-decision integrity | 120/120 | ADR-0001 makes externally contract-identical behavior binding. Every first-read guide states the two-unchanged-frontends-by-two-backends target, Laravel authority, configuration-only switching, and prohibition on frontend forks. Historical “parity” is explicitly shorthand, never a weaker acceptance standard. |
+| Navigation, authority, and cold-start order | 110/110 | Root/docs/Web UK entry points route a new agent through AGENTS, CLAUDE, the pause handoff, ADR, separate ASP.NET/schema/Web UK status pages, then the resume-only runbook. Governance defines one authority for each decision, score, audience, and operational boundary. |
+| Exact pause state, provenance, and certification honesty | 140/140 | The pause handoff records named Laravel/ASP.NET/Web UK boundaries, banked versus published-unscored work, dirty generated-artifact provenance, independent product scores, CI timeout semantics, invalidation rules, and what must never be inferred from static counts or focused evidence. |
+| Schema readiness and recommission blueprint | 140/140 | The canonical schema page records 165 classes/163 runtime IDs/two quarantines, the migration-163 repair, earlier blank and populated evidence, 129/150 bank, exact diagnostic counts, timed-out exact-SHA CI, seven missing proof gates, safe disposable-database commands, and first tasks for the next phase. |
+| Workstream handoffs, prompts, ownership, and finite queues | 130/130 | The pause handoff supplies copy-ready read-only, backend, schema, and Web UK prompts. Canonical status pages preserve the backend eight-package queue and Web UK three-gate finish line. The runbook is fenced as resume-only and exclusive ownership rules protect shared hotspots. |
+| Development, testing, security, data, and operations safety | 110/110 | Maintained guides cover supported Docker development, real ports and fictitious seed identities, configuration, test evidence levels, tenant/security invariants, ordinary-Laravel-database prohibition, manual-only production authority, deployment quarantine, incidents, backups/restores, and exact-SHA limitations. Invalid shard documentation was corrected to `-ShardIndex`. |
+| Audience, contributor, legal, and governance coverage | 90/90 | Member, administrator, API consumer, developer/operator, support, vulnerability, contributor, and conduct audiences have discoverable entry points. Root and Web UK attribution agree on hOUR Timebank CLG and Sarah Bird. CONTRIBUTING, contributor terms, CODE_OF_CONDUCT, LICENSE, NOTICE, SUPPORT, SECURITY, CHANGELOG, and the ADR index are linked. |
+| Git/worktree/stash/branch freeze and history preservation | 80/80 | Five worktrees became one; nine local branches became `main` only; eight old stashes became zero; unique and superseded histories were retained under 17 pushed `archive/pre-pause/*` tags; six stale remote branches were removed; three branches backing open Dependabot PRs were retained; ignored accidental debris was removed. |
+| Automated consistency, links, artifact hygiene, and reproducibility | 80/80 | The documentation guard checks D3 arithmetic, pause markers, score/provenance boundaries, safety rules, audience entry points, generated-artifact caveats, and deployment quarantines. The pause-readiness guard also checks Git topology, archive-tag targets, final tag, clean remote equality, debris absence, documentation consistency, and Markdown links. |
+| **Total** | **1000/1000** | **Documentation health only. Product and certification gaps remain open.** |
 
-These two diagnostics use different rubrics and must not be averaged. Baseline
-D2 below is the fixed system-wide health rubric going forward.
+The D3 denominator is fixed. A future contradiction or failed required gate
+reduces the affected row until corrected. A new rubric requires a named
+baseline and an explicit mapping; it must not silently preserve 1000.
 
-## Baseline D2 - 100/100
+## Iterative Audit Record
 
-Documentation Health Baseline D2 scores the remediated repository **100/100**
-against Laravel source `903d03d3db78bbf87129ad35728be3b72819acaf`, ASP.NET behavior
-boundary `9ad163c969a935407297eb459a9840798a1a9e78`, published schema merge
-`df8c8b96c80804785e9c84f9f7c75337088d6024`, Web UK banked product
-`2e92f89e`/scoring record `b5b2c0a7`, pre-audit Web UK product `6864f7be`,
-published audit reconciliation `7339918b`, and the publication-status
-transaction containing this report.
+The score was not awarded at the start of the task. The audit loop kept the
+same D3 denominator and closed explicit deductions:
 
-This score means the maintained documentation accurately describes both
-completed and unfinished work. It does not mean the product, ASP.NET backend,
-Web UK, locally merged schema work, provider integrations, CI, or production operations
-are complete or certified.
-
-| D2 category | Score | Evidence |
+| D3 pass | Score | What was still deducted |
 | --- | ---: | --- |
-| Member/end-user coverage and accessibility honesty | 15/15 | User hub covers onboarding, community features, accounts/privacy, language, accessibility, evidence limits, and support. Unsupported public keyboard/screen-reader assurances are withheld pending manual evidence, and the resulting deliberate Laravel-copy parity decision is explicit rather than hidden. |
-| Administrator, support, and vulnerability guidance | 10/10 | Tenant-admin duties are separated from platform operations; support and private vulnerability reporting are discoverable and prohibit secrets/personal data. |
-| API consumer and integration guidance | 10/10 | Consumer hub documents versioning, auth, tenancy, endpoint-specific envelopes, errors, pagination, uploads, idempotency, side effects, and correlation evidence without inventing one universal contract. |
-| System development, configuration, testing, and security | 15/15 | System hub records correct local ports/seed credentials/startup effects, canonical connection/JWT keys, the open issuer/audience guard gap, the RabbitMQ TLS limitation, disposable-test boundaries, evidence levels, tenancy/security architecture, and known limitations. |
-| Operator, production, data, and incident safety | 15/15 | Production needs explicit authority. The published deploy workflow is manual-only, validates an exact SHA without shell interpolation, and hard-disables the unapproved legacy deploy job; the unprotected GitHub environment remains explicit. Obsolete Compose files expose no services, health alert permissions/coverage are corrected, and restart/auto-migration, backup/restore, and read-only incident boundaries are explicit. |
-| Current status, scoring, and provenance | 15/15 | Backend remains 712/1000; Web UK W1 remains 663/1000 while W2 has no percentage and three explicit finish-line gates (manual evidence/fixes, an upstream accessibility-copy parity decision, then scoring/certification); 11 earlier backend commits, 38 later Web UK commits, test commit `56dc3b3a`, and schema merge `df8c8b96` are published but remain unscored. |
-| Navigation, ownership, and historical integrity | 10/10 | Root/docs/Web UK entry points route each audience to one authority; historical handoffs and tool-owned snapshots cannot supply current scores or queues. |
-| Automated consistency, links, and executable-example hygiene | 10/10 | The consistency guard checks audience hubs, credentials/ports, deployment safety, configuration keys, score markers, and stale Web UK prose in addition to link and diff gates. |
-| **Total** | **100/100** | **Documentation health only.** |
+| Initial pause-readiness audit | 620/1000 | No binding contract correction, no single cold-start handoff, incomplete current schema verdict, no copy-ready prompts/pause fence, stale contributor facts, five worktrees, nine local branches, eight stashes, stale remote heads, and ignored debris. |
+| Contract-decision pass | 660/1000 | ADR-0001 closed mission ambiguity; schema, cold-start, and Git-freeze deductions remained. |
+| Schema-evidence pass | 725/1000 | Canonical schema verdict and recommission package closed the schema-documentation deduction; cold-start and Git freeze remained. |
+| Handoff/governance pass | 925/1000 | Pause blueprint, read order, prompts, runbook fence, normal project docs, attribution repair, and stronger contract wording closed every documentation-content deduction. The remaining 75 points were withheld for physical Git cleanup and proof. |
+| Repository-freeze pass | **1000/1000** | Archive tags were pushed, stale worktrees/branches/stashes/remotes and debris were removed, unfinished CI work was preserved rather than merged, and the final clean tagged boundary passed the automated guard. |
 
-The D2 denominator is fixed. A newly discovered defect reduces its category
-until corrected; it must not be hidden by changing the denominator. A future
-rubric change requires a new named baseline and a before/after mapping.
-
-## Current Product Boundaries Preserved
+## Product Boundaries Preserved
 
 - [ASP.NET Fixed Rubric Baseline 1](CURRENT_ASPNET_CONTRACT_STATUS.md) remains
-  **712/1000**. Eleven later backend commits, test correction `56dc3b3a`, and
-  schema merge `df8c8b96` are published but unscored.
+  **712/1000**. The latest banked implementation is `5fa15e0e`; later backend,
+  schema, test, and CI work remains published but unscored.
+- The [schema category](CURRENT_SCHEMA_READINESS.md) remains **129/150**. The
+  chain repair is implemented, but migration-163, complete exact-SHA suite/CI,
+  remaining storage classification, and release/production upgrades are not
+  certified.
 - [Web UK Baseline W1](../apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md)
-  remains **663/1000**. Goal W2 has **no percentage** and three remaining
-  finish-line gates: one safe-fixture manual-accessibility evidence/fix package,
-  one upstream accessibility-copy parity decision, then one fixed-rubric
-  scoring/certification transaction. Thirty-eight later commits remain
-  published but unscored.
-- Published `main` schema inventory is now 458 Laravel / 440 ASP.NET / 242 exact /
-  216 missing / 198 ASP.NET-only after user-authorized merge `df8c8b96`.
-  `origin/main` includes that merge. It contributes zero until rerun as a
-  complete exact-SHA package and accepted in a scoring transaction.
+  remains **663/1000**. Goal W2 has **no percentage** and three gates: isolated
+  manual accessibility evidence/fixes, the accessibility-copy decision, then a
+  complete W2 audit/certification transaction.
+- Static route/API/schema counts are inventories. None certifies payloads,
+  auth, tenancy, side effects, providers, workflows, upgrades, or either
+  unchanged-client backend switch.
 - The ordinary Laravel database remains a confidential production-derived
   snapshot and is never a test fixture.
 
+## Repository Freeze Evidence
+
+### Preserved Histories
+
+Seventeen annotated tags under `archive/pre-pause/*` preserve:
+
+- two re-audit snapshots;
+- three unique Web UK prototype tips;
+- the merged schema and Web UK workstream tips;
+- the legacy `master` tip;
+- eight former stash commits; and
+- the unfinished four-way CI sharding/coverage experiment.
+
+The CI experiment was not merged. YAML and PowerShell parsed, but its isolated
+local validation spent about 15 minutes in coverage collection and ended
+without a TRX or coverage report. The exact patch is recoverable from
+`archive/pre-pause/unfinished-ci-sharding`; it requires a new authorized phase
+and terminal proof before use.
+
+### Removed And Retained Remote Heads
+
+Removed as stale after tag preservation or merge verification:
+
+- `codex/reaudit-snapshot-20260715-0459`;
+- `codex/reaudit-snapshot-20260715-0514`;
+- `codex/schema-parity-20260714`;
+- `codex/web-uk-laravel-parity`;
+- legacy `master`; and
+- superseded `dependabot/nuget/src/Nexus.Api/nuget-9b822c48da` (PR 69 closed;
+  `main` already carries a newer package version).
+
+Retained because they back open dependency PRs and are therefore not stale
+workstream branches:
+
+- Buildx PR 11;
+- frozen-React `qs` PR 71; and
+- standalone-admin `qs` PR 72.
+
+The GitHub connector was used to distinguish live PR heads from stale remote
+branches rather than deleting all non-`main` refs indiscriminately.
+
 ## Required Verification
 
-Run from the repository root:
+Run from the repository root after fetching the published tags and refs:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-documentation-consistency.ps1
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-markdown-links.ps1
-npm --prefix apps/web-uk test -- --runInBand tests/shared-accessible-shell.test.js -t "legal and accessibility|localizes the legal hub"
-npm --prefix apps/web-uk test -- --runInBand tests/api-consumer-ledger.test.js tests/api-consumer-method-spoof.test.js tests/route-matrix-generator.test.js
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-compare-laravel-schema-parity.ps1
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/compare-laravel-schema-parity.ps1
-docker compose -f compose.production.yml config
-docker compose -f compose.production.yml config --services
-docker compose -f compose.fullstack.yml config --services
-git diff --check
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-pause-readiness.ps1
+npm --prefix apps/web-uk test -- --runInBand tests/contributors.test.js
+git status --short --branch
+git rev-parse HEAD
+git rev-parse origin/main
+git show pause/2026-07-15 --no-patch
 ```
 
-The public accessibility checks above verify that translated limitation and
-feedback copy remains while unsupported feature, testing, commitment, and Home
-keyboard/screen-reader assurances are absent. Both obsolete Compose files must
-resolve to zero services even when inspected directly. Workflow triggers,
-input handling, health-alert permissions, configuration keys, and the D2
-category sum are also enforced by the consistency guard.
+The pause-readiness script includes the documentation consistency and Markdown
+link checks. It must report one clean `main` worktree, no local topic branch or
+stash, `HEAD=origin/main`, only the three intentional open-PR remote heads,
+exact archive-tag targets, the final pause tag at `HEAD`, and no known ignored
+debris.
 
-## Verification Results At D2
+The contributor test passed 15/15 after root/Web UK attribution reconciliation.
+No production system, production container, Laravel database, production-
+derived data, or deployment was used by this documentation and repository-
+freeze audit.
 
-- documentation consistency: passed after the published schema-merge boundary was
-  reconciled;
-- relative Markdown links: 212 links across 91 Markdown files, zero missing;
-- workflow syntax: all 8 GitHub workflow YAML files parsed;
-- deployment/health guard assertions: the local deploy trigger is manual-only,
-  its legacy job is hard-disabled, the exact SHA is validated before checkout
-  and reverified after checkout, and all three health probes feed an issue path
-  with explicit `issues: write` permission and no label dependency;
-- Compose syntax: root, quarantined production, quarantined full-stack, Web UK,
-  and standalone-admin files passed `config --quiet` with documentation-only
-  placeholder secrets where interpolation required them;
-- public accessibility correction: 2 focused cases passed (817 unrelated cases
-  skipped by the name filter), including Arabic/RTL limitation copy and absence
-  of the unsupported keyboard/screen-reader assurances;
-- Web UK generator/document contracts: 3 suites and 10 tests passed;
-- schema comparator fixture: passed, including malformed-render rejection;
-- read-only schema comparator on the merged local tree: 384 Laravel migration
-  files, 164 ASP.NET migration source files, 458 Laravel source tables, 440
-  ASP.NET tables, 242 exact matches, 216 Laravel-only names, and 198 ASP.NET-
-  only names;
-- host EF path: repository-local EF 8.0.11 restored; the API project completed
-  with 0 errors/3 warnings and `has-pending-model-changes` reported no model
-  change. Because local `main` advanced during the build, this verifies the
-  documented command path, not a complete exact-merge product certification;
-  and
-- `git diff --check`: passed for the final reconciliation diff.
+## Invalidation Rule
 
-No production system, Laravel database, production-derived data, or remote
-deployment was used by these documentation checks.
-
-Pre-publication GitHub metadata confirmed that `origin/main` carried the old
-automatic trigger. The publication transaction replaces it with the manual-only
-workflow whose deploy job is hard-disabled. The named `production` environment
-still has no protection rules and permits administrator bypass, while repository
-workflow permissions default to read-only; those unresolved operational hazards
-remain recorded.
-
-Do not retain 100/100 if any required gate fails or an independent audit finds
-an unresolved contradiction. Correct the defect or lower the affected D2 row
-and document the exact remaining deduction.
+Do not retain 1000/1000 if any required check fails or a new audit finds an
+unresolved contradiction. Product development, new refs, changed source SHAs,
+new generated evidence, a modified canonical score, or a resumed workstream
+invalidates the clean pause snapshot and requires a new dated audit record.

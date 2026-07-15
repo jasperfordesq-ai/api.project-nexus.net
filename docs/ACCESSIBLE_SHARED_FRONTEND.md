@@ -25,9 +25,9 @@ There are two Laravel sources of truth, separated by responsibility:
   persistence, and side effects.
 
 Together they define the observable product contract Web UK must reproduce.
-ASP.NET is not authoritative for this frontend; its separate parity workstream
-must make it satisfy the Laravel contract before unchanged-frontend switching
-can be certified.
+ASP.NET is not authoritative for this frontend; its separate contract-identity
+workstream must make it externally contract-identical to Laravel before
+unchanged-frontend switching can be certified.
 
 Laravel source of truth:
 
@@ -140,7 +140,7 @@ contract notes so agents can work safely after extraction.
   feature gates, and key workflows.
 - Rendered pages pass accessibility smoke checks.
 - API calls used by `apps/web-uk` match the canonical Laravel contracts.
-- After separate ASP.NET parity is complete, the same unchanged Web UK suite
+- After separate ASP.NET contract identity is complete, the same unchanged Web UK suite
   passes against ASP.NET by changing backend configuration only.
 - The React utility-bar link is changed only after the shared accessible frontend
   has a production deployment path and rollback plan.

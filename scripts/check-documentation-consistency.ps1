@@ -117,7 +117,8 @@ $audienceDocumentationPaths = @(
     'docs/system/OPERATIONS.md',
     'docs/system/INCIDENT_RESPONSE.md',
     'SUPPORT.md',
-    'SECURITY.md'
+    'SECURITY.md',
+    'CODE_OF_CONDUCT.md'
 )
 
 foreach ($relativePath in $audienceDocumentationPaths) {
@@ -137,6 +138,8 @@ foreach ($relativePath in $entryPointPaths) {
 }
 
 $statusLikeDocuments = @(
+    'CHANGELOG.md',
+    'CODE_OF_CONDUCT.md',
     'PHASE63_73_DEPLOY_NOTES.md',
     'apps/admin/README.md',
     'docs/CURRENT_ASPNET_CONTRACT_STATUS.md',
@@ -196,7 +199,7 @@ if ($null -ne $claude) {
 
 $docsIndex = Get-DocumentText 'docs/README.md'
 if ($null -ne $docsIndex) {
-    foreach ($entry in @('user/README.md', 'admin/README.md', 'api/README.md', 'system/README.md', '../SUPPORT.md', '../SECURITY.md')) {
+    foreach ($entry in @('user/README.md', 'admin/README.md', 'api/README.md', 'system/README.md', '../SUPPORT.md', '../SECURITY.md', '../CODE_OF_CONDUCT.md', '../CHANGELOG.md')) {
         Assert-Contains 'docs/README.md' $docsIndex ([regex]::Escape($entry)) `
             "must link the system-wide audience entry point '$entry'."
     }
@@ -453,64 +456,64 @@ if ($null -ne $governance) {
 $documentationHealth = Get-DocumentText 'docs/DOCUMENTATION_HEALTH_REPORT.md'
 if ($null -ne $documentationHealth) {
     Assert-Contains 'docs/DOCUMENTATION_HEALTH_REPORT.md' $documentationHealth `
-        '<!--\s*doc-consistency:\s*DOCUMENTATION_HEALTH_BASELINE=D2\s*-->' `
-        'must expose the system-wide Baseline D2 marker.'
+        '<!--\s*doc-consistency:\s*DOCUMENTATION_HEALTH_BASELINE=D3\s*-->' `
+        'must expose the pause-readiness Baseline D3 marker.'
     $healthScoreMarker = [regex]::Match(
         $documentationHealth,
-        '<!--\s*doc-consistency:\s*DOCUMENTATION_HEALTH_SCORE=(?<score>\d{1,3})/100\s*-->'
+        '<!--\s*doc-consistency:\s*DOCUMENTATION_HEALTH_SCORE=(?<score>\d{1,4})/1000\s*-->'
     )
     if (-not $healthScoreMarker.Success) {
-        Add-Failure 'docs/DOCUMENTATION_HEALTH_REPORT.md: must expose a D2 health-score marker with a fixed /100 denominator.'
+        Add-Failure 'docs/DOCUMENTATION_HEALTH_REPORT.md: must expose a D3 health-score marker with a fixed /1000 denominator.'
     }
     else {
         $declaredHealthScore = [int]$healthScoreMarker.Groups['score'].Value
-        if ($declaredHealthScore -lt 0 -or $declaredHealthScore -gt 100) {
-            Add-Failure 'docs/DOCUMENTATION_HEALTH_REPORT.md: declared D2 health score must be between 0 and 100.'
+        if ($declaredHealthScore -lt 0 -or $declaredHealthScore -gt 1000) {
+            Add-Failure 'docs/DOCUMENTATION_HEALTH_REPORT.md: declared D3 health score must be between 0 and 1000.'
         }
         Assert-Contains 'docs/DOCUMENTATION_HEALTH_REPORT.md' $documentationHealth `
-            ("(?m)^## Baseline D2 - {0}/100$" -f $declaredHealthScore) `
-            'must keep the D2 heading synchronized with the declared marker.'
+            ("(?m)^## Baseline D3 (?:-|\u2014) {0}/1000$" -f $declaredHealthScore) `
+            'must keep the D3 heading synchronized with the declared marker.'
         Assert-Contains 'docs/DOCUMENTATION_HEALTH_REPORT.md' $documentationHealth `
-            ("(?i)Documentation Health Baseline D2 scores the remediated repository \*\*{0}/100\*\*" -f $declaredHealthScore) `
-            'must keep the D2 summary synchronized with the declared marker.'
+            ("(?i)Documentation Health Baseline D3 scores the paused repository \*\*{0}/1000\*\*" -f $declaredHealthScore) `
+            'must keep the D3 summary synchronized with the declared marker.'
 
         $healthTable = [regex]::Match(
             $documentationHealth,
-            '(?ms)^\| D2 category \| Score \| Evidence \|\r?\n^\| ---.*?\r?\n(?<rows>.*?)^\| \*\*Total\*\* \| \*\*(?<total>\d{1,3})/100\*\*'
+            '(?ms)^\| D3 category \| Score \| Evidence \|\r?\n^\| ---.*?\r?\n(?<rows>.*?)^\| \*\*Total\*\* \| \*\*(?<total>\d{1,4})/1000\*\*'
         )
         if (-not $healthTable.Success) {
-            Add-Failure 'docs/DOCUMENTATION_HEALTH_REPORT.md: must expose a parseable D2 category table and total.'
+            Add-Failure 'docs/DOCUMENTATION_HEALTH_REPORT.md: must expose a parseable D3 category table and total.'
         }
         else {
             $earnedSum = 0
             $maximumSum = 0
             $categoryRows = [regex]::Matches(
                 $healthTable.Groups['rows'].Value,
-                '(?m)^\| (?!\*\*)(?<category>[^|]+?) \| (?<earned>\d{1,3})/(?<maximum>\d{1,3}) \|'
+                '(?m)^\| (?!\*\*)(?<category>[^|]+?) \| (?<earned>\d{1,4})/(?<maximum>\d{1,4}) \|'
             )
             if ($categoryRows.Count -eq 0) {
-                Add-Failure 'docs/DOCUMENTATION_HEALTH_REPORT.md: D2 category table contains no scored rows.'
+                Add-Failure 'docs/DOCUMENTATION_HEALTH_REPORT.md: D3 category table contains no scored rows.'
             }
             foreach ($row in $categoryRows) {
                 $earned = [int]$row.Groups['earned'].Value
                 $maximum = [int]$row.Groups['maximum'].Value
                 if ($earned -gt $maximum) {
-                    Add-Failure "docs/DOCUMENTATION_HEALTH_REPORT.md: D2 category '$($row.Groups['category'].Value.Trim())' exceeds its maximum."
+                    Add-Failure "docs/DOCUMENTATION_HEALTH_REPORT.md: D3 category '$($row.Groups['category'].Value.Trim())' exceeds its maximum."
                 }
                 $earnedSum += $earned
                 $maximumSum += $maximum
             }
 
             $tableTotal = [int]$healthTable.Groups['total'].Value
-            if ($maximumSum -ne 100) {
-                Add-Failure "docs/DOCUMENTATION_HEALTH_REPORT.md: D2 category maxima must sum to 100 (found $maximumSum)."
+            if ($maximumSum -ne 1000) {
+                Add-Failure "docs/DOCUMENTATION_HEALTH_REPORT.md: D3 category maxima must sum to 1000 (found $maximumSum)."
             }
             if ($earnedSum -ne $declaredHealthScore -or $tableTotal -ne $declaredHealthScore) {
-                Add-Failure "docs/DOCUMENTATION_HEALTH_REPORT.md: D2 marker, category sum, and displayed total must agree (marker $declaredHealthScore, rows $earnedSum, total $tableTotal)."
+                Add-Failure "docs/DOCUMENTATION_HEALTH_REPORT.md: D3 marker, category sum, and displayed total must agree (marker $declaredHealthScore, rows $earnedSum, total $tableTotal)."
             }
         }
     }
-    foreach ($baseline in @('Baseline U1', 'Baseline S1', 'Baseline D2')) {
+    foreach ($baseline in @('Baseline D1', 'Baseline U1', 'Baseline S1', 'Baseline D2', 'Baseline D3')) {
         Assert-Contains 'docs/DOCUMENTATION_HEALTH_REPORT.md' $documentationHealth ([regex]::Escape($baseline)) `
             "must preserve the named audit baseline '$baseline'."
     }
@@ -880,4 +883,4 @@ if ($failures.Count -gt 0) {
 }
 
 Write-Host 'Documentation consistency check passed.' -ForegroundColor Green
-Write-Host 'Validated D2 audience hubs, canonical scores/state boundaries, 2x2 architecture, generated provenance, current credentials/ports/config keys, Web UK resume authority, Laravel database safety, and production/deployment quarantines.'
+Write-Host 'Validated D3 pause readiness, audience hubs, canonical scores/state boundaries, 2x2 architecture, generated provenance, current credentials/ports/config keys, Web UK resume authority, Laravel database safety, and production/deployment quarantines.'

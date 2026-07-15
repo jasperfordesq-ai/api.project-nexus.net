@@ -64,12 +64,12 @@ observable boundary used by the Laravel React
 frontend.
 
 Default rule for agents: do not modify frontend files in this repo unless the
-user explicitly approves that specific frontend change. Backend parity work
+user explicitly approves that specific frontend change. Backend contract-identity work
 should happen in ASP.NET controllers, services, DTOs, auth/tenant handling,
 OpenAPI/contracts, tests, and docs.
 
 For every API call made by the Laravel React frontend, ASP.NET must expose the
-same compatible contract:
+same externally observable contract:
 
 - same HTTP method and path, including `/api/v2/...` aliases where the Laravel
   React frontend expects them;
@@ -217,7 +217,7 @@ canonical React frontend is the Laravel repo frontend at
   smoke certification passes.
 - `apps/admin/` is a secondary standalone admin app. Do not use it as the main
   Laravel parity target unless a task explicitly asks for standalone-admin work.
-- Current backend work should make ASP.NET compatible with the Laravel React API
+- Current backend work should make ASP.NET externally contract-identical to the Laravel React API
   contract, especially the routes and response shapes used by the production
   Laravel React frontend.
 
@@ -304,7 +304,7 @@ npm --prefix apps/admin run test
 ```
 
 Only run `apps/react-frontend` checks when the user explicitly approves work in
-that legacy/frozen frontend. For backend contract compatibility, prefer ASP.NET
+that legacy/frozen frontend. For backend contract identity, require ASP.NET
 regression tests plus route/API matrix and runtime smoke tests against the
 canonical Laravel React frontend.
 

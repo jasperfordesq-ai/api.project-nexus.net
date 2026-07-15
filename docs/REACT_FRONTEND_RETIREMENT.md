@@ -36,9 +36,9 @@ scoped admin task. `apps/web-uk/` is the separately approved accessible-
 frontend implementation target and follows its own `AGENTS.md` and current
 Laravel-first status; that approval does not extend to the frozen React copy.
 
-Backend parity work should happen in ASP.NET backend code, contracts, tests, and
-documentation. If a frontend file is touched during backend parity work, the
-change must explain why backend conformance was not enough.
+Backend contract-identity work should happen in ASP.NET backend code,
+contracts, tests, and documentation. If a frontend file is touched during that
+work, the change must explain why backend conformance was not enough.
 
 ## Contract Target
 
@@ -66,10 +66,10 @@ Contract identity means:
 If ASP.NET currently exposes a similar route under a different path, add a
 compatibility alias rather than changing the Laravel React frontend.
 
-## Proving Compatibility
+## Proving Contract Identity
 
-Do not claim that an ASP.NET module is compatible with the Laravel React
-frontend until the proof exists.
+Do not claim that an ASP.NET module is externally contract-identical for the
+Laravel React frontend until the proof exists.
 
 Required proof:
 

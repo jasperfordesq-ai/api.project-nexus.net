@@ -57,7 +57,7 @@ persistence, providers, or workflows.
 | Surface | Primary path | Responsibility |
 | --- | --- | --- |
 | Laravel backend | `C:\platforms\htdocs\staging` | Production behavior and API/workflow contract; read-only from this repository. |
-| Canonical React frontend | `C:\platforms\htdocs\staging\react-frontend` | Production API consumer and call-site contract source; unchanged for ASP.NET compatibility. |
+| Canonical React frontend | `C:\platforms\htdocs\staging\react-frontend` | Production API consumer and call-site contract source; unchanged for ASP.NET contract-identity proof. |
 | Laravel accessible UI/routes | `C:\platforms\htdocs\staging\accessible-frontend` and `routes/govuk-alpha*` | Browser experience, content, route, form, redirect, accessibility, and workflow source for Web UK; read-only. |
 | ASP.NET API | `src/Nexus.Api/Controllers`, `src/Nexus.Api/Program.cs` | Laravel-contract-identical JSON API target, auth, tenant resolution, admin routes, health, and OpenAPI. |
 | ASP.NET domain services | `src/Nexus.Api/Services` | Business rules, integrations, and background operations. |
@@ -88,7 +88,7 @@ SHAs.
 
 ## Invariants
 
-- Laravel defines the contract; compatibility failures are fixed in ASP.NET,
+- Laravel defines the contract; contract-identity failures are fixed in ASP.NET,
   not hidden by frontend backend-specific branches.
 - Both canonical frontends remain unchanged when switching backend. Web UK may
   select an API origin/configuration, but must not fork templates, validation,

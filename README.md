@@ -24,8 +24,9 @@ Current local Laravel parity source: `C:\platforms\htdocs\staging`.
 `apps/web-uk` is a distinct shared accessible frontend implementation stored in
 this repository. Laravel Blade defines its browser experience and the Laravel
 backend defines its API contract. The experimental ASP.NET backend is not a
-source of truth for Web UK; a separate parity workstream must make ASP.NET
-compatible before the same unchanged frontend can switch to it. See
+source of truth for Web UK; a separate contract-identity workstream must make
+ASP.NET externally contract-identical before the same unchanged frontend can
+switch to it. See
 [`apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md`](apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md).
 
 Current status is deliberately split by workstream:
@@ -94,6 +95,8 @@ attribution requirements.
 - [docs/system/README.md](docs/system/README.md) - developer, tester, security, configuration, and operations hub.
 - [SUPPORT.md](SUPPORT.md) - product-support and defect-reporting boundaries.
 - [SECURITY.md](SECURITY.md) - private vulnerability-reporting and safe-testing policy.
+- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) - participation standards and private conduct-reporting path.
+- [CHANGELOG.md](CHANGELOG.md) - curated direction and pause-history index; not a current score source.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - .NET architecture and runtime map.
 - [docs/CURRENT_ASPNET_CONTRACT_STATUS.md](docs/CURRENT_ASPNET_CONTRACT_STATUS.md) - current ASP.NET contract-identity status.
 - [docs/CURRENT_SCHEMA_READINESS.md](docs/CURRENT_SCHEMA_READINESS.md) - current schema-chain verdict, evidence boundary, and safe restart sequence.

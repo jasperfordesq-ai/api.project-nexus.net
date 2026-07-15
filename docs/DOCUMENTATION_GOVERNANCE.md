@@ -28,6 +28,8 @@ agent instructions.
 | API consumer documentation | [`api/README.md`](api/README.md) | Require exact endpoint contracts rather than a universal invented envelope |
 | Developer/operator/security/configuration documentation | [`system/README.md`](system/README.md) | Index supported local, test, configuration, security, operations, and incident-response methods |
 | Support and vulnerability reporting | [`SUPPORT.md`](../SUPPORT.md) and [`SECURITY.md`](../SECURITY.md) | Keep secrets, personal data, incidents, and vulnerabilities out of public defect reports |
+| Contributor participation and conduct reporting | [`CONTRIBUTING.md`](../CONTRIBUTING.md), [`CONTRIBUTOR_TERMS.md`](../CONTRIBUTOR_TERMS.md), and [`CODE_OF_CONDUCT.md`](../CODE_OF_CONDUCT.md) | Preserve licensing, disclosure, safety, private reporting, and non-retaliation boundaries |
+| Curated project-direction history | [`CHANGELOG.md`](../CHANGELOG.md) | Link to canonical current sources; never publish a competing live score, queue, or certification claim |
 | Surface-specific generated or curated inventories | `API_PARITY.md`, `SCHEMA_PARITY.md`, `FRONTEND_PARITY.md`, `LOCALIZATION_PARITY.md`, and their generated artifacts | State the capture date and exact source SHAs, or label unverifiable legacy tables historical and provenance-incomplete; do not turn representation counts into completion claims |
 
 When two maintained documents disagree, the source named in this table wins.
@@ -160,7 +162,7 @@ pointer and the Web UK Compose deployment hold. A passing script does not
 certify factual product parity; reviewers must still verify new SHAs, counts,
 tests, and evidence against the repository.
 
-Documentation health is 100/100 under system-wide Baseline D2 only when:
+Documentation health is 1000/1000 under pause-readiness Baseline D3 only when:
 
 - member, accessibility/language, support, administrator, API-consumer, and
   system/operator audiences each have a discoverable maintained entry point;
@@ -179,4 +181,10 @@ Documentation health is 100/100 under system-wide Baseline D2 only when:
 - active safety rules contain no ordinary-database testing exception and old
   handoffs/checkpoints are explicitly historical; and
 - the consistency script, Markdown link checker, relevant focused tests,
-  configuration/YAML/Compose validation, and `git diff --check` all pass.
+  configuration/YAML/Compose validation, and `git diff --check` all pass;
+- the pause handoff states an exact read order, evidence boundary, schema
+  verdict, restart prompts, and resume-authorization fence; and
+- the pause-readiness guard proves one clean `main` worktree, no local topic
+  branches or stashes, `HEAD=origin/main`, preserved archive tags, only
+  intentional open-PR remote heads, a final pause tag, and no known ignored
+  debris.

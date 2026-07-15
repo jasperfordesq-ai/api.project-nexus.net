@@ -11,6 +11,10 @@ is frozen historical reference; `apps/web-uk` is the approved accessible
 frontend implementation target and remains Laravel-first until separately
 certified against ASP.NET.
 
+Participation is governed by the
+[`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) as well as the contributor terms
+below.
+
 Project NEXUS .NET Edition is released under **AGPL-3.0-or-later**. By contributing,
 you agree that your contributions will be licensed under the same terms.
 

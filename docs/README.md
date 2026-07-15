@@ -20,13 +20,15 @@ configuration only, with Laravel defining the contract ASP.NET must satisfy.
 | [system/README.md](system/README.md) | Developer/operator hub for local setup, configuration, testing, security, operations, and incident response. |
 | [../SUPPORT.md](../SUPPORT.md) | Product-support and software-defect reporting. |
 | [../SECURITY.md](../SECURITY.md) | Private vulnerability reporting and safe-testing policy. |
+| [../CODE_OF_CONDUCT.md](../CODE_OF_CONDUCT.md) | Contributor participation, safety, conduct-reporting, and enforcement policy. |
+| [../CHANGELOG.md](../CHANGELOG.md) | Curated project-direction and pause-history index; never a competing score or queue. |
 | [FULL_PARITY_REMEDIATION_RUNBOOK.md](FULL_PARITY_REMEDIATION_RUNBOOK.md) | Fixed cross-workstream rubric, two-frontends-by-two-backends completion gate, shared evidence rules, and autonomous execution loop. Each canonical status document owns its live queue. |
 | [CURRENT_ASPNET_CONTRACT_STATUS.md](CURRENT_ASPNET_CONTRACT_STATUS.md) | Current ASP.NET fixed-rubric score, evidence boundary, published-but-unscored work, blockers, and next queue. Start here for backend status or resumption. |
 | [CURRENT_SCHEMA_READINESS.md](CURRENT_SCHEMA_READINESS.md) | One-page schema verdict at the pause: 163-ID runtime boundary, proved versus unproved migration evidence, static gap classification, CI timeout, and safe recommission sequence. |
 | [BACKEND_LOCALIZATION_CONTRACT.md](BACKEND_LOCALIZATION_CONTRACT.md) | Maintained ASP.NET backend localization contract: fixed Laravel/ASP.NET SHAs, request and recipient locale behavior, committed evidence, dirty-worktree boundary, and certification gaps. |
 | [DOCUMENTATION_GOVERNANCE.md](DOCUMENTATION_GOVERNANCE.md) | Canonical document hierarchy, fixed scoring/reporting rules, history labels, safety requirements, and documentation-health gate. |
 | [decisions/README.md](decisions/README.md) | Accepted architecture decisions. ADR-0001 makes externally contract-identical Laravel/ASP.NET behavior the binding backend objective. |
-| [DOCUMENTATION_HEALTH_REPORT.md](DOCUMENTATION_HEALTH_REPORT.md) | System-wide Baseline D2 documentation-health score, prior-audit correction, and reproducible evidence; explicitly separate from product completion. |
+| [DOCUMENTATION_HEALTH_REPORT.md](DOCUMENTATION_HEALTH_REPORT.md) | Baseline D3 1000-point documentation/pause-readiness audit, iterative score record, Git-freeze evidence, and reproducible checks; explicitly separate from product completion. |
 | [RESTART_INCIDENT_2026-07-15.md](RESTART_INCIDENT_2026-07-15.md) | Exact Irish-time Windows Update restart sequence, pre-restart task boundaries, recovery distinction, and zero-point interrupted-work rule. |
 | [CURRENT_LARAVEL_PARITY_HANDOFF.md](CURRENT_LARAVEL_PARITY_HANDOFF.md) | Chronological backend implementation history and older commands. Its former scores and “latest” checkpoints are historical; do not use it for current status. |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Runtime boundaries, application surfaces, and invariants for the .NET edition. |
@@ -34,7 +36,7 @@ configuration only, with Laravel defining the contract ASP.NET must satisfy.
 | [LARAVEL_PARITY_MAP.md](LARAVEL_PARITY_MAP.md) | Canonical parity gap register and implementation backlog. |
 | [PARITY_BACKLOG.md](PARITY_BACKLOG.md) | Generated backlog rollup, priority semantics, and implementation consumption rules. |
 | [API_PARITY.md](API_PARITY.md) | API contract inventory and comparison policy. |
-| [REACT_FRONTEND_RETIREMENT.md](REACT_FRONTEND_RETIREMENT.md) | Retirement policy for the old ASP.NET React fork and contract-compatibility rules for the Laravel React frontend. |
+| [REACT_FRONTEND_RETIREMENT.md](REACT_FRONTEND_RETIREMENT.md) | Retirement policy for the old ASP.NET React fork and contract-identity rules for the Laravel React frontend. |
 | [ACCESSIBLE_SHARED_FRONTEND.md](ACCESSIBLE_SHARED_FRONTEND.md) | Current architecture, two Laravel sources of truth, repository/data boundaries, GOV.UK upstream references, and guardrails for the shared Web UK implementation. |
 | [../apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md](../apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md) | Current Laravel-first status, cross-session ownership boundaries, blockers, and ordered completion queue. Read this before older Web UK handoffs. |
 | [../apps/web-uk/docs/CURRENT_WEB_UK_HANDOFF.md](../apps/web-uk/docs/CURRENT_WEB_UK_HANDOFF.md) | Chronological Web UK implementation history and detailed legacy commands. Its old counts and scores are superseded by the Laravel-first status document above. |
@@ -61,7 +63,7 @@ configuration only, with Laravel defining the contract ASP.NET must satisfy.
 - Treat `apps/react-frontend/` as a legacy/frozen React copy, not the forward
   development target.
 - Treat `C:\platforms\htdocs\staging\react-frontend` as the canonical React
-  frontend contract target for ASP.NET backend compatibility.
+  frontend contract target for ASP.NET contract identity.
 - Do not modify frontend files unless the user explicitly approves that specific
   frontend change.
 - Treat `apps/web-uk/` as the shared accessible frontend implementation target;

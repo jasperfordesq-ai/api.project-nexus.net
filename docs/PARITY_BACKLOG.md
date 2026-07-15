@@ -120,7 +120,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\compare-laravel-loca
 - Schema items include EF mappings, migrations, indexes/constraints where
   required, and tenant-safety verification.
 - React frontend items are satisfied by proving the Laravel React frontend can
-  run the certified workflow against ASP.NET through compatible backend
+  run the certified workflow against ASP.NET through contract-identical backend
   contracts. Proof requires a route/API matrix, ASP.NET regression tests, and
   runtime smoke tests.
 - Accessible frontend items include route/view behavior, API wiring, feature

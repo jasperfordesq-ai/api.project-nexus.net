@@ -23,7 +23,7 @@ Never convert partial or moving-SHA evidence into a complete-suite result.
 dotnet build Nexus.sln --configuration Release
 dotnet test Nexus.sln --configuration Release
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-backend-smoke.ps1
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-backend-shard.ps1 -Shard 1 -ShardCount 48
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-backend-shard.ps1 -ShardIndex 1 -ShardCount 48
 ```
 
 Read each script's parameters before use. The shard harness is committed, but
