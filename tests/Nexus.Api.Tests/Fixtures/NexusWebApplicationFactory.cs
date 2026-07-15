@@ -162,7 +162,7 @@ public class NexusWebApplicationFactory : WebApplicationFactory<Program>, IAsync
         // Create the disposable schema once, after PostgreSQL is ready and before
         // any test host is built. Derived WithWebHostBuilder factories share this
         // database; creating it from ConfigureServices made every derived host
-        // reconnect and rerun EnsureCreated, which could race or lose a Docker
+        // reconnect and rerun schema initialization, which could race or lose a Docker
         // Desktop socket during long integration classes.
         var options = new DbContextOptionsBuilder<NexusDbContext>()
             .UseNpgsql(ConnectionString)
@@ -173,7 +173,10 @@ public class NexusWebApplicationFactory : WebApplicationFactory<Program>, IAsync
             try
             {
                 await using var db = new NexusDbContext(options, new TenantContext());
-                await db.Database.EnsureCreatedAsync();
+                // Production starts from the committed migration chain. EnsureCreated
+                // omits migration SQL such as PostgreSQL immutability triggers, making
+                // integration results weaker than the deployed schema contract.
+                await db.Database.MigrateAsync();
                 break;
             }
             catch (NpgsqlException) when (attempt < 3)

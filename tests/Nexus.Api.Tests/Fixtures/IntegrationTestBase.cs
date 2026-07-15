@@ -8,6 +8,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Nexus.Api.Data;
+using Nexus.Api.Entities;
 
 namespace Nexus.Api.Tests.Fixtures;
 
@@ -99,6 +100,39 @@ public abstract class IntegrationTestBase : IAsyncLifetime
     protected async Task AuthenticateAsOtherTenantUserAsync()
     {
         var token = await GetAccessTokenAsync("other@test.com", "other-tenant");
+        SetAuthToken(token);
+    }
+
+    /// <summary>
+    /// Authenticate as a dedicated database-backed platform super administrator.
+    /// Keeping this identity separate preserves ordinary-admin authorization tests.
+    /// </summary>
+    protected async Task AuthenticateAsPlatformSuperAdminAsync()
+    {
+        var email = $"platform-super-{Guid.NewGuid():N}@test.com";
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
+            db.Users.Add(new User
+            {
+                TenantId = TestData.Tenant1.Id,
+                Email = email,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(TestDataSeeder.TestPassword),
+                FirstName = "Platform",
+                LastName = "Super",
+                Role = "member",
+                IsAdmin = false,
+                IsSuperAdmin = true,
+                IsTenantSuperAdmin = false,
+                IsGod = false,
+                IsActive = true,
+                RegistrationStatus = RegistrationStatus.Active,
+                CreatedAt = DateTime.UtcNow
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var token = await GetAccessTokenAsync(email, "test-tenant");
         SetAuthToken(token);
     }
 }

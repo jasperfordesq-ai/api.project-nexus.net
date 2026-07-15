@@ -6,11 +6,12 @@
 /*
  * Auth-gate tests for BulkOperationsController (super-admin bulk user
  * activate/suspend/delete-listings/assign-role). The blast-radius of these
- * endpoints makes the AdminOnly gate especially load-bearing.
+ * endpoints makes the PlatformSuperAdminOnly gate especially load-bearing.
  *
- * We hit POST /api/super-admin/bulk/activate with an empty body. Admin will
- * see 400 (model validation), but anything <401 proves auth passed; member
- * must see 403 and anonymous must see 401.
+ * We hit POST /api/super-admin/bulk/activate with an empty body. A platform
+ * super administrator will see 400 (model validation), but anything below 401
+ * proves auth passed. Ordinary admins and members must see 403; anonymous
+ * callers must see 401.
  */
 
 using System.Net;
@@ -30,12 +31,17 @@ public class BulkOperationsControllerAuthTests : IntegrationTestBase
     [Theory]
     [InlineData("anonymous", (int)HttpStatusCode.Unauthorized)]
     [InlineData("member", (int)HttpStatusCode.Forbidden)]
-    [InlineData("admin", 200)]
+    [InlineData("admin", (int)HttpStatusCode.Forbidden)]
+    [InlineData("platform_super_admin", 200)]
     public async Task BulkActivate_AuthGate(string role, int expectedStatus)
     {
         if (role == "anonymous")
         {
             ClearAuthToken();
+        }
+        else if (role == "platform_super_admin")
+        {
+            await AuthenticateAsPlatformSuperAdminAsync();
         }
         else
         {
@@ -46,11 +52,11 @@ public class BulkOperationsControllerAuthTests : IntegrationTestBase
 
         var resp = await Client.PostAsync(Path, JsonContent.Create(new { userIds = new int[0] }));
 
-        if (role == "admin")
+        if (role == "platform_super_admin")
         {
-            // Admin must not be auth-rejected. Body may be invalid → 400 is OK.
+            // Platform super admin must pass authorization. Body may be invalid.
             ((int)resp.StatusCode).Should().BeLessThan(401,
-                $"admin must not get auth-rejected on {Path}");
+                $"platform super admin must not get auth-rejected on {Path}");
         }
         else
         {

@@ -156,38 +156,38 @@ public class GapFeatureTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task BulkActivate_AsAdmin_ReturnsOk()
+    public async Task BulkActivate_AsPlatformSuperAdmin_ReturnsOk()
     {
-        await AuthenticateAsAdminAsync();
+        await AuthenticateAsPlatformSuperAdminAsync();
         (await Client.PostAsJsonAsync("/api/super-admin/bulk/activate", new { user_ids=new[]{999999} })).StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     [Fact]
-    public async Task BulkSuspend_AsAdmin_ReturnsOk()
+    public async Task BulkSuspend_AsPlatformSuperAdmin_ReturnsOk()
     {
-        await AuthenticateAsAdminAsync();
+        await AuthenticateAsPlatformSuperAdminAsync();
         (await Client.PostAsJsonAsync("/api/super-admin/bulk/suspend", new { user_ids=new[]{999999} })).StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     [Fact]
-    public async Task BulkDeleteListings_AsAdmin_ReturnsOk()
+    public async Task BulkDeleteListings_AsPlatformSuperAdmin_ReturnsOk()
     {
-        await AuthenticateAsAdminAsync();
+        await AuthenticateAsPlatformSuperAdminAsync();
         (await Client.PostAsJsonAsync("/api/super-admin/bulk/delete-listings", new { listing_ids=new[]{999999} })).StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     [Fact]
-    public async Task BulkAssignRole_InvalidRole_ReturnsBadRequest()
+    public async Task BulkAssignRole_AsPlatformSuperAdmin_InvalidRole_ReturnsBadRequest()
     {
-        await AuthenticateAsAdminAsync();
+        await AuthenticateAsPlatformSuperAdminAsync();
         var r = await Client.PostAsJsonAsync("/api/super-admin/bulk/assign-role", new { user_ids=new[]{1}, role="superuser" });
         r.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     [Fact]
-    public async Task BulkAssignRole_ValidRole_ReturnsOk()
+    public async Task BulkAssignRole_AsPlatformSuperAdmin_ValidRole_ReturnsOk()
     {
-        await AuthenticateAsAdminAsync();
+        await AuthenticateAsPlatformSuperAdminAsync();
         (await Client.PostAsJsonAsync("/api/super-admin/bulk/assign-role", new { user_ids=new[]{999999}, role="member" })).StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
