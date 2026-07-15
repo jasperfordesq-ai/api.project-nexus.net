@@ -586,6 +586,7 @@ public class NexusDbContext : DbContext
     public DbSet<MarketplaceReport> MarketplaceReports => Set<MarketplaceReport>();
     public DbSet<MarketplaceCategoryTemplate> MarketplaceCategoryTemplates => Set<MarketplaceCategoryTemplate>();
     public DbSet<MarketplaceReportNotification> MarketplaceReportNotifications => Set<MarketplaceReportNotification>();
+    public DbSet<DonationDispute> DonationDisputes => Set<DonationDispute>();
     public DbSet<MarketplaceSavedSearch> MarketplaceSavedSearches => Set<MarketplaceSavedSearch>();
     public DbSet<MarketplaceCollection> MarketplaceCollections => Set<MarketplaceCollection>();
     public DbSet<MarketplaceCollectionItem> MarketplaceCollectionItems => Set<MarketplaceCollectionItem>();
@@ -675,6 +676,7 @@ public class NexusDbContext : DbContext
             new CaringCommunityConfiguration(_tenantContext),
             new VereinConfiguration(_tenantContext),
             new MarketplaceSupportConfiguration(_tenantContext),
+            new DonationDisputeConfiguration(_tenantContext),
             new RegionalAnalyticsConfiguration(_tenantContext),
             new ProvisioningRequestConfiguration(_tenantContext),
             new ApiPartnerConfiguration(_tenantContext),

@@ -7,8 +7,8 @@ Status: **Maintained reference — current comparison method with dated evidence
 Evidence provenance: the current static table inventory was regenerated on
 2026-07-15 against Laravel
 `903d03d3db78bbf87129ad35728be3b72819acaf` and the schema candidate based on
-committed ASP.NET tree `92125875456ecf87d5fb1b8bb4062da8d3146085`, including
-`20260715062938_MarketplaceSupportStorageParity`. Any older table/count without
+committed ASP.NET tree `0864f72acb607dbe79f1b9bc198d81f31c62c1cd`, including
+`20260715070811_DonationDisputeStorageParity`. Any older table/count without
 its own exact source pair is a historical, provenance-incomplete checkpoint and
 cannot support current score or upgrade-safety claims.
 
@@ -19,6 +19,43 @@ Use [`CURRENT_ASPNET_CONTRACT_STATUS.md`](CURRENT_ASPNET_CONTRACT_STATUS.md) for
 the current banked score and active schema/upgrade deductions. Dated sections
 here are retained evidence. Static table-name counts are never an overall score
 and remain historical until explicitly regenerated against named SHAs.
+
+## 2026-07-15 Donation Dispute Storage Evidence
+
+Migration `20260715070811_DonationDisputeStorageParity` closes the genuine
+`donation_disputes` exact-name gap. The tenant-scoped table carries Laravel's
+Stripe dispute, payment-intent, charge, amount, currency, status, reason,
+evidence deadline, payment-route, connected-account, JSON payload, and
+timestamp fields. It also preserves the unique dispute identifier, Laravel's
+four lookup indexes, and adds the ASP.NET tenant relationship plus a
+non-negative amount check for Laravel's unsigned amount contract.
+
+Verification on committed predecessor
+`0864f72acb607dbe79f1b9bc198d81f31c62c1cd`:
+
+- a forced clean Release API build passed in 6m18.09s with zero errors; the
+  compact incremental summary reported zero warnings and zero errors, while
+  the Debug test build surfaced the same three pre-existing API warnings;
+- the focused `DonationDisputeSchemaParityTests` class executed and passed 3/3
+  in 20 seconds;
+- `dotnet ef migrations has-pending-model-changes` reported no model drift;
+- a blank disposable PostgreSQL 16.4 database applied all 156 runtime
+  migrations through the donation-dispute migration and exposed the table,
+  four explicit indexes plus its primary-key index, tenant FK, and amount
+  check;
+- a second disposable database was populated at
+  `20260715062938_MarketplaceSupportStorageParity` with one tenant and one
+  marketplace category template, then upgraded by exactly the donation-
+  dispute migration without losing either row;
+- a Laravel-shaped dispute row accepted JSON evidence and resolved defaults to
+  `0`, `gbp`, `needs_response`, and `platform_default`; missing-tenant and
+  negative-amount inserts were both rejected with no invalid row left behind;
+- the regenerated schema comparator and its fixture passed, and the disposable
+  PostgreSQL container was removed after verification.
+
+This slice moves the static exact-name inventory from 234 to 235 matches. The
+banked schema category remains **129/150** until the canonical ASP.NET status
+document records an accepted scoring movement.
 
 ## 2026-07-15 Marketplace Support Storage Evidence
 
@@ -105,31 +142,35 @@ comparison, not runtime migration proof, API/workflow parity, or a score.
 | Source | Count | Notes |
 | --- | ---: | --- |
 | Laravel migration files | 384 | PHP files under `database/migrations`. |
-| ASP.NET EF migration source files | 157 | Excludes designer files and the model snapshot. |
+| ASP.NET EF migration source files | 158 | Excludes designer files and the model snapshot. |
 | Laravel created tables | 301 | Unique `Schema::create(...)` names. |
 | Laravel touched tables | 131 | Unique `Schema::table(...)` names. |
 | Laravel explicit model tables | 268 | Unique explicit model `$table` declarations. |
 | Laravel source tables | 458 | Union of created, touched, and explicit model table names. |
-| ASP.NET tables | 432 | Union of EF `ToTable`, `[Table]`, and migration `CreateTable` names. |
-| Exact matched tables | 234 | Identical normalized names in both sources. |
-| Missing Laravel exact names | 224 | Laravel names with no identical ASP.NET name. |
+| ASP.NET tables | 433 | Union of EF `ToTable`, `[Table]`, and migration `CreateTable` names. |
+| Exact matched tables | 235 | Identical normalized names in both sources. |
+| Missing Laravel exact names | 223 | Laravel names with no identical ASP.NET name. |
 | ASP.NET-only exact names | 198 | ASP.NET names with no identical Laravel name. |
 
-The 224 missing exact names currently partition as follows. These categories
+The 223 missing exact names currently partition as follows. These categories
 are mutually exclusive, so their counts reconcile to the comparator total.
 
 | Classification | Count | Evidence boundary |
 | --- | ---: | --- |
 | Classified aliases | 20 | A differently named ASP.NET aggregate has been identified. Each alias remains a gap until its migration shape and external workflow are proved equivalent. |
-| Podcast compatibility-storage gaps | 8 | `podcast_episode_chapters`, `podcast_episode_listens`, `podcast_episode_reactions`, `podcast_episode_reports`, `podcast_episodes`, `podcast_media_cleanup_tasks`, `podcast_show_subscriptions`, and `podcast_shows`. Existing API compatibility does not replace these Laravel storage/evidence contracts. |
-| Unclassified missing names | 196 | No accepted alias or replacement classification has yet been recorded. |
-| **Total missing exact names** | **224** | **20 + 8 + 196.** |
+| Compatibility-storage gaps | 14 | Podcast: `podcast_episode_chapters`, `podcast_episode_listens`, `podcast_episode_reactions`, `podcast_episode_reports`, `podcast_episodes`, `podcast_media_cleanup_tasks`, `podcast_show_subscriptions`, and `podcast_shows`. Advertising: `ad_campaigns`, `ad_creatives`, `ad_impressions`, and `ad_clicks`, currently persisted as campaign/creative/aggregate JSON under tenant-config key `local_advertising.campaigns`. Appreciations: `appreciations` and `appreciation_reactions`, currently persisted under tenant-config key `social.appreciations`. Existing API compatibility does not replace these Laravel storage/evidence contracts, so these are not accepted aliases or exact matches. |
+| Unclassified missing names | 189 | No accepted alias or replacement classification has yet been recorded. |
+| **Total missing exact names** | **223** | **20 + 14 + 189.** |
 
 The five Verein names previously classified as genuine missing storage are now
 represented exactly and are therefore absent from this missing-name partition.
 The Verein slice moved the static exact-name inventory from 227 to 232 matches,
-and the marketplace-support slice moves it from 232 to 234. This remains a
-diagnostic inventory rather than an overall parity percentage.
+the marketplace-support slice moved it from 232 to 234, and the donation-
+dispute slice moves it from 234 to 235. The four advertising names and two
+appreciation names move from unclassified to compatibility-storage gaps,
+reducing the unclassified set from 196 to 190 before the donation-dispute
+closure reduces it again to 189. This remains a diagnostic inventory rather
+than an overall parity percentage.
 
 The comparator's Markdown renderer was also corrected in this audit. Missing
 and ASP.NET-only rows now render concrete table names and source paths rather
