@@ -107,6 +107,7 @@ try {
         'archive/pre-pause/stash-fix2-wip' = '34e61aeb90a134f54e4f97f22171d61b891939b5'
         'archive/pre-pause/stash-api-partners-wip' = 'd36769bc3befa238251de9404f55adddd1bf4bac'
         'archive/pre-pause/unfinished-ci-sharding' = 'e1018a3434a152f9dc7a952effcfacb9cf3a8f6b'
+        'archive/pre-pause/ci-sharding-candidate' = 'a0ab8ed290e07efe2ceaa4babc3d66535f9dc892'
     }
     foreach ($entry in $archiveTargets.GetEnumerator()) {
         $matchingTag = @(Invoke-GitLines @('tag', '--list', $entry.Key))

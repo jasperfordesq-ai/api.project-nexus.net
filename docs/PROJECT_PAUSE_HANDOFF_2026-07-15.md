@@ -263,26 +263,31 @@ The final clean boundary is the commit identified by annotated tag
 | Registered worktrees | 5 | 1, at the repository root |
 | Local branches | 9 | 1, `main` only |
 | Stashes | 8 | 0 |
-| Stale remote branches removed | 0 | 6 |
+| Stale remote branches removed | 0 | 7 |
 | Intentional open-PR remote heads | 4 candidates inspected | 3 retained |
-| Pushed archive tags | 0 | 17 under `archive/pre-pause/*` |
+| Pushed archive tags | 0 | 18 under `archive/pre-pause/*` |
 | Known accidental ignored paths | 4 | 0 |
 
 The archive tags preserve two re-audit snapshots, three unique Web UK
 prototype tips, the merged schema and Web UK workstream tips, the legacy
-`master` tip, eight former stash commits, and the unfinished CI-sharding patch.
-They are historical recovery refs, not active branches or restart queues.
+`master` tip, eight former stash commits, the unfinished coverage-collecting CI
+experiment, and its refined no-coverage CI candidate. They are historical
+recovery refs, not active branches or restart queues.
 
 The unfinished four-shard/coverage experiment parsed but its local isolated run
-ended after about 15 minutes without TRX or coverage output. It was not merged.
-Its exact patch is preserved at
-`archive/pre-pause/unfinished-ci-sharding` for a future explicitly authorized
-retry with terminal evidence.
+ended after about 15 minutes without TRX or coverage output. Its exact patch is
+preserved at `archive/pre-pause/unfinished-ci-sharding`. A refined candidate at
+`archive/pre-pause/ci-sharding-candidate` removed coverage and completed static
+discovery, but no GitHub workflow run existed. A racing cherry-pick briefly
+placed that candidate on `main`; the final pause history immediately reverts it,
+so neither candidate changes the tagged tree. Both require a future explicitly
+authorized retry with terminal evidence.
 
 Removed remote heads were the two re-audit branches, schema workstream branch,
-Web UK workstream branch, legacy `master`, and superseded NuGet Dependabot
-branch (PR 69 closed). Buildx PR 11, frozen-React `qs` PR 71, and standalone-
-admin `qs` PR 72 remain open and were retained deliberately.
+Web UK workstream branch, unproved CI-candidate branch, legacy `master`, and
+superseded NuGet Dependabot branch (PR 69 closed). Buildx PR 11, frozen-React
+`qs` PR 71, and standalone-admin `qs` PR 72 remain open and were retained
+deliberately.
 
 The removed ignored debris was two zero-byte `_nul` files, an accidental empty
 `cmd.exe` directory, and a malformed empty `robocopy` directory tree. No

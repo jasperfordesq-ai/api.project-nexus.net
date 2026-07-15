@@ -49,7 +49,7 @@ client switching, CI, providers, or production are complete or certified.
 | Workstream handoffs, prompts, ownership, and finite queues | 130/130 | The pause handoff supplies copy-ready read-only, backend, schema, and Web UK prompts. Canonical status pages preserve the backend eight-package queue and Web UK three-gate finish line. The runbook is fenced as resume-only and exclusive ownership rules protect shared hotspots. |
 | Development, testing, security, data, and operations safety | 110/110 | Maintained guides cover supported Docker development, real ports and fictitious seed identities, configuration, test evidence levels, tenant/security invariants, ordinary-Laravel-database prohibition, manual-only production authority, deployment quarantine, incidents, backups/restores, and exact-SHA limitations. Invalid shard documentation was corrected to `-ShardIndex`. |
 | Audience, contributor, legal, and governance coverage | 90/90 | Member, administrator, API consumer, developer/operator, support, vulnerability, contributor, and conduct audiences have discoverable entry points. Root and Web UK attribution agree on hOUR Timebank CLG and Sarah Bird. CONTRIBUTING, contributor terms, CODE_OF_CONDUCT, LICENSE, NOTICE, SUPPORT, SECURITY, CHANGELOG, and the ADR index are linked. |
-| Git/worktree/stash/branch freeze and history preservation | 80/80 | Five worktrees became one; nine local branches became `main` only; eight old stashes became zero; unique and superseded histories were retained under 17 pushed `archive/pre-pause/*` tags; six stale remote branches were removed; three branches backing open Dependabot PRs were retained; ignored accidental debris was removed. |
+| Git/worktree/stash/branch freeze and history preservation | 80/80 | Five initial worktrees became one; nine initial local branches became `main` only; eight old stashes became zero; unique and superseded histories were retained under 18 pushed `archive/pre-pause/*` tags; seven stale remote branches were removed; three branches backing open Dependabot PRs were retained; ignored accidental debris was removed. |
 | Automated consistency, links, artifact hygiene, and reproducibility | 80/80 | The documentation guard checks D3 arithmetic, pause markers, score/provenance boundaries, safety rules, audience entry points, generated-artifact caveats, and deployment quarantines. The pause-readiness guard also checks Git topology, archive-tag targets, final tag, clean remote equality, debris absence, documentation consistency, and Markdown links. |
 | **Total** | **1000/1000** | **Documentation health only. Product and certification gaps remain open.** |
 
@@ -68,7 +68,7 @@ same D3 denominator and closed explicit deductions:
 | Contract-decision pass | 660/1000 | ADR-0001 closed mission ambiguity; schema, cold-start, and Git-freeze deductions remained. |
 | Schema-evidence pass | 725/1000 | Canonical schema verdict and recommission package closed the schema-documentation deduction; cold-start and Git freeze remained. |
 | Handoff/governance pass | 925/1000 | Pause blueprint, read order, prompts, runbook fence, normal project docs, attribution repair, and stronger contract wording closed every documentation-content deduction. The remaining 75 points were withheld for physical Git cleanup and proof. |
-| Repository-freeze pass | **1000/1000** | Archive tags were pushed, stale worktrees/branches/stashes/remotes and debris were removed, unfinished CI work was preserved rather than merged, and the final clean tagged boundary passed the automated guard. |
+| Repository-freeze pass | **1000/1000** | Archive tags were pushed, stale worktrees/branches/stashes/remotes and debris were removed, unfinished CI work was preserved and reverted out of the final tree, and the final clean tagged boundary passed the automated guard. |
 
 ## Product Boundaries Preserved
 
@@ -93,20 +93,24 @@ same D3 denominator and closed explicit deductions:
 
 ### Preserved Histories
 
-Seventeen annotated tags under `archive/pre-pause/*` preserve:
+Eighteen annotated tags under `archive/pre-pause/*` preserve:
 
 - two re-audit snapshots;
 - three unique Web UK prototype tips;
 - the merged schema and Web UK workstream tips;
 - the legacy `master` tip;
-- eight former stash commits; and
-- the unfinished four-way CI sharding/coverage experiment.
+- eight former stash commits;
+- the unfinished four-way CI sharding/coverage experiment; and
+- the refined no-coverage CI sharding candidate.
 
-The CI experiment was not merged. YAML and PowerShell parsed, but its isolated
-local validation spent about 15 minutes in coverage collection and ended
-without a TRX or coverage report. The exact patch is recoverable from
-`archive/pre-pause/unfinished-ci-sharding`; it requires a new authorized phase
-and terminal proof before use.
+The first CI experiment parsed, but its isolated local validation spent about 15
+minutes in coverage collection and ended without a TRX or coverage report. The
+refined candidate completed static discovery but removed coverage and had no
+GitHub workflow run. A racing cherry-pick placed the refined candidate on
+`main`, and the final pause history immediately reverted it. The two exact
+patches are recoverable from `archive/pre-pause/unfinished-ci-sharding` and
+`archive/pre-pause/ci-sharding-candidate`; neither changes the final tagged
+tree, and both require a new authorized phase plus terminal proof before use.
 
 ### Removed And Retained Remote Heads
 
@@ -116,6 +120,7 @@ Removed as stale after tag preservation or merge verification:
 - `codex/reaudit-snapshot-20260715-0514`;
 - `codex/schema-parity-20260714`;
 - `codex/web-uk-laravel-parity`;
+- `codex/ci-green-20260715`;
 - legacy `master`; and
 - superseded `dependabot/nuget/src/Nexus.Api/nuget-9b822c48da` (PR 69 closed;
   `main` already carries a newer package version).
