@@ -1602,6 +1602,23 @@ database, migration, runtime request, container, or production operation was
 performed. This slice is unscored; the canonical bank remains `663/1,000`
 until another complete fixed-rubric audit.
 
+### 2026-07-15 Federation mutation path-assertion follow-up
+
+The shared federation dispatcher now has direct API-client proof for connection
+request/accept/reject, message translation, batch read, and credit-transfer
+paths in addition to existing message and connection-removal assertions. The
+cases pin Laravel's exact paths, POST verbs, bearer authority, payload omission
+for empty actions, cross-tenant recipient fields, translation/read identifiers,
+idempotency data, unmodified success envelopes, and structured transfer `422`
+validation propagation. This closes the currently generated OpenAPI-omitted
+federation mutation path set at the API-client boundary; live cross-tenant
+effects, role policy, balances and cleanup require the disposable runtime.
+
+The focused API-client suite passes `231/231`. No Laravel or ASP.NET source,
+database, migration, runtime request, container, or production operation was
+performed. This slice is unscored; the canonical bank remains `663/1,000`
+until another complete fixed-rubric audit.
+
 - GOV.UK crown, logotype, official header identity, OGL block, or Crown
   copyright wording.
 - Laravel/PHP implementation details.

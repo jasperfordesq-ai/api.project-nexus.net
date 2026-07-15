@@ -4157,6 +4157,68 @@ describe('API Request Functions', () => {
         })
       );
     });
+
+    it('should preserve federation connection, translation, read, and transfer mutation paths', async () => {
+      const cases = [
+        ['POST', '/connections', { receiver_id: 77, receiver_tenant_id: 12, message: 'Let us connect' }],
+        ['POST', '/connections/91/accept', undefined],
+        ['POST', '/connections/92/reject', undefined],
+        ['POST', '/messages/44/translate', { target_language: 'ga' }],
+        ['POST', '/messages/mark-read-batch', { ids: [44, 45] }],
+        ['POST', '/transactions', {
+          receiver_id: 77,
+          receiver_tenant_id: 12,
+          amount: 3,
+          description: 'Shared repair work',
+          idempotency_key: 'transfer-123'
+        }]
+      ];
+
+      for (const [method, pathValue, body] of cases) {
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ data: { accepted: true } })
+        });
+
+        await expect(api.callFederationApi('test-token', method, pathValue, body))
+          .resolves.toEqual({ data: { accepted: true } });
+        expect(mockFetch).toHaveBeenLastCalledWith(
+          `http://localhost:5000/api/v2/federation${pathValue}`,
+          expect.objectContaining({
+            method,
+            headers: expect.objectContaining({ Authorization: 'Bearer test-token' }),
+            ...(body === undefined ? {} : { body: JSON.stringify(body) })
+          })
+        );
+        if (body === undefined) {
+          expect(mockFetch.mock.calls.at(-1)[1]).not.toHaveProperty('body');
+        }
+      }
+
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 422,
+        headers: { get: () => 'application/json' },
+        json: async () => ({
+          message: 'The transfer could not be completed.',
+          errors: { amount: ['The amount exceeds the federation limit.'] },
+          code: 'TRANSFER_LIMIT_EXCEEDED'
+        })
+      });
+
+      await expect(api.callFederationApi('test-token', 'POST', '/transactions', {
+        receiver_id: 77, receiver_tenant_id: 12, amount: 101, description: 'Too large'
+      })).rejects.toMatchObject({
+        name: 'ApiError',
+        status: 422,
+        message: 'The transfer could not be completed.',
+        data: {
+          errors: { amount: ['The amount exceeds the federation limit.'] },
+          code: 'TRANSFER_LIMIT_EXCEEDED'
+        }
+      });
+    });
   });
 
   describe('donateCredits', () => {
