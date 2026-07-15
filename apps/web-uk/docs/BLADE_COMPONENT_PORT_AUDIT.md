@@ -1514,6 +1514,29 @@ database, migration, runtime request, container, or production operation was
 performed. This slice is unscored; the canonical bank remains `663/1,000`
 until another complete fixed-rubric audit.
 
+### 2026-07-15 OpenAPI-omission direct-assertion closure
+
+The final nine unique helpers behind Laravel route declarations omitted from
+OpenAPI now have direct API-client assertions. The closing slice pins bookmark
+and saved-collection queries, public and signed reaction reads, newsletter
+token and given-review reads, job CV and resource binary downloads, identifier
+encoding, data/meta envelopes, bearer boundaries, bytes/file/cache metadata,
+and structured binary `404` propagation. Together with the preceding focused
+slices, all `217` omitted contracts across `85` unique helpers now have a
+direct `tests/api.test.js` assertion reference.
+
+Ledger schema 2 makes this boundary durable per row and reports
+`routeDeclaredOpenApiOmissionsWithoutDirectApiClientAssertions: 0`; focused
+API-client and generator proof passes `231/231`, and the complete non-mutating
+gate passes `52/52` suites and `1,721/1,721` tests. This closes only the direct-
+helper assertion subqueue. Exhaustive significant request/response fields,
+role/status variants, side effects, and runtime certification remain open in
+finite package 9 and the disposable-environment packages.
+
+No Laravel or ASP.NET source, database, migration, runtime request, download,
+container, or production operation was performed. This slice is unscored; the
+canonical bank remains `663/1,000` until another complete fixed-rubric audit.
+
 - GOV.UK crown, logotype, official header identity, OGL block, or Crown
   copyright wording.
 - Laravel/PHP implementation details.

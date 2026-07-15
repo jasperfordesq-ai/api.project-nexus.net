@@ -498,6 +498,13 @@ function findTests(testSources, helper, endpoint) {
     .map((testFile) => testFile.relativePath);
 }
 
+function hasDirectApiClientAssertion(testSources, helper) {
+  const apiClientTest = testSources.find((testFile) => testFile.relativePath === 'tests/api.test.js');
+  if (!apiClientTest) return false;
+  const escapedHelper = helper.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`\\bapi\\s*\\.\\s*${escapedHelper}\\s*\\(`).test(apiClientTest.source);
+}
+
 function openApiIndex(openApi) {
   const index = new Map();
   for (const [routePath, pathItem] of Object.entries(openApi.paths || {})) {
@@ -582,6 +589,7 @@ function buildRows({ directContracts, wrapperContracts, consumers, openApi, lara
     const authMode = operation?.security?.length > 0 ? 'required' : (row.authMode || 'guest');
     const mutation = row.method === 'DYNAMIC' ? 'dynamic' : !READ_METHODS.has(row.method);
     const tests = findTests(testSources, row.helper, displayPath(row.path));
+    const directApiClientAssertion = hasDirectApiClientAssertion(testSources, row.helper);
     const frontendConsumers = stableUnique(row.consumers);
     return {
       id: `${row.method} ${displayPath(row.path)} [${row.helper}]`,
@@ -619,6 +627,7 @@ function buildRows({ directContracts, wrapperContracts, consumers, openApi, lara
       },
       frontendConsumers,
       tests,
+      directApiClientAssertion,
       evidence: tests.length ? 'static/mock test reference detected; inspect assertions before claiming contract certification' : 'no test reference detected'
     };
   }).sort((left, right) => left.path.localeCompare(right.path) || left.method.localeCompare(right.method) || left.apiHelper.localeCompare(right.apiHelper));
@@ -651,6 +660,7 @@ function renderMarkdown(report) {
     `- Dynamic unresolved contracts: ${report.summary.dynamicUnresolved}`,
     `- State-changing contracts: ${report.summary.stateChanging}`,
     `- Rows without detected tests: ${report.summary.withoutTests}`,
+    `- OpenAPI-omitted contracts without direct API-client assertions: ${report.summary.routeDeclaredOpenApiOmissionsWithoutDirectApiClientAssertions}`,
     `- API source SHA-256: \`${report.sources.apiSha256}\``,
     `- Laravel OpenAPI SHA-256: \`${report.sources.laravelOpenApiSha256}\``,
     `- Laravel API routes SHA-256: \`${report.sources.laravelApiRoutesSha256}\``,
@@ -702,7 +712,7 @@ function generateApiConsumerLedger(options = {}) {
     testSources
   });
   const report = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     generatedAt: provenance.generatedAt,
     provenance,
     sources: {
@@ -721,7 +731,10 @@ function generateApiConsumerLedger(options = {}) {
       withoutLaravelRouteDeclaration: rows.filter((row) => row.laravel.status === 'missing-openapi-match').length,
       dynamicUnresolved: rows.filter((row) => row.laravel.status === 'dynamic-unresolved').length,
       stateChanging: rows.filter((row) => row.sideEffects.startsWith('state-changing')).length,
-      withoutTests: rows.filter((row) => row.tests.length === 0).length
+      withoutTests: rows.filter((row) => row.tests.length === 0).length,
+      routeDeclaredOpenApiOmissionsWithoutDirectApiClientAssertions: rows.filter((row) => (
+        row.laravel.status === 'route-declared-openapi-omission' && !row.directApiClientAssertion
+      )).length
     },
     rows
   };

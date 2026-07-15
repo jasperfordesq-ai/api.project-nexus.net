@@ -4846,6 +4846,167 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('remaining Laravel OpenAPI-omitted read helpers', () => {
+    const jsonResponse = (body) => ({
+      ok: true,
+      headers: { get: () => 'application/json' },
+      json: async () => body
+    });
+
+    it('should preserve bookmark and saved-collection query envelopes', async () => {
+      const bookmarks = { data: [{ id: 4, type: 'listing' }], meta: { total: 1 } };
+      const collections = { data: [{ id: 12, name: 'Useful links' }], meta: { total: 1 } };
+      const items = { data: [{ id: 4, item_type: 'listing' }], meta: { current_page: 2, total: 21 } };
+      mockFetch
+        .mockResolvedValueOnce(jsonResponse(bookmarks))
+        .mockResolvedValueOnce(jsonResponse(collections))
+        .mockResolvedValueOnce(jsonResponse(items));
+
+      await expect(api.getBookmarks('test-token', {
+        type: 'listing', collection_id: 12, page: 2, per_page: 20
+      })).resolves.toEqual(bookmarks);
+      await expect(api.getSavedCollections('test-token')).resolves.toEqual(collections);
+      await expect(api.getSavedCollectionItems('test-token', '12/unsafe', { page: 2, per_page: 20 }))
+        .resolves.toEqual(items);
+
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        1,
+        'http://localhost:5000/api/v2/bookmarks?type=listing&collection_id=12&page=2&per_page=20',
+        expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer test-token' }) })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        2,
+        'http://localhost:5000/api/v2/me/collections',
+        expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer test-token' }) })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        3,
+        'http://localhost:5000/api/v2/me/collections/12%2Funsafe/items?page=2&per_page=20',
+        expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer test-token' }) })
+      );
+    });
+
+    it('should preserve public reaction summaries and signed reactor pagination', async () => {
+      const summary = { data: { like: 3, celebrate: 1, total: 4 } };
+      const reactors = { data: [{ id: 77, name: 'Alex' }], meta: { current_page: 2, total: 3 } };
+      mockFetch
+        .mockResolvedValueOnce(jsonResponse(summary))
+        .mockResolvedValueOnce(jsonResponse(reactors));
+
+      await expect(api.getReactionSummary('', 'blog/post', 42)).resolves.toEqual(summary);
+      await expect(api.getReactors('test-token', 'blog/post', 42, 'celebrate & support', {
+        page: 2, per_page: 20
+      })).resolves.toEqual(reactors);
+
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        1,
+        'http://localhost:5000/api/v2/reactions/blog%2Fpost/42',
+        expect.objectContaining({ headers: expect.not.objectContaining({ Authorization: expect.anything() }) })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        2,
+        'http://localhost:5000/api/v2/reactions/blog%2Fpost/42/users/celebrate%20%26%20support?page=2&per_page=20',
+        expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer test-token' }) })
+      );
+    });
+
+    it('should preserve newsletter-token and given-review read contracts', async () => {
+      const newsletter = { data: { status: 'valid', email_masked: 'a***@example.test' } };
+      const reviews = { data: [{ id: 91, rating: 5 }], meta: { total: 1 } };
+      mockFetch
+        .mockResolvedValueOnce(jsonResponse(newsletter))
+        .mockResolvedValueOnce(jsonResponse(reviews));
+
+      await expect(api.callNewsletterApi('GET', '?token=signed%2Btoken')).resolves.toEqual(newsletter);
+      await expect(api.callReviewApi('test-token', 'GET', '/given?per_page=20')).resolves.toEqual(reviews);
+
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        1,
+        'http://localhost:5000/api/v2/newsletter/unsubscribe?token=signed%2Btoken',
+        expect.objectContaining({ method: 'GET' })
+      );
+      expect(mockFetch.mock.calls[0][1].headers).not.toHaveProperty('Authorization');
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        2,
+        'http://localhost:5000/api/v2/reviews/given?per_page=20',
+        expect.objectContaining({
+          method: 'GET',
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
+        })
+      );
+    });
+
+    it('should preserve job CV and resource download bytes, metadata, and errors', async () => {
+      const cvBytes = Buffer.from('%PDF candidate cv', 'utf8');
+      const resourceBytes = Buffer.from('resource bytes', 'utf8');
+      const binaryResponse = (body, contentType, disposition) => ({
+        ok: true,
+        status: 200,
+        headers: {
+          get: (name) => ({
+            'content-type': contentType,
+            'content-disposition': disposition,
+            'content-length': String(body.length),
+            'cache-control': 'private, no-store'
+          })[name] || null
+        },
+        arrayBuffer: async () => body
+      });
+      mockFetch
+        .mockResolvedValueOnce(binaryResponse(cvBytes, 'application/pdf', 'attachment; filename="candidate.pdf"'))
+        .mockResolvedValueOnce(binaryResponse(resourceBytes, 'application/octet-stream', 'attachment; filename="guide.bin"'));
+
+      await expect(api.callJobDownload('test-token', '/applications/91/cv')).resolves.toMatchObject({
+        status: 200,
+        body: cvBytes,
+        headers: {
+          'content-type': 'application/pdf',
+          'content-disposition': 'attachment; filename="candidate.pdf"',
+          'content-length': String(cvBytes.length),
+          'cache-control': 'private, no-store'
+        }
+      });
+      await expect(api.downloadResource('test-token', '42/unsafe')).resolves.toMatchObject({
+        status: 200,
+        body: resourceBytes,
+        headers: {
+          'content-type': 'application/octet-stream',
+          'content-disposition': 'attachment; filename="guide.bin"'
+        }
+      });
+
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        1,
+        'http://localhost:5000/api/v2/jobs/applications/91/cv',
+        expect.objectContaining({
+          method: 'GET',
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
+        })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        2,
+        'http://localhost:5000/api/v2/resources/42%2Funsafe/download',
+        expect.objectContaining({
+          method: 'GET',
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
+        })
+      );
+
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ message: 'File not found.', code: 'FILE_NOT_FOUND' })
+      });
+      await expect(api.downloadResource('test-token', 999999)).rejects.toMatchObject({
+        name: 'ApiError',
+        status: 404,
+        message: 'File not found.',
+        data: { message: 'File not found.', code: 'FILE_NOT_FOUND' }
+      });
+    });
+  });
+
   describe('Laravel member profile action helpers', () => {
     it('should list member connections through the Laravel v2 endpoint', async () => {
       mockFetch.mockResolvedValueOnce({
