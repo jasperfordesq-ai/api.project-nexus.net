@@ -66,6 +66,26 @@ unsafe attempt when it stops. It is suitable for public and signed-out pages
 covered by the bounded fixture only; it is not a substitute for a disposable
 Laravel environment or a screen-reader/manual WCAG sign-off.
 
+When separate Laravel Blade and Web UK listeners are available, capture the
+paired representative public-page set with explicit source identifiers:
+
+```powershell
+$env:LARAVEL_BLADE_BASE_URL = 'http://127.0.0.1:<laravel-port>'
+$env:WEB_UK_BASE_URL = 'http://127.0.0.1:<web-uk-port>'
+$env:VISUAL_SNAPSHOT_ID = '<laravel-sha>__<web-uk-sha>'
+$env:DISPOSABLE_LARAVEL_CONFIRMED = '1'
+npm run visual:screenshots
+```
+
+The command captures Home, sign-in, registration, Contact, Accessibility, and
+Legal at `1280 x 800` and `320 x 800`. It refuses the legacy `/alpha` mount,
+requires explicit confirmation that Laravel is disposable, blocks non-GET/HEAD
+browser requests, checks one H1 and one main landmark, and
+checks horizontal overflow at 320 CSS pixels. Images and `manifest.json` are
+written below the ignored `artifacts/visual-comparison/<snapshot-id>/`
+directory. A structurally green manifest is capture evidence only: a reviewer
+must still compare each Blade/Web UK pair and record visual findings.
+
 The latest fully successful historical verification on 2026-07-12 exercised the complete 87-case Chromium scope
 against a fresh current-checkout listener and Laravel at
 `http://127.0.0.1:8088`. After a missing bearer token on member-only Knowledge

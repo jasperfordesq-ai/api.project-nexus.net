@@ -81,6 +81,21 @@ screenshot set and manual keyboard, no-JS, zoom/reflow, forced-colour,
 focus/error, and screen-reader sign-off. Automated route, marker, Jest, or axe
 counts do not replace those gates.
 
+Capture the default-English public screenshot pairs from separately identified
+Laravel Blade and Web UK listeners. Never use `/hour-timebank/alpha`:
+
+```powershell
+$env:LARAVEL_BLADE_BASE_URL = 'http://127.0.0.1:<laravel-port>'
+$env:WEB_UK_BASE_URL = 'http://127.0.0.1:<web-uk-port>'
+$env:VISUAL_SNAPSHOT_ID = '<laravel-sha>__<web-uk-sha>'
+$env:DISPOSABLE_LARAVEL_CONFIRMED = '1'
+npm --prefix apps/web-uk run visual:screenshots
+```
+
+Archive or reference the ignored artifact directory outside Git, and record
+the reviewer, date, browser version, source SHAs, and outcome for every image
+pair. The generated structural manifest does not itself approve visual parity.
+
 ## 3. Build an immutable candidate
 
 Use the checked-in multi-stage Dockerfile and the frozen repository SHA:
