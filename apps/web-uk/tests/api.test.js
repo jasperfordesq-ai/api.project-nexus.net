@@ -3951,6 +3951,69 @@ describe('API Request Functions', () => {
   });
 
   describe('Laravel saved and appreciation helpers', () => {
+    it('should read a member public collection projection with bearer authority', async () => {
+      const responseBody = {
+        data: [{ id: 12, name: 'Useful links', description: 'Things to revisit', is_public: true }]
+      };
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => responseBody
+      });
+
+      await expect(api.getUserPublicCollections('test-token', 77)).resolves.toEqual(responseBody);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/users/77/public-collections',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+      expect(mockFetch.mock.calls[0][1].method).toBeUndefined();
+      expect(mockFetch.mock.calls[0][1].headers).not.toHaveProperty('X-Tenant-ID');
+    });
+
+    it('should preserve appreciation pagination and Laravel authorization errors', async () => {
+      const responseBody = {
+        data: [{ id: 55, receiver_id: 77, message: 'Thank you', is_public: true }],
+        meta: { current_page: 2, last_page: 4, total: 65, per_page: 20 }
+      };
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => responseBody
+      });
+
+      await expect(api.getUserAppreciations('test-token', 77, { page: 2, per_page: 20 }))
+        .resolves.toEqual(responseBody);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/users/77/appreciations?page=2&per_page=20',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          })
+        })
+      );
+
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ message: 'This action is unauthorized.', code: 'FORBIDDEN' })
+      });
+
+      await expect(api.getUserAppreciations('test-token', 77))
+        .rejects.toMatchObject({
+          name: 'ApiError',
+          status: 403,
+          message: 'This action is unauthorized.',
+          data: { message: 'This action is unauthorized.', code: 'FORBIDDEN' }
+        });
+    });
+
     it('should remove a saved item by item pair through the Laravel v2 endpoint', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,

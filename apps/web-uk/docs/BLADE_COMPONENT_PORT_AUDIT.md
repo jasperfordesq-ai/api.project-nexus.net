@@ -1417,6 +1417,22 @@ pagination/control audit work but does not reclassify the whole row. The slice
 is unscored and the canonical bank remains `660/1,000` pending another complete
 fixed-rubric audit.
 
+### 2026-07-15 Public saved-social API assertion follow-up
+
+The public-collections and public-appreciations reads now have direct API-client
+contract proof in addition to their existing routed presentation tests. The
+focused assertions pin Laravel's exact versioned paths, bearer authority,
+GET-only behavior, appreciation pagination query, collection and pagination
+response-envelope preservation, and structured `403` `ApiError` propagation.
+This narrows finite package 9's field/auth/status/error assertion gap for two
+direct Laravel route declarations omitted from OpenAPI; it does not convert the
+remaining publication/assertion package or any runtime package to complete.
+
+The focused API-client suite passes `216/216`. No Laravel or ASP.NET source,
+database, migration, runtime request, container, or production operation was
+performed. This slice is unscored; the canonical bank remains `663/1,000`
+until another complete fixed-rubric audit.
+
 - GOV.UK crown, logotype, official header identity, OGL block, or Crown
   copyright wording.
 - Laravel/PHP implementation details.
