@@ -3118,6 +3118,33 @@ describe('API Request Functions', () => {
         })
       );
     });
+
+    it('should preserve the Laravel goal buddy nudge path and action payload', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { sent: true } })
+      });
+
+      await expect(api.callGoalApi('test-token', 'POST', '/42/buddy/nudge', {
+        type: 'encouragement',
+        message: 'You are making great progress'
+      })).resolves.toEqual({ data: { sent: true } });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/goals/42/buddy/nudge',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({
+            type: 'encouragement',
+            message: 'You are making great progress'
+          })
+        })
+      );
+    });
   });
 
   describe('callCourseApi', () => {
@@ -3747,6 +3774,7 @@ describe('API Request Functions', () => {
         })
       );
     });
+
   });
 
   describe('callMerchantOnboardingApi', () => {
@@ -4107,6 +4135,52 @@ describe('API Request Functions', () => {
           body: JSON.stringify({ body: 'Hello group' })
         })
       );
+    });
+
+    it('should preserve the Laravel message translation path and validation envelope', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ data: { translated_text: 'Dia duit' } })
+      });
+
+      await expect(api.callMessageApi('test-token', 'POST', '/44/translate', {
+        target_language: 'ga'
+      })).resolves.toEqual({ data: { translated_text: 'Dia duit' } });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:5000/api/v2/messages/44/translate',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token'
+          }),
+          body: JSON.stringify({ target_language: 'ga' })
+        })
+      );
+
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 422,
+        headers: { get: () => 'application/json' },
+        json: async () => ({
+          message: 'The target language is invalid.',
+          errors: { target_language: ['Select a supported language.'] },
+          code: 'VALIDATION_FAILED'
+        })
+      });
+
+      await expect(api.callMessageApi('test-token', 'POST', '/44/translate', {
+        target_language: 'invalid'
+      })).rejects.toMatchObject({
+        name: 'ApiError',
+        status: 422,
+        message: 'The target language is invalid.',
+        data: {
+          errors: { target_language: ['Select a supported language.'] },
+          code: 'VALIDATION_FAILED'
+        }
+      });
     });
 
     it('should preserve group-conversation and participant mutation paths and payloads', async () => {

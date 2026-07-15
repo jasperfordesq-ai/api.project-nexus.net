@@ -1706,6 +1706,23 @@ database, migration, runtime request, container, or production operation was
 performed. This slice is unscored; the canonical bank remains `663/1,000`
 until another complete fixed-rubric audit.
 
+### 2026-07-15 Message translation and goal nudge path-assertion follow-up
+
+The distinct message and goal dispatchers now have direct API-client proof for
+message translation and buddy encouragement. The cases pin Laravel's exact
+`/api/v2/messages/{id}/translate` and `/api/v2/goals/{id}/buddy/nudge` paths,
+POST verbs, bearer authority, target-language and typed encouragement payloads,
+unmodified success envelopes, and structured translation `422` validation
+propagation. Existing feed, marketplace and appreciation assertions already
+cover the other reviewed social-action paths. Live translation-provider,
+buddy-policy and persisted notification effects require the isolated
+disposable runtime.
+
+The focused API-client suite passes `239/239`. No Laravel or ASP.NET source,
+database, migration, runtime request, container, or production operation was
+performed. This slice is unscored; the canonical bank remains `663/1,000`
+until another complete fixed-rubric audit.
+
 - GOV.UK crown, logotype, official header identity, OGL block, or Crown
   copyright wording.
 - Laravel/PHP implementation details.
