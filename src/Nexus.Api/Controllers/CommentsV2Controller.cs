@@ -137,7 +137,7 @@ public class CommentsV2Controller : ControllerBase
 
         var (comment, error) = await _commentService.CreateCommentAsync(
             _tenantContext.TenantId.Value, userId.Value, normalizedType,
-            request.TargetId, request.ParentId, StripTags(request.Content));
+            request.TargetId, request.ParentId, request.Content);
         if (error != null)
         {
             return IsLaravelV2Request()
@@ -158,7 +158,7 @@ public class CommentsV2Controller : ControllerBase
     {
         var userId = User.GetUserId();
         if (userId == null) return Unauthorized(new { error = "Invalid token" });
-        var (comment, error) = await _commentService.UpdateCommentAsync(id, userId.Value, StripTags(request.Content));
+        var (comment, error) = await _commentService.UpdateCommentAsync(id, userId.Value, request.Content);
         if (error == "Comment not found")
             return IsLaravelV2Request() ? LaravelError("RESOURCE_FORBIDDEN", "Cannot edit comment.", null, StatusCodes.Status403Forbidden) : NotFound(new { error });
         if (error == "You can only edit your own comments")
@@ -331,32 +331,6 @@ public class CommentsV2Controller : ControllerBase
     }
 
     private bool IsLaravelV2Request() => Request.Path.StartsWithSegments("/api/v2");
-
-    private static string StripTags(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value)) return string.Empty;
-
-        var chars = new List<char>(value.Length);
-        var insideTag = false;
-        foreach (var c in value)
-        {
-            if (c == '<')
-            {
-                insideTag = true;
-                continue;
-            }
-
-            if (c == '>')
-            {
-                insideTag = false;
-                continue;
-            }
-
-            if (!insideTag) chars.Add(c);
-        }
-
-        return new string(chars.ToArray()).Trim();
-    }
 
     public class CreateCommentRequest
     {

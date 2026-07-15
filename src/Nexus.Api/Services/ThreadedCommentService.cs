@@ -77,7 +77,8 @@ public class ThreadedCommentService
     public async Task<(ThreadedComment? Comment, string? Error)> CreateCommentAsync(
         int tenantId, int userId, string targetType, int targetId, int? parentId, string content)
     {
-        if (string.IsNullOrWhiteSpace(content))
+        var sanitizedContent = LaravelHtmlSanitizer.Sanitize(content?.Trim() ?? string.Empty);
+        if (string.IsNullOrWhiteSpace(sanitizedContent))
             return (null, "Content is required");
 
         var normalizedType = NormalizeTargetType(targetType);
@@ -101,7 +102,7 @@ public class ThreadedCommentService
             TargetType = normalizedType,
             TargetId = targetId,
             ParentId = parentId,
-            Content = content.Trim(),
+            Content = sanitizedContent,
             IsEdited = false,
             IsDeleted = false,
             CreatedAt = DateTime.UtcNow
@@ -122,7 +123,8 @@ public class ThreadedCommentService
     public async Task<(ThreadedComment? Comment, string? Error)> UpdateCommentAsync(
         int id, int userId, string content)
     {
-        if (string.IsNullOrWhiteSpace(content))
+        var sanitizedContent = LaravelHtmlSanitizer.Sanitize(content?.Trim() ?? string.Empty);
+        if (string.IsNullOrWhiteSpace(sanitizedContent))
             return (null, "Content is required");
 
         var comment = await _db.Set<ThreadedComment>().FirstOrDefaultAsync(x => x.Id == id);
@@ -135,7 +137,7 @@ public class ThreadedCommentService
         if (comment.AuthorId != userId)
             return (null, "You can only edit your own comments");
 
-        comment.Content = content.Trim();
+        comment.Content = sanitizedContent;
         comment.IsEdited = true;
         comment.UpdatedAt = DateTime.UtcNow;
 

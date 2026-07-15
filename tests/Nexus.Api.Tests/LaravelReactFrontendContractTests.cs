@@ -5463,7 +5463,7 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
         createRootJson.GetProperty("meta").GetProperty("base_url").GetString().Should().NotBeNullOrWhiteSpace();
         var rootData = createRootJson.GetProperty("data");
         var rootCommentId = rootData.GetProperty("id").GetInt32();
-        rootData.GetProperty("content").GetString().Should().Be("Root comment");
+        rootData.GetProperty("content").GetString().Should().Be("<b>Root comment</b>");
         rootData.GetProperty("is_own").GetBoolean().Should().BeTrue();
         rootData.GetProperty("author").GetProperty("id").GetInt32().Should().Be(TestData.MemberUser.Id);
         rootData.GetProperty("replies").GetArrayLength().Should().Be(0);
@@ -5494,12 +5494,15 @@ public class LaravelReactFrontendContractTests : IntegrationTestBase
 
         var update = await Client.PutAsJsonAsync($"/api/v2/comments/{rootCommentId}", new
         {
-            content = "Edited root"
+            content = "<script>@hiddenmention</script><p class='edit' onclick='bad()'>Edited <em>root</em></p>"
         });
 
         update.StatusCode.Should().Be(HttpStatusCode.OK);
         var updateJson = await update.Content.ReadFromJsonAsync<JsonElement>();
-        updateJson.GetProperty("data").GetProperty("content").GetString().Should().Be("Edited root");
+        var updatedContent = updateJson.GetProperty("data").GetProperty("content").GetString();
+        updatedContent.Should().Contain("<p class=\"edit\">Edited <em>root</em></p>");
+        updatedContent.Should().NotContain("script");
+        updatedContent.Should().NotContain("onclick");
         updateJson.GetProperty("data").GetProperty("edited").GetBoolean().Should().BeTrue();
 
         var reaction = await Client.PostAsJsonAsync($"/api/v2/comments/{rootCommentId}/reactions", new
