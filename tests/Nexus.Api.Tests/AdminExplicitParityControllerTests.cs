@@ -972,7 +972,7 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task AdminEventsDeleteV2_RemovesTenantEventWithLaravelReactContract()
+    public async Task AdminEventsDeleteV2_ArchivesTenantEventWithLaravelReactContract()
     {
         int eventId;
         using (var scope = Factory.Services.CreateScope())
@@ -1007,25 +1007,32 @@ public class AdminExplicitParityControllerTests : IntegrationTestBase
 
         await AuthenticateAsAdminAsync();
 
-        var response = await Client.DeleteAsync($"/api/v2/admin/events/{eventId}");
+        using var request = new HttpRequestMessage(HttpMethod.Delete, $"/api/v2/admin/events/{eventId}")
+        {
+            Content = JsonContent.Create(new { reason = "Archived by contract test" })
+        };
+        var response = await Client.SendAsync(request);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var json = await response.Content.ReadFromJsonAsync<JsonElement>();
-        json.TryGetProperty("compatibility", out _).Should().BeFalse();
         var data = json.GetProperty("data");
-        data.GetProperty("deleted").GetBoolean().Should().BeTrue();
         data.GetProperty("id").GetInt32().Should().Be(eventId);
+        data.GetProperty("publication_state").GetString().Should().Be("archived");
+        data.GetProperty("operational_state").GetString().Should().Be("cancelled");
+        data.GetProperty("transition").GetProperty("action").GetString().Should().Be("archive");
 
         using var verifyScope = Factory.Services.CreateScope();
         var verifyDb = verifyScope.ServiceProvider.GetRequiredService<NexusDbContext>();
-        var eventExists = await verifyDb.Events
+        var archived = await verifyDb.Events
             .IgnoreQueryFilters()
-            .AnyAsync(e => e.TenantId == TestData.Tenant1.Id && e.Id == eventId);
-        var rsvpExists = await verifyDb.EventRsvps
+            .SingleAsync(e => e.TenantId == TestData.Tenant1.Id && e.Id == eventId);
+        archived.PublicationStatus.Should().Be("archived");
+        archived.OperationalStatus.Should().Be("cancelled");
+        archived.IsCancelled.Should().BeTrue();
+        var rsvp = await verifyDb.EventRsvps
             .IgnoreQueryFilters()
-            .AnyAsync(r => r.TenantId == TestData.Tenant1.Id && r.EventId == eventId);
-        eventExists.Should().BeFalse();
-        rsvpExists.Should().BeFalse();
+            .SingleAsync(r => r.TenantId == TestData.Tenant1.Id && r.EventId == eventId);
+        rsvp.Status.Should().Be("cancelled");
     }
 
     [Fact]

@@ -809,7 +809,7 @@ public class AdminCompatibility3Controller : ControllerBase
     [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public async Task<IActionResult> MoveSuperUserTenant(int userId)
     {
-        var user = await _db.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Id == userId);
+        var user = await _db.Users.IgnoreQueryFilters().AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null)
             return LaravelError("NOT_FOUND", "User not found", StatusCodes.Status404NotFound);
 
@@ -822,11 +822,22 @@ public class AdminCompatibility3Controller : ControllerBase
             return LaravelError("VALIDATION_ERROR", "Target tenant not found", StatusCodes.Status422UnprocessableEntity);
 
         var oldTenantId = user.TenantId;
-        user.TenantId = newTenantId;
-        if (!await TenantAllowsSubtenantsAsync(newTenantId))
-            user.IsTenantSuperAdmin = false;
-        user.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
+        var targetAllowsSubtenants = await TenantAllowsSubtenantsAsync(newTenantId);
+        var now = DateTime.UtcNow;
+        var userQuery = _db.Users.IgnoreQueryFilters().Where(u => u.Id == userId);
+        if (targetAllowsSubtenants)
+        {
+            await userQuery.ExecuteUpdateAsync(update => update
+                .SetProperty(u => u.TenantId, newTenantId)
+                .SetProperty(u => u.UpdatedAt, now));
+        }
+        else
+        {
+            await userQuery.ExecuteUpdateAsync(update => update
+                .SetProperty(u => u.TenantId, newTenantId)
+                .SetProperty(u => u.IsTenantSuperAdmin, false)
+                .SetProperty(u => u.UpdatedAt, now));
+        }
 
         _logger.LogWarning("Admin {AdminId} moved user {UserId} from tenant {OldTenantId} to tenant {NewTenantId}", GetCurrentUserId(), userId, oldTenantId, newTenantId);
         return LaravelData(new
@@ -845,7 +856,7 @@ public class AdminCompatibility3Controller : ControllerBase
     [Authorize(Policy = NexusAuthorizationPolicies.PlatformSuperAdminOnly)]
     public async Task<IActionResult> MoveAndPromoteSuperUser(int userId)
     {
-        var user = await _db.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Id == userId);
+        var user = await _db.Users.IgnoreQueryFilters().AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
         if (user == null)
             return LaravelError("NOT_FOUND", "User not found", StatusCodes.Status404NotFound);
 
@@ -866,11 +877,14 @@ public class AdminCompatibility3Controller : ControllerBase
         }
 
         var oldTenantId = user.TenantId;
-        user.TenantId = targetTenantId;
-        user.Role = "admin";
-        user.IsTenantSuperAdmin = true;
-        user.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
+        var now = DateTime.UtcNow;
+        await _db.Users.IgnoreQueryFilters()
+            .Where(u => u.Id == userId)
+            .ExecuteUpdateAsync(update => update
+                .SetProperty(u => u.TenantId, targetTenantId)
+                .SetProperty(u => u.Role, "admin")
+                .SetProperty(u => u.IsTenantSuperAdmin, true)
+                .SetProperty(u => u.UpdatedAt, now));
 
         _logger.LogWarning("Admin {AdminId} moved user {UserId} from tenant {OldTenantId} to tenant {TargetTenantId} and promoted them", GetCurrentUserId(), userId, oldTenantId, targetTenantId);
         return LaravelData(new
@@ -919,7 +933,7 @@ public class AdminCompatibility3Controller : ControllerBase
         var now = DateTime.UtcNow;
         foreach (var userId in userIds)
         {
-            var user = await _db.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Id == userId);
+            var user = await _db.Users.IgnoreQueryFilters().AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
             if (user == null)
             {
                 errors.Add($"User ID {userId} not found");
@@ -932,21 +946,30 @@ public class AdminCompatibility3Controller : ControllerBase
                 continue;
             }
 
-            user.TenantId = targetTenantId;
+            var userQuery = _db.Users.IgnoreQueryFilters().Where(u => u.Id == userId);
             if (grantSuperAdmin)
             {
-                user.Role = "admin";
-                user.IsTenantSuperAdmin = true;
+                await userQuery.ExecuteUpdateAsync(update => update
+                    .SetProperty(u => u.TenantId, targetTenantId)
+                    .SetProperty(u => u.Role, "admin")
+                    .SetProperty(u => u.IsTenantSuperAdmin, true)
+                    .SetProperty(u => u.UpdatedAt, now));
             }
             else if (!targetAllowsSubtenants)
             {
-                user.IsTenantSuperAdmin = false;
+                await userQuery.ExecuteUpdateAsync(update => update
+                    .SetProperty(u => u.TenantId, targetTenantId)
+                    .SetProperty(u => u.IsTenantSuperAdmin, false)
+                    .SetProperty(u => u.UpdatedAt, now));
             }
-            user.UpdatedAt = now;
+            else
+            {
+                await userQuery.ExecuteUpdateAsync(update => update
+                    .SetProperty(u => u.TenantId, targetTenantId)
+                    .SetProperty(u => u.UpdatedAt, now));
+            }
             movedCount++;
         }
-
-        await _db.SaveChangesAsync();
 
         _logger.LogWarning("Admin {AdminId} bulk-moved {MovedCount}/{RequestedCount} users to tenant {TargetTenantId}", GetCurrentUserId(), movedCount, userIds.Count, targetTenantId);
         return LaravelData(new
