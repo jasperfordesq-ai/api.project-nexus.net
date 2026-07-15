@@ -6,13 +6,15 @@ Status: **Maintained reference - local Web UK container contract only**
 
 ## Source of Truth
 
-**Docker is the ONLY supported development environment.**
+**Docker is the supported application-runtime environment.**
 
 The `compose.yml` file defines local development and a local production-image
-profile. It is not an approved production deployment specification. Do not use
-native Node.js, XAMPP, or any other local setup.
+profile. It is not an approved production deployment specification. The pinned
+host Node version may be used for `npm test`, lint, build, generators, and the
+isolated accessibility fixture; do not run an undocumented native Express/XAMPP
+application stack.
 
-### Why Docker Only?
+### Why The Application Runtime Uses Docker
 
 - **Consistency** - Same checked-in local runtime for all developers
 - **No dependency conflicts** - Node.js, Sass, etc. are containerized
@@ -68,14 +70,14 @@ deployment and does not establish backend-switching certification.
 
 | Service | Host Port | Container Port | Notes |
 |---------|-----------|----------------|-------|
-| UK Frontend | 5180 | 3001 | Avoids conflict with the React frontend (5173) |
+| UK Frontend | 5180 | 3001 | Avoids conflict with the root frozen React service (5273) |
 
 ## Backend URL Rules
 
 | Environment | Target variables |
 |-------------|------------------|
 | Docker (default) | `ACCESSIBLE_BACKEND_TARGET=laravel`, `LARAVEL_BASE_URL=http://host.docker.internal:8088` |
-| Non-Docker local | `ACCESSIBLE_BACKEND_TARGET=laravel`, `LARAVEL_BASE_URL=http://127.0.0.1:8088` |
+| Host verification tooling | `ACCESSIBLE_BACKEND_TARGET=laravel`, `LARAVEL_BASE_URL=http://127.0.0.1:8088`; safe isolated tests replace this with their own mock |
 
 The Docker environment uses `host.docker.internal` to reach Laravel running on
 the host machine. This is configured in `.env.docker` and **should not be
@@ -134,7 +136,7 @@ docker compose up --build
 
 When working on this project:
 
-1. **Assume Docker is running** unless explicitly told otherwise
+1. **Inspect current listeners/containers** instead of assuming Docker is running
 2. **Use port 5180** for testing the UK frontend
 3. **Laravel backend is at** `http://host.docker.internal:8088` from container perspective
 4. **Use `docker compose` commands** (not `docker-compose`)

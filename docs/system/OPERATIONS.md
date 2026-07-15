@@ -48,7 +48,8 @@ The following files exist but are not approved production authorities:
 | --- | --- |
 | `compose.production.yml` | Obsolete whole-stack recipe with stale paths/settings. It is now quarantined behind a deliberately named opt-in profile, but remains unapproved and must not be executed. |
 | `compose.prod.yml` | Legacy topology whose Web UK override selects uncertified ASP.NET; deployment hold applies. |
-| `.github/workflows/deploy.yml` | Automatic `main` deployment has been removed. The workflow now requires manual dispatch, an exact 40-character SHA, a production-confirmation input, and the protected `production` environment; its legacy backup/migration/rollback body still needs a separate safety redesign before use. |
+| `compose.fullstack.yml` | Duplicate local topology with stale ports and automatic frozen-React startup; it is quarantined behind a deliberately named profile. |
+| `.github/workflows/deploy.yml` | Automatic `main` deployment has been removed. The workflow now requires manual dispatch, an exact 40-character SHA, a production-confirmation input, and the named `production` environment; repository environment-approval rules must be verified separately. Its legacy backup/migration/rollback body still needs a safety redesign before use. |
 | `scripts/deploy.sh` | Can continue after a skipped/failed backup and restarts an auto-migrating API; it is not safe standing authorization. Status mode is read-only, but mutation modes require a reviewed replacement plan. |
 | `Makefile` production targets | Assume container EF tooling/database names that are not established by the runtime image/current topology. Do not use as a production runbook. |
 | `scripts/check-container-health.sh` | Contains stale container matching and recovery advice; do not use it as the current production inventory. |

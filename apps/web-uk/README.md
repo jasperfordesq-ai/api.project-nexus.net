@@ -25,6 +25,8 @@ Start with:
 
 - [current Laravel-first status](docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md) -
   sole Web UK score, evidence boundary, ownership, and queue;
+- [current ASP.NET contract status](../../docs/CURRENT_ASPNET_CONTRACT_STATUS.md) -
+  separate backend bank and future switching evidence boundary;
 - [Blade component audit](docs/BLADE_COMPONENT_PORT_AUDIT.md) - detailed
   implementation evidence;
 - [backend switching contract](docs/BACKEND_SWITCHING_CONTRACT.md); and

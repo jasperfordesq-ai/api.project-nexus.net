@@ -17,12 +17,13 @@ public class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<NexusDbCon
 {
     public NexusDbContext CreateDbContext(string[] args)
     {
-        // Connection string for design-time operations (EF migrations)
-        // MUST be provided via environment variable - see compose.yml for Docker setup
+        // Connection string for design-time operations (EF migrations).
+        // It MUST identify an explicitly disposable database reachable by the
+        // host SDK; the runtime API container has no SDK or source mount.
         var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
             ?? throw new InvalidOperationException(
                 "ConnectionStrings__DefaultConnection environment variable is required for design-time operations. "
-                + "Run EF commands inside Docker: docker compose exec api dotnet ef ...");
+                + "Use the host .NET SDK and a verified disposable PostgreSQL database; see docs/database-migrations.md.");
 
         var optionsBuilder = new DbContextOptionsBuilder<NexusDbContext>();
         optionsBuilder.UseNpgsql(connectionString);

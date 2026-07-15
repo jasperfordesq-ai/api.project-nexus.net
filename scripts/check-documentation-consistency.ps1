@@ -171,6 +171,7 @@ $statusLikeDocuments = @(
     'apps/web-uk/docs/PRODUCTION_RELEASE_RUNBOOK.md',
     'docs/DOCUMENTATION_GOVERNANCE.md'
 )
+$statusLikeDocuments += $audienceDocumentationPaths
 
 foreach ($relativePath in $statusLikeDocuments) {
     $text = Get-DocumentText $relativePath
@@ -178,7 +179,7 @@ foreach ($relativePath in $statusLikeDocuments) {
 
     $opening = Get-OpeningRegion $text 16
     Assert-Contains $relativePath $opening `
-        '(?im)^Status:\s*\*\*(?:Canonical current|Maintained reference|Generated snapshot|Historical (?:checkpoint|archive))\b' `
+        '(?im)^Status:\s*\*\*(?:Canonical current|Maintained(?: [A-Za-z-]+){0,3} (?:reference|index)|Generated snapshot|Historical (?:checkpoint|archive))\b' `
         'must expose an approved documentation-state label within its first 16 lines.'
 }
 
@@ -475,7 +476,7 @@ if ($null -ne $productionServer) {
 
 $productionEnvironmentExample = Get-DocumentText '.env.production.example'
 if ($null -ne $productionEnvironmentExample) {
-    foreach ($key in @('Meilisearch__BaseUrl', 'RabbitMq__Host', 'RabbitMq__Port', 'RabbitMq__Username', 'RabbitMq__Password', 'RabbitMq__VirtualHost', 'SendGrid__Enabled', 'Gmail__Enabled', 'RABBITMQ_PASS')) {
+    foreach ($key in @('Meilisearch__BaseUrl', 'RabbitMq__Host', 'RabbitMq__Port', 'RabbitMq__Username', 'RabbitMq__Password', 'RabbitMq__VirtualHost', 'RabbitMq__ExchangeName', 'SendGrid__Enabled', 'Gmail__Enabled', 'Gmail__SenderEmail', 'RABBITMQ_PASS')) {
         Assert-Contains '.env.production.example' $productionEnvironmentExample ([regex]::Escape($key)) `
             "must contain current configuration key '$key'."
     }
@@ -572,7 +573,7 @@ if ($null -ne $migrationGuide) {
         '(?is)no executable\s+production migration or restore command' `
         'must fail closed instead of publishing a generic production migration/restore sequence.'
     Assert-NotContains 'docs/database-migrations.md' $migrationGuide `
-        '(?im)^\s*make migrate(?:\s|$)|docker compose exec api dotnet ef' `
+        '(?im)^\s*(?:make migrate(?:\s|$)|docker compose exec api dotnet ef)' `
         'must not advertise the unsupported Make/container EF workflow.'
 }
 
@@ -584,6 +585,17 @@ if ($null -ne $quarantinedProductionCompose) {
     $profileCount = [regex]::Matches($quarantinedProductionCompose, 'profiles:\s*\["quarantined-do-not-run"\]').Count
     if ($profileCount -ne 6) {
         Add-Failure "compose.production.yml: every one of its 6 services must require the quarantine profile (found $profileCount)."
+    }
+}
+
+$quarantinedFullStackCompose = Get-DocumentText 'compose.fullstack.yml'
+if ($null -ne $quarantinedFullStackCompose) {
+    Assert-Contains 'compose.fullstack.yml' $quarantinedFullStackCompose `
+        '(?i)QUARANTINED LEGACY FULL-STACK LOCAL TOPOLOGY' `
+        'must clearly quarantine the obsolete duplicate local topology.'
+    $profileCount = [regex]::Matches($quarantinedFullStackCompose, 'profiles:\s*\["legacy-fullstack-do-not-run"\]').Count
+    if ($profileCount -ne 6) {
+        Add-Failure "compose.fullstack.yml: every one of its 6 services must require the legacy quarantine profile (found $profileCount)."
     }
 }
 

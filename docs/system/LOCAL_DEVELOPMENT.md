@@ -101,5 +101,7 @@ use an explicitly supplied disposable `NEXUS_TEST_POSTGRES` connection. See
   startup failure rather than a frontend defect.
 - The standalone `apps/admin/compose.yml` is not the maintained root-stack path;
   use the root `admin` service until its independent port/API wiring is repaired.
+- `compose.fullstack.yml` is a quarantined duplicate with stale ports and an
+  automatic frozen-React startup; use root `compose.yml` by service name.
 - Root Compose does not expose PostgreSQL to the host by default. Do not assume
   host EF commands can reach `db:5432` without an explicit disposable mapping.

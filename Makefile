@@ -214,8 +214,10 @@ reset-db:
 ## Show this help
 help:
 	@echo ""
-	@echo "Project NEXUS - Available targets:"
-	@echo "==================================="
+	@echo "Project NEXUS - UNSUPPORTED LEGACY TARGETS"
+	@echo "==========================================="
+	@echo "Do not run migration or production targets."
+	@echo "Use docs/database-migrations.md and docs/system/OPERATIONS.md."
 	@echo ""
 	@echo "LOCAL DEVELOPMENT:"
 	@echo "  make migrate NAME=<Name>  Create + apply migration"

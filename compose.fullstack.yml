@@ -1,17 +1,10 @@
 # =============================================================================
-# Docker Compose - NEXUS Full Stack LOCAL Development
+# QUARANTINED LEGACY FULL-STACK LOCAL TOPOLOGY
 # =============================================================================
-# Runs supported local services for development: Backend + kept frontends
-#
-# Usage:
-#   docker compose -f compose.fullstack.yml up -d --build
-#
-# Services:
-#   - API:              http://localhost:5080  (+ Swagger at /swagger)
-#   - React Frontend:   http://localhost:5173  (Vite React SPA)
-#   - UK Frontend:      http://localhost:5180  (Express + GOV.UK)
-#   - Admin Panel:      http://localhost:5190  (Vite React admin)
-#   - RabbitMQ UI:      http://localhost:15672 (guest/guest)
+# This duplicate topology has stale ports and starts the frozen React client by
+# default, conflicting with the current ownership guardrail. Every service is
+# behind `legacy-fullstack-do-not-run`. Use root compose.yml and start only the
+# named services documented in docs/system/LOCAL_DEVELOPMENT.md.
 # =============================================================================
 
 name: nexus-fullstack
@@ -21,6 +14,7 @@ services:
   # API Backend (ASP.NET Core 8)
   # ---------------------------------------------------------------------------
   api:
+    profiles: ["legacy-fullstack-do-not-run"]
     build:
       context: .
       dockerfile: Dockerfile
@@ -70,6 +64,7 @@ services:
   # React Frontend (apps/react-frontend)
   # ---------------------------------------------------------------------------
   react-frontend:
+    profiles: ["legacy-fullstack-do-not-run"]
     build:
       context: ./apps/react-frontend
       dockerfile: Dockerfile
@@ -97,6 +92,7 @@ services:
   # Admin Panel (apps/admin)
   # ---------------------------------------------------------------------------
   admin:
+    profiles: ["legacy-fullstack-do-not-run"]
     build:
       context: ./apps/admin
       dockerfile: Dockerfile
@@ -121,6 +117,7 @@ services:
   # UK Frontend (apps/web-uk)
   # ---------------------------------------------------------------------------
   web-uk:
+    profiles: ["legacy-fullstack-do-not-run"]
     build:
       context: ./apps/web-uk
       dockerfile: Dockerfile
@@ -144,6 +141,7 @@ services:
   # Database (PostgreSQL 16)
   # ---------------------------------------------------------------------------
   db:
+    profiles: ["legacy-fullstack-do-not-run"]
     image: postgres:16.4-bookworm
     container_name: nexus-fullstack-db
     environment:
@@ -165,6 +163,7 @@ services:
   # Message Broker (RabbitMQ)
   # ---------------------------------------------------------------------------
   rabbitmq:
+    profiles: ["legacy-fullstack-do-not-run"]
     image: rabbitmq:3.13-management
     container_name: nexus-fullstack-rabbitmq
     ports:

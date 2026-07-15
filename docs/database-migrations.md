@@ -513,7 +513,7 @@ focused/full tests -> PR/CI -> merge -> explicitly authorized deployment plan
 - the current source branch or isolated schema worktree
 
 The root API container is runtime-only. It has no .NET SDK and no repository
-source mount, so `docker compose exec api dotnet ef ...` cannot be the migration
+source mount, so running EF tooling inside that container cannot be the migration
 workflow. Root Compose also does not expose PostgreSQL to the host by default.
 Provision the disposable database explicitly rather than repointing EF at a
 shared, Laravel, production-derived, or production database.
