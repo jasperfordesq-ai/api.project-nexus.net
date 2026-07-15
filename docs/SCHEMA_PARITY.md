@@ -7,10 +7,10 @@ Status: **Maintained reference — current comparison method with dated evidence
 Evidence provenance: the current static table inventory was regenerated on
 2026-07-15 against Laravel
 `903d03d3db78bbf87129ad35728be3b72819acaf` and the schema candidate based on
-committed ASP.NET tree `ea352690c95bbb6dea26a7b00c8454a37b51a859`, including
-`20260715054926_VereinDuesAndFederationSchemaParity`. Any older table/count
-without its own exact source pair is a historical, provenance-incomplete
-checkpoint and cannot support current score or upgrade-safety claims.
+committed ASP.NET tree `92125875456ecf87d5fb1b8bb4062da8d3146085`, including
+`20260715062938_MarketplaceSupportStorageParity`. Any older table/count without
+its own exact source pair is a historical, provenance-incomplete checkpoint and
+cannot support current score or upgrade-safety claims.
 
 Laravel source of truth: `C:\platforms\htdocs\staging\database\migrations` and
 `C:\platforms\htdocs\staging\app\Models`.
@@ -19,6 +19,43 @@ Use [`CURRENT_ASPNET_CONTRACT_STATUS.md`](CURRENT_ASPNET_CONTRACT_STATUS.md) for
 the current banked score and active schema/upgrade deductions. Dated sections
 here are retained evidence. Static table-name counts are never an overall score
 and remain historical until explicitly regenerated against named SHAs.
+
+## 2026-07-15 Marketplace Support Storage Evidence
+
+Migration `20260715062938_MarketplaceSupportStorageParity` closes the two
+remaining `marketplace_*` exact-name gaps: `marketplace_category_templates` and
+`marketplace_report_notifications`. The first carries tenant-scoped dynamic
+listing-field JSON with Laravel's nullable tenant/category shape. The second is
+the durable report bell/email outbox with dedupe, retry, status, attempt, error,
+payload, and delivery timing evidence. It is distinct from the existing paid-
+order notification ledger. A tenant/report alternate key and tenant-composite
+report/recipient relationships reject cross-tenant outbox rows.
+
+Verification on committed predecessor `92125875456ecf87d5fb1b8bb4062da8d3146085`:
+
+- a forced clean Release API build passed in 3m14.93s with zero errors and
+  three pre-existing warnings;
+- the focused `MarketplaceSupportSchemaParityTests` class passed 3/3 in 1.0921
+  minutes after discovering 3,337 tests in the Debug test assembly;
+- `dotnet ef migrations has-pending-model-changes` reported no model drift;
+- a blank disposable PostgreSQL 16.4 database applied all 155 runtime
+  migrations through the marketplace-support migration and exposed both tables
+  plus the marketplace-report tenant/id key;
+- a second disposable database was populated at
+  `20260715054926_VereinDuesAndFederationSchemaParity` with one tenant, two
+  users, one category, one listing, and one report, then upgraded by exactly the
+  marketplace-support migration without losing those rows;
+- both new tables accepted Laravel-shaped JSON/outbox rows, notification
+  defaults resolved to `pending` and `0`, and a cross-tenant recipient insert
+  failed on the tenant-composite user foreign key with no invalid row left
+  behind;
+- the schema-comparator fixture passed, and the disposable PostgreSQL container
+  was removed after verification.
+
+These two names were previously part of the 198 unclassified set. Closing them
+reduces that set to 196 and clears the `marketplace_*` exact-name family. The
+banked schema category remains **129/150** until the canonical ASP.NET status
+document records an accepted scoring movement.
 
 ## 2026-07-15 Verein Dues And Federation Schema Evidence
 
@@ -68,29 +105,30 @@ comparison, not runtime migration proof, API/workflow parity, or a score.
 | Source | Count | Notes |
 | --- | ---: | --- |
 | Laravel migration files | 384 | PHP files under `database/migrations`. |
-| ASP.NET EF migration source files | 156 | Excludes designer files and the model snapshot. |
+| ASP.NET EF migration source files | 157 | Excludes designer files and the model snapshot. |
 | Laravel created tables | 301 | Unique `Schema::create(...)` names. |
 | Laravel touched tables | 131 | Unique `Schema::table(...)` names. |
 | Laravel explicit model tables | 268 | Unique explicit model `$table` declarations. |
 | Laravel source tables | 458 | Union of created, touched, and explicit model table names. |
-| ASP.NET tables | 430 | Union of EF `ToTable`, `[Table]`, and migration `CreateTable` names. |
-| Exact matched tables | 232 | Identical normalized names in both sources. |
-| Missing Laravel exact names | 226 | Laravel names with no identical ASP.NET name. |
+| ASP.NET tables | 432 | Union of EF `ToTable`, `[Table]`, and migration `CreateTable` names. |
+| Exact matched tables | 234 | Identical normalized names in both sources. |
+| Missing Laravel exact names | 224 | Laravel names with no identical ASP.NET name. |
 | ASP.NET-only exact names | 198 | ASP.NET names with no identical Laravel name. |
 
-The 226 missing exact names currently partition as follows. These categories
+The 224 missing exact names currently partition as follows. These categories
 are mutually exclusive, so their counts reconcile to the comparator total.
 
 | Classification | Count | Evidence boundary |
 | --- | ---: | --- |
 | Classified aliases | 20 | A differently named ASP.NET aggregate has been identified. Each alias remains a gap until its migration shape and external workflow are proved equivalent. |
 | Podcast compatibility-storage gaps | 8 | `podcast_episode_chapters`, `podcast_episode_listens`, `podcast_episode_reactions`, `podcast_episode_reports`, `podcast_episodes`, `podcast_media_cleanup_tasks`, `podcast_show_subscriptions`, and `podcast_shows`. Existing API compatibility does not replace these Laravel storage/evidence contracts. |
-| Unclassified missing names | 198 | No accepted alias or replacement classification has yet been recorded. |
-| **Total missing exact names** | **226** | **20 + 8 + 198.** |
+| Unclassified missing names | 196 | No accepted alias or replacement classification has yet been recorded. |
+| **Total missing exact names** | **224** | **20 + 8 + 196.** |
 
 The five Verein names previously classified as genuine missing storage are now
 represented exactly and are therefore absent from this missing-name partition.
-The static exact-name inventory moved from 227 to 232 matches; this remains a
+The Verein slice moved the static exact-name inventory from 227 to 232 matches,
+and the marketplace-support slice moves it from 232 to 234. This remains a
 diagnostic inventory rather than an overall parity percentage.
 
 The comparator's Markdown renderer was also corrected in this audit. Missing
@@ -612,7 +650,7 @@ of semantic absence. It highlights the domains that need table-by-table review:
 | `federation_*` | 16 | Receiver-scoped partnership decisions now persist native status/audit state, but exact federation-level permission columns, rejection actor/time/reason metadata, initial-sync/outbox state, and broader partner/network schema still need reconciliation. |
 | `course_*` | 14 | Course module has no clear .NET implementation surface. |
 | `job_*` | 13 | Job schema is partially present but not exact-name complete. |
-| `marketplace_*` | 2 | Marketplace provider/account and settlement slices reduced the exact-name table gap, but the remaining source names and their workflows still require reconciliation. |
+| `marketplace_*` | 0 | Category-template and report-notification storage now clear the last two exact-name gaps; API/workflow delivery proof remains separate from this static result. |
 | `podcast*` | 8 | Podcast API route compatibility now exists, but the eight dedicated Laravel storage/media/evidence tables listed in the current classification remain open gaps. |
 | `verein_*` | 0 | `verein_federation_consents` and the five dues, payment, event-share, and cross-invitation tables are now represented exactly; wider Verein workflow/consumer proof remains separate from the static table-name result. |
 | `regional_*` | 0 | Regional Analytics subscription, report, access-log, and cache schema tables are now represented; API/service/report workflow parity remains open. |

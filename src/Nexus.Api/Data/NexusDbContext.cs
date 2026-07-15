@@ -584,6 +584,8 @@ public class NexusDbContext : DbContext
     public DbSet<MarketplaceOrderNotificationDelivery> MarketplaceOrderNotificationDeliveries => Set<MarketplaceOrderNotificationDelivery>();
     public DbSet<MarketplaceDispute> MarketplaceDisputes => Set<MarketplaceDispute>();
     public DbSet<MarketplaceReport> MarketplaceReports => Set<MarketplaceReport>();
+    public DbSet<MarketplaceCategoryTemplate> MarketplaceCategoryTemplates => Set<MarketplaceCategoryTemplate>();
+    public DbSet<MarketplaceReportNotification> MarketplaceReportNotifications => Set<MarketplaceReportNotification>();
     public DbSet<MarketplaceSavedSearch> MarketplaceSavedSearches => Set<MarketplaceSavedSearch>();
     public DbSet<MarketplaceCollection> MarketplaceCollections => Set<MarketplaceCollection>();
     public DbSet<MarketplaceCollectionItem> MarketplaceCollectionItems => Set<MarketplaceCollectionItem>();
@@ -672,6 +674,7 @@ public class NexusDbContext : DbContext
             new ContactEmergencyConfiguration(_tenantContext),
             new CaringCommunityConfiguration(_tenantContext),
             new VereinConfiguration(_tenantContext),
+            new MarketplaceSupportConfiguration(_tenantContext),
             new RegionalAnalyticsConfiguration(_tenantContext),
             new ProvisioningRequestConfiguration(_tenantContext),
             new ApiPartnerConfiguration(_tenantContext),
@@ -1015,6 +1018,7 @@ public class NexusDbContext : DbContext
             entity.Property(e => e.ActionTaken).HasMaxLength(32);
             entity.Property(e => e.EvidenceUrlsJson).HasColumnType("jsonb");
             entity.Property(e => e.EnforcementSnapshotJson).HasColumnType("jsonb");
+            entity.HasAlternateKey(e => new { e.TenantId, e.Id });
             entity.HasIndex(e => new { e.TenantId, e.Status, e.CreatedAt });
             entity.HasIndex(e => new { e.TenantId, e.ReporterUserId, e.CreatedAt });
             entity.HasIndex(e => new { e.TenantId, e.AppealedByUserId });
