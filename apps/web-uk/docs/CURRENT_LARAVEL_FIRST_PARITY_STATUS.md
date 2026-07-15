@@ -186,7 +186,7 @@ together from a clean published checkout.
   with published Web UK `a9487f0bdf79a34f30cacdea4c1ba1d9a563bbe8`.
   Only this fixed-rubric audit contributes to the current bank.
 - **Published but unscored:** Web UK commits after `a9487f0b` through product
-  baseline `89264d2f`, including the later implementation, contract,
+  baseline `e2918257`, including the later implementation, contract,
   resilience, and component-audit slices. Their evidence is useful, but they
   contribute zero points until one complete fixed-rubric re-audit explicitly
   replaces the baseline.
@@ -205,7 +205,7 @@ together from a clean published checkout.
 | Missing Laravel routes | 1 | Event offline check-in code generation |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 52/52 suites, 1,700/1,700 tests | Complete non-mutating inventory at product baseline `89264d2f`: 51 suites/1,699 assertions in the host-memory aggregate plus the separately green canonical-path tenant-source suite/assertion |
+| Jest | 52/52 suites, 1,701/1,701 tests | Complete non-mutating inventory at product baseline `e2918257`: 51 suites/1,700 assertions in the host-memory aggregate plus the separately green canonical-path tenant-source suite/assertion |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Structural parity plus static-key resolution gate |
 | Static locale usage | 7,617 references, 5,804 unique keys, 0 unresolved | Current complete-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
@@ -381,11 +381,36 @@ mutation, upload, download, cleanup, or production operation was performed.
 This component-audit improvement remains published and unscored, so the frozen
 bank remains `622/1,000` pending a complete fixed-rubric re-audit.
 
-Package-10 progress: the Listing index/detail/form component row is now
-implementation-closed and certification-only. Its remaining side-effect,
-manual-accessibility, and backend-switching proof belongs to packages 4 and 11
-and the separate ASP.NET readiness score; this classification adds no banked
-points.
+## 2026-07-15 Feed Index Status Boundary
+
+Frozen evidence refreshed at `2026-07-15T02:44:08+01:00` against Laravel
+`903d03d3db78bbf87129ad35728be3b72819acaf` and Web UK product commit
+`e2918257b16a322264774796cb513623b8e32899`. Feed index feedback is now
+limited to the success, compose-error, and action-error query tokens rendered
+by current `feed.blade.php`. Arbitrary session flash values from unrelated
+routes are no longer consumed or exposed above Feed.
+
+Focused success/unrelated-token proof passes. The complete non-mutating
+1,701-assertion inventory is green as 51/52 suites and 1,700/1,701 assertions
+in the host-memory checkout plus the separately green canonical-path tenant-
+source suite/assertion. Brand, lint, CSS, locale shape/static/template audits,
+scoped diff, and the canonical 19/19 Blade-marker comparison are green. Static
+localization remains 7,617 references and 5,804 unique keys with zero
+unresolved; 322 templates have zero conservative matches. Route and API
+consumers were unchanged. No Laravel authentication, database, migration,
+mutation, upload, download, cleanup, or production operation was performed.
+The Markdown link gate passes 130 relative links across 74 files. The root-
+owned documentation-consistency checker remains stale at 663/448/215 and
+therefore rejects the current generated 668/451/217 ledger; this Web UK slice
+does not rewrite truthful current evidence to satisfy that historical pin.
+This component-audit improvement remains published and unscored, so the frozen
+bank remains `622/1,000` pending a complete fixed-rubric re-audit.
+
+Package-10 progress: the Listing index/detail/form and Feed hashtag/permalink
+component rows are now implementation-closed and certification-only. Their
+remaining side-effect/runtime, manual-accessibility, and backend-switching
+proof belongs to the disposable-runtime packages, package 11, and the separate
+ASP.NET readiness score; this classification adds no banked points.
 
 ### Finite P0/P1 Completion Queue
 
