@@ -158,7 +158,6 @@ public sealed class EventRegistrationProductController(EventRegistrationProductS
         Run(registration.CancelGuest(Tenant(), id, guestId, UserId(), Long(body, "expected_revision"), Text(body, "reason") ?? "", ct));
 
     [HttpPost(Root + "/guests/{guestId:long}/attendance/{attendanceAction:regex(^(check_in|check_out|no_show|undo)$)}")]
-    [HttpPost("api/events/{id:int}/registration-product/guests/{guestId:long}/attendance/{attendanceAction:regex(^(check_in|check_out|no_show|undo)$)}")]
     [EnableRateLimiting(RateLimitingExtensions.EventRegistrationSubmissionPolicy)]
     public Task<IActionResult> GuestAttendance(int id, long guestId, string attendanceAction, [FromBody] JsonElement body, CancellationToken ct) =>
         Run(registration.GuestAttendance(Tenant(), id, guestId, UserId(), attendanceAction, Long(body, "expected_version"), Key(body), Text(body, "reason"), ct));
