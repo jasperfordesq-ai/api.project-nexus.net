@@ -1,6 +1,6 @@
 # Current ASP.NET Contract Status
 
-Last verified: 2026-07-14
+Last verified: 2026-07-15
 
 Status: **canonical current ASP.NET score and certification source**
 
@@ -89,6 +89,7 @@ published:
 | Social comment mentions, usernames, and recipient side effects | Implementation `1ff6447012c89744e94d6693463a8032361c5946` | +4 semantic, +2 schema, +1 security/localization = **708/1000** |
 | Laravel-compatible social-comment HTML sanitization | Implementation `293796e0f17b91e446f49a28babd960de7681e27` | +1 semantic, +1 security/localization = **710/1000** |
 | V2 generic-comment safe-format and sanitizer parity | Implementation `5fa15e0e79993464622b1c3ef053fcdd01679991` | +1 semantic, +1 security/localization = **712/1000** |
+| Migrated-schema integration certification harness | Implementation/evidence `fefbb5ce03b83c95cd78fb338b7a5c41da9b6745` | **+0**; corrects the evidence boundary but does not substitute for a complete green suite or CI |
 
 These named values form an audit trail. They are not competing current scores.
 
@@ -97,10 +98,24 @@ These named values form an audit trail. They are not competing current scores.
 The latest banked backend implementation inspected for this page was
 `5fa15e0e79993464622b1c3ef053fcdd01679991`, with
 Laravel frozen at `903d03d3db78bbf87129ad35728be3b72819acaf` on
-2026-07-15 01:26:01 +01:00. Web UK-only commits do not add ASP.NET points and
-belong in the Web UK status report.
+2026-07-15 02:40:58 +01:00. The currently inspected ASP.NET HEAD and
+`origin/main` were both `fefbb5ce03b83c95cd78fb338b7a5c41da9b6745`.
+Web UK-only commits do not add ASP.NET points and belong in the Web UK status
+report.
 
 ### Published But Not Rescored
+
+Published commit `fefbb5ce03b83c95cd78fb338b7a5c41da9b6745`
+changes the shared integration fixture from `EnsureCreated` to the complete EF
+migration chain, so PostgreSQL functions, triggers, preflights, and other raw
+migration SQL are present in test databases. It also corrects stale ordinary-
+admin expectations for the database-backed platform-super-admin bulk policy and
+updates the obsolete volunteer-hours alias case to assert the current Laravel-
+shaped validation order. At the frozen Laravel SHA and ASP.NET implementation
+SHA, the Release test assembly built with 0 warnings and 0 errors, the focused
+fresh-migrated PostgreSQL set passed 14/14, and the five affected classes passed
+57/57 in 303.8 seconds. This adds **zero banked points** because the complete
+3,330-test suite and exact-SHA CI remain open.
 
 Published commit `923db629dea331ee093018887c4533d2c4e7133e` added the
 exact-SHA canonical React call-site generator. Published correction
@@ -124,9 +139,8 @@ and its containing public-compatibility class passes 11/11 against a separately
 named disposable PostgreSQL database through `NEXUS_TEST_POSTGRES`; the related
 SSO public-controller integration check also passes 1/1 on that database. The
 separate dirty event-safety migration remains outside this checkpoint and
-contributes zero ASP.NET points here. Concurrent dirty Web UK files remain owned
-by that workstream and contribute zero ASP.NET points. Dirty files never increase
-the banked score.
+contributes zero ASP.NET points here. There are no dirty Web UK files at this
+snapshot. Dirty files never increase the banked score.
 
 Re-run `git status --short`, compare the published checkpoint with `HEAD`, and
 refresh this section before every status report. Do not infer points from file
@@ -153,6 +167,15 @@ independent proof gates that must remain visible in status reports:
 Stateful Web UK certification against Laravel must use a separately
 provisioned disposable Laravel environment. The ordinary local Laravel database
 is a confidential production-derived snapshot and is never a test fixture.
+
+The 2026-07-15 suite investigation discovered 3,330 tests in 389 classes. A
+single full Release run reached the 30-minute process limit without an
+aggregate. Four isolated alphabetic shards also reached their 15-minute limits;
+the B-F shard exposed four named failures. The published migrated-schema harness
+and stale-expectation corrections resolve those four cases, and the affected
+57-test run is green. This is useful evidence, but it is not a complete-suite
+pass: smaller deterministic shards and an exact-SHA CI aggregate are still
+required before any of the remaining 55 build/test/CI points can move.
 
 ## Finite Ordered Backend Queue
 
