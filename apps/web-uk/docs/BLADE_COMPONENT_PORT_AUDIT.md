@@ -1482,6 +1482,22 @@ database, migration, runtime request, container, or production operation was
 performed. This slice is unscored; the canonical bank remains `663/1,000`
 until another complete fixed-rubric audit.
 
+### 2026-07-15 Club and coupon API assertion follow-up
+
+The club collection and signed coupon collection/detail reads now have direct
+API-client contract proof alongside their routed page tests. The assertions pin
+Laravel's exact v2 paths, public-versus-bearer authority, explicit coupon GETs,
+club search and pagination encoding, complete data/meta envelope preservation,
+and structured feature-disabled `403` propagation. This narrows finite package
+9 for three further Laravel route declarations omitted from OpenAPI; enabled and
+disabled tenant runtime variants remain assigned to the disposable environment.
+
+The focused API-client suite passes `221/221`, and the complete non-mutating
+gate passes `52/52` suites and `1,716/1,716` tests. No Laravel or ASP.NET
+source, database, migration, runtime request, container, or production
+operation was performed. This slice is unscored; the canonical bank remains
+`663/1,000` until another complete fixed-rubric audit.
+
 - GOV.UK crown, logotype, official header identity, OGL block, or Crown
   copyright wording.
 - Laravel/PHP implementation details.

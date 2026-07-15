@@ -4729,6 +4729,76 @@ describe('API Request Functions', () => {
     });
   });
 
+  describe('Laravel club and coupon directory helpers', () => {
+    it('should preserve the public club query and signed coupon paths', async () => {
+      const clubResponse = {
+        data: [{ id: 3, name: 'Cycling Club', member_count: 0 }],
+        meta: { current_page: 2, last_page: 3, total: 21, per_page: 10 }
+      };
+      const couponsResponse = { data: [{ id: 8, code: 'SAVE10', discount_type: 'percentage' }] };
+      const couponResponse = { data: { id: 8, code: 'SAVE10', discount_value: 10 } };
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => clubResponse
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => couponsResponse
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          headers: { get: () => 'application/json' },
+          json: async () => couponResponse
+        });
+
+      await expect(api.getClubs({ search: 'cycle & repair', page: 2, per_page: 10 }))
+        .resolves.toEqual(clubResponse);
+      await expect(api.callCouponApi('test-token', 'GET')).resolves.toEqual(couponsResponse);
+      await expect(api.callCouponApi('test-token', 'GET', '/8')).resolves.toEqual(couponResponse);
+
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        1,
+        'http://localhost:5000/api/v2/clubs?search=cycle+%26+repair&page=2&per_page=10',
+        expect.objectContaining({ headers: expect.not.objectContaining({ Authorization: expect.anything() }) })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        2,
+        'http://localhost:5000/api/v2/coupons',
+        expect.objectContaining({
+          method: 'GET',
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
+        })
+      );
+      expect(mockFetch).toHaveBeenNthCalledWith(
+        3,
+        'http://localhost:5000/api/v2/coupons/8',
+        expect.objectContaining({
+          method: 'GET',
+          headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
+        })
+      );
+    });
+
+    it('should preserve a disabled coupon module as a structured Laravel error', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ message: 'Coupons are not enabled.', code: 'FEATURE_DISABLED' })
+      });
+
+      await expect(api.callCouponApi('test-token', 'GET')).rejects.toMatchObject({
+        name: 'ApiError',
+        status: 403,
+        message: 'Coupons are not enabled.',
+        data: { message: 'Coupons are not enabled.', code: 'FEATURE_DISABLED' }
+      });
+    });
+  });
+
   describe('Laravel member profile action helpers', () => {
     it('should list member connections through the Laravel v2 endpoint', async () => {
       mockFetch.mockResolvedValueOnce({
