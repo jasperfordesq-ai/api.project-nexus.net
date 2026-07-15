@@ -248,11 +248,11 @@ if ($null -ne $status) {
 $webUkStatus = Get-DocumentText 'apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md'
 if ($null -ne $webUkStatus) {
     Assert-Contains 'apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md' $webUkStatus `
-        '<!--\s*doc-consistency:\s*WEBUK_CURRENT_BANKED_SCORE=660/1000\s*-->' `
-        'must expose the canonical 660/1000 banked-score marker.'
+        '<!--\s*doc-consistency:\s*WEBUK_CURRENT_BANKED_SCORE=663/1000\s*-->' `
+        'must expose the canonical 663/1000 banked-score marker.'
     Assert-Contains 'apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md' $webUkStatus `
-        '(?i)Laravel-first banked score[^\r\n]*660/1000' `
-        'must state the Web UK banked score as 660/1000.'
+        '(?i)Laravel-first banked score[^\r\n]*663/1000' `
+        'must state the Web UK banked score as 663/1000.'
     Assert-Contains 'apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md' $webUkStatus `
         '688/689' `
         'must preserve the canonical generated route summary.'
@@ -336,7 +336,7 @@ foreach ($relativePath in $webUkDependentStatusDocuments) {
 
     $opening = Get-OpeningRegion $text 80
     Assert-NotContains $relativePath $opening `
-        '(?i)\b(?:660/1000|622/1000|688/689|1,706/1,706|1,661/1,661)\b|(?:668|663)\s+contracts' `
+        '(?i)\b(?:663/1000|660/1000|622/1000|688/689|1,709/1,709|1,706/1,706|1,661/1,661)\b|(?:668|663)\s+contracts' `
         'must link the canonical Web UK status instead of mirroring live score/count/test totals near its title.'
 }
 
@@ -368,7 +368,7 @@ if ($null -ne $documentationHealth) {
         'CURRENT_LARAVEL_FIRST_PARITY_STATUS\.md' `
         'must link the canonical Web UK product score.'
     Assert-NotContains 'docs/DOCUMENTATION_HEALTH_REPORT.md' $documentationHealth `
-        '(?i)\b(?:712|660|645|622)/1000\b' `
+        '(?i)\b(?:712|663|660|645|622)/1000\b' `
         'must not mirror either live product score.'
 }
 
@@ -505,7 +505,7 @@ foreach ($relativePath in $historicalOpenings) {
     if ($null -eq $text) { continue }
     $opening = Get-OpeningRegion $text 60
     Assert-NotContains $relativePath $opening `
-        '(?i)\b(?:712/1000|710/1000|708/1000|701/1000|698/1000|684/1000|680/1000|660/1000|622/1000|688/689|1,706/1,706|1,661/1,661)\b|(?:668|663)\s+contracts' `
+        '(?i)\b(?:712/1000|710/1000|708/1000|701/1000|698/1000|684/1000|680/1000|663/1000|660/1000|622/1000|688/689|1,709/1,709|1,706/1,706|1,661/1,661)\b|(?:668|663)\s+contracts' `
         'must not copy live workstream scores or generated totals into its archive banner.'
 }
 

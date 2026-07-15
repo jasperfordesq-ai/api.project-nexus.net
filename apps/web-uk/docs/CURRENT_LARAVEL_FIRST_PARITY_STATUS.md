@@ -4,7 +4,7 @@ Last audited: 2026-07-15
 
 Status: **Canonical current — sole Web UK coordination and scoring source**
 
-<!-- doc-consistency: WEBUK_CURRENT_BANKED_SCORE=660/1000 -->
+<!-- doc-consistency: WEBUK_CURRENT_BANKED_SCORE=663/1000 -->
 
 This is the sole current coordination and scoring document for `apps/web-uk`.
 Read it before starting, resuming, or reporting accessible-frontend work. It
@@ -162,17 +162,23 @@ commit as the implementation it describes.
 
 The current named baseline is Laravel
 `903d03d3db78bbf87129ad35728be3b72819acaf` with published Web UK
-`1ded18bd5e49e09c06d697ac0699a9cc31181d25`, audited on 2026-07-15 in a clean
-detached worktree. Repository `main` and `origin/main` both identified that Web
-UK product snapshot when the audit began. The Event-detail status-family slice
-is included; ASP.NET backend files and its score remain outside this workstream.
+`2e92f89ee03177af02f0f16b669591604d3e6403`, audited at
+`2026-07-15T07:09:13+01:00`. A concurrent backend-owned publication advanced
+repository `main` and `origin/main` to
+`60715dfdc96e7373c162176c29b8abf99f418ee9` during the audit without changing
+Web UK product files; generated route/API evidence therefore records that HEAD.
+The saved-search, Event Template pagination, shared-pagination, and shared
+empty-state/back-link closures are included; ASP.NET backend files and its
+score remain outside this workstream.
 
 ### Repository-State Boundary
 
 - **Banked baseline:** Laravel `903d03d3db78bbf87129ad35728be3b72819acaf`
-  with published Web UK `1ded18bd5e49e09c06d697ac0699a9cc31181d25`.
-  This complete fixed-rubric re-audit supersedes the 622-point checkpoint.
-- **Published but unscored:** none after `1ded18bd` at the audit boundary. A
+  with published Web UK `2e92f89ee03177af02f0f16b669591604d3e6403`. This complete fixed-rubric re-audit
+  supersedes the 660-point checkpoint. Repository/generated-evidence HEAD is
+  `60715dfdc96e7373c162176c29b8abf99f418ee9`; its backend-only delta contributes
+  no Web UK points.
+- **Published but unscored:** none after `2e92f89e` at the audit boundary. A
   later product commit must remain in this bucket until another complete
   fixed-rubric audit names and scores it.
 - **Dirty and uncommitted:** no Web UK product source was dirty at the named
@@ -189,13 +195,13 @@ is included; ASP.NET backend files and its score remain outside this workstream.
 | Missing Laravel routes | 1 | Event offline check-in code generation |
 | Extra Web UK routes | 5 | Four 404 tombstones plus one binary proxy |
 | Ignored infrastructure routes | 3 | Health/root infrastructure |
-| Jest | 52/52 suites, 1,706/1,706 tests | One uninterrupted `--runInBand` run in the clean detached `1ded18bd` worktree; 255.86 seconds |
+| Jest | 52/52 suites, 1,709/1,709 tests | One uninterrupted `--runInBand` run at published product `2e92f89e`; 100.52 seconds |
 | Brand, lint, and CSS | Passed | Current source gates |
 | Locale catalog shape | 11 locales, 36 namespaces, 8,837 keys | Zero missing/extra structural keys |
-| Static locale usage | 7,634 references, 5,819 unique keys, 0 unresolved | Complete current-reference audit |
+| Static locale usage | 7,635 references, 5,820 unique keys, 0 unresolved | Complete current-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
-| Blade marker check | Current rerun unavailable because Laravel port 8088 was not listening; preceding product `e2918257` passed 19/19 | Public GET marker comparison only; not screenshot or visual certification |
-| Automated accessibility | Not currently certified: the last aggregate recorded 28 passed, login failed, and 58 did not run | A full aggregate and manual assistive-technology review remain open |
+| Blade marker check | Current rerun unavailable because Laravel port 8088 is not listening; preceding product `e2918257` passed 19/19 | Public GET marker comparison only; not screenshot or visual certification |
+| Automated accessibility | Not currently certified: the last aggregate recorded 28 passed, login failed, and 58 did not run; the supported browser runtime also failed to bootstrap for this audit | A full aggregate and manual assistive-technology review remain open |
 | Frontend API consumer ledger | 668 contracts: 451 OpenAPI matches, 217 unmatched, 0 dynamic; all 217 unmatched contracts resolve to direct Laravel route declarations omitted from OpenAPI; 370 are state-changing and 0 lack detected tests | Static/mock ownership evidence, not disposable-runtime certification |
 
 ### Current Banked Score
@@ -203,27 +209,28 @@ is included; ASP.NET backend files and its score remain outside this workstream.
 | Fixed rubric | Earned | Exact deduction |
 |---|---:|---|
 | Route/inventory representation | 99/100 | -1: Laravel exposes no safe equivalent frontend contract for the offline signed Event check-in-code POST. |
-| Observable Blade/workflow implementation | 289/300 | -8: Event moderation queue membership/order/`is_online` and check-in behavior remain upstream contract boundaries; -3: remaining genuine default-English significant-state component rows still require finite closure. |
+| Observable Blade/workflow implementation | 292/300 | -8: Event moderation queue membership/order/`is_online` and check-in behavior remain upstream contract boundaries. Saved search, shared pagination, and shared empty-state/back-link rows are now implementation-closed. |
 | API contract/state coverage plus static/mock verification | 190/200 | -10: exhaustive field-shape, publication, auth/role, status/error, and side-effect assertions are not complete for every significant contract. |
 | Disposable Laravel runtime certification | 0/200 | -200: no separately provisioned and verified disposable Laravel application/database/storage environment exists, so live mutation/upload/download/destructive certification is open. |
 | Screenshot/manual accessibility/WCAG certification | 35/150 | -40: no representative screenshot comparison set; -30: no screen-reader speech-output sign-off; -25: manual keyboard/no-JS/zoom/reflow/forced-colour coverage is incomplete; -20: the current full accessibility aggregate is not certified. |
 | Production hardening and reproducible docs | 47/50 | -3: the implemented Redis-session, fail-closed secret, timeout/failure, readiness, and release controls still need deployed-environment proof. |
-| **Laravel-first banked score** | **660/1000 (66.0%)** | Implementation-only subtotal is 578/600 (96.3%); it must never be reported as overall certification. |
+| **Laravel-first banked score** | **663/1000 (66.3%)** | Implementation-only subtotal is 581/600 (96.8%); it must never be reported as overall certification. |
 
-The score moves **622 -> 660 (+38)** at this named snapshot: observable
-implementation gains 11 points, API/static/mock coverage gains 20, and
-hardening/docs gains 7. The final point above the earlier 659 recommendation is
-the published Event-detail status-family closure in `1ded18bd`; it is backed by
-the clean 1,706-test run. Runtime stays 0/200 and manual/accessibility remains
-35/150, so the score does not imply that the frontend is ready for production.
+The score moves **660 -> 663 (+3)** at this named snapshot. The three previously
+deducted default-English component rows are implementation-closed by the
+published saved-search recovery, exhaustive 34-pair pagination audit and cursor
+fix, and final localized empty-state/back-link correction. Runtime stays 0/200
+and manual/accessibility remains 35/150, so the score does not imply that the
+frontend is ready for production.
 
-ASP.NET switchability is not included in these 660 points. It remains a
+ASP.NET switchability is not included in these 663 points. It remains a
 separate backend-owned certification: the unchanged Web UK code must pass
 against ASP.NET by configuration change only after that backend is ready.
 
 ### Finite P0/P1 Completion Queue
 
-The remaining Laravel-first queue is still 12 bounded packages:
+The remaining Laravel-first queue is 11 bounded packages. Package 10 is closed
+for implementation and removed from this remaining list:
 
 1. **P0 - Disposable environment:** provision and prove an isolated Laravel
    application, database, and storage environment that cannot address the
@@ -249,14 +256,20 @@ The remaining Laravel-first queue is still 12 bounded packages:
 9. **P1 - API publication/assertion closure:** resolve the 217 direct Laravel
    route declarations omitted from OpenAPI and finish field/auth/status/error/
    side-effect assertions.
-10. **P1 - Component-audit closure:** close or explicitly assign the remaining
-    three default-English significant-state point deductions.
 11. **P1 - Visual and manual WCAG:** complete representative screenshots,
     keyboard/no-JS/zoom/reflow/forced-colour/focus/error checks, the full
     accessibility aggregate, and screen-reader sign-off.
 12. **P1 - Deployed hardening proof:** verify persistent sessions, secrets,
     timeout/failure handling, readiness, release/rollback controls, and lift the
     deployment hold only with explicit approval.
+
+Checkpoint footer: banked score `663/1,000`; in-flight delta `0`; blocker owners
+are the disposable-environment operator, Laravel API owner, browser/runtime
+operator, deployment operator, and user/manual assistive-technology reviewer;
+finite remaining item count `11`. Next five tasks: provision the isolated
+Laravel environment; certify its runtime foundation; run identity/value
+side-effect lifecycles; run community side-effect lifecycles; run commerce/work
+side-effect lifecycles.
 
 The exact Windows Update interruption and the pre-restart product boundary are
 recorded in
