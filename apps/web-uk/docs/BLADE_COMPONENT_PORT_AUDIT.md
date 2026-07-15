@@ -1787,6 +1787,22 @@ claimed from this run. No Laravel or ASP.NET source, database, migration,
 authentication, mutation, container, or production operation was used. The
 canonical bank remains `663/1,000` until another complete fixed-rubric audit.
 
+Published product SHA `cbed0c9e` adds a deterministic paired screenshot
+capture command for six representative default-English public pages at
+`1280 x 800` and `320 x 800`. It requires explicit disposable-Laravel
+confirmation, refuses `/alpha` and credential-bearing base URLs, blocks every
+browser request method except GET/HEAD, checks one H1 and one main landmark,
+and checks narrow horizontal overflow. It writes 24 ignored PNGs and a
+machine-readable manifest keyed by the supplied Laravel/Web UK source IDs;
+human pair review remains deliberately separate. Focused contract proof passes
+`7/7`, and the complete non-mutating gate passes `53/53` suites and
+`1,741/1,741` tests, with green direct lint, syntax, documentation-consistency,
+and diff checks. No screenshots were captured in this slice because no
+verified disposable Laravel listener exists. No Laravel or ASP.NET source,
+database, migration, browser, container, or production operation was used.
+This support slice is unscored; the canonical bank remains `663/1,000` until
+another complete fixed-rubric audit.
+
 - GOV.UK crown, logotype, official header identity, OGL block, or Crown
   copyright wording.
 - Laravel/PHP implementation details.
