@@ -1726,6 +1726,28 @@ until another complete fixed-rubric audit.
 At published Web UK product SHA `c961187c`, the complete Jest aggregate passes
 `52/52` suites and `1,734/1,734` tests.
 
+### 2026-07-15 Isolated public accessibility runner
+
+Published Web UK product SHA `10f01c7c` adds a reproducible loopback-only
+accessibility backend for browser checks that do not require Laravel state. It
+supplies bounded GET fixtures for the tenant chooser, tenant bootstrap,
+platform statistics, and registration policy; clears inherited API overrides;
+rejects every backend method except GET/HEAD; and fails the runner if a backend
+mutation is attempted. The current-checkout Playwright server still binds to a
+random loopback port and writes only ignored local artifacts.
+
+On the canonical `/hour-timebank/accessible` mount, the isolated runner passes
+`14/14` representative public structure/serious-critical axe cases and `4/4`
+keyboard order, skip-link, client error-summary focus/field association, 320px
+reflow, forced-colour, and serious-critical axe cases. Override-resistance was
+also exercised with hostile inherited `API_BASE_URL` and `LARAVEL_BASE_URL`
+values; the runner used its own random loopback fixture. No Laravel or ASP.NET
+source, database, authentication, mutation, upload, download, container, or
+production operation was performed. This is partial package-11 browser
+evidence, not screenshot comparison, screen-reader, full WCAG, Laravel runtime,
+or release certification. The canonical bank remains `663/1,000` until another
+complete fixed-rubric audit.
+
 - GOV.UK crown, logotype, official header identity, OGL block, or Crown
   copyright wording.
 - Laravel/PHP implementation details.

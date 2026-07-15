@@ -201,7 +201,7 @@ score remain outside this workstream.
 | Static locale usage | 7,635 references, 5,820 unique keys, 0 unresolved | Complete current-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
 | Blade marker check | Current rerun unavailable because Laravel port 8088 is not listening; preceding product `e2918257` passed 19/19 | Public GET marker comparison only; not screenshot or visual certification |
-| Automated accessibility | Not currently certified: the last aggregate recorded 28 passed, login failed, and 58 did not run; the supported browser runtime also failed to bootstrap for this audit | A full aggregate and manual assistive-technology review remain open |
+| Automated accessibility | Not currently certified: the last stateful aggregate recorded 28 passed, login failed, and 58 did not run. At published product `10f01c7c`, an isolated read-only browser runner passes 14/14 public structure/axe cases and 4/4 keyboard/focus/client-validation/reflow/forced-colour cases without access to Laravel. | The isolated subset is partial browser evidence only; the disposable-Laravel aggregate and manual assistive-technology review remain open. |
 | Frontend API consumer ledger | 668 contracts: 451 OpenAPI matches, 217 unmatched, 0 dynamic; all 217 unmatched contracts resolve to direct Laravel route declarations omitted from OpenAPI; 370 are state-changing and 0 lack detected tests | Static/mock ownership evidence, not disposable-runtime certification |
 
 ### Current Banked Score
