@@ -22,7 +22,7 @@ public sealed class RegionalAnalyticsSuperAdminContractTests : IntegrationTestBa
     [Fact]
     public async Task LaravelReactRegionalAnalyticsSuperAdmin_SubscriptionCrudReportAndAccessLogUseLaravelShape()
     {
-        await AuthenticateAsAdminAsync();
+        await AuthenticateAsPlatformSuperAdminAsync();
 
         var create = await Client.PostAsJsonAsync("/api/super-admin/regional-analytics/subscriptions", new
         {
@@ -79,6 +79,16 @@ public sealed class RegionalAnalyticsSuperAdminContractTests : IntegrationTestBa
             row.GetProperty("subscription_id").GetInt64() == subscriptionId &&
             row.GetProperty("accessed_endpoint").GetString() == "/partner-analytics/me/dashboard");
         accessLogJson.GetProperty("data").GetProperty("meta").GetProperty("per_page").GetInt32().Should().Be(100);
+    }
+
+    [Fact]
+    public async Task LaravelReactRegionalAnalyticsSuperAdmin_RejectsOrdinaryTenantAdmin()
+    {
+        await AuthenticateAsAdminAsync();
+
+        var response = await Client.GetAsync("/api/super-admin/regional-analytics/subscriptions");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     private async Task SeedRegionalAnalyticsAccessLogAsync(long subscriptionId)
