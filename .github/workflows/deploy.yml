@@ -3,20 +3,22 @@
 
 name: Deploy
 
+# Manual-only safety gate. Invoking this workflow is not standing authorization;
+# the production environment approval and exact-SHA confirmation are mandatory.
 on:
-  workflow_run:
-    workflows: ["CI"]
-    types: [completed]
-    branches: [main]
-
   workflow_dispatch:
     inputs:
       commit_sha:
-        description: 'Specific commit SHA to deploy (leave empty for latest main)'
-        required: false
+        description: 'Exact full commit SHA explicitly authorized for production'
+        required: true
         type: string
+      confirm_production:
+        description: 'I confirm this exact production deployment is explicitly authorized'
+        required: true
+        type: boolean
+        default: false
       skip_backup:
-        description: 'Skip pre-deployment database backup'
+        description: 'Skip pre-deployment database backup only when separately authorized'
         required: false
         type: boolean
         default: false
@@ -29,20 +31,22 @@ jobs:
   deploy:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    if: >
-      github.event_name == 'workflow_dispatch' ||
-      github.event.workflow_run.conclusion == 'success'
+    if: ${{ inputs.confirm_production == true }}
     environment: production
 
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.inputs.commit_sha || github.sha }}
+          ref: ${{ inputs.commit_sha }}
 
       - name: Determine deploy version
         id: version
         run: |
-          SHA="${{ github.event.inputs.commit_sha || github.sha }}"
+          SHA="${{ inputs.commit_sha }}"
+          if ! [[ "$SHA" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            echo "commit_sha must be an exact 40-character Git SHA" >&2
+            exit 1
+          fi
           SHORT_SHA="${SHA:0:7}"
           echo "sha=$SHA" >> $GITHUB_OUTPUT
           echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
@@ -56,7 +60,7 @@ jobs:
           ssh-keyscan -H ${{ secrets.PRODUCTION_HOST }} >> ~/.ssh/known_hosts
 
       - name: Pre-deployment database backup
-        if: ${{ github.event.inputs.skip_backup != 'true' }}
+        if: ${{ inputs.skip_backup != true }}
         run: |
           ssh -i ~/.ssh/deploy_key azureuser@${{ secrets.PRODUCTION_HOST }} << 'BACKUP_EOF'
             set -e

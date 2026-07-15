@@ -15,7 +15,7 @@ For the current migration/schema deductions and named evidence baseline, read
 chain below is a retained 2026-07-12 checkpoint; its count and latest migration
 must not be presented as the current repository chain.
 
-At committed main `1ded18bd5e49e09c06d697ac0699a9cc31181d25`, the published
+At committed main `9ad163c969a935407297eb459a9840798a1a9e78`, the published
 backend migration tail runs from marketplace payment settlement
 `20260714105831_MarketplacePaymentSettlementParity` through Connect onboarding,
 paid-notification, escrow-settlement, refund-ledger, SSO/OIDC, and finally
@@ -27,6 +27,12 @@ complete-suite, CI, production-upgrade, or deployment claim. Replay, preflight,
 and model-drift evidence for individual migrations is recorded in
 `SCHEMA_PARITY.md`. Always obtain the runtime migration list from the current
 checkout before an upgrade claim.
+
+The clean isolated schema candidate branch is local-only at `97b8a4a0` and
+contains nine commits/164 migration source files versus 155 on main. Its table
+projection and acceptance gaps are recorded in `SCHEMA_PARITY.md`. None of its
+candidate migrations is merged, published, production-authorized, or banked;
+do not mix its migration list with mainline runtime evidence.
 
 ## Historical Runtime Chain And Replay Evidence (2026-07-12)
 
@@ -501,23 +507,33 @@ focused/full tests -> PR/CI -> merge -> explicitly authorized deployment plan
 
 ## Prerequisites
 
-- Docker Compose running locally (`docker compose up -d`)
-- `make` available (Git Bash on Windows, native on macOS/Linux)
-- For an explicitly authorized production operation only: verified current
-  operator access and `NEXUS_DEPLOY_HOST`; never infer authorization from the
-  variable being present
-- EF Core CLI tools installed in the API Docker container (already included)
+- .NET 8 SDK on the host
+- the pinned local EF tool restored with `dotnet tool restore`
+- an explicitly named, verified disposable PostgreSQL 16.4 database for replay
+- the current source branch or isolated schema worktree
+
+The root API container is runtime-only. It has no .NET SDK and no repository
+source mount, so `docker compose exec api dotnet ef ...` cannot be the migration
+workflow. Root Compose also does not expose PostgreSQL to the host by default.
+Provision the disposable database explicitly rather than repointing EF at a
+shared, Laravel, production-derived, or production database.
 
 ## Quick Reference
 
-| Command | What it does |
-|---------|-------------|
-| `make migrate NAME=AddFeature` | Create + apply a migration locally |
-| `make migrate-apply` | Apply pending migrations locally |
-| `make migrate-status` | Show local migration status |
-| `make migrate-prod` | Production helper; use only after the production boundary above is satisfied and its target/backup commands are reviewed |
-| `make backup-prod-db` | Production helper; explicit authorization and verified target required |
-| `make drift-check` | Local model check by default; production comparison requires separately authorized access |
+Run these from the repository root after setting
+`ConnectionStrings__DefaultConnection` to the disposable database:
+
+```powershell
+dotnet tool restore
+dotnet build src/Nexus.Api/Nexus.Api.csproj --configuration Release
+dotnet ef migrations list --project src/Nexus.Api --startup-project src/Nexus.Api --configuration Release --no-build
+dotnet ef migrations has-pending-model-changes --project src/Nexus.Api --startup-project src/Nexus.Api --configuration Release --no-build
+dotnet ef migrations script --idempotent --project src/Nexus.Api --startup-project src/Nexus.Api --configuration Release --no-build
+dotnet ef database update --project src/Nexus.Api --startup-project src/Nexus.Api --configuration Release --no-build
+```
+
+Read the command output as evidence at the exact source SHA. Never redirect the
+generated SQL into a real target merely because script generation succeeded.
 
 ## Step-by-Step Workflow
 
@@ -527,14 +543,18 @@ Edit entity files in `src/Nexus.Api/Entities/` or the `NexusDbContext.cs`.
 
 ### 2. Create a Migration
 
-```bash
-make migrate NAME=AddUserPreferences
+```powershell
+dotnet tool restore
+dotnet ef migrations add AddUserPreferences `
+  --project src/Nexus.Api `
+  --startup-project src/Nexus.Api `
+  --output-dir Migrations `
+  --configuration Release
 ```
 
-This will:
-1. Run `dotnet ef migrations add` inside the API container
-2. Generate migration files in `src/Nexus.Api/Migrations/`
-3. Apply the migration to your local database
+This generates migration source under `src/Nexus.Api/Migrations/`; it does not
+apply the migration. Review the migration, designer metadata, and model snapshot
+before any replay.
 
 **Migration naming convention:** Use PascalCase descriptive names that explain the change:
 - `AddUserPreferences` - adding new tables/columns
@@ -546,9 +566,11 @@ This will:
 
 Always review the generated files before committing:
 
-```bash
-# Check what SQL will be generated
-make migrate-script
+```powershell
+dotnet ef migrations script --idempotent `
+  --project src/Nexus.Api `
+  --startup-project src/Nexus.Api `
+  --configuration Release
 ```
 
 Look for:
@@ -558,17 +580,23 @@ Look for:
 
 ### 4. Test Locally
 
-```bash
-# Rebuild and restart API
-make rebuild
-
-# Run integration tests
-make test
+```powershell
+# ConnectionStrings__DefaultConnection must name a verified disposable DB.
+dotnet ef database update `
+  --project src/Nexus.Api `
+  --startup-project src/Nexus.Api `
+  --configuration Release
+dotnet test tests/Nexus.Api.Tests/Nexus.Api.Tests.csproj --configuration Release
 ```
+
+For a parity slice, prove a blank replay and an upgrade replay from the relevant
+prior migration, then assert defaults, constraints, indexes, tenant rejection,
+and representative valid rows. A clean blank replay alone does not prove an
+upgrade path or semantic correctness.
 
 ### 5. Commit and Push
 
-```bash
+```powershell
 git add src/Nexus.Api/Migrations/
 git commit -m "migration: add user preferences table"
 git push
@@ -576,7 +604,7 @@ git push
 
 ### 6. CI Validates Your PR
 
-The PR Quality Gate workflow automatically:
+The PR Quality Gate is intended to:
 - **Builds** the project
 - **Runs tests** against a fresh PostgreSQL database
 - **Verifies migration discovery** - fails on an unclassified or accidentally restored migration class
@@ -584,7 +612,8 @@ The PR Quality Gate workflow automatically:
 - **Applies all migrations** to verify they execute cleanly
 - **Warns** if entity files changed but no migration was added
 
-The discovery gate must cover every compiled migration subclass and keep any
+Verify the workflow result at the exact commit rather than assuming intent is
+green. The discovery gate must cover every compiled migration subclass and keep any
 reviewed overlapping source explicitly outside the runtime chain. It prevents a
 new class from becoming silently invisible, but it does not make duplicate DDL
 safe. A successful blank `database update` certifies only the IDs discovered in
@@ -593,7 +622,7 @@ an intentionally excluded duplicate. Record the exact source SHA, discovered
 count, latest ID, replay result, and `has-pending-model-changes` result for each
 new claim. The historical checkpoint above is not current-chain proof.
 
-### 7. Deploy to Production
+### 7. Prepare An Explicitly Authorized Production Plan
 
 Merge does not itself authorize or prove a deployment. Do not assume GitHub
 Actions applies migrations automatically. A production migration must not run
@@ -613,14 +642,10 @@ unless every item below is satisfied:
 If any item is missing or uncertain, stop. This guide supplies no executable
 production migration or restore command.
 
-The current `make migrate-prod` and `make backup-prod-db` targets are
-**unapproved and unverified for production use**. They hard-code database
-`nexus_prod`, while the checked-in Compose topology and deployment workflow use
-`nexus_dev`. That mismatch can invalidate the claimed pre-migration backup and
-restore target. Do not run either target in production until the implementation
-has been reconciled with the live inventory, independently reviewed, and a
-component-specific procedure has been explicitly authorized. The presence of a
-prompt, health probe, or target name is not safety evidence.
+The `Makefile` migration/production targets are **unsupported and unapproved**.
+They assume SDK tooling inside the runtime API container and conflict with
+checked-in database names and current deployment boundaries. The presence of a
+prompt, health probe, target name, or GitHub workflow is not safety evidence.
 
 ## Drift Detection
 
@@ -633,18 +658,17 @@ Schema drift occurs when the database schema doesn't match what the codebase exp
 
 ### Running the Drift Check
 
-```bash
-# Local only (checks model vs last migration)
-make drift-check
-
-# Production comparison is a separate read-only operator action. Run it only
-# after explicit authorization and current target verification.
+```powershell
+dotnet ef migrations has-pending-model-changes `
+  --project src/Nexus.Api `
+  --startup-project src/Nexus.Api `
+  --configuration Release `
+  --no-build
 ```
 
-The drift check verifies:
-1. **Model consistency** - DbContext matches the last migration snapshot
-2. **Local migration list** - all migrations present in codebase
-3. **Production comparison** - identifies pending or extra migrations on production
+This is a source/model-snapshot check. It does not compare a production
+database. Production history inspection is a separate read-only operator
+action requiring explicit authorization and current target verification.
 
 ### CI Drift Prevention
 
@@ -729,10 +753,10 @@ Connection strings are **never** stored in the repository. They are provided via
 
 | Environment | How connection string is set |
 |-------------|----------------------------|
-| Local dev | `compose.yml` environment variables |
+| Local dev | Root `compose.yml` sets the in-container connection; host EF needs a separately exposed disposable database |
 | CI/CD | GitHub Actions workflow environment |
-| Production | `.env` file or `compose.override.yml` on the server |
-| Tests | Testcontainers (auto-configured) |
+| Production | Current secret/environment management, verified during an explicitly authorized operation; do not assume a legacy Compose path |
+| Tests | Testcontainers by default or an explicitly disposable `NEXUS_TEST_POSTGRES` target |
 
 ## Troubleshooting
 
@@ -740,24 +764,17 @@ Connection strings are **never** stored in the repository. They are provided via
 
 Your entity files have been modified but no migration exists for the changes.
 
-```bash
-make migrate NAME=DescriptiveName
-```
+Create a reviewed migration with the host `dotnet ef migrations add` command
+shown above.
 
 ### "Migration failed to apply"
 
 The migration SQL has an error. Check the generated migration code:
 
-```bash
-# View the migration
-cat src/Nexus.Api/Migrations/<timestamp>_<Name>.cs
-
-# If the migration hasn't been applied anywhere yet, remove it
-make migrate-rollback
-
-# Fix the entity/DbContext issue, then recreate
-make migrate NAME=FixedName
-```
+Inspect the generated `.cs`, `.Designer.cs`, and model snapshot diff. If the
+migration has never been applied or shared, use the host EF tool's `migrations
+remove` command, correct the model, and regenerate it. Never remove a migration
+that has been applied or published without a reviewed reconciliation plan.
 
 ### "Production has migrations not in local codebase"
 
@@ -779,6 +796,6 @@ Not all entity file changes require migrations (e.g., adding a `[NotMapped]` pro
 - **Production**: No standing command is authorized here. Follow an explicitly
   approved, component-specific plan after reading the production container map
 - **Testing**: Uses Testcontainers with a fresh database per test run
-- **EF Core tools** run inside the Docker container to match the exact runtime environment
+- **EF Core tools** run from the pinned repository-local host tool manifest; the runtime API image has no SDK
 - **PostgreSQL 16.4** is the recorded local/CI target; verify the live
   production engine/version during each explicitly authorized operation

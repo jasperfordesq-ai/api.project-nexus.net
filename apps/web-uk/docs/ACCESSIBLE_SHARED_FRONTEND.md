@@ -1,6 +1,6 @@
 # apps/web-uk Shared Accessible Frontend Notes
 
-Last reviewed: 2026-07-14
+Last reviewed: 2026-07-15
 
 Status: **Maintained reference — current Web UK direction, not readiness status**
 

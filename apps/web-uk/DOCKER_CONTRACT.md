@@ -1,5 +1,9 @@
 # Docker Contract - NEXUS UK Frontend
 
+Last reviewed: 2026-07-15
+
+Status: **Maintained reference - local Web UK container contract only**
+
 ## Source of Truth
 
 **Docker is the ONLY supported development environment.**
@@ -10,10 +14,10 @@ native Node.js, XAMPP, or any other local setup.
 
 ### Why Docker Only?
 
-- **Consistency** - Same environment for all developers and production
+- **Consistency** - Same checked-in local runtime for all developers
 - **No dependency conflicts** - Node.js, Sass, etc. are containerized
 - **Simple onboarding** - Just `docker compose up`
-- **Matches production** - Production also uses Docker
+- **Container fidelity** - Exercises the image/runtime pattern without claiming production certification
 
 ## Quick Reference
 

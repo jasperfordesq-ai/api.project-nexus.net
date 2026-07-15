@@ -13,11 +13,17 @@ configuration only, with Laravel defining the contract ASP.NET must satisfy.
 
 | Document | Purpose |
 | --- | --- |
+| [user/README.md](user/README.md) | Member/end-user guidance for sign-in, community features, account safety, accessibility, language, and support. |
+| [admin/README.md](admin/README.md) | Tenant/community administrator responsibilities and safe workflow boundaries. |
+| [api/README.md](api/README.md) | API consumer guide for auth, tenancy, exact endpoint shapes, retries, uploads, and side effects. |
+| [system/README.md](system/README.md) | Developer/operator hub for local setup, configuration, testing, security, operations, and incident response. |
+| [../SUPPORT.md](../SUPPORT.md) | Product-support and software-defect reporting. |
+| [../SECURITY.md](../SECURITY.md) | Private vulnerability reporting and safe-testing policy. |
 | [FULL_PARITY_REMEDIATION_RUNBOOK.md](FULL_PARITY_REMEDIATION_RUNBOOK.md) | Fixed cross-workstream rubric, two-frontends-by-two-backends completion gate, shared evidence rules, and autonomous execution loop. Each canonical status document owns its live queue. |
 | [CURRENT_ASPNET_CONTRACT_STATUS.md](CURRENT_ASPNET_CONTRACT_STATUS.md) | Current ASP.NET fixed-rubric score, evidence boundary, published-but-unscored work, blockers, and next queue. Start here for backend status or resumption. |
 | [BACKEND_LOCALIZATION_CONTRACT.md](BACKEND_LOCALIZATION_CONTRACT.md) | Maintained ASP.NET backend localization contract: fixed Laravel/ASP.NET SHAs, request and recipient locale behavior, committed evidence, dirty-worktree boundary, and certification gaps. |
 | [DOCUMENTATION_GOVERNANCE.md](DOCUMENTATION_GOVERNANCE.md) | Canonical document hierarchy, fixed scoring/reporting rules, history labels, safety requirements, and documentation-health gate. |
-| [DOCUMENTATION_HEALTH_REPORT.md](DOCUMENTATION_HEALTH_REPORT.md) | Fixed Baseline D1 documentation-health score and reproducible evidence; explicitly separate from product completion. |
+| [DOCUMENTATION_HEALTH_REPORT.md](DOCUMENTATION_HEALTH_REPORT.md) | System-wide Baseline D2 documentation-health score, prior-audit correction, and reproducible evidence; explicitly separate from product completion. |
 | [RESTART_INCIDENT_2026-07-15.md](RESTART_INCIDENT_2026-07-15.md) | Exact Irish-time Windows Update restart sequence, pre-restart task boundaries, recovery distinction, and zero-point interrupted-work rule. |
 | [CURRENT_LARAVEL_PARITY_HANDOFF.md](CURRENT_LARAVEL_PARITY_HANDOFF.md) | Chronological backend implementation history and older commands. Its former scores and “latest” checkpoints are historical; do not use it for current status. |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Runtime boundaries, application surfaces, and invariants for the .NET edition. |

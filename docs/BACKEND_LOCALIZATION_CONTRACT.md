@@ -15,7 +15,7 @@ backend score and evidence boundary remain in
 | Evidence | Exact revision |
 | --- | --- |
 | Laravel behavior baseline | `903d03d3db78bbf87129ad35728be3b72819acaf` |
-| ASP.NET committed source inspected | `1ded18bd5e49e09c06d697ac0699a9cc31181d25` |
+| ASP.NET committed source inspected | `9ad163c969a935407297eb459a9840798a1a9e78` |
 | Inspection date | 2026-07-15 |
 
 The Laravel repository at `C:\platforms\htdocs\staging` was inspected read-only
@@ -27,6 +27,11 @@ The marketplace paid, payout, onboarding-completion, and refund notification
 copy described below is committed at this boundary. The inspection still uses
 `HEAD:` blobs only: unrelated working-tree files and any future uncommitted copy
 remain excluded from every claim on this page.
+
+No commit between the earlier `1ded18bd` localization inspection and current
+`9ad163c9` changes backend localization catalogs or the localization services
+described here. The evidence was therefore revalidated without changing its
+deductions; later non-localization contract work remains separately unscored.
 
 ## Laravel Contract To Preserve
 

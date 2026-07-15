@@ -1,6 +1,6 @@
 # Backend Switching Contract
 
-Last reviewed: 2026-07-14
+Last reviewed: 2026-07-15
 
 Status: **Maintained reference — current backend-switching contract, not a score**
 

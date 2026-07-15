@@ -1,10 +1,12 @@
 # =============================================================================
-# Docker Compose - NEXUS Full Stack Production Deployment
+# QUARANTINED HISTORICAL INTEGRATION TOPOLOGY - NOT A DEPLOYMENT SPECIFICATION
 # =============================================================================
-# Deploys: API Backend + supported frontends + PostgreSQL + RabbitMQ
-#
-# Usage:
-#   docker compose -f compose.production.yml up -d --build
+# This file contains stale/deleted frontend paths, incomplete session/runtime
+# dependencies, insecure fallback values, and unverified migration/rollback
+# behavior. Every service is hidden behind the `quarantined-do-not-run` profile
+# so an ordinary Compose invocation cannot start it. Do not use it for local or
+# production deployment. Read docs/system/OPERATIONS.md instead; any production
+# action requires explicit component-specific authorization.
 #
 # Required environment variables (set in .env.production or environment):
 #   - JWT_SECRET: Secure 32+ character secret for JWT signing
@@ -24,6 +26,7 @@ services:
   # API Backend (ASP.NET Core 8)
   # ---------------------------------------------------------------------------
   api:
+    profiles: ["quarantined-do-not-run"]
     build:
       context: .
       dockerfile: Dockerfile
@@ -80,6 +83,7 @@ services:
   # React Frontend (Vite SPA)
   # ---------------------------------------------------------------------------
   react-frontend:
+    profiles: ["quarantined-do-not-run"]
     build:
       context: ./apps/react-frontend
       dockerfile: Dockerfile.prod
@@ -107,6 +111,7 @@ services:
   # Admin Panel
   # ---------------------------------------------------------------------------
   admin:
+    profiles: ["quarantined-do-not-run"]
     build:
       context: ./apps/admin
       dockerfile: Dockerfile
@@ -129,6 +134,7 @@ services:
   # UK Frontend (Express + GOV.UK Design System)
   # ---------------------------------------------------------------------------
   uk-frontend:
+    profiles: ["quarantined-do-not-run"]
     build:
       context: ../nexus-uk-frontend
       dockerfile: Dockerfile
@@ -158,6 +164,7 @@ services:
   # Database (PostgreSQL 16)
   # ---------------------------------------------------------------------------
   db:
+    profiles: ["quarantined-do-not-run"]
     image: postgres:16.4-bookworm
     container_name: nexus-db
     environment:
@@ -179,6 +186,7 @@ services:
   # Message Broker (RabbitMQ)
   # ---------------------------------------------------------------------------
   rabbitmq:
+    profiles: ["quarantined-do-not-run"]
     image: rabbitmq:3.13-management
     container_name: nexus-rabbitmq
     ports:

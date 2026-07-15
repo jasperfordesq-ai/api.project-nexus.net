@@ -101,6 +101,29 @@ $entryPointPaths = @(
     'apps/web-uk/README.md'
 )
 
+$audienceDocumentationPaths = @(
+    'docs/user/README.md',
+    'docs/user/GETTING_STARTED.md',
+    'docs/user/COMMUNITY_FEATURES.md',
+    'docs/user/ACCOUNT_SECURITY_PRIVACY.md',
+    'docs/user/ACCESSIBILITY_LANGUAGE_SUPPORT.md',
+    'docs/admin/README.md',
+    'docs/api/README.md',
+    'docs/system/README.md',
+    'docs/system/LOCAL_DEVELOPMENT.md',
+    'docs/system/CONFIGURATION.md',
+    'docs/system/TESTING.md',
+    'docs/system/SECURITY_AND_TENANCY.md',
+    'docs/system/OPERATIONS.md',
+    'docs/system/INCIDENT_RESPONSE.md',
+    'SUPPORT.md',
+    'SECURITY.md'
+)
+
+foreach ($relativePath in $audienceDocumentationPaths) {
+    [void](Get-DocumentText $relativePath)
+}
+
 foreach ($relativePath in $entryPointPaths) {
     $text = Get-DocumentText $relativePath
     if ($null -eq $text) { continue }
@@ -143,7 +166,10 @@ $statusLikeDocuments = @(
     'apps/web-uk/docs/FRONTEND_AUDIT_REPORT.md',
     'apps/web-uk/docs/FRONTEND_BUILD_LOG.md',
     'apps/web-uk/docs/generated/accessible-route-matrix.md',
-    'apps/web-uk/docs/generated/frontend-api-consumer-ledger.md'
+    'apps/web-uk/docs/generated/frontend-api-consumer-ledger.md',
+    'apps/web-uk/DOCKER_CONTRACT.md',
+    'apps/web-uk/docs/PRODUCTION_RELEASE_RUNBOOK.md',
+    'docs/DOCUMENTATION_GOVERNANCE.md'
 )
 
 foreach ($relativePath in $statusLikeDocuments) {
@@ -165,6 +191,10 @@ if ($null -ne $claude) {
 
 $docsIndex = Get-DocumentText 'docs/README.md'
 if ($null -ne $docsIndex) {
+    foreach ($entry in @('user/README.md', 'admin/README.md', 'api/README.md', 'system/README.md', '../SUPPORT.md', '../SECURITY.md')) {
+        Assert-Contains 'docs/README.md' $docsIndex ([regex]::Escape($entry)) `
+            "must link the system-wide audience entry point '$entry'."
+    }
     $oldHandoffRows = $docsIndex -split "`r?`n" |
         Where-Object { $_ -match 'CURRENT_WEB_UK_HANDOFF\.md' }
     foreach ($row in $oldHandoffRows) {
@@ -243,6 +273,12 @@ if ($null -ne $status) {
     Assert-Contains 'docs/CURRENT_ASPNET_CONTRACT_STATUS.md' $status `
         '2,601/2,601' `
         'must preserve the current active route-representation result.'
+    Assert-Contains 'docs/CURRENT_ASPNET_CONTRACT_STATUS.md' $status `
+        '(?i)eleven backend commits|All eleven contribute' `
+        'must disclose the published-but-unscored post-scorecard backend delta.'
+    Assert-Contains 'docs/CURRENT_ASPNET_CONTRACT_STATUS.md' $status `
+        '97b8a4a004362aef8356e8d76333f1efc9d44b36' `
+        'must identify the isolated unbanked schema candidate exactly.'
 }
 
 $webUkStatus = Get-DocumentText 'apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md'
@@ -259,12 +295,18 @@ if ($null -ne $webUkStatus) {
     Assert-Contains 'apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md' $webUkStatus `
         '668 contracts:\s*451 OpenAPI matches,\s*217 unmatched,\s*0 dynamic' `
         'must preserve the canonical frontend-consumer ledger summary.'
-    foreach ($boundary in @('Banked baseline', 'Published but unscored', 'Dirty and uncommitted')) {
+    foreach ($boundary in @('Banked baseline', 'Published but unscored', 'Current repository boundary')) {
         $boundaryPattern = [regex]::Escape($boundary)
         Assert-Contains 'apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md' $webUkStatus `
             $boundaryPattern `
             "must retain the '$boundary' repository-state boundary."
     }
+    Assert-Contains 'apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md' $webUkStatus `
+        '(?i)W2 has no percentage|W2 percentage `not assigned`' `
+        'must not reuse the W1 bank as the corrected Goal W2 percentage.'
+    Assert-Contains 'apps/web-uk/docs/CURRENT_LARAVEL_FIRST_PARITY_STATUS.md' $webUkStatus `
+        '38 later Web UK commits' `
+        'must retain the published-but-unscored post-W1 Web UK boundary.'
 }
 
 $generatedArtifactPaths = @(
@@ -359,17 +401,18 @@ if ($null -ne $governance) {
 $documentationHealth = Get-DocumentText 'docs/DOCUMENTATION_HEALTH_REPORT.md'
 if ($null -ne $documentationHealth) {
     Assert-Contains 'docs/DOCUMENTATION_HEALTH_REPORT.md' $documentationHealth `
+        '<!--\s*doc-consistency:\s*DOCUMENTATION_HEALTH_BASELINE=D2\s*-->' `
+        'must expose the system-wide Baseline D2 marker.'
+    Assert-Contains 'docs/DOCUMENTATION_HEALTH_REPORT.md' $documentationHealth `
         '<!--\s*doc-consistency:\s*DOCUMENTATION_HEALTH_SCORE=100/100\s*-->' `
-        'must expose the fixed Baseline D1 health-score marker.'
+        'must expose the fixed Baseline D2 health-score marker.'
+    foreach ($baseline in @('Baseline U1', 'Baseline S1', 'Baseline D2')) {
+        Assert-Contains 'docs/DOCUMENTATION_HEALTH_REPORT.md' $documentationHealth ([regex]::Escape($baseline)) `
+            "must preserve the named audit baseline '$baseline'."
+    }
     Assert-Contains 'docs/DOCUMENTATION_HEALTH_REPORT.md' $documentationHealth `
-        'CURRENT_ASPNET_CONTRACT_STATUS\.md' `
-        'must link the canonical ASP.NET product score.'
-    Assert-Contains 'docs/DOCUMENTATION_HEALTH_REPORT.md' $documentationHealth `
-        'CURRENT_LARAVEL_FIRST_PARITY_STATUS\.md' `
-        'must link the canonical Web UK product score.'
-    Assert-NotContains 'docs/DOCUMENTATION_HEALTH_REPORT.md' $documentationHealth `
-        '(?i)\b(?:712|663|660|645|622)/1000\b' `
-        'must not mirror either live product score.'
+        '(?i)documentation health only' `
+        'must keep documentation health separate from product readiness.'
 }
 
 $restartIncident = Get-DocumentText 'docs/RESTART_INCIDENT_2026-07-15.md'
@@ -387,6 +430,33 @@ if ($null -ne $restartIncident) {
     }
 }
 
+$rootReadme = Get-DocumentText 'README.md'
+if ($null -ne $rootReadme) {
+    foreach ($entry in @('docs/user/README.md', 'docs/admin/README.md', 'docs/api/README.md', 'docs/system/README.md', 'SUPPORT.md', 'SECURITY.md')) {
+        Assert-Contains 'README.md' $rootReadme ([regex]::Escape($entry)) `
+            "must link the system-wide audience entry point '$entry'."
+    }
+}
+
+if ($null -ne $claude) {
+    Assert-Contains 'CLAUDE.md' $claude 'NexusV2!Demo#2026' `
+        'must document the current fictitious Development seed password.'
+    Assert-Contains 'CLAUDE.md' $claude '127\.0\.0\.1:5273' `
+        'must document the current root-Compose frozen React port.'
+    Assert-NotContains 'CLAUDE.md' $claude 'Test123!' `
+        'must not retain the obsolete development seed password.'
+}
+
+$webUkReadme = Get-DocumentText 'apps/web-uk/README.md'
+if ($null -ne $webUkReadme) {
+    Assert-NotContains 'apps/web-uk/README.md' $webUkReadme `
+        '(?im)^## Test Credentials|/components\b|/connections/pending\b|GET\s+/logout\b|GET\s+/listings/:id/delete\b|POST\s+/members/:id/connect\b' `
+        'must not restore the stale hand-maintained route/credentials section.'
+    Assert-Contains 'apps/web-uk/README.md' $webUkReadme `
+        '(?i)Generate the current inventories' `
+        'must direct route/API readers to generated inventories.'
+}
+
 $productionServer = Get-DocumentText '.claude/production-server.md'
 if ($null -ne $productionServer) {
     Assert-Contains '.claude/production-server.md' $productionServer `
@@ -401,6 +471,50 @@ if ($null -ne $productionServer) {
     Assert-NotContains '.claude/production-server.md' $productionServer `
         '(?im)^\s*(?:sudo\s+)?docker\s+compose\s+(?:build|up|down)\b' `
         'must not advertise blanket Docker Compose build, up, or down commands.'
+}
+
+$productionEnvironmentExample = Get-DocumentText '.env.production.example'
+if ($null -ne $productionEnvironmentExample) {
+    foreach ($key in @('Meilisearch__BaseUrl', 'RabbitMq__Host', 'RabbitMq__Port', 'RabbitMq__Username', 'RabbitMq__Password', 'RabbitMq__VirtualHost', 'SendGrid__Enabled', 'Gmail__Enabled', 'RABBITMQ_PASS')) {
+        Assert-Contains '.env.production.example' $productionEnvironmentExample ([regex]::Escape($key)) `
+            "must contain current configuration key '$key'."
+    }
+    Assert-NotContains '.env.production.example' $productionEnvironmentExample `
+        'PHASE63_73_DEPLOY_NOTES|Meilisearch__Host|RabbitMq__Uri|RABBITMQ_PASSWORD' `
+        'must not retain obsolete deployment references or configuration keys.'
+}
+
+$deployWorkflow = Get-DocumentText '.github/workflows/deploy.yml'
+if ($null -ne $deployWorkflow) {
+    Assert-NotContains '.github/workflows/deploy.yml' $deployWorkflow `
+        '(?m)^\s*workflow_run\s*:' `
+        'must not automatically deploy after a main/CI workflow run.'
+    Assert-Contains '.github/workflows/deploy.yml' $deployWorkflow `
+        '(?m)^\s*confirm_production\s*:' `
+        'must require an explicit production-confirmation input.'
+    Assert-Contains '.github/workflows/deploy.yml' $deployWorkflow `
+        '\^\[0-9a-fA-F\]\{40\}\$' `
+        'must reject anything other than an exact full commit SHA.'
+}
+
+$healthWorkflow = Get-DocumentText '.github/workflows/health-check.yml'
+if ($null -ne $healthWorkflow) {
+    Assert-Contains '.github/workflows/health-check.yml' $healthWorkflow `
+        'docs/system/INCIDENT_RESPONSE\.md' `
+        'must point alerts to maintained read-only incident guidance.'
+    Assert-NotContains '.github/workflows/health-check.yml' $healthWorkflow `
+        'docker compose restart|RECOVERY_GUIDE\.md' `
+        'must not tell an alert recipient to restart production or consult a missing guide.'
+}
+
+$publicAccessibility = Get-DocumentText 'apps/web-uk/src/views/legal/accessibility.njk'
+if ($null -ne $publicAccessibility) {
+    Assert-Contains 'apps/web-uk/src/views/legal/accessibility.njk' $publicAccessibility `
+        'accessibility\.limitations_body' `
+        'must keep translated limitations visible.'
+    Assert-NotContains 'apps/web-uk/src/views/legal/accessibility.njk' $publicAccessibility `
+        'accessibility\.features_title|accessibility\.testing_body' `
+        'must not publish unsupported feature or manual-testing assurances.'
 }
 
 $productionCompose = Get-DocumentText 'compose.prod.yml'
@@ -449,14 +563,28 @@ if ($null -ne $historicalDeployNotes) {
 $migrationGuide = Get-DocumentText 'docs/database-migrations.md'
 if ($null -ne $migrationGuide) {
     Assert-Contains 'docs/database-migrations.md' $migrationGuide `
-        '(?is)make migrate-prod.{0,160}unapproved and unverified|unapproved and unverified.{0,160}make migrate-prod' `
-        'must mark the production Make target unapproved and unverified.'
+        '(?is)runtime-only.{0,180}no \.NET SDK|no \.NET SDK.{0,180}runtime-only' `
+        'must explain why container EF commands are unsupported.'
     Assert-Contains 'docs/database-migrations.md' $migrationGuide `
-        '(?is)nexus_prod.{0,220}nexus_dev' `
-        'must disclose the known Makefile/Compose production database-name mismatch.'
+        '(?i)verified disposable PostgreSQL' `
+        'must require a verified disposable PostgreSQL target for host EF work.'
     Assert-Contains 'docs/database-migrations.md' $migrationGuide `
         '(?is)no executable\s+production migration or restore command' `
         'must fail closed instead of publishing a generic production migration/restore sequence.'
+    Assert-NotContains 'docs/database-migrations.md' $migrationGuide `
+        '(?im)^\s*make migrate(?:\s|$)|docker compose exec api dotnet ef' `
+        'must not advertise the unsupported Make/container EF workflow.'
+}
+
+$quarantinedProductionCompose = Get-DocumentText 'compose.production.yml'
+if ($null -ne $quarantinedProductionCompose) {
+    Assert-Contains 'compose.production.yml' $quarantinedProductionCompose `
+        '(?i)QUARANTINED HISTORICAL INTEGRATION TOPOLOGY' `
+        'must clearly quarantine the obsolete whole-stack topology.'
+    $profileCount = [regex]::Matches($quarantinedProductionCompose, 'profiles:\s*\["quarantined-do-not-run"\]').Count
+    if ($profileCount -ne 6) {
+        Add-Failure "compose.production.yml: every one of its 6 services must require the quarantine profile (found $profileCount)."
+    }
 }
 
 $runbook = Get-DocumentText 'docs/FULL_PARITY_REMEDIATION_RUNBOOK.md'

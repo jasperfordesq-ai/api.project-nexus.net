@@ -6,7 +6,7 @@ Status: **Maintained reference — detailed evidence and gap map, not a current 
 
 Evidence provenance: the published backend was re-audited on 2026-07-15 against Laravel
 `903d03d3db78bbf87129ad35728be3b72819acaf` and ASP.NET implementation
-`1ded18bd5e49e09c06d697ac0699a9cc31181d25`; dirty backend work is excluded.
+`9ad163c969a935407297eb459a9840798a1a9e78`; dirty backend work is excluded.
 Every older inventory lacking its own exact source pair is historical and
 provenance-incomplete, regardless of words such as “latest” retained inside a
 checkpoint.
@@ -18,6 +18,12 @@ This is the detailed evidence and gap map. Use
 only current overall score, baseline SHAs, published/unscored split, and active
 completion queue. Every inventory below is dated evidence and must be
 regenerated before it is described as current.
+
+The eleven backend commits published from `60715dfd` through `9ad163c9` after
+the restart scorecard remain a single unscored delta. Some change real semantic
+behavior and others correct the test harness or expectations. The canonical
+status lists them and keeps the bank at 712/1000 pending a complete scoring and
+certification transaction; this detailed map does not estimate their value.
 
 ## Latest Verified Backend Slice
 

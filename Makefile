@@ -1,22 +1,13 @@
 # Copyright © 2024–2026 Jasper Ford
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #
-# Project NEXUS - Database Migration & Operations Makefile
+# Project NEXUS - Legacy Database/Operations Makefile (unsupported)
 # ========================================================
-# Canonical migration workflow. All schema changes go through these targets.
-#
-# Prerequisites:
-#   - Docker Compose running: docker compose up -d
-#   - For production: NEXUS_DEPLOY_HOST and SSH key configured
-#
-# Usage:
-#   make migrate NAME=AddNewFeature      # Create + apply migration locally
-#   make migrate-apply                    # Apply pending migrations locally
-#   make migrate-prod                     # Apply pending migrations on production
-#   make backup-prod-db                   # Backup production database
-#   make drift-check                      # Compare local vs production migrations
-#   make migrate-status                   # Show local migration status
-#   make migrate-list                     # List all migrations
+# The current API image is runtime-only and has neither the .NET SDK nor a
+# repository source mount. The migration and drift targets below therefore do
+# not implement the maintained workflow, and production targets are historical
+# commands rather than authorization. Use docs/database-migrations.md and
+# docs/system/OPERATIONS.md. This file remains only until callers are migrated.
 
 .DEFAULT_GOAL := help
 SHELL := /bin/bash

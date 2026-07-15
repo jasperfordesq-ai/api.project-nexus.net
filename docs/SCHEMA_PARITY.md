@@ -7,8 +7,9 @@ Status: **Maintained reference — current comparison method with dated evidence
 Evidence provenance: the current static table inventory was regenerated on
 2026-07-15 against Laravel
 `903d03d3db78bbf87129ad35728be3b72819acaf` and committed ASP.NET tree
-`1ded18bd5e49e09c06d697ac0699a9cc31181d25`. Uncommitted schema-worktree
-entities, configurations, migrations, tests, and documentation are excluded.
+`9ad163c969a935407297eb459a9840798a1a9e78`. Isolated schema-worktree entities,
+configurations, migrations, tests, and documentation are excluded from the
+mainline counts.
 Any older table/count without its own exact source pair is a historical,
 provenance-incomplete checkpoint and cannot support current score or
 upgrade-safety claims.
@@ -50,13 +51,23 @@ are mutually exclusive, so their counts reconcile to the comparator total.
 | Unclassified missing names | 198 | No accepted alias or replacement classification has yet been recorded. |
 | **Total missing exact names** | **231** | **20 + 8 + 5 + 198.** |
 
-The separate schema worktree, currently based at
-`1ded18bd5e49e09c06d697ac0699a9cc31181d25`, contains an uncommitted attempt to
-add the five Verein tables. It is not banked evidence and adds **zero** score
-points. If its EF migration is regenerated from that current lineage and the
-slice passes disposable-PostgreSQL upgrade/model-drift and focused workflow
-tests, the static exact-match projection would move from 227 to 232. The current
-banked schema category therefore remains **129/150**.
+### Isolated Candidate Branch - Not Banked
+
+The separate `codex/schema-parity-20260714` worktree is clean at local-only
+commit `97b8a4a004362aef8356e8d76333f1efc9d44b36`, with merge base
+`ea352690`. Nine commits add candidate storage for Verein dues, marketplace
+support, donation disputes, engagement recognition, pilot inquiries, health
+history, cookie inventory, salary benchmarks, and member residency
+verification.
+
+The branch-local comparator reports 458 Laravel tables, 440 ASP.NET tables, 242
+exact names, 216 missing Laravel exact names, 198 ASP.NET-only names, and 164 EF
+migration source files. These are **candidate counts**, not the current mainline
+inventory. The branch has no remote publication, has not been reconciled onto
+current `main`, and has not been accepted through one complete exact-SHA blank
+replay, populated upgrade, model-drift, constraint/isolation, full-suite, and
+scoring transaction. It adds **zero** banked points; the current banked schema
+category remains **129/150**.
 
 The comparator's Markdown renderer was also corrected in this audit. Missing
 and ASP.NET-only rows now render concrete table names and source paths rather

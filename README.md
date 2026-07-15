@@ -76,6 +76,12 @@ attribution requirements.
 
 - [CLAUDE.md](CLAUDE.md) - authoritative agent guide, invariants, commands, and parity policy.
 - [docs/README.md](docs/README.md) - maintained documentation index.
+- [docs/user/README.md](docs/user/README.md) - backend-neutral member and end-user guidance.
+- [docs/admin/README.md](docs/admin/README.md) - tenant and community administrator guidance.
+- [docs/api/README.md](docs/api/README.md) - API consumer and integration contract guidance.
+- [docs/system/README.md](docs/system/README.md) - developer, tester, security, configuration, and operations hub.
+- [SUPPORT.md](SUPPORT.md) - product-support and defect-reporting boundaries.
+- [SECURITY.md](SECURITY.md) - private vulnerability-reporting and safe-testing policy.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - .NET architecture and runtime map.
 - [docs/CURRENT_ASPNET_CONTRACT_STATUS.md](docs/CURRENT_ASPNET_CONTRACT_STATUS.md) - current ASP.NET contract-correctness status.
 - [docs/FULL_PARITY_REMEDIATION_RUNBOOK.md](docs/FULL_PARITY_REMEDIATION_RUNBOOK.md) - fixed rubric and cross-workstream completion gate.
@@ -92,10 +98,17 @@ attribution requirements.
 
 ## Quick Start
 
-```bash
-docker compose up -d
-open http://localhost:5080/swagger
+```powershell
+Copy-Item .env.example .env
+# Replace JWT_SECRET in .env with a local-only random value.
+docker compose up -d db rabbitmq api
+Invoke-RestMethod http://127.0.0.1:5080/health
 ```
+
+Development Swagger is at `http://127.0.0.1:5080/swagger`. The API applies EF
+migrations and loads fictitious development seed data at local startup. Read
+[the local-development guide](docs/system/LOCAL_DEVELOPMENT.md) before starting
+optional clients, resetting volumes, or overriding database configuration.
 
 ## Source Code
 

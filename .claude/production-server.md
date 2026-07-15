@@ -1,5 +1,9 @@
 # Production Server Notes
 
+Last reviewed: 2026-07-15
+
+Status: **Maintained operator pointer - no standing authorization**
+
 This file is a short operator pointer. The authoritative domain, port,
 container, proxy, and component-specific deployment map is
 [`production-containers.md`](./production-containers.md). Read it immediately
@@ -17,6 +21,11 @@ before any production action.
 | SSH key | `/c/ssh-keys/project-nexus.pem` on the configured workstation |
 | Repository | `/opt/nexus-backend/` |
 | Suggested environment variable | `NEXUS_DEPLOY_HOST="azureuser@20.224.171.253"` |
+
+The path is a workstation hint, not proof that the key exists or is authorized
+for the requested action. Set any shell-specific `$SSH_KEY` variable explicitly
+only after verifying the current key path and scope; never copy key material
+into logs or repository files.
 
 Plesk-managed **Apache**, not nginx, terminates HTTPS and proxies each domain to
 its loopback-bound container port. Do not edit or deploy from an assumed nginx

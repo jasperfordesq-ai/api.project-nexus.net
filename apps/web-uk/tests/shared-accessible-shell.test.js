@@ -1670,8 +1670,10 @@ describe('shared accessible frontend shell', () => {
     expect(accessibility.status).toBe(200);
     expect(accessibility.text).toContain('Back to legal');
     expect(accessibility.text).toContain('WCAG 2.2 Level AA');
-    expect(accessibility.text).toContain('Keyboard navigation');
+    expect(accessibility.text).toContain('Known limitations');
     expect(accessibility.text).toContain('Report an accessibility problem');
+    expect(accessibility.text).not.toContain('Full keyboard support');
+    expect(accessibility.text).not.toContain('screen-reader testing');
     expect(accessibility.text).not.toContain('must match the production Laravel');
 
     expect(terms.status).toBe(200);
@@ -1719,8 +1721,9 @@ describe('shared accessible frontend shell', () => {
     expect(privacy.text).toContain(translate('ar', 'legal.no_document_notice', { community: 'Project NEXUS Accessible' }));
     expect(privacy.text).toContain(translate('ar', 'legal.fallback.privacy_points.0'));
     expect(accessibility.text).toContain(translate('ar', 'accessibility.intro', { name: 'Project NEXUS Accessible' }));
-    expect(accessibility.text).toContain(translate('ar', 'accessibility.features.keyboard.title'));
-    expect(accessibility.text).toContain(translate('ar', 'accessibility.testing_body'));
+    expect(accessibility.text).toContain(translate('ar', 'accessibility.limitations_body'));
+    expect(accessibility.text).not.toContain(translate('ar', 'accessibility.features.keyboard.title'));
+    expect(accessibility.text).not.toContain(translate('ar', 'accessibility.testing_body'));
   });
 
   it('renders the Laravel-style guide and features pages', async () => {

@@ -7,7 +7,7 @@ Status: **Maintained reference — current comparison method with dated evidence
 Evidence provenance: maintained policy and published backend prose were
 re-audited on 2026-07-15 against Laravel
 `903d03d3db78bbf87129ad35728be3b72819acaf` and repository commit
-`1ded18bd5e49e09c06d697ac0699a9cc31181d25`. Dirty backend work is excluded.
+`9ad163c969a935407297eb459a9840798a1a9e78`. Dirty backend work is excluded.
 Any older numeric table or narrative without its own exact source pair is a
 historical, provenance-incomplete checkpoint and must not be cited as current.
 
@@ -19,6 +19,13 @@ certification gates live only in
 [`CURRENT_ASPNET_CONTRACT_STATUS.md`](CURRENT_ASPNET_CONTRACT_STATUS.md).
 Numbers in dated sections below are point-in-time evidence and never override
 that status file.
+
+Eleven backend commits from `60715dfd` through `9ad163c9` were published after
+the restart scorecard. They include real contract behavior as well as harness
+and expectation corrections, but they have not received a complete fixed-
+rubric rescore or exact-SHA certification aggregate. Read their compact ledger
+under “Published But Not Rescored” in the canonical status; do not infer new
+points from this map.
 
 Frontend contract consumers are the canonical React client at
 `C:\platforms\htdocs\staging\react-frontend` and the unchanged Web UK client at

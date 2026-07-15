@@ -1,6 +1,8 @@
 # Documentation Governance
 
-Last reviewed: 2026-07-14
+Last reviewed: 2026-07-15
+
+Status: **Maintained reference - documentation authority and scoring policy**
 
 This policy keeps product intent, scores, safety rules, and historical evidence
 from drifting across Project NEXUS documentation. It governs maintained Markdown
@@ -18,6 +20,11 @@ agent instructions.
 | Runtime boundaries and two-frontends-by-two-backends shape | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Link to it; do not draw a competing current architecture |
 | React retirement and unchanged-client policy | [`REACT_FRONTEND_RETIREMENT.md`](REACT_FRONTEND_RETIREMENT.md) | Preserve the frozen-copy and Laravel-consumer rules |
 | Web UK backend-switch contract | [`BACKEND_SWITCHING_CONTRACT.md`](../apps/web-uk/docs/BACKEND_SWITCHING_CONTRACT.md) | Preserve Laravel-first certification and configuration-only switching |
+| Member/end-user documentation | [`user/README.md`](user/README.md) | Keep backend-neutral, tenant-aware, and honest about experimental/certification limits |
+| Tenant/community administrator documentation | [`admin/README.md`](admin/README.md) | Separate tenant governance from platform/production operations |
+| API consumer documentation | [`api/README.md`](api/README.md) | Require exact endpoint contracts rather than a universal invented envelope |
+| Developer/operator/security/configuration documentation | [`system/README.md`](system/README.md) | Index supported local, test, configuration, security, operations, and incident-response methods |
+| Support and vulnerability reporting | [`SUPPORT.md`](../SUPPORT.md) and [`SECURITY.md`](../SECURITY.md) | Keep secrets, personal data, incidents, and vulnerabilities out of public defect reports |
 | Surface-specific generated or curated inventories | `API_PARITY.md`, `SCHEMA_PARITY.md`, `FRONTEND_PARITY.md`, `LOCALIZATION_PARITY.md`, and their generated artifacts | State the capture date and exact source SHAs, or label unverifiable legacy tables historical and provenance-incomplete; do not turn representation counts into completion claims |
 
 When two maintained documents disagree, the source named in this table wins.
@@ -33,6 +40,8 @@ Deployment inventory and product authority are separate documentation planes:
 | [`.claude/production-containers.md`](../.claude/production-containers.md) | Current production domains, containers, ports, proxy ownership, and component-specific operator procedures | Product source-of-truth status, contract correctness, parity score, or permission to deploy |
 | [`.claude/production-server.md`](../.claude/production-server.md) | Connection pointer and concise operational warnings | An independent deployment recipe or product architecture |
 | [`compose.prod.yml`](../compose.prod.yml) | A versioned description of legacy/experimental Compose topology | A blanket production release path; its Web UK ASP.NET override remains under an explicit deployment hold |
+| [`compose.production.yml`](../compose.production.yml) | A quarantined historical integration topology | A local or production startup command; every service requires the deliberately named quarantine profile |
+| [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml) | A manual-only, exact-SHA, confirmed entry point behind the production environment | Standing authorization or proof that its legacy backup/migration/rollback implementation is safe |
 
 The fact that a legacy or experimental surface is deployed does not make it a
 product, UI, or API-contract source of truth. Laravel remains the current
@@ -55,6 +64,11 @@ score. Only `CURRENT_LARAVEL_FIRST_PARITY_STATUS.md` states the current Web UK
 overall score. Never blend the two totals. Never lower or raise a prior score
 because scope was silently rediscovered; create a named drift baseline and show
 the delta.
+
+When a goal's scope changes, preserve the old score under its named baseline.
+Do not reuse it as the new goal's percentage or silently change its denominator.
+Until a complete new audit defines the corrected rubric, report a finite gate
+or package count and say that no percentage has been assigned.
 
 Implementation is not certification. Static route representation, generated
 matrices, a successful focused test, or a clean build cannot independently
@@ -120,6 +134,11 @@ When a generated count changes, update its one canonical inventory and link to
 that source elsewhere. Do not manually propagate the number into architecture,
 agent guides, and historical handoffs.
 
+Tool-owned directories such as `.snapshots/`, ignored parity artifacts, test
+results, and scratch output are not maintained product documentation unless a
+curated document explicitly imports their exact-SHA evidence. Do not count or
+link arbitrary tool output merely to make documentation coverage appear full.
+
 ## Required Review Before Merge
 
 Documentation-changing work must run:
@@ -137,13 +156,23 @@ pointer and the Web UK Compose deployment hold. A passing script does not
 certify factual product parity; reviewers must still verify new SHAs, counts,
 tests, and evidence against the repository.
 
-Documentation health is 100/100 only when:
+Documentation health is 100/100 under system-wide Baseline D2 only when:
 
-- all repository-level first-read entry points link both current status sources;
-- one current score exists per workstream and uses a named evidence baseline;
-- architecture shows both unchanged frontends against both backends;
-- generated counts are dated and are not misrepresented as semantic parity;
-- active safety rules contain no ordinary-database testing exception;
-- old handoffs and checkpoint logs are explicitly historical;
-- the consistency script, Markdown link checker, and `git diff --check` all
-  pass.
+- member, accessibility/language, support, administrator, API-consumer, and
+  system/operator audiences each have a discoverable maintained entry point;
+- local-development commands, ports, seed credentials, startup effects, and
+  database boundaries match the current source/configuration;
+- configuration keys match current option binders and obsolete deployment
+  recipes are corrected or explicitly quarantined;
+- production actions are manual and explicit-authority only, incident guidance
+  is read-only by default, and restart/migration/backup/restore hazards are
+  stated accurately;
+- one current score exists per workstream with named baselines, published-
+  unscored and dirty/isolated work separated, and corrected goals do not reuse
+  stale percentages;
+- architecture shows both unchanged frontends against both backends, generated
+  counts are dated, and representation is not called semantic certification;
+- active safety rules contain no ordinary-database testing exception and old
+  handoffs/checkpoints are explicitly historical; and
+- the consistency script, Markdown link checker, relevant focused tests,
+  configuration/YAML/Compose validation, and `git diff --check` all pass.

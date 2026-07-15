@@ -245,8 +245,10 @@ All new C# source files must include:
 Docker is required for the local application stack. Do not use `dotnet run` as
 the normal development path.
 
-```bash
-docker compose up -d
+```powershell
+Copy-Item .env.example .env
+# Replace JWT_SECRET in .env with a local-only random value.
+docker compose up -d db rabbitmq api
 docker compose logs -f api
 docker compose build api && docker compose up -d api
 docker compose down
@@ -256,18 +258,22 @@ Services:
 
 | Service | URL | Notes |
 | --- | --- | --- |
-| API | `http://localhost:5080` | ASP.NET backend |
-| Swagger | `http://localhost:5080/swagger` | Runtime API documentation |
-| Health | `http://localhost:5080/health` | Anonymous health endpoint |
-| React frontend | `http://localhost:5173` | Legacy/frozen .NET React copy; use only when explicitly approved |
-| Web UK frontend | `http://localhost:5180` | Laravel-first shared accessible frontend; ASP.NET switching is a separate certification gate |
-| Standalone admin | `http://localhost:5190` | Secondary admin app |
+| API | `http://127.0.0.1:5080` | ASP.NET backend |
+| Swagger | `http://127.0.0.1:5080/swagger` | Development-only runtime API documentation |
+| Health | `http://127.0.0.1:5080/health` | Anonymous health endpoint |
+| React frontend | `http://127.0.0.1:5273` | Legacy/frozen .NET React copy; use only when explicitly approved |
+| Web UK frontend | `http://127.0.0.1:5180` | Laravel-first shared accessible frontend; ASP.NET switching is a separate certification gate |
+| Standalone admin | `http://127.0.0.1:5190` | Secondary admin app |
 
 Test credentials:
 
-- `admin@acme.test` / `Test123!` / tenant slug `acme`
-- `member@acme.test` / `Test123!` / tenant slug `acme`
-- `admin@globex.test` / `Test123!` / tenant slug `globex`
+- `admin@acme.test` / `NexusV2!Demo#2026` / tenant slug `acme`
+- `member@acme.test` / `NexusV2!Demo#2026` / tenant slug `acme`
+- `admin@globex.test` / `NexusV2!Demo#2026` / tenant slug `globex`
+
+These identities exist only in the fictitious Development seed. See
+[`docs/system/LOCAL_DEVELOPMENT.md`](docs/system/LOCAL_DEVELOPMENT.md) for the
+supported startup path and database boundary.
 
 ## Verification Commands
 
@@ -296,15 +302,13 @@ git diff --check
 
 ## Database Migration Workflow
 
-All schema changes flow through EF migrations committed to git.
+All schema changes flow through EF migrations committed to git. The runtime API
+image does not contain the .NET SDK or the repository source, so the historical
+`make migrate*` and `docker compose exec api dotnet ef` commands are not a
+supported workflow.
 
-```bash
-make migrate NAME=AddFeature
-make migrate-apply
-make migrate-status
-make drift-check
-make test
-```
+Use the host .NET 8 SDK and an explicitly disposable PostgreSQL connection as
+documented in [`docs/database-migrations.md`](docs/database-migrations.md).
 
 Production migrations require explicit deployment instruction and the production
 container guide. Never apply ad-hoc production schema edits.
@@ -315,6 +319,12 @@ Documentation that future agents should trust lives under `docs/` and is
 indexed by `docs/README.md`. Keep local-only generated audits, scratch output,
 and one-off prompts out of committed docs unless they have been curated into a
 maintained map.
+
+Audience entry points are [`docs/user/README.md`](docs/user/README.md),
+[`docs/admin/README.md`](docs/admin/README.md),
+[`docs/api/README.md`](docs/api/README.md), and
+[`docs/system/README.md`](docs/system/README.md). Support and private security
+reporting live in [`SUPPORT.md`](SUPPORT.md) and [`SECURITY.md`](SECURITY.md).
 
 When updating parity docs, cite local source paths instead of memory and keep
 the Laravel repo read-only.

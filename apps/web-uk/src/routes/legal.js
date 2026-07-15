@@ -19,7 +19,6 @@ const DOCUMENT_PATHS = Object.freeze({
   community_guidelines: '/legal/community-guidelines',
   acceptable_use: '/legal/acceptable-use'
 });
-const ACCESSIBILITY_FEATURE_KEYS = Object.freeze(['keyboard', 'visual', 'screen_reader', 'responsive']);
 
 function trimmed(value) {
   return String(value || '').trim();
@@ -92,11 +91,7 @@ router.get('/accessibility', (req, res) => {
     title: res.locals.t('accessibility.title'),
     titleKey: 'accessibility.title',
     activeNav: 'accessibility',
-    communityName: community,
-    features: ACCESSIBILITY_FEATURE_KEYS.map((key) => ({
-      title: res.locals.t(`accessibility.features.${key}.title`),
-      description: res.locals.t(`accessibility.features.${key}.description`)
-    }))
+    communityName: community
   });
 });
 

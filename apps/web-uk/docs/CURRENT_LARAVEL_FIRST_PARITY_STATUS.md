@@ -41,6 +41,13 @@ snapshot, the already-audited source-derived implementation/hardening rows total
 recorded as `35/150`. These are disaggregated historical results, not a new
 audit or a claim of completion.
 
+For status reporting, call the fixed-rubric certification snapshot **Web UK
+Baseline W1** and the corrected source-owned goal **Web UK Goal W2**. W1 remains
+`663/1000`. W2 has no percentage until a new complete audit defines and applies
+its rubric; report it only as **one bounded manual-accessibility package
+remaining**. Do not silently convert W1 to a smaller denominator or describe
+either value as “about finished.”
+
 ## Goal And Source Of Truth
 
 `apps/web-uk` must become a complete observable-behaviour clone of the Laravel
@@ -190,30 +197,34 @@ commit as the implementation it describes.
 
 ## Current Fixed-Rubric Re-audit
 
-The current named baseline is Laravel
+The current banked baseline is Laravel
 `903d03d3db78bbf87129ad35728be3b72819acaf` with published Web UK
 `2e92f89ee03177af02f0f16b669591604d3e6403`, audited at
-`2026-07-15T07:09:13+01:00`. A concurrent backend-owned publication advanced
-repository `main` and `origin/main` to
-`60715dfdc96e7373c162176c29b8abf99f418ee9` during the audit without changing
-Web UK product files; generated route/API evidence therefore records that HEAD.
-The saved-search, Event Template pagination, shared-pagination, and shared
-empty-state/back-link closures are included; ASP.NET backend files and its
-score remain outside this workstream.
+`2026-07-15T07:09:13+01:00`; scoring record `b5b2c0a7` banked that snapshot. The
+saved-search, Event Template pagination, shared-pagination, and shared empty-
+state/back-link closures are included. Later published Web UK work remains
+unscored as a block; ASP.NET backend files and its score remain outside this
+workstream.
 
 ### Repository-State Boundary
 
 - **Banked baseline:** Laravel `903d03d3db78bbf87129ad35728be3b72819acaf`
-  with published Web UK `2e92f89ee03177af02f0f16b669591604d3e6403`. This complete fixed-rubric re-audit
-  supersedes the 660-point checkpoint. Repository/generated-evidence HEAD is
-  `60715dfdc96e7373c162176c29b8abf99f418ee9`; its backend-only delta contributes
-  no Web UK points.
-- **Published but unscored:** none after `2e92f89e` at the audit boundary. A
-  later product commit must remain in this bucket until another complete
-  fixed-rubric audit names and scores it.
-- **Dirty and uncommitted:** no Web UK product source was dirty at the named
-  snapshot. Regenerated evidence files belong to this documentation transaction;
-  unrelated backend-owned worktree entries contribute no Web UK points.
+  with published Web UK `2e92f89ee03177af02f0f16b669591604d3e6403` and
+  scoring record `b5b2c0a7`. This complete fixed-rubric re-audit supersedes the
+  660-point checkpoint.
+- **Published but unscored:** 38 later Web UK commits from `6b8b2725` through
+  `6864f7be` are published; 29 contain product/test work. They include contract
+  assertions, isolated accessibility controls, source-owned completion-track
+  corrections, and production-build hardening. The generated-artifact refresh
+  at `a3f18f06` records its dirty-state caveat. No later commit is converted
+  into points until a complete audit names its rubric, evidence, deductions,
+  and new total. The current documentation transaction also removes unsupported
+  public keyboard/screen-reader assurances and adds zero points.
+- **Current repository boundary:** pre-documentation product `HEAD` and
+  `origin/main` are `9ad163c969a935407297eb459a9840798a1a9e78`; the latest
+  Web UK product commit before backend-only advances is `6864f7be`. Web UK was
+  clean when the system-wide audit hold began. Unrelated backend-owned dirty
+  files contribute no Web UK points.
 
 ### Current Verification Gates
 
@@ -231,7 +242,7 @@ score remain outside this workstream.
 | Static locale usage | 7,635 references, 5,820 unique keys, 0 unresolved | Complete current-reference audit |
 | Template localization | 322 templates, 0 conservative matches | Current hard-coded-copy audit |
 | Blade marker check | Current rerun unavailable because Laravel port 8088 is not listening; preceding product `e2918257` passed 19/19 | Public GET marker comparison only; not screenshot or visual certification |
-| Automated accessibility | The corrected isolated command now enforces the finite safe selection and passes 24/24: 14 public structure/axe cases, 4 keyboard/focus/client-validation/reflow/forced-colour cases, and 6 default-English narrow-reflow/no-JavaScript cases. Its GET/HEAD-only mock rejected the earlier accidental authenticated login POST; caller-supplied grep arguments can no longer widen the command to stateful cases. Product `b6166484` provides the manual-inspection mode over the same random-loopback fixture. | Current safe-fixture automated evidence is green. Directed keyboard/zoom/visual and screen-reader review remains open because the in-app browser connector fails before tab creation with `Cannot redefine property: process`; no manual outcome is claimed. Live Laravel and the stateful aggregate are outside the active goal. |
+| Automated accessibility | The corrected isolated command enforces the finite safe selection and passes 24/24: 14 public structure/axe cases, 4 keyboard/focus/client-validation/reflow/forced-colour cases, and 6 default-English narrow-reflow/no-JavaScript cases. Its GET/HEAD-only mock rejected the earlier accidental authenticated login POST; caller-supplied grep arguments cannot widen the command to stateful cases. Product `b6166484` provides the manual-inspection mode over the same random-loopback fixture. | Current safe-fixture automated evidence is green. The browser connection has since been repaired, but the directed keyboard/zoom/visual and screen-reader package has not yet been performed; no manual outcome is claimed. Live Laravel and the stateful aggregate are outside Goal W2. |
 | Frontend API consumer ledger | 668 contracts: 451 OpenAPI matches, 217 unmatched, 0 dynamic; all 217 unmatched contracts resolve to direct Laravel route declarations omitted from OpenAPI; 370 are state-changing and 0 lack detected tests. The finite direct-assertion manifest is complete: 0 rows and 0 helpers remain without direct assertions. | Static/mock ownership evidence. Every consumer helper now has direct mocked contract proof without using live Laravel. |
 | Source-owned production hardening | Fail-closed production secrets, Redis-only persistent sessions, readiness-aware health, backend request deadlines, non-root image execution, lockfile-exact non-interactive installs, digest-pinnable Node base image, complete runtime assets, and fail-closed release/rollback documentation are implemented. Focused proof passes 4/4 suites and 79/79 tests; the production target builds; the resulting image runs as `appuser` and refuses unsafe configuration before listening; production dependency audit reports 0 vulnerabilities. | The frontend-owned hardening package is complete. Actual deployment, shared-session/failover observation, and release authorization remain a separate operations gate and do not block this goal. |
 
@@ -272,9 +283,10 @@ Laravel runtime work and future ASP.NET switching are not in this queue:
 1. **P0 - Safe-fixture manual accessibility:** complete representative Web UK
    visual review plus keyboard, no-JS, zoom/reflow, forced-colour, focus/error,
    and screen-reader sign-off using only the isolated Web UK fixture server and
-   mocked states. The enforced automated subset is green at 24/24; directed
-   manual and screen-reader review remains open because the browser connector
-   currently fails before tab creation.
+   mocked states. The enforced automated subset is green at 24/24. The browser
+   connection is repaired, but directed manual and screen-reader review remains
+   open and must be recorded without converting automated evidence into manual
+   sign-off.
 The source-contract assertion package is complete. The generated manifest now
 contains zero rows: direct mocked tests exercise every previously outstanding
 admin Job, Event/calendar/export, Exchange, Feed hashtag, Help/Knowledge Base,
@@ -287,12 +299,13 @@ otherwise complete Web UK work: Event moderation queue membership/order plus
 `is_online`, and the missing safe Event check-in-code POST. Web UK must not
 fabricate either contract.
 
-Checkpoint footer: frozen historical bank `663/1,000`; corrected-goal in-flight
-delta `0`; frontend blocker owner `none`; finite frontend-owned package count
-`1`. Next five tasks: retry the isolated manual browser after a connection
-refresh; review representative default-English pages at desktop and 320 CSS
-pixels; complete keyboard/focus/no-JS/zoom/forced-colour checks; capture
-screen-reader findings; fix and re-verify any concrete accessibility regression.
+Checkpoint footer: W1 frozen bank `663/1,000`; W2 percentage `not assigned`;
+frontend blocker owner `none`; finite frontend-owned package count `1`. Next
+tasks: start the isolated manual browser; review representative default-English
+pages at desktop and 320 CSS pixels; complete keyboard/focus/no-JS/zoom/forced-
+colour checks; capture screen-reader findings; fix and re-verify any concrete
+accessibility regression; then perform the new W2 audit before reporting a
+completion percentage.
 
 The exact Windows Update interruption and the pre-restart product boundary are
 recorded in

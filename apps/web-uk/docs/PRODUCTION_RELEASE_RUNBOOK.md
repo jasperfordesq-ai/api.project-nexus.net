@@ -2,6 +2,8 @@
 
 Last reviewed: 2026-07-15
 
+Status: **Maintained reference - deployment hold, no standing authorization**
+
 This is the release-control contract for `apps/web-uk`. It is deliberately
 fail-closed: Web UK is experimental and is not currently approved to replace
 Laravel Blade or to run against ASP.NET in production.

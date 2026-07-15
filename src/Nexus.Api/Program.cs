@@ -73,7 +73,7 @@ if (!isRunningInDocker && !isTestEnvironment && builder.Environment.IsDevelopmen
     Console.WriteLine("╔════════════════════════════════════════════════════════════════════╗");
     Console.WriteLine("║  WARNING: Running outside Docker is not supported.                 ║");
     Console.WriteLine("║  Please use: docker compose up -d                                  ║");
-    Console.WriteLine("║  See DOCKER_CONTRACT.md for details.                               ║");
+    Console.WriteLine("║  See docs/system/LOCAL_DEVELOPMENT.md for details.                 ║");
     Console.WriteLine("╚════════════════════════════════════════════════════════════════════╝");
     Console.ResetColor();
 }
@@ -193,8 +193,8 @@ var defaultConnectionString = builder.Configuration.GetConnectionString("Default
 if (!string.IsNullOrEmpty(defaultConnectionString))
     healthChecks.AddNpgSql(defaultConnectionString);
 
-// CORS - Only browser origins, no internal services
-// Note: AllowCredentials() is NOT used since we use JWT Bearer tokens (not cookies)
+// CORS - explicit browser origins; credentials are allowed for compatibility
+// with canonical clients that send credentials on selected public requests.
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
     ?? Array.Empty<string>();
 
@@ -373,7 +373,9 @@ if (allowedOrigins.Length > 0 && !app.Environment.IsProduction())
     var db = scope.ServiceProvider.GetRequiredService<NexusDbContext>();
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
-    // Apply EF migrations on every startup (skip in Testing — tests use EnsureCreated)
+    // Apply EF migrations on every non-Testing startup. Integration tests own
+    // their disposable database lifecycle and apply the migration chain in the
+    // shared test factory.
     if (!app.Environment.IsEnvironment("Testing"))
     {
         await db.Database.MigrateAsync();
@@ -411,13 +413,14 @@ if (allowedOrigins.Length > 0 && !app.Environment.IsProduction())
 // 4. HTTPS redirect (prod only)
 // 5. CORS
 // 6. Authentication - parses JWT, populates HttpContext.User
-// 7. Rate Limiting - authenticated policies can partition by user
-// 8. Authorization - checks [Authorize] attributes
-// 9. TenantResolution - reads tenant_id from JWT claims (MUST be after auth)
-// 10. Controllers
+// 7. Partner-token boundary and Authorization
+// 8. Feature/validation/onboarding gates, then Rate Limiting
+// 9. Privacy/lockdown/module/federation guards
+// 10. TenantResolution and identity-enriched logging
+// 11. Controllers
 // =============================================================================
 
-// Forwarded Headers - MUST be first to ensure correct client IPs behind reverse proxy (nginx)
+// Forwarded Headers - MUST be first to ensure correct client IPs behind the configured reverse proxy
 // Without this, HttpContext.Connection.RemoteIpAddress shows the proxy IP, not the real client
 app.UseForwardedHeaders(new ForwardedHeadersOptions
 {

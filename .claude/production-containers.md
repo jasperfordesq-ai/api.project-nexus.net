@@ -1,5 +1,9 @@
 # Production Container Map
 
+Last inventory verification: 2026-05-12 (not rechecked live by the 2026-07-15 documentation audit)
+
+Status: **Maintained operator reference - dated inventory, verify live after authorization**
+
 > **Single source of truth for what currently runs on the production server.**
 > This is an inventory and component-specific operator reference, not standing
 > authorization to deploy, redeploy, restart, or remove anything. Obtain an
@@ -13,7 +17,7 @@ experimental surface and is not the certified replacement for Laravel Blade.
 
 **Server:** see `.claude/production-server.md` for the SSH host / key. Use `$NEXUS_DEPLOY_HOST` in scripts. Repo lives at `/opt/nexus-backend/`.
 **Reverse proxy:** Plesk-managed **Apache** (NOT nginx) on `:443`. Each vhost lives at `/var/www/vhosts/system/<domain>/conf/vhost_ssl.conf` and `ProxyPass /` targets a `127.0.0.1:<port>` container.
-**Active V1 blue/green color:** tracked in `/etc/apache2/conf-enabled/nexus-active-upstreams.conf` (currently `blue`; managed by `scripts/deploy/bluegreen-deploy.sh`).
+**Active V1 blue/green color:** tracked in `/etc/apache2/conf-enabled/nexus-active-upstreams.conf`. It was recorded as `blue` on 2026-05-12; never assume that color is still active. Verify it live only after explicit authorization.
 
 ---
 
@@ -47,45 +51,24 @@ release procedure**. Do not deploy or repoint Web UK from it until the backend
 switching gate is complete and the configuration has been explicitly reviewed.
 Laravel remains the current Web UK certification backend.
 
-### .NET Edition SPA deploy procedure (reference after explicit authorization)
+### .NET Edition SPA release boundary
 
-> SSH host + key path are in `.claude/production-server.md`. Set `NEXUS_DEPLOY_HOST` and use `$SSH_KEY` from that doc. All commands run *on the server* after `ssh`-ing in.
+The former copy/paste procedure used mutable `git pull`/`:prod` state and
+stopped the serving container before proving a replacement. It is withdrawn.
+After explicit authorization, a reviewed replacement plan must at minimum:
 
-```bash
-# On the server:
-cd /opt/nexus-backend
-sudo git pull origin main
+1. name and verify the exact full source SHA and clean build context;
+2. build an immutable SHA-tagged image and record its digest;
+3. preserve the running container/image until the candidate is independently
+   healthy;
+4. define an atomic port/proxy cutover or another no-gap replacement method;
+5. retain a verified rollback target and abort threshold;
+6. verify public headers/content and the service-worker/cache result; and
+7. record the final container ID, image digest, source SHA, and health evidence.
 
-# Build the prod image from Dockerfile.prod
-cd /opt/nexus-backend/apps/react-frontend
-sudo docker build -f Dockerfile.prod \
-  -t nexus-react-frontend:prod \
-  --build-arg BUILD_COMMIT=$(cd /opt/nexus-backend && git rev-parse --short HEAD) .
-
-# Swap the container (NOT via compose — raw docker run)
-sudo docker stop nexus-react-frontend
-sudo docker rm nexus-react-frontend
-sudo docker run -d \
-  --name nexus-react-frontend \
-  --network nexus-backend-net \
-  -p 127.0.0.1:5210:80 \
-  --restart unless-stopped \
-  nexus-react-frontend:prod
-
-# Purge Cloudflare cache (platform.project-nexus.net is CF-proxied).
-# Reads /opt/nexus-backend/.cloudflare-api-token; safe to skip if absent.
-sudo bash /opt/nexus-backend/scripts/purge-cloudflare-cache.sh
-```
-
-Verify from your workstation:
-
-```bash
-curl -sI https://platform.project-nexus.net/ | head -5
-```
-
-A hard refresh (Ctrl+Shift+R) in the browser is still needed to bust the service-worker cache on already-open sessions.
-
-After deploying, a hard refresh (Ctrl+Shift+R) is needed in the browser to bypass the service-worker cache.
+The deployed SPA remains a raw-container component, not a root Compose service.
+This inventory does not supply the missing mutation commands and does not
+authorize rebuilding the frozen source.
 
 ---
 
@@ -93,7 +76,7 @@ After deploying, a hard refresh (Ctrl+Shift+R) is needed in the browser to bypas
 
 The Laravel Edition stack is a separate codebase that lives in a different working tree (`C:\platforms\htdocs\staging`). It is the canonical, in-production platform, deployed on this same server via `scripts/deploy/bluegreen-deploy.sh`. **Never deploy Laravel Edition changes from `asp.net-backend/`. Never restart Laravel Edition containers without checking the active color.**
 
-### Active pair (blue, serves all V1 traffic)
+### Recorded active pair (blue on 2026-05-12; verify live before use)
 
 | Container | Port | Role |
 |---|---|---|
@@ -104,7 +87,7 @@ The Laravel Edition stack is a separate codebase that lives in a different worki
 | `nexus-blue-php-scheduler` | — | V1 PHP cron scheduler |
 | `nexus-crm` | 8081 | Nexus CRM (serves `crm.project-nexus.ie` + 3 aliases: `crm.hour-timebank.ie`, `crm.timebank.global`, `crm.nexuscivic.ie`). The CRM is NOT a V1 PHP/Laravel app — it's a standalone Docker service unrelated to the blue/green pair, and is safe to redeploy independently. The legacy `exchangemembers.com` URL is dead — Plesk vhost removed 2026-05-12. |
 
-### Standby pair (green — accepts new builds, does NOT serve traffic)
+### Recorded standby pair (green on 2026-05-12; verify live before use)
 
 | Container | Port | Role |
 |---|---|---|
@@ -112,7 +95,10 @@ The Laravel Edition stack is a separate codebase that lives in a different worki
 | `nexus-green-react` | 3400 | Standby V1 React |
 | `nexus-green-sales` | 3103 | Standby V1 sales |
 
-`bluegreen-deploy.sh` builds the green pair, smoke-tests, then atomically flips `Define NEXUS_*_PORT` to point at green and reloads Apache. Removing green = breaking the deploy flow.
+At the dated inventory, `bluegreen-deploy.sh` built the standby pair,
+smoke-tested it, then changed `Define NEXUS_*_PORT` and reloaded Apache. Never
+run or modify that Laravel process from this repository; verify the live color
+and use the Laravel repository's current procedure after separate authorization.
 
 ---
 

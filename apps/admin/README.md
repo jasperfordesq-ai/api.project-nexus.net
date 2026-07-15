@@ -1,6 +1,6 @@
 # NEXUS Admin Panel
 
-Last reviewed: 2026-07-14
+Last reviewed: 2026-07-15
 
 Status: **Maintained reference — secondary admin surface, not a parity authority**
 
@@ -23,16 +23,18 @@ npm run dev
 The Vite development server uses port `5190`. Its default API target is
 `http://localhost:5080`; start a suitable local ASP.NET backend separately.
 
-The local Compose file offers development and production-image test profiles:
+The maintained container path is the root Compose service. From the repository
+root:
 
-```bash
-docker compose up
-docker compose --profile production up
+```powershell
+docker compose up -d api admin
 ```
 
-Both commands are **local only**. The second builds the production image on
-local port `5191`; it is not a production deployment procedure. Before any real
-production-container action, obtain explicit authorization and read
+The standalone `apps/admin/compose.yml` is not supported at this review point:
+its host/container port mapping and in-container API hostname do not match the
+current Vite configuration. Do not use its `production` profile as deployment
+evidence. Before any real production-container action, obtain explicit
+authorization and read
 [`../../.claude/production-containers.md`](../../.claude/production-containers.md).
 
 ## Verification

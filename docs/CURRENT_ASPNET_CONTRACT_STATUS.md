@@ -1,8 +1,8 @@
 # Current ASP.NET Contract Status
 
-Last verified: 2026-07-15 06:18 +01:00
+Last verified: 2026-07-15 17:13 +01:00
 
-Status: **canonical current ASP.NET score and certification source**
+Status: **Canonical current - ASP.NET score and certification source**
 
 <!-- doc-consistency: ASPNET_CURRENT_BANKED_SCORE=712/1000 -->
 
@@ -40,10 +40,11 @@ The denominator is fixed; newly discovered work is recorded as a deduction or
 a separately named Laravel-drift baseline, never as a silent denominator
 change.
 
-The complete 2026-07-15 restart re-audit keeps this score unchanged. No commit
-after the last banked backend implementation closes a remaining scored backend
-gate: the migrated-schema fixture is evidence-only and every later committed
-product change through repository `HEAD` is Web UK work.
+The 2026-07-15 system-wide re-audit keeps this score unchanged. Eleven backend
+implementation/test commits were published after the restart scorecard, but no
+fixed-rubric scoring transaction, complete exact-SHA suite, or CI aggregate has
+banked them. They are recorded below instead of being converted into an
+estimated percentage.
 
 | Category | Banked | Maximum | Open |
 | --- | ---: | ---: | ---: |
@@ -101,12 +102,11 @@ These named values form an audit trail. They are not competing current scores.
 ## Repository State At This Verification
 
 The latest banked backend implementation inspected for this page is
-`5fa15e0e79993464622b1c3ef053fcdd01679991`, with
-Laravel frozen at `903d03d3db78bbf87129ad35728be3b72819acaf`. At the re-audit
-boundary, repository `HEAD` and `origin/main` are both
-`1ded18bd5e49e09c06d697ac0699a9cc31181d25`. The backend evidence commit
-`7ef75d1c4434bf8ba5855602154b5f3370a96b6e` and all subsequent committed
-changes are evidence-only or Web UK-only, so they do not add ASP.NET points.
+`5fa15e0e79993464622b1c3ef053fcdd01679991`, with Laravel frozen at
+`903d03d3db78bbf87129ad35728be3b72819acaf`. At this product boundary,
+repository `HEAD` and `origin/main` are both
+`9ad163c969a935407297eb459a9840798a1a9e78`. The documentation transaction above
+that product SHA adds no product points.
 
 ### Published But Not Rescored
 
@@ -135,28 +135,44 @@ Laravel `903d03d3db78bbf87129ad35728be3b72819acaf` and ASP.NET
 inventory generation does not prove payload, envelope, auth, tenant, side-effect,
 or runtime correctness.
 
+The following backend commits after restart scorecard `ea352690` are published
+but remain unscored:
+
+| Commit | Published change | Why no points are banked |
+| --- | --- | --- |
+| `60715dfd` | Deterministic backend shard harness/test setup | Partial moving-SHA shard evidence is not a complete aggregate. |
+| `e49c8ca9`, `0b79e2a6` | Regional-analytics and premium-cancel contract-test corrections | Test expectations/probes alone do not close a scored semantic gate. |
+| `1fd7a6c0` | Real super-admin tenant move and event-archive contract behavior | Requires fixed-rubric review plus complete certification evidence. |
+| `47458d51`, `06e6045e` | Group/campaign expectations and scheduled-job test setup | Evidence/setup corrections are not a complete suite or CI result. |
+| `2a1acefe` | Real administrator listing-deletion parity and shard slicing | Requires semantic scoring and exact-SHA aggregate evidence. |
+| `59296ac6`, `c370bcb9` | Marketplace/provisioning authorization-test corrections | Corrected expectations do not independently earn points. |
+| `738f47e6` | Removal of a noncanonical guest-attendance alias | Needs route/consumer reconciliation and the normal score transaction. |
+| `9ad163c9` | Administrator user-role expectation correction | Test-only correction; no scored implementation gate closed. |
+
+All eleven contribute **zero banked points** at this snapshot.
+
 ### Dirty And In Flight
 
-The refund-notification marketplace, secure SSO/OIDC, tenant-bootstrap,
-social-comment mention, legacy social-comment sanitizer, and V2 generic-comment
-sanitizer slices are committed and banked. The corrected tenant-bootstrap set passes 4/4
-and its containing public-compatibility class passes 11/11 against a separately
-named disposable PostgreSQL database through `NEXUS_TEST_POSTGRES`; the related
-SSO public-controller integration check also passes 1/1 on that database. The
-worktree reports `20260713015034_EventSafetyWorkflowParity.cs` as modified, but
-its content hash is identical to `HEAD`; it is a stat-only worktree difference,
-not a substantive backend change. `scripts/test-backend-shard.ps1` is untracked;
-the restart interrupted its first attempted shard before a terminal aggregate,
-so it contributes zero build/test/CI points.
+The primary worktree reports
+`src/Nexus.Api/Migrations/20260713015034_EventSafetyWorkflowParity.cs` as
+modified, but its content hash equals `HEAD`; this is a stat-only difference.
+Two backend-session-owned test files contain substantive uncommitted expectation
+corrections: `AuthorizationTests.cs` and
+`ImageUploadCompatibilityTests.cs`. They were preserved during this audit and
+contribute zero points until reviewed, verified, committed, published, and
+scored. The shard harness is now committed at `60715dfd`.
 
-The isolated `codex/schema-parity-20260714` worktree is aligned to repository
-`1ded18bd` and preserves an uncommitted five-table Verein slice. Its older-base
-clean build, 3/3 focused tests, blank migration replay, populated upgrade, valid
-inserts/defaults, and cross-tenant rejection are useful evidence. Its current-
-lineage migration designer is stale and must be regenerated and fully rerun
-before commit. The slice therefore contributes zero banked schema points. There
-are no dirty Web UK product files at this snapshot. Dirty or projected work
-never increases the banked score.
+The isolated `codex/schema-parity-20260714` worktree is clean at local-only
+commit `97b8a4a004362aef8356e8d76333f1efc9d44b36`, based on scorecard commit
+`ea352690`. Its nine commits add candidate Verein, marketplace support, donation
+dispute, engagement recognition, pilot inquiry, health-history, cookie-
+inventory, salary-benchmark, and residency-verification storage. The candidate
+comparison is 458 Laravel tables, 440 ASP.NET tables, 242 exact names, 216
+Laravel-only names, and 198 ASP.NET-only names, with 164 migration source files.
+It is not merged or published and has not been reconciled onto current `main`,
+rerun as one exact-SHA package, or accepted by the scoring rubric. It therefore
+contributes zero banked schema points. Web UK was clean when the coordination
+hold began. Dirty, isolated, or projected work never increases the banked score.
 
 ### 2026-07-15 Windows Update Interruption
 
@@ -193,15 +209,13 @@ Stateful Web UK certification against Laravel must use a separately
 provisioned disposable Laravel environment. The ordinary local Laravel database
 is a confidential production-derived snapshot and is never a test fixture.
 
-The 2026-07-15 suite investigation discovered 3,331 tests across 2,776 methods
-and 391 classes. A
-single full Release run reached the 30-minute process limit without an
-aggregate. Four isolated alphabetic shards also reached their 15-minute limits;
-the B-F shard exposed four named failures. The published migrated-schema harness
-and stale-expectation corrections resolve those four cases, and the affected
-57-test run is green. This is useful evidence, but it is not a complete-suite
-pass: smaller deterministic shards and an exact-SHA CI aggregate are still
-required before any of the remaining 55 build/test/CI points can move.
+The current discovery is 3,333 tests across 2,778 methods and 391 classes.
+Deterministic shards 1-16 and shard 17 slice 1 completed green during a moving-
+SHA investigation. Shard 17 slice 2 had no terminal TRX at the hold boundary;
+shards 18-48 were not run. Earlier time-limited aggregate/shard attempts and
+their corrected failures remain useful diagnostics, but there is no complete
+same-SHA suite or exact-SHA CI aggregate. None of the remaining 55 build/test/CI
+points can move from this partial evidence.
 
 ## Finite Ordered Backend Queue
 

@@ -26,21 +26,12 @@
         </div>
       </dl>
 
-      <h2 class="govuk-heading-m">{{ t("accessibility.features_title") }}</h2>
-      {% for feature in features %}
-        <h3 class="govuk-heading-s govuk-!-margin-bottom-1">{{ feature.title }}</h3>
-        <p class="govuk-body">{{ feature.description }}</p>
-      {% endfor %}
-
       <h2 class="govuk-heading-m">{{ t("accessibility.limitations_title") }}</h2>
       <p class="govuk-body">{{ t("accessibility.limitations_body") }}</p>
 
       <h2 class="govuk-heading-m">{{ t("accessibility.feedback_title") }}</h2>
       <p class="govuk-body">{{ t("accessibility.feedback_body") }}</p>
       <p class="govuk-body"><a class="govuk-link" href="{{ urlFor('/contact') }}">{{ t("accessibility.feedback_cta") }}</a></p>
-
-      <h2 class="govuk-heading-m">{{ t("accessibility.testing_title") }}</h2>
-      <p class="govuk-body">{{ t("accessibility.testing_body") }}</p>
     </div>
   </div>
 {% endblock %}

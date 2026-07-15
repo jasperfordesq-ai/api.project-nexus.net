@@ -1,6 +1,6 @@
 # Blade Component Port Audit
 
-Last reviewed: 2026-07-14
+Last reviewed: 2026-07-15
 
 Status: **Maintained reference — detailed evidence ledger, not the current aggregate**
 
